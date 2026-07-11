@@ -4,11 +4,16 @@ struct MainTabView: View {
   let session: AppSession
   let user: AuthenticatedUser
   let profile: Profile
+  let concertRepository: any ConcertRepository
+
+  @State private var isPresentingConcertCreation = false
 
   var body: some View {
     TabView {
       NavigationStack {
-        FeedPlaceholderView()
+        FeedPlaceholderView {
+          isPresentingConcertCreation = true
+        }
       }
       .tabItem {
         Label("Feed", systemImage: "music.note.house")
@@ -18,6 +23,15 @@ struct MainTabView: View {
         .tabItem {
           Label("Profile", systemImage: "person.crop.circle")
         }
+    }
+    .overlay(alignment: .bottom) {
+      TunedInFloatingAction(title: "Log concert", systemImage: "plus") {
+        isPresentingConcertCreation = true
+      }
+      .padding(.bottom, 64)
+    }
+    .fullScreenCover(isPresented: $isPresentingConcertCreation) {
+      ConcertCreationView(concertRepository: concertRepository)
     }
   }
 }

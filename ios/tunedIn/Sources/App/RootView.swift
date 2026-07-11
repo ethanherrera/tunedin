@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
   @Bindable var session: AppSession
+  let concertRepository: any ConcertRepository
 
   var body: some View {
     switch session.phase {
@@ -19,7 +20,12 @@ struct RootView: View {
       OnboardingView(session: session, user: user)
 
     case let .signedIn(user, profile):
-      MainTabView(session: session, user: user, profile: profile)
+      MainTabView(
+        session: session,
+        user: user,
+        profile: profile,
+        concertRepository: concertRepository
+      )
     }
   }
 }
