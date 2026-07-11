@@ -29,7 +29,7 @@ supabase db push
 
 ## Email delivery constraint
 
-Development temporarily uses Supabase’s default magic-link template because the free provider cannot accept a custom OTP template. Before authentication acceptance or external testing, configure custom SMTP and restore code-only six-digit OTP delivery as recorded in [the decision log](../docs/decision-log.md).
+Development temporarily uses Supabase’s default magic-link template because the free provider cannot accept a custom OTP template. Before authentication acceptance or external testing, configure custom SMTP, restore code-only six-digit OTP delivery, verify the sending domain, and exercise the full iOS code-entry flow. Do not ship the magic-link fallback to beta.
 
 ## Recovery and audit
 
