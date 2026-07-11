@@ -12,6 +12,7 @@
 		8FCAFFA83A941FD8C0EB2B6F /* tunedInApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8046DFD22BCA47A3E52C7793 /* tunedInApp.swift */; };
 		C6474CF32B05D94C7400CADE /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = CB89FFF236B4128126206475 /* Supabase */; };
 		DE07733D4216457264E1B164 /* AppFoundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13DA67072F6747C894159F3E /* AppFoundation.swift */; };
+		EC79DB067047705BFA83DD0E /* SupabaseTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CFC17EF319FD32E400CFE04 /* SupabaseTypes.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -26,6 +27,7 @@
 
 /* Begin PBXFileReference section */
 		13DA67072F6747C894159F3E /* AppFoundation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFoundation.swift; sourceTree = "<group>"; };
+		5CFC17EF319FD32E400CFE04 /* SupabaseTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseTypes.swift; sourceTree = "<group>"; };
 		6D21C61D905AB5FFE3F31BA6 /* FoundationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundationView.swift; sourceTree = "<group>"; };
 		8046DFD22BCA47A3E52C7793 /* tunedInApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = tunedInApp.swift; sourceTree = "<group>"; };
 		83BF7EE9D267EF5CBBBC9AAF /* tunedInTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = tunedInTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -54,6 +56,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		5CAACBD70E59A0640C01205A /* Generated */ = {
+			isa = PBXGroup;
+			children = (
+				5CFC17EF319FD32E400CFE04 /* SupabaseTypes.swift */,
+			);
+			path = Generated;
+			sourceTree = "<group>";
+		};
 		66340FA9E769F1324FCE0560 /* App */ = {
 			isa = PBXGroup;
 			children = (
@@ -78,9 +88,18 @@
 			isa = PBXGroup;
 			children = (
 				66340FA9E769F1324FCE0560 /* App */,
+				CBC713D6194BF6058D877CDF /* Data */,
 			);
 			name = Sources;
 			path = ios/tunedIn/Sources;
+			sourceTree = "<group>";
+		};
+		CBC713D6194BF6058D877CDF /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				5CAACBD70E59A0640C01205A /* Generated */,
+			);
+			path = Data;
 			sourceTree = "<group>";
 		};
 		D3F55AC61B7F81BB7215EAAA /* Tests */ = {
@@ -181,6 +200,7 @@
 			files = (
 				DE07733D4216457264E1B164 /* AppFoundation.swift in Sources */,
 				32E2E9D4F7F4F0FFDC206F55 /* FoundationView.swift in Sources */,
+				EC79DB067047705BFA83DD0E /* SupabaseTypes.swift in Sources */,
 				8FCAFFA83A941FD8C0EB2B6F /* tunedInApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
