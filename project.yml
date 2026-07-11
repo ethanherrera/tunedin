@@ -7,6 +7,7 @@ options:
   generateEmptyDirectories: true
 
 configs:
+  Local: debug
   Development: debug
   Staging: debug
   Production: release
@@ -32,6 +33,11 @@ targets:
       - path: ios/tunedIn/Resources
         excludes:
           - Info.plist
+    configFiles:
+      Local: ios/Config/Local.xcconfig
+      Development: ios/Config/Development.xcconfig
+      Staging: ios/Config/Staging.xcconfig
+      Production: ios/Config/Production.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ethanherrera.tunedin
@@ -40,13 +46,6 @@ targets:
         INFOPLIST_FILE: ios/tunedIn/Resources/Info.plist
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
-      configs:
-        Development:
-          xcconfig: ios/Config/Development.xcconfig
-        Staging:
-          xcconfig: ios/Config/Staging.xcconfig
-        Production:
-          xcconfig: ios/Config/Production.xcconfig
     dependencies:
       - package: Supabase
         product: Supabase
@@ -59,19 +58,29 @@ targets:
       - path: ios/tunedIn/Tests
     dependencies:
       - target: tunedIn
+    configFiles:
+      Local: ios/Config/Local.xcconfig
+      Development: ios/Config/Development.xcconfig
+      Staging: ios/Config/Staging.xcconfig
+      Production: ios/Config/Production.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ethanherrera.tunedin.tests
         GENERATE_INFOPLIST_FILE: YES
-      configs:
-        Development:
-          xcconfig: ios/Config/Development.xcconfig
-        Staging:
-          xcconfig: ios/Config/Staging.xcconfig
-        Production:
-          xcconfig: ios/Config/Production.xcconfig
 
 schemes:
+  tunedIn-Local:
+    build:
+      targets:
+        tunedIn: all
+        tunedInTests: [test]
+    run:
+      config: Local
+    test:
+      config: Local
+      targets:
+        - tunedInTests
+
   tunedIn-Development:
     build:
       targets:

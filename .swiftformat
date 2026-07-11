@@ -4,3 +4,4 @@
 --stripunusedargs closure-only
 --wraparguments before-first
 --wrapcollections before-first
+--trailing-commas never

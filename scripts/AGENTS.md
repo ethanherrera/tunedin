@@ -11,6 +11,8 @@ Scripts provide small, portable terminal tasks invoked by `make`, CI, and docume
 - Keep scripts idempotent where practical and avoid hidden deployment side effects.
 - Add or update a runbook before introducing a recurring maintenance or high-impact operational command.
 - Keep generated-output checks deterministic and non-mutating.
+- Simulator scenario launchers must accept only an explicit allow-list of UI fixture names. They may pass Development launch arguments but must never inject credentials, privileged users, or backend authorization bypasses.
+- Local-stack helpers may read `supabase status -o env` to populate ignored local configuration, but must never print or log returned keys. They must operate only on Docker-local data and state that boundary in their success output.
 
 ## Verification
 
