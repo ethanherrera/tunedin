@@ -22,4 +22,5 @@ This repository contains the native tunedIn MVP: a SwiftUI iOS client and its Su
 - Run `make generate`, `make lint`, and `make test` for iOS changes.
 - Run `supabase test db` for migrations, RLS, or RPC changes; add behavior-focused pgTAP authorization tests.
 - Keep generated Swift database DTOs committed and current after a schema change.
+- Never poll or watch CI status unless Ethan explicitly asks for it. After opening or updating a pull request, report that checks may still be running and stop.
 - Work from focused branches and leave `main` to pull-request merges.
