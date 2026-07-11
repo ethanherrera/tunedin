@@ -73,9 +73,16 @@ struct ConcertDraft {
   }
 
   mutating func makePrimary(_ id: UUID) {
-    for index in artists.indices {
-      artists[index].isPrimary = artists[index].id == id
+    guard let selectedIndex = artists.firstIndex(where: { $0.id == id }) else { return }
+
+    var selectedArtist = artists.remove(at: selectedIndex)
+    selectedArtist.isPrimary = true
+    artists = artists.map { artist in
+      var artist = artist
+      artist.isPrimary = false
+      return artist
     }
+    artists.insert(selectedArtist, at: 0)
   }
 
   mutating func addArtist() {

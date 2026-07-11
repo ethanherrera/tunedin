@@ -47,4 +47,17 @@ struct ConcertDraftTests {
     #expect(draft.artists.filter(\.isPrimary).count == 1)
     #expect(draft.setlist.count == 50)
   }
+
+  @Test
+  func choosingAnotherHeadlinerPromotesThemToTheQuickCapture() {
+    var draft = ConcertDraft()
+    draft.artists[0].name = "Big Thief"
+    draft.addArtist()
+    draft.artists[1].name = "Buck Meek"
+
+    draft.makePrimary(draft.artists[1].id)
+
+    #expect(draft.artists.map(\.name) == ["Buck Meek", "Big Thief"])
+    #expect(draft.artists.map(\.isPrimary) == [true, false])
+  }
 }
