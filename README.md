@@ -30,8 +30,21 @@ make build
 make test
 make lint
 make format
+make simulator-auth-link
+make simulator-onboarding
+make simulator-profile
+make simulator-profile-error
+make simulator-live
 make supabase-types
 make backend-test
 ```
+
+For the temporary Development magic-link flow, copy the email button's link address and run
+`make simulator-auth-link` while tunedIn is installed in a booted Simulator. The helper validates
+the clipboard URL and never prints the one-time token.
+
+The `simulator-onboarding`, `simulator-profile`, and `simulator-profile-error` commands launch
+Development-only deterministic UI fixtures without sending email. They do not create a Supabase
+session or access protected backend data. Use `make simulator-live` for real Supabase integration.
 
 Use focused `feature/`, `fix/`, or `chore/` branches and open pull requests into `main`. Squash merge approved changes and tag external releases as `vMAJOR.MINOR.PATCH`.

@@ -6,6 +6,7 @@ generated="$(mktemp)"
 trap 'rm -f "${generated}"' EXIT
 
 supabase gen types --local --lang swift --swift-access-control public --schema public >"${generated}"
+perl -0pi -e 's/^    case private = "private"$/    case `private` = "private"/m' "${generated}"
 
 if ! cmp -s "${committed}" "${generated}"; then
   diff -u "${committed}" "${generated}" || true
