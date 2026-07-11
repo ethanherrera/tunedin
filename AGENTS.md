@@ -17,6 +17,12 @@ This repository contains the native tunedIn MVP: a SwiftUI iOS client and its Su
 - For in-app sub-screens, use the contextual bottom liquid-glass control bar: the leftmost control returns to the previous screen and the remaining controls switch the relevant views or actions. Do not place back, close, or other in-app navigation controls in the top corners.
 - Animate contextual liquid-glass changes as one cohesive transition; selected segments should glide between positions instead of snapping or leaving an underlying control bar visible.
 
+## Development database deployment
+
+- The shared `tunedin-dev` project advances only through the manually dispatched `Deploy Development Database` workflow from an already reviewed `main` commit. Pull-request checks and merge-triggered workflows must remain non-mutating.
+- Treat `make backend-verify` as the required disposable-schema proof before a hosted migration. `make dev-status` and `make dev-plan` are read-only; `make dev-deploy` only queues the protected workflow.
+- The deployment path applies forward-only database migrations only. Never reset hosted Development, include local seed data, or push Supabase configuration/Edge Functions through this path.
+
 ## Configuration and secrets
 
 - Copy `ios/Config/*.xcconfig.example` to ignored `.xcconfig` files for local configuration.

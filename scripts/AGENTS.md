@@ -13,6 +13,7 @@ Scripts provide small, portable terminal tasks invoked by `make`, CI, and docume
 - Keep generated-output checks deterministic and non-mutating.
 - Simulator scenario launchers must accept only an explicit allow-list of UI fixture names. They may pass Development launch arguments but must never inject credentials, privileged users, or backend authorization bypasses.
 - Local-stack helpers may read `supabase status -o env` to populate ignored local configuration, but must never print or log returned keys. They must operate only on Docker-local data and state that boundary in their success output.
+- Development-deployment helpers must hard-code the approved project ref, obtain the database password only from an environment variable or the documented Keychain item, and never echo either credential. They may apply migrations only from the protected `main` GitHub workflow; they must not reset hosted data, include seeds, or push unrelated Supabase configuration.
 
 ## Verification
 

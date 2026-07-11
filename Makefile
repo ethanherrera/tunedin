@@ -7,10 +7,10 @@ DESTINATION := platform=iOS Simulator,name=iPhone 13
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup configure configure-local-supabase generate format lint build build-local test test-local check simulator-auth-link simulator-local simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error local-db-reset supabase-types check-supabase-types backend-test
+.PHONY: help setup configure configure-local-supabase generate format lint build build-local test test-local check simulator-auth-link simulator-local simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error local-db-reset supabase-types check-supabase-types backend-test backend-verify dev-status dev-plan dev-deploy
 
 help: ## List available development commands.
-	@awk 'BEGIN {FS = ":.*##"}; /^[a-zA-Z_-]+:.*##/ { printf "%-18s %s\\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*##"}; /^[a-zA-Z_-]+:.*##/ { printf "%-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
 setup: ## Verify the local native and backend toolchain.
 	@./scripts/verify-tools.sh
@@ -67,7 +67,7 @@ simulator-profile-error: build ## Install and launch the fresh Development app w
 	@./scripts/launch-development-scenario.sh profile-error
 
 local-db-reset: ## Reset the disposable local Supabase database, migrations, and development seed.
-	@supabase start
+	@supabase start >/dev/null
 	@supabase db reset
 
 supabase-types: ## Generate Swift database DTOs from the migrated local schema.
@@ -78,3 +78,15 @@ check-supabase-types: ## Fail when generated Swift DTOs differ from the local sc
 
 backend-test: ## Run pgTAP tests against a disposable local Supabase stack.
 	@supabase test db
+
+backend-verify: local-db-reset check-supabase-types backend-test ## Rebuild and verify the disposable backend schema, types, and pgTAP tests.
+
+dev-status: ## Show remote migration parity for the hosted tunedin-dev database.
+	@./scripts/development-database.sh status
+
+dev-plan: ## Print migrations that would be applied to hosted tunedin-dev.
+	@./scripts/development-database.sh plan
+
+dev-deploy: ## Trigger the manually approved Development migration workflow from main.
+	@gh workflow run deploy-development.yml --ref main -f confirm=deploy-development
+	@printf 'Queued the Development migration workflow. Review its GitHub Actions summary for the deployed commit and migration parity.\n'
