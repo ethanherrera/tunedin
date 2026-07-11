@@ -63,6 +63,21 @@ struct ConcertDraftTests {
   }
 
   @Test
+  func movingSetlistKeepsTheDraggedSongAtItsNewPosition() {
+    var draft = ConcertDraft()
+    for _ in 0 ..< 3 {
+      draft.addSetlistItem()
+    }
+    draft.setlist[0].title = "First"
+    draft.setlist[1].title = "Second"
+    draft.setlist[2].title = "Third"
+
+    draft.moveSetlist(from: IndexSet(integer: 2), to: 0)
+
+    #expect(draft.setlist.map(\.title) == ["Third", "First", "Second"])
+  }
+
+  @Test
   func venueLocalDateRoundTripsForWestOfUTCEditors() throws {
     let pacific = try #require(TimeZone(identifier: "America/Los_Angeles"))
     let date = try #require(ConcertDraft.date(from: "2026-07-10", timeZone: pacific))

@@ -43,12 +43,6 @@ struct ConcertCreationView: View {
           .safeAreaInset(edge: .bottom, spacing: 0) {
             saveBar
           }
-          .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-              Button("Cancel", action: requestDismissal)
-                .disabled(isSaving)
-            }
-          }
           .alert("Discard this concert?", isPresented: $isShowingDiscardConfirmation) {
             Button("Keep Editing", role: .cancel) {}
             Button("Discard", role: .destructive) {
@@ -72,7 +66,16 @@ struct ConcertCreationView: View {
   }
 
   private var saveBar: some View {
-    VStack {
+    HStack(spacing: 10) {
+      TunedInFloatingAction(
+        systemImage: "chevron.backward",
+        accessibilityLabel: "Cancel concert",
+        accessibilityHint: "Discards this concert if you confirm"
+      ) {
+        requestDismissal()
+      }
+      .disabled(isSaving)
+
       Button(action: save) {
         HStack(spacing: 8) {
           if isSaving {
@@ -129,10 +132,10 @@ struct ConcertCreationView: View {
         TunedInPrivacyBadge()
       }
 
-      Text("Keep the night.")
+      Text("Log a concert")
         .font(.system(size: 36, weight: .bold, design: .serif))
         .foregroundStyle(TunedInDesign.primaryText)
-      Text("Three things are enough. You can make it yours later.")
+      Text("Artist, venue, date.")
         .font(.subheadline)
         .foregroundStyle(TunedInDesign.mutedText)
     }
@@ -140,7 +143,7 @@ struct ConcertCreationView: View {
 
   private var quickCaptureCard: some View {
     TunedInTicketCard {
-      Text("YOUR PRIVATE NOTE")
+      Text("PRIVATE CONCERT")
         .font(.caption.weight(.bold))
         .foregroundStyle(.white.opacity(0.82))
 
@@ -213,7 +216,7 @@ struct ConcertCreationView: View {
           .frame(width: 43, height: 43)
           .background(TunedInDesign.accent, in: Circle())
         VStack(alignment: .leading, spacing: 2) {
-          Text("Make it yours")
+          Text("More details")
             .font(.headline)
             .foregroundStyle(TunedInDesign.primaryText)
           Text(detailsSummary)
@@ -240,9 +243,9 @@ struct ConcertCreationView: View {
   private var detailsSummary: String {
     let additions = (draft.artists.count - 1) + draft.setlist.count
     if additions == 0, draft.city.isEmpty, draft.tour.isEmpty, !draft.hasStartTime {
-      return "Lineup, songs, time, and little details"
+      return "Lineup, setlist, time, and more"
     }
-    return "\(additions) detail\(additions == 1 ? "" : "s") held for this night"
+    return "\(additions) added detail\(additions == 1 ? "" : "s")"
   }
 
   private func captureValidationLabel(_ message: String) -> some View {
@@ -306,11 +309,11 @@ private struct ConcertSavedView: View {
           .font(.subheadline.weight(.black))
           .foregroundStyle(TunedInDesign.accent)
 
-        Text("Kept.")
+        Text("Saved")
           .font(.system(size: 46, weight: .bold, design: .serif))
           .foregroundStyle(TunedInDesign.primaryText)
 
-        Text("One more night, safely yours.")
+        Text("Private concert saved.")
           .font(.title3)
           .foregroundStyle(TunedInDesign.mutedText)
 

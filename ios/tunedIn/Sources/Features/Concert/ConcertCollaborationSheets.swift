@@ -1,14 +1,14 @@
 import SwiftUI
 
-struct ConcertPeopleSheet: View {
+struct ConcertPeopleView: View {
   let detail: ConcertDetail
   let viewerRole: ConcertViewerRole
   let viewerUsername: String
   let socialRepository: any SocialRepository
   let concertRepository: any ConcertRepository
   let onChanged: () -> Void
+  let pageHeader: AnyView
 
-  @Environment(\.dismiss) private var dismiss
   @State private var friends: [SocialProfile] = []
   @State private var isLoadingFriends = true
   @State private var isWorking = false
@@ -17,48 +17,34 @@ struct ConcertPeopleSheet: View {
   @State private var isShowingTransferConfirmation = false
 
   var body: some View {
-    NavigationStack {
-      ZStack {
-        TunedInDesign.pageBackground
-          .ignoresSafeArea()
+    ScrollView {
+      VStack(alignment: .leading, spacing: 18) {
+        pageHeader
+        header
+        membershipSummary
 
-        ScrollView {
-          VStack(alignment: .leading, spacing: 18) {
-            header
-            membershipSummary
+        if canAddPeople {
+          addPeople
+        } else if viewerRole.canManagePeople {
+          privateBoundary
+        }
 
-            if canAddPeople {
-              addPeople
-            } else if viewerRole.canManagePeople {
-              privateBoundary
-            }
+        memberList
 
-            memberList
-
-            if let errorMessage {
-              TunedInFormCard {
-                Label("Couldn’t change the circle", systemImage: "exclamationmark.triangle")
-                  .font(.headline)
-                  .foregroundStyle(TunedInDesign.primaryText)
-                Text(errorMessage)
-                  .font(.subheadline)
-                  .foregroundStyle(TunedInDesign.mutedText)
-              }
-            }
+        if let errorMessage {
+          TunedInFormCard {
+            Label("Couldn’t change the circle", systemImage: "exclamationmark.triangle")
+              .font(.headline)
+              .foregroundStyle(TunedInDesign.primaryText)
+            Text(errorMessage)
+              .font(.subheadline)
+              .foregroundStyle(TunedInDesign.mutedText)
           }
-          .padding(.horizontal, 20)
-          .padding(.top, 12)
-          .padding(.bottom, 32)
-        }
+            }
       }
-      .navigationTitle("People")
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .topBarTrailing) {
-          Button("Done") { dismiss() }
-            .disabled(isWorking)
-        }
-      }
+      .padding(.horizontal, 20)
+      .padding(.top, 12)
+      .padding(.bottom, 32)
     }
     .task {
       await loadFriends()
@@ -73,7 +59,10 @@ struct ConcertPeopleSheet: View {
         transfer(to: candidate)
       }
     } message: { candidate in
-      Text("\(candidate.displayName) becomes the owner immediately. You will remain an editor, but only they can delete the concert or transfer it again.")
+      Text(
+        "\(candidate.displayName) becomes the owner immediately. "
+          + "You remain an editor, but only they can delete or transfer the concert."
+      )
     }
   }
 
@@ -82,7 +71,7 @@ struct ConcertPeopleSheet: View {
       Text("The people in this night")
         .font(.system(size: 29, weight: .bold, design: .serif))
         .foregroundStyle(TunedInDesign.primaryText)
-      Text(viewerRole == .owner ? "Keep the edit circle intentional." : "Editors can help shape the details together.")
+      Text(viewerRole == .owner ? "Choose who can edit this concert." : "Editors can update concert details.")
         .font(.subheadline)
         .foregroundStyle(TunedInDesign.mutedText)
     }
@@ -99,7 +88,7 @@ struct ConcertPeopleSheet: View {
           Text("Editors can change the night")
             .font(.headline)
             .foregroundStyle(TunedInDesign.primaryText)
-          Text("Friends can look in when visibility is Friends, but they cannot change anything unless you add them here.")
+          Text("Friends can view a Friends-visible concert, but only editors can change it.")
             .font(.subheadline)
             .foregroundStyle(TunedInDesign.mutedText)
         }
@@ -153,7 +142,7 @@ struct ConcertPeopleSheet: View {
       Label("This night is still private", systemImage: "lock.fill")
         .font(.headline)
         .foregroundStyle(TunedInDesign.primaryText)
-      Text("Choose Collaborators or Friends in Shape before inviting someone to edit it.")
+      Text("Change visibility in Edit before inviting someone to edit.")
         .font(.subheadline)
         .foregroundStyle(TunedInDesign.mutedText)
     }
@@ -285,7 +274,6 @@ struct ConcertPeopleSheet: View {
       do {
         _ = try await operation()
         onChanged()
-        dismiss()
       } catch {
         errorMessage = error.localizedDescription
       }
@@ -294,12 +282,12 @@ struct ConcertPeopleSheet: View {
   }
 }
 
-struct ConcertCommentsSheet: View {
+struct ConcertCommentsView: View {
   let concertID: UUID
   let viewerID: UUID
   let concertRepository: any ConcertRepository
+  let pageHeader: AnyView
 
-  @Environment(\.dismiss) private var dismiss
   @State private var comments: [ConcertComment] = []
   @State private var draft = ""
   @State private var editingCommentID: UUID?
@@ -310,70 +298,55 @@ struct ConcertCommentsSheet: View {
   @State private var commentPendingDeletion: ConcertComment?
 
   var body: some View {
-    NavigationStack {
-      ZStack {
-        TunedInDesign.pageBackground
-          .ignoresSafeArea()
+    ScrollView {
+      VStack(alignment: .leading, spacing: 12) {
+        pageHeader
 
-        VStack(spacing: 0) {
-          if isLoading {
-            Spacer()
-            ProgressView("Opening notes…")
-            Spacer()
-          } else if comments.isEmpty {
-            emptyState
-          } else {
-            ScrollView {
-              LazyVStack(alignment: .leading, spacing: 12) {
-                ForEach(comments.sorted(by: { $0.createdAt < $1.createdAt })) { comment in
-                  commentCard(comment)
-                }
-              }
-              .padding(.horizontal, 20)
-              .padding(.top, 12)
-              .padding(.bottom, 16)
+        if isLoading {
+          ProgressView("Opening comments…")
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 120)
+        } else if comments.isEmpty {
+          emptyState
+        } else {
+          LazyVStack(alignment: .leading, spacing: 12) {
+            ForEach(comments.sorted(by: { $0.createdAt < $1.createdAt })) { comment in
+              commentCard(comment)
             }
           }
         }
       }
-      .navigationTitle("Notes")
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .topBarTrailing) {
-          Button("Done") { dismiss() }
-        }
-      }
-      .safeAreaInset(edge: .bottom, spacing: 0) {
-        composer
-      }
+      .padding(.horizontal, 20)
+      .padding(.top, 10)
+      .padding(.bottom, 16)
+    }
+    .safeAreaInset(edge: .bottom, spacing: 0) {
+      composer
     }
     .task { await loadComments() }
     .confirmationDialog(
-      "Delete this note?",
+      "Delete this comment?",
       isPresented: isShowingDeleteConfirmation,
       titleVisibility: .visible,
       presenting: commentPendingDeletion
     ) { comment in
-      Button("Delete note", role: .destructive) { delete(comment) }
+      Button("Delete comment", role: .destructive) { delete(comment) }
     } message: { _ in
-      Text("The history will keep a record that a note was removed, but its text will be gone.")
+      Text("The history will keep a record that a comment was removed, but its text will be gone.")
     }
   }
 
   private var emptyState: some View {
     VStack(alignment: .leading, spacing: 18) {
-      Spacer()
       TunedInTicketCard {
-        Label("NO NOTES YET", systemImage: "text.bubble")
+        Label("NO COMMENTS YET", systemImage: "text.bubble")
           .font(.caption.weight(.bold))
           .foregroundStyle(.white.opacity(0.8))
-        Text("Leave the first little thing that stayed with you.")
+        Text("Leave the first comment.")
           .font(.system(size: 28, weight: .bold, design: .serif))
           .foregroundStyle(.white)
       }
-      Spacer()
     }
-    .padding(.horizontal, 20)
   }
 
   private var composer: some View {
@@ -384,7 +357,7 @@ struct ConcertCommentsSheet: View {
           .foregroundStyle(.red)
       }
       HStack(alignment: .bottom, spacing: 10) {
-        TextField("Leave a note…", text: $draft, axis: .vertical)
+        TextField("Leave a comment…", text: $draft, axis: .vertical)
           .lineLimit(1 ... 4)
           .textInputAutocapitalization(.sentences)
           .padding(.horizontal, 14)
@@ -445,7 +418,7 @@ struct ConcertCommentsSheet: View {
         }
 
         if editingCommentID == comment.id {
-          TextField("Your note", text: $editDraft, axis: .vertical)
+          TextField("Your comment", text: $editDraft, axis: .vertical)
             .lineLimit(1 ... 4)
             .padding(10)
             .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -459,7 +432,7 @@ struct ConcertCommentsSheet: View {
               .foregroundStyle(TunedInDesign.accent)
           }
         } else {
-          Text(comment.isDeleted ? "This note was removed." : (comment.body ?? ""))
+          Text(comment.isDeleted ? "This comment was removed." : (comment.body ?? ""))
             .font(.body)
             .italic(comment.isDeleted)
             .foregroundStyle(comment.isDeleted ? TunedInDesign.mutedText : TunedInDesign.primaryText)
