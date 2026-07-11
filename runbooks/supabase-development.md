@@ -40,6 +40,20 @@ Development temporarily uses Supabase’s default magic-link template because th
 
 The helper accepts only a hosted or local Supabase Auth verification URL, does not print the token, and asks the booted Simulator to open it. Supabase should verify the one-time link, redirect to `com.ethanherrera.tunedin://auth-callback`, and reopen tunedIn with an authenticated session. If it fails, request a fresh link, confirm tunedIn is installed, and confirm the hosted Auth URL allow-list contains the exact callback URL. The Supabase Auth log and local Xcode console are the audit locations for failures.
 
+### Development UI scenarios
+
+After installing the Development build in a booted Simulator, use these commands to inspect app-owned routing and UI without consuming an Auth email:
+
+```sh
+make simulator-signed-out
+make simulator-onboarding
+make simulator-profile
+make simulator-profile-error
+make simulator-live
+```
+
+The non-live scenarios inject deterministic in-memory authentication and profile repositories. They cannot access Supabase, do not prove authentication or authorization behavior, and must never substitute for the live magic-link smoke test or pgTAP RLS/RPC tests. `make simulator-live` removes the scenario argument and restores the normal Supabase-backed Development container. Reinstall the app if a scenario command reports that tunedIn is unavailable.
+
 ## Recovery and audit
 
 - Never rewrite an applied migration. Ship a corrective migration after review.

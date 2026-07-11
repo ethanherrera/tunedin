@@ -48,6 +48,27 @@ struct AppSessionTests {
     #expect(restoredProfile == profile)
   }
 
+  @MainActor
+  @Test
+  func successfulSignOutImmediatelyReturnsToSignIn() async throws {
+    let user = try AuthenticatedUser(
+      id: #require(UUID(uuidString: "33333333-3333-3333-3333-333333333333")),
+      email: "signout@example.test"
+    )
+    let session = AppSession(
+      authenticationRepository: StaticAuthenticationRepository(user: user),
+      profileRepository: StaticProfileRepository(profile: makeProfile(id: user.id, completed: true))
+    )
+
+    await settle(session)
+    await session.signOut()
+
+    guard case .signedOut = session.phase else {
+      Issue.record("Expected a successful sign out to return to sign-in immediately")
+      return
+    }
+  }
+
   private func makeProfile(id: UUID, completed: Bool) -> Profile {
     Profile(
       id: id,

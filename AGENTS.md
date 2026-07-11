@@ -10,6 +10,7 @@ This repository contains the native tunedIn MVP: a SwiftUI iOS client and its Su
 - Use Swift Package Manager only. The app may depend on Supabase Swift and Apple frameworks; add other runtime dependencies only with an explicit product need.
 - Make schema evolution forward-only. All shared-environment changes are timestamped migrations; never edit an applied migration or use dashboard-only schema changes.
 - Authorization belongs in Postgres RLS and narrowly scoped hardened RPCs, not client checks.
+- Development launch scenarios may bypass email only by injecting deterministic in-memory client repositories. They must not create privileged Supabase sessions, weaken RLS, or be treated as backend/auth verification; use the live Development flow for integration testing.
 
 ## Configuration and secrets
 

@@ -3,6 +3,7 @@ import Foundation
 struct AppConfiguration: Sendable {
   let supabaseURL: URL
   let supabasePublishableKey: String
+  let environment: AppEnvironment
   let authEmailDeliveryMode: AuthEmailDeliveryMode
 
   static let authCallbackURL = URL(string: "com.ethanherrera.tunedin://auth-callback")!
@@ -44,17 +45,28 @@ struct AppConfiguration: Sendable {
       throw AppConfigurationError.missing("APP_ENVIRONMENT")
     }
 
-    let authEmailDeliveryMode: AuthEmailDeliveryMode =
-      appEnvironment.trimmingCharacters(in: .whitespacesAndNewlines) == "Development"
-        ? .magicLink
-        : .oneTimeCode
+    let environmentValue = appEnvironment.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let environment = AppEnvironment(rawValue: environmentValue) else {
+      throw AppConfigurationError.invalid("APP_ENVIRONMENT")
+    }
+
+    let authEmailDeliveryMode: AuthEmailDeliveryMode = environment == .development
+      ? .magicLink
+      : .oneTimeCode
 
     return Self(
       supabaseURL: supabaseURL,
       supabasePublishableKey: supabasePublishableKey,
+      environment: environment,
       authEmailDeliveryMode: authEmailDeliveryMode
     )
   }
+}
+
+enum AppEnvironment: String, Sendable {
+  case development = "Development"
+  case staging = "Staging"
+  case production = "Production"
 }
 
 enum AuthEmailDeliveryMode: Equatable, Sendable {
@@ -66,11 +78,14 @@ private final class TunedInBundleMarker {}
 
 enum AppConfigurationError: LocalizedError {
   case missing(String)
+  case invalid(String)
 
   var errorDescription: String? {
     switch self {
     case let .missing(key):
       "Missing app configuration for \(key). Copy the matching .xcconfig.example file before running."
+    case let .invalid(key):
+      "Invalid app configuration for \(key). Check the matching .xcconfig file."
     }
   }
 }

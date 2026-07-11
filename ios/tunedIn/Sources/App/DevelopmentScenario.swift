@@ -1,0 +1,163 @@
+#if DEBUG
+  import Foundation
+
+  enum DevelopmentScenario: String, CaseIterable, Sendable {
+    case live
+    case signedOut = "signed-out"
+    case onboarding
+    case profile
+    case profileError = "profile-error"
+
+    private static let argumentName = "-TUNEDIN_DEVELOPMENT_SCENARIO"
+
+    static func requested(arguments: [String] = ProcessInfo.processInfo.arguments) -> Self? {
+      guard
+        let argumentIndex = arguments.firstIndex(of: argumentName),
+        arguments.indices.contains(argumentIndex + 1)
+      else {
+        return nil
+      }
+
+      return Self(rawValue: arguments[argumentIndex + 1])
+    }
+
+    @MainActor
+    func makeAppSession(authEmailDeliveryMode: AuthEmailDeliveryMode) -> AppSession {
+      let fixture = DevelopmentFixture()
+
+      switch self {
+      case .live:
+        preconditionFailure("The live scenario must use Supabase repositories.")
+
+      case .signedOut:
+        return AppSession(
+          authenticationRepository: DevelopmentAuthenticationRepository(user: nil),
+          profileRepository: DevelopmentProfileRepository(result: .profile(fixture.incompleteProfile)),
+          authEmailDeliveryMode: authEmailDeliveryMode
+        )
+
+      case .onboarding:
+        return AppSession(
+          authenticationRepository: DevelopmentAuthenticationRepository(user: fixture.user),
+          profileRepository: DevelopmentProfileRepository(result: .profile(fixture.incompleteProfile)),
+          authEmailDeliveryMode: authEmailDeliveryMode
+        )
+
+      case .profile:
+        return AppSession(
+          authenticationRepository: DevelopmentAuthenticationRepository(user: fixture.user),
+          profileRepository: DevelopmentProfileRepository(result: .profile(fixture.completedProfile)),
+          authEmailDeliveryMode: authEmailDeliveryMode
+        )
+
+      case .profileError:
+        return AppSession(
+          authenticationRepository: DevelopmentAuthenticationRepository(user: fixture.user),
+          profileRepository: DevelopmentProfileRepository(result: .failure),
+          authEmailDeliveryMode: authEmailDeliveryMode
+        )
+      }
+    }
+  }
+
+  private struct DevelopmentFixture {
+    let userID = UUID(uuidString: "D0000000-0000-0000-0000-000000000001")!
+    let createdAt = Date(timeIntervalSince1970: 1_735_689_600)
+
+    var user: AuthenticatedUser {
+      AuthenticatedUser(id: userID, email: "listener@development.test")
+    }
+
+    var incompleteProfile: Profile {
+      Profile(
+        id: userID,
+        username: nil,
+        displayName: nil,
+        onboardingCompletedAt: nil,
+        createdAt: createdAt,
+        updatedAt: createdAt
+      )
+    }
+
+    var completedProfile: Profile {
+      Profile(
+        id: userID,
+        username: "dev_listener",
+        displayName: "Development Listener",
+        onboardingCompletedAt: createdAt,
+        createdAt: createdAt,
+        updatedAt: createdAt
+      )
+    }
+  }
+
+  private struct DevelopmentAuthenticationRepository: AuthenticationRepository {
+    let user: AuthenticatedUser?
+
+    var authenticationStateChanges: AsyncStream<AuthenticatedUser?> {
+      AsyncStream { continuation in
+        continuation.yield(user)
+        continuation.finish()
+      }
+    }
+
+    func sendEmailOTP(to _: String) async throws {
+      throw DevelopmentScenarioError.liveAuthenticationRequired
+    }
+
+    func verifyEmailOTP(email _: String, code _: String) async throws {
+      throw DevelopmentScenarioError.liveAuthenticationRequired
+    }
+
+    func signOut() async throws {}
+    func handleAuthCallback(_: URL) {}
+  }
+
+  private struct DevelopmentProfileRepository: ProfileRepository {
+    enum Result: Sendable {
+      case profile(Profile)
+      case failure
+    }
+
+    let result: Result
+
+    func fetchProfile(for _: UUID) async throws -> Profile {
+      switch result {
+      case let .profile(profile):
+        profile
+      case .failure:
+        throw DevelopmentScenarioError.profileUnavailable
+      }
+    }
+
+    func isUsernameAvailable(_ username: String) async throws -> Bool {
+      ProfileInput.isUsernameValid(username) && username != "taken_username"
+    }
+
+    func completeOnboarding(username: String, displayName: String) async throws -> Profile {
+      let fixture = DevelopmentFixture()
+      return Profile(
+        id: fixture.userID,
+        username: ProfileInput.normalizedUsername(username),
+        displayName: ProfileInput.normalizedDisplayName(displayName),
+        onboardingCompletedAt: Date(),
+        createdAt: fixture.createdAt,
+        updatedAt: Date()
+      )
+    }
+  }
+
+  private enum DevelopmentScenarioError: LocalizedError {
+    case liveAuthenticationRequired
+    case profileUnavailable
+
+    var errorDescription: String? {
+      switch self {
+      case .liveAuthenticationRequired:
+        "Use the live Development scenario to test Supabase authentication."
+      case .profileUnavailable:
+        "The Development profile scenario intentionally failed to load."
+      }
+    }
+  }
+#endif

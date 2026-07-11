@@ -72,6 +72,7 @@ final class AppSession {
   func signOut() async {
     do {
       try await authenticationRepository.signOut()
+      receiveAuthenticationChange(nil)
     } catch {
       if currentUser == nil {
         phase = .signedOut

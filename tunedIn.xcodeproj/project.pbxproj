@@ -21,11 +21,13 @@
 		9B82FB9B7F094931B9622D52 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52FC5FA5CC195C96AC2F7E11 /* AppContainer.swift */; };
 		A555A5875A5637540E1BC35E /* SupabaseProfileRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = C659A65B20724EDB509145AB /* SupabaseProfileRepository.swift */; };
 		A8A2DDCEBC958A4C3C29E0A0 /* EmailVerificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2644431350079CF5B9312C52 /* EmailVerificationView.swift */; };
+		B285EF895AF1F404CC298893 /* DevelopmentScenarioTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB65B95E9AC543A960D5F27F /* DevelopmentScenarioTests.swift */; };
 		C6474CF32B05D94C7400CADE /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = CB89FFF236B4128126206475 /* Supabase */; };
 		C971A43D0669101756911698 /* FeedPlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A080BB9E0BAC410982A1D12C /* FeedPlaceholderView.swift */; };
 		D6331F38545589E8EC42E675 /* ProfileInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1237B11A854A5A058C98A39C /* ProfileInputTests.swift */; };
 		EC79DB067047705BFA83DD0E /* SupabaseTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CFC17EF319FD32E400CFE04 /* SupabaseTypes.swift */; };
 		F4E200A9A3F2B4A822C52209 /* AppSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7788CE273B97F5DF8299CB3 /* AppSessionTests.swift */; };
+		F65D718B16A14EDEF2F1E39D /* DevelopmentScenario.swift in Sources */ = {isa = PBXBuildFile; fileRef = 889BD9CC3B0A992D16F66A9A /* DevelopmentScenario.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -51,10 +53,12 @@
 		8046DFD22BCA47A3E52C7793 /* tunedInApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = tunedInApp.swift; sourceTree = "<group>"; };
 		83BF7EE9D267EF5CBBBC9AAF /* tunedInTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = tunedInTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		887C95DD1BE38E3C830C4D80 /* AppSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSession.swift; sourceTree = "<group>"; };
+		889BD9CC3B0A992D16F66A9A /* DevelopmentScenario.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentScenario.swift; sourceTree = "<group>"; };
 		9717CE9DFB9D76660ECB11B4 /* ProfileRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRepository.swift; sourceTree = "<group>"; };
 		985739D4F2A12A277B1F5632 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
 		A080BB9E0BAC410982A1D12C /* FeedPlaceholderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedPlaceholderView.swift; sourceTree = "<group>"; };
 		A68C4BF2544ABC5F8B9AA816 /* tunedIn.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = tunedIn.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB65B95E9AC543A960D5F27F /* DevelopmentScenarioTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentScenarioTests.swift; sourceTree = "<group>"; };
 		B70F123405BE8D8AEC81A601 /* AppConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfiguration.swift; sourceTree = "<group>"; };
 		B7788CE273B97F5DF8299CB3 /* AppSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSessionTests.swift; sourceTree = "<group>"; };
 		C659A65B20724EDB509145AB /* SupabaseProfileRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseProfileRepository.swift; sourceTree = "<group>"; };
@@ -123,6 +127,7 @@
 			children = (
 				52FC5FA5CC195C96AC2F7E11 /* AppContainer.swift */,
 				887C95DD1BE38E3C830C4D80 /* AppSession.swift */,
+				889BD9CC3B0A992D16F66A9A /* DevelopmentScenario.swift */,
 				5EB6C524BEA58A2B8496E011 /* RootView.swift */,
 				8046DFD22BCA47A3E52C7793 /* tunedInApp.swift */,
 			);
@@ -211,6 +216,7 @@
 			isa = PBXGroup;
 			children = (
 				B7788CE273B97F5DF8299CB3 /* AppSessionTests.swift */,
+				AB65B95E9AC543A960D5F27F /* DevelopmentScenarioTests.swift */,
 				1237B11A854A5A058C98A39C /* ProfileInputTests.swift */,
 			);
 			name = Tests;
@@ -328,6 +334,7 @@
 				9B82FB9B7F094931B9622D52 /* AppContainer.swift in Sources */,
 				50A81F38CF306B62FD2C87D7 /* AppSession.swift in Sources */,
 				8F3C5D513BD8199AFC4896DC /* AuthenticationRepository.swift in Sources */,
+				F65D718B16A14EDEF2F1E39D /* DevelopmentScenario.swift in Sources */,
 				65B10C1D7A2DE2006D794A5C /* EmailSignInView.swift in Sources */,
 				A8A2DDCEBC958A4C3C29E0A0 /* EmailVerificationView.swift in Sources */,
 				C971A43D0669101756911698 /* FeedPlaceholderView.swift in Sources */,
@@ -348,6 +355,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F4E200A9A3F2B4A822C52209 /* AppSessionTests.swift in Sources */,
+				B285EF895AF1F404CC298893 /* DevelopmentScenarioTests.swift in Sources */,
 				D6331F38545589E8EC42E675 /* ProfileInputTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

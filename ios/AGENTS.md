@@ -17,3 +17,4 @@
 - Configuration files in `Config/` are ignored; only `.xcconfig.example` templates belong in Git.
 - Run `make lint` and `make test`. Use Xcode/Simulator for visual inspection, runtime logs, crashes, profiling, signing, or capabilities.
 - When testing the temporary Development magic-link flow, copy the email button's link address and run `make simulator-auth-link` with tunedIn installed in a booted Simulator. Never paste, print, or commit the one-time Auth URL or token.
+- Use `make simulator-onboarding`, `make simulator-profile`, and `make simulator-profile-error` for deterministic UI-only states, and `make simulator-live` for the real Supabase-backed flow. Scenario code must be compiled behind `DEBUG`, additionally require the Development environment, use app-owned in-memory repositories, and never access or bypass Supabase authorization.
