@@ -1,0 +1,40 @@
+name: iOS
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: macos-26
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Report Xcode version
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
+
+      - name: Install project tooling
+        run: brew install xcodegen swiftformat swiftlint
+
+      - name: Create non-secret CI configuration
+        run: make configure
+
+      - name: Verify generated project is current
+        run: |
+          make generate
+          git diff --exit-code -- tunedIn.xcodeproj
+
+      - name: Lint
+        run: make lint
+
+      - name: Build and test
+        run: make test DESTINATION='platform=iOS Simulator,name=iPhone 17'
