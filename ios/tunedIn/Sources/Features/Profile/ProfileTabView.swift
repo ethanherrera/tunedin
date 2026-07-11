@@ -29,17 +29,17 @@ struct MainTabView: View {
         Label("Profile", systemImage: "person.crop.circle")
       }
     }
-    .overlay(alignment: .bottom) {
-      TunedInFloatingAction(title: "Log concert", systemImage: "plus") {
+    .overlay(alignment: .bottomTrailing) {
+      TunedInFloatingAction {
         isPresentingConcertCreation = true
       }
-      .padding(.bottom, 64)
+      .padding(.trailing, 24)
+      .padding(.bottom, -8)
     }
     .fullScreenCover(isPresented: $isPresentingConcertCreation) {
       ConcertCreationView(concertRepository: concertRepository)
     }
     .tint(TunedInDesign.accent)
-    .preferredColorScheme(.dark)
   }
 }
 
@@ -66,7 +66,7 @@ private struct ProfileTabView: View {
               VStack(alignment: .leading, spacing: 4) {
                 Text(profile.displayName ?? "")
                   .font(.title2.weight(.bold))
-                  .foregroundStyle(.white)
+                  .foregroundStyle(TunedInDesign.primaryText)
 
                 Text("@\(profile.username ?? "")")
                   .font(.subheadline)
@@ -81,7 +81,7 @@ private struct ProfileTabView: View {
 
               Text("The nights you save are yours.")
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(TunedInDesign.primaryText)
 
               Text("Start with one show. Build the story when you’re ready.")
                 .font(.subheadline)
@@ -90,7 +90,7 @@ private struct ProfileTabView: View {
               Button(action: onCreateConcert) {
                 Label("Log a concert", systemImage: "plus")
                   .font(.subheadline.weight(.bold))
-                  .foregroundStyle(TunedInDesign.ink)
+                  .foregroundStyle(TunedInDesign.actionForeground)
                   .padding(.horizontal, 16)
                   .padding(.vertical, 12)
                   .background(TunedInDesign.accent, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -101,7 +101,7 @@ private struct ProfileTabView: View {
             TunedInFormCard {
               Text("Account")
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(TunedInDesign.primaryText)
               Text(user.email ?? "Unavailable")
                 .font(.subheadline)
                 .foregroundStyle(TunedInDesign.mutedText)
@@ -113,6 +113,8 @@ private struct ProfileTabView: View {
               }
               .font(.subheadline.weight(.semibold))
             }
+
+            AppearancePicker()
           }
           .padding(.horizontal, 24)
           .padding(.top, 24)
@@ -120,6 +122,53 @@ private struct ProfileTabView: View {
         }
       }
       .toolbar(.hidden, for: .navigationBar)
+    }
+  }
+}
+
+private struct AppearancePicker: View {
+  @AppStorage(TunedInAppearance.storageKey) private var appearanceRawValue = TunedInAppearance.light.rawValue
+
+  private var appearance: TunedInAppearance {
+    TunedInAppearance(rawValue: appearanceRawValue) ?? .system
+  }
+
+  var body: some View {
+    TunedInFormCard {
+      Text("Appearance")
+        .font(.headline)
+        .foregroundStyle(TunedInDesign.primaryText)
+
+      Text("Choose the way you want your diary to feel.")
+        .font(.subheadline)
+        .foregroundStyle(TunedInDesign.mutedText)
+
+      HStack(spacing: 8) {
+        ForEach(TunedInAppearance.allCases) { option in
+          Button {
+            withAnimation(.snappy) {
+              appearanceRawValue = option.rawValue
+            }
+          } label: {
+            VStack(spacing: 6) {
+              Image(systemName: option.systemImage)
+                .font(.subheadline.weight(.semibold))
+              Text(option.title)
+                .font(.caption.weight(.bold))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 11)
+            .foregroundStyle(option == appearance ? TunedInDesign.actionForeground : TunedInDesign.primaryText)
+            .background(
+              option == appearance ? TunedInDesign.accent : TunedInDesign.raisedSurface,
+              in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel("Use \(option.title.lowercased()) appearance")
+          .accessibilityAddTraits(option == appearance ? .isSelected : [])
+        }
+      }
     }
   }
 }

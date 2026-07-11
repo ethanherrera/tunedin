@@ -66,7 +66,6 @@ struct ConcertCreationView: View {
       }
     }
     .tint(TunedInDesign.accent)
-    .preferredColorScheme(.dark)
   }
 
   private var saveBar: some View {
@@ -75,7 +74,7 @@ struct ConcertCreationView: View {
         HStack(spacing: 8) {
           if isSaving {
             ProgressView()
-              .tint(TunedInDesign.ink)
+              .tint(TunedInDesign.actionForeground)
           } else {
             Image(systemName: "lock.fill")
           }
@@ -87,7 +86,7 @@ struct ConcertCreationView: View {
         .padding(.vertical, 16)
       }
       .buttonStyle(.plain)
-      .foregroundStyle(draft.canSave && !isSaving ? TunedInDesign.ink : TunedInDesign.mutedText)
+      .foregroundStyle(draft.canSave && !isSaving ? TunedInDesign.actionForeground : TunedInDesign.mutedText)
       .background(
         draft.canSave && !isSaving ? TunedInDesign.accent : TunedInDesign.raisedSurface,
         in: RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -163,7 +162,7 @@ private struct ConcertSavedView: View {
 
         Text("Kept.")
           .font(.system(size: 46, weight: .bold, design: .serif))
-          .foregroundStyle(.white)
+          .foregroundStyle(TunedInDesign.primaryText)
 
         Text("One more night, safely yours.")
           .font(.title3)
@@ -187,7 +186,7 @@ private struct ConcertSavedView: View {
 
         Button("Done", action: onDone)
           .font(.headline)
-          .foregroundStyle(TunedInDesign.ink)
+          .foregroundStyle(TunedInDesign.actionForeground)
           .frame(maxWidth: .infinity)
           .padding(.vertical, 16)
           .background(TunedInDesign.accent, in: RoundedRectangle(cornerRadius: 16, style: .continuous))

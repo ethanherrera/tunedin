@@ -16,7 +16,7 @@ extension ConcertCreationView {
 
         Text("Keep the night.")
           .font(.system(size: 38, weight: .bold, design: .serif))
-          .foregroundStyle(.white)
+          .foregroundStyle(TunedInDesign.primaryText)
 
         Text("The show is still ringing. Catch the feeling before it fades.")
           .font(.subheadline)
@@ -127,7 +127,7 @@ extension ConcertCreationView {
           VStack(alignment: .leading, spacing: 2) {
             Text(isShowingDetails ? "Make it yours" : "Add details")
               .font(.headline)
-              .foregroundStyle(.white)
+              .foregroundStyle(TunedInDesign.primaryText)
             Text(isShowingDetails ? "Lineup, setlist, time, and more" : "Only if you feel like it")
               .font(.caption)
               .foregroundStyle(TunedInDesign.mutedText)
@@ -160,7 +160,7 @@ extension ConcertCreationView {
         VStack(alignment: .leading, spacing: 3) {
           Text("Lineup")
             .font(.headline)
-            .foregroundStyle(.white)
+            .foregroundStyle(TunedInDesign.primaryText)
           Text("Choose one headliner. The order is the bill.")
             .font(.caption)
             .foregroundStyle(TunedInDesign.mutedText)
@@ -217,7 +217,7 @@ extension ConcertCreationView {
     TunedInFormCard {
       Text("The context")
         .font(.headline)
-        .foregroundStyle(.white)
+        .foregroundStyle(TunedInDesign.primaryText)
 
       TextField("City (optional)", text: $draft.city)
         .textContentType(.addressCity)
@@ -267,7 +267,7 @@ extension ConcertCreationView {
         VStack(alignment: .leading, spacing: 3) {
           Text("Setlist")
             .font(.headline)
-            .foregroundStyle(.white)
+            .foregroundStyle(TunedInDesign.primaryText)
           Text("Add every song, or leave it as a feeling.")
             .font(.caption)
             .foregroundStyle(TunedInDesign.mutedText)

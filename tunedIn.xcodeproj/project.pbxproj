@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		02A3DF2E2A93DF3BF391C823 /* TunedInAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BB6E4FE735BE91A1C03412D /* TunedInAppearance.swift */; };
 		063A304A122AB3F34C63D114 /* TunedInDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 532F8D6E5EB000F34B910F42 /* TunedInDesignSystem.swift */; };
 		1793E9051F51C7519FF80E6E /* ConcertInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21073FA12796111F79010BBE /* ConcertInputTests.swift */; };
 		1F370D3E3BCB807C700E18B0 /* ProfileTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0FBCDF44CFFCD6B78B8DD54 /* ProfileTabView.swift */; };
@@ -21,6 +22,7 @@
 		6E2D811C78F565BE6B11B403 /* ProfileRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9717CE9DFB9D76660ECB11B4 /* ProfileRepository.swift */; };
 		6F2919030AA61C68435BC5B8 /* Concert.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61399B814DE19CDCDA167DE0 /* Concert.swift */; };
 		7A9E943A4D2A0A5CD8AF0398 /* ConcertCreationFormSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD75288821322770423012C4 /* ConcertCreationFormSections.swift */; };
+		83A9DCB96622FE84342F37C4 /* TunedInAppearanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93B17BB128F3EE14857B0AEB /* TunedInAppearanceTests.swift */; };
 		8F3C5D513BD8199AFC4896DC /* AuthenticationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 075C8094B7B7249F8E4DF36F /* AuthenticationRepository.swift */; };
 		8FCAFFA83A941FD8C0EB2B6F /* tunedInApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8046DFD22BCA47A3E52C7793 /* tunedInApp.swift */; };
 		905E3D91E2B813DA12200AAD /* SupabaseConcertRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B89C2123769CE8C8EE2427 /* SupabaseConcertRepository.swift */; };
@@ -69,6 +71,8 @@
 		83BF7EE9D267EF5CBBBC9AAF /* tunedInTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = tunedInTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		887C95DD1BE38E3C830C4D80 /* AppSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSession.swift; sourceTree = "<group>"; };
 		889BD9CC3B0A992D16F66A9A /* DevelopmentScenario.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentScenario.swift; sourceTree = "<group>"; };
+		8BB6E4FE735BE91A1C03412D /* TunedInAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunedInAppearance.swift; sourceTree = "<group>"; };
+		93B17BB128F3EE14857B0AEB /* TunedInAppearanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunedInAppearanceTests.swift; sourceTree = "<group>"; };
 		9717CE9DFB9D76660ECB11B4 /* ProfileRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRepository.swift; sourceTree = "<group>"; };
 		985739D4F2A12A277B1F5632 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
 		A080BB9E0BAC410982A1D12C /* FeedPlaceholderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedPlaceholderView.swift; sourceTree = "<group>"; };
@@ -193,6 +197,7 @@
 		9EB900DF5D802B39D61F8C5E /* DesignSystem */ = {
 			isa = PBXGroup;
 			children = (
+				8BB6E4FE735BE91A1C03412D /* TunedInAppearance.swift */,
 				532F8D6E5EB000F34B910F42 /* TunedInDesignSystem.swift */,
 			);
 			path = DesignSystem;
@@ -268,6 +273,7 @@
 				21073FA12796111F79010BBE /* ConcertInputTests.swift */,
 				AB65B95E9AC543A960D5F27F /* DevelopmentScenarioTests.swift */,
 				1237B11A854A5A058C98A39C /* ProfileInputTests.swift */,
+				93B17BB128F3EE14857B0AEB /* TunedInAppearanceTests.swift */,
 			);
 			name = Tests;
 			path = ios/tunedIn/Tests;
@@ -404,6 +410,7 @@
 				905E3D91E2B813DA12200AAD /* SupabaseConcertRepository.swift in Sources */,
 				A555A5875A5637540E1BC35E /* SupabaseProfileRepository.swift in Sources */,
 				EC79DB067047705BFA83DD0E /* SupabaseTypes.swift in Sources */,
+				02A3DF2E2A93DF3BF391C823 /* TunedInAppearance.swift in Sources */,
 				063A304A122AB3F34C63D114 /* TunedInDesignSystem.swift in Sources */,
 				8FCAFFA83A941FD8C0EB2B6F /* tunedInApp.swift in Sources */,
 			);
@@ -417,6 +424,7 @@
 				1793E9051F51C7519FF80E6E /* ConcertInputTests.swift in Sources */,
 				B285EF895AF1F404CC298893 /* DevelopmentScenarioTests.swift in Sources */,
 				D6331F38545589E8EC42E675 /* ProfileInputTests.swift in Sources */,
+				83A9DCB96622FE84342F37C4 /* TunedInAppearanceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -17,7 +17,7 @@ struct FeedPlaceholderView: View {
 
             Text("Every show\nyou keep.")
               .font(.system(size: 40, weight: .bold, design: .serif))
-              .foregroundStyle(.white)
+              .foregroundStyle(TunedInDesign.primaryText)
 
             Text("A private concert diary for the nights that stay with you.")
               .font(.subheadline)
@@ -37,7 +37,7 @@ struct FeedPlaceholderView: View {
               Button(action: onCreateConcert) {
                 Label("Log the night", systemImage: "arrow.up.right")
                   .font(.subheadline.weight(.bold))
-                  .foregroundStyle(TunedInDesign.ink)
+                  .foregroundStyle(TunedInDesign.actionForeground)
                   .padding(.horizontal, 16)
                   .padding(.vertical, 12)
                   .background(TunedInDesign.accent, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -49,7 +49,7 @@ struct FeedPlaceholderView: View {
           VStack(alignment: .leading, spacing: 10) {
             Text("Your archive starts here.")
               .font(.headline)
-              .foregroundStyle(.white)
+              .foregroundStyle(TunedInDesign.primaryText)
             Text("Log the show now. Add every detail that makes it yours whenever you’re ready.")
               .font(.subheadline)
               .foregroundStyle(TunedInDesign.mutedText)

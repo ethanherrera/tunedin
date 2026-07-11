@@ -1,36 +1,76 @@
 import SwiftUI
+import UIKit
 
 enum TunedInDesign {
   static let accent = Color(red: 1.0, green: 0.34, blue: 0.13)
-  static let accentTint = Color(red: 0.24, green: 0.08, blue: 0.045)
-  static let accentWash = Color(red: 1.0, green: 0.72, blue: 0.58)
-  static let pageBackground = Color(red: 0.055, green: 0.047, blue: 0.043)
-  static let cardBackground = Color(red: 0.115, green: 0.092, blue: 0.082)
-  static let raisedSurface = Color(red: 0.17, green: 0.13, blue: 0.115)
+  static let accentTint = adaptive(light: 0xF8DCCD, dark: 0x3D150B)
+  static let accentWash = adaptive(light: 0xF7A489, dark: 0xFFB899)
+  static let pageBackground = adaptive(light: 0xFCF6EF, dark: 0x0E0C0B)
+  static let cardBackground = adaptive(light: 0xFFFCF8, dark: 0x1D1715)
+  static let raisedSurface = adaptive(light: 0xF1E7DC, dark: 0x2B211D)
+  static let primaryText = adaptive(light: 0x2C1711, dark: 0xFFF8F3)
+  static let mutedText = adaptive(light: 0x715B51, dark: 0xB8A8A0)
+  static let cardBorder = adaptive(light: 0xE9D9CB, dark: 0xFFFFFF)
   static let ink = Color(red: 0.12, green: 0.045, blue: 0.025)
-  static let mutedText = Color(red: 0.72, green: 0.66, blue: 0.61)
-  static let ticketViolet = Color(red: 0.88, green: 0.20, blue: 0.09)
-  static let ticketRose = Color(red: 0.48, green: 0.08, blue: 0.15)
+  static let actionForeground = adaptive(light: 0x2C1711, dark: 0xFFF8F3)
+  static let ticketViolet = adaptive(light: 0xFC552B, dark: 0xE03317)
+  static let ticketRose = adaptive(light: 0xB52E46, dark: 0x701626)
   static let cornerRadius: CGFloat = 18
+
+  private static func adaptive(light: Int, dark: Int) -> Color {
+    Color(
+      uiColor: UIColor { traitCollection in
+        UIColor(
+          rgb: traitCollection.userInterfaceStyle == .dark ? dark : light
+        )
+      }
+    )
+  }
+}
+
+private extension UIColor {
+  convenience init(rgb: Int) {
+    self.init(
+      red: CGFloat((rgb >> 16) & 0xFF) / 255,
+      green: CGFloat((rgb >> 8) & 0xFF) / 255,
+      blue: CGFloat(rgb & 0xFF) / 255,
+      alpha: 1
+    )
+  }
 }
 
 struct TunedInFloatingAction: View {
-  let title: String
-  let systemImage: String
   let action: () -> Void
 
   var body: some View {
     Button(action: action) {
-      Label(title, systemImage: systemImage)
-        .font(.subheadline.weight(.semibold))
-        .foregroundStyle(TunedInDesign.ink)
-        .padding(.horizontal, 18)
-        .padding(.vertical, 13)
+      Image(systemName: "plus")
+        .font(.system(size: 20, weight: .bold))
+        .foregroundStyle(TunedInDesign.actionForeground)
+        .frame(width: 56, height: 56)
+        .modifier(TunedInLiquidGlassActionSurface())
     }
     .buttonStyle(.plain)
-    .background(TunedInDesign.accent, in: Capsule())
-    .shadow(color: TunedInDesign.accent.opacity(0.25), radius: 18, y: 8)
+    .accessibilityLabel("Log concert")
     .accessibilityHint("Opens the new concert form")
+  }
+}
+
+private struct TunedInLiquidGlassActionSurface: ViewModifier {
+  func body(content: Content) -> some View {
+    if #available(iOS 26.0, *) {
+      content
+        .glassEffect(.regular.tint(TunedInDesign.accent.opacity(0.28)).interactive(), in: .circle)
+    } else {
+      content
+        .background(.ultraThinMaterial, in: Circle())
+        .background(TunedInDesign.accent.opacity(0.18), in: Circle())
+        .overlay {
+          Circle()
+            .strokeBorder(.white.opacity(0.52))
+        }
+        .shadow(color: TunedInDesign.accent.opacity(0.2), radius: 12, y: 6)
+    }
   }
 }
 
@@ -48,7 +88,7 @@ struct TunedInFormCard<Content: View>: View {
     )
     .overlay {
       RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
-        .strokeBorder(.white.opacity(0.08))
+        .strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
     }
   }
 }
@@ -87,7 +127,7 @@ struct TunedInPrivacyBadge: View {
   var body: some View {
     Label("Private", systemImage: "lock.fill")
       .font(.caption.weight(.semibold))
-      .foregroundStyle(TunedInDesign.ink)
+      .foregroundStyle(TunedInDesign.actionForeground)
       .padding(.horizontal, 10)
       .padding(.vertical, 6)
       .background(TunedInDesign.accent, in: Capsule())
