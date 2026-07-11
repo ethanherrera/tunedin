@@ -23,7 +23,7 @@ jobs:
           version: 2.109.1
 
       - name: Start disposable Supabase stack
-        run: supabase start
+        run: supabase start >/dev/null
 
       - name: Apply migrations and seed data
         run: supabase db reset

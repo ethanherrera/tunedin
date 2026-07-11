@@ -10,22 +10,24 @@ Operate the shared hosted `tunedin-dev` project used by local iOS Development bu
 - The database password in the macOS Keychain item `tunedin/supabase/dev/database`; never print or commit it.
 - A reviewed feature branch for configuration, migration, RLS, RPC, or Edge Function changes.
 
-## Commands
+## Database migrations
+
+Use the dedicated [Development Database Deployment](./development-database-deployment.md) runbook for hosted schema changes. Do not run `supabase db push` directly against `tunedin-dev`; use the manually dispatched workflow after the reviewed migration reaches `main`.
+
+The following commands are read-only preflight checks:
 
 ```sh
 cd ~/tunedin
-supabase link --project-ref dmrlpyxhqhunfndihvai \
-  --password "$(security find-generic-password -a "$USER" -s 'tunedin/supabase/dev/database' -w)"
-supabase config push --project-ref dmrlpyxhqhunfndihvai
-supabase db push
+make dev-status
+make dev-plan
 ```
 
 ## Expected result and verification
 
-- The CLI reports the linked `tunedin-dev` project and configuration update.
+- The CLI reports migration parity or the exact pending migration list for `tunedin-dev`.
 - `supabase projects list` lists `tunedin-dev` as `ACTIVE_HEALTHY` in `us-west-1`.
 - `make supabase-types` is run against the migrated disposable local schema and its generated Swift DTO change is committed after every public-schema change. Set `SUPABASE_PROJECT_REF` only when an explicit hosted-schema comparison is needed.
-- Before deploying a migration or RLS/RPC change, run `supabase test db` against the disposable local stack.
+- Before deploying a migration or RLS/RPC change, run `make backend-verify` against the disposable local stack. The deploy workflow repeats this check.
 
 ## Email delivery constraint
 
