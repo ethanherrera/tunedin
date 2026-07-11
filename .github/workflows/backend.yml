@@ -3,20 +3,8 @@ name: Backend
 on:
   pull_request:
     branches: [main]
-    paths:
-      - supabase/**
-      - ios/tunedIn/Sources/Data/Generated/**
-      - scripts/generate-supabase-types.sh
-      - scripts/check-supabase-types.sh
-      - .github/workflows/backend.yml
   push:
     branches: [main]
-    paths:
-      - supabase/**
-      - ios/tunedIn/Sources/Data/Generated/**
-      - scripts/generate-supabase-types.sh
-      - scripts/check-supabase-types.sh
-      - .github/workflows/backend.yml
 
 permissions:
   contents: read
