@@ -24,15 +24,21 @@ struct ConcertCreationView: View {
         .transition(.opacity)
       } else {
         NavigationStack {
-          List {
-            introductionSection
-            quickCaptureSection
-            personalizationSection
+          ZStack {
+            TunedInDesign.pageBackground
+              .ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 0) {
+              captureHeader
+              quickCaptureCard
+                .padding(.top, 24)
+              detailsPrompt
+                .padding(.top, 16)
+              Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 14)
           }
-          .listStyle(.plain)
-          .scrollContentBackground(.hidden)
-          .background(TunedInDesign.pageBackground)
-          .scrollDismissesKeyboard(.interactively)
           .navigationBarTitleDisplayMode(.inline)
           .safeAreaInset(edge: .bottom, spacing: 0) {
             saveBar
@@ -41,12 +47,6 @@ struct ConcertCreationView: View {
             ToolbarItem(placement: .topBarLeading) {
               Button("Cancel", action: requestDismissal)
                 .disabled(isSaving)
-            }
-
-            ToolbarItem(placement: .topBarTrailing) {
-              if isShowingDetails, draft.artists.count > 1 || draft.setlist.count > 1 {
-                EditButton()
-              }
             }
           }
           .alert("Discard this concert?", isPresented: $isShowingDiscardConfirmation) {
@@ -61,6 +61,9 @@ struct ConcertCreationView: View {
             Button("OK", role: .cancel) {}
           } message: {
             Text(saveError ?? "Please try again.")
+          }
+          .sheet(isPresented: $isShowingDetails) {
+            ConcertCreationDetailsView(draft: $draft)
           }
         }
       }
@@ -111,6 +114,149 @@ struct ConcertCreationView: View {
         if !isPresented {
           saveError = nil
         }
+      }
+    )
+  }
+
+  private var captureHeader: some View {
+    VStack(alignment: .leading, spacing: 6) {
+      HStack {
+        Text("tunedIn")
+          .font(.caption.weight(.black))
+          .foregroundStyle(TunedInDesign.accent)
+          .textCase(.uppercase)
+        Spacer()
+        TunedInPrivacyBadge()
+      }
+
+      Text("Keep the night.")
+        .font(.system(size: 36, weight: .bold, design: .serif))
+        .foregroundStyle(TunedInDesign.primaryText)
+      Text("Three things are enough. You can make it yours later.")
+        .font(.subheadline)
+        .foregroundStyle(TunedInDesign.mutedText)
+    }
+  }
+
+  private var quickCaptureCard: some View {
+    TunedInTicketCard {
+      Text("YOUR PRIVATE NOTE")
+        .font(.caption.weight(.bold))
+        .foregroundStyle(.white.opacity(0.82))
+
+      VStack(alignment: .leading, spacing: 5) {
+        Text("Who did you see?")
+          .font(.subheadline.weight(.medium))
+          .foregroundStyle(.white)
+        TextField(
+          "",
+          text: artistNameBinding(for: draft.artists[0].id),
+          prompt: Text("Artist").foregroundStyle(.white.opacity(0.54))
+        )
+        .font(.title2.weight(.bold))
+        .foregroundStyle(.white)
+        .tint(.white)
+        .textInputAutocapitalization(.words)
+        .submitLabel(.next)
+        .accessibilityLabel("Primary artist")
+        if draft.hasAttemptedSave, !ConcertInput.isValidRequiredText(draft.artists[0].name, maximumLength: 160) {
+          captureValidationLabel("Enter the artist you saw.")
+        }
+      }
+
+      Divider().overlay(.white.opacity(0.24))
+
+      VStack(alignment: .leading, spacing: 5) {
+        Text("Where was it?")
+          .font(.subheadline.weight(.medium))
+          .foregroundStyle(.white)
+        TextField(
+          "",
+          text: $draft.venueName,
+          prompt: Text("Venue").foregroundStyle(.white.opacity(0.54))
+        )
+        .font(.title3.weight(.semibold))
+        .foregroundStyle(.white)
+        .tint(.white)
+        .textContentType(.location)
+        .textInputAutocapitalization(.words)
+        .submitLabel(.done)
+        .accessibilityLabel("Venue")
+        if draft.hasAttemptedSave, !ConcertInput.isValidRequiredText(draft.venueName, maximumLength: 160) {
+          captureValidationLabel("Enter the venue.")
+        }
+      }
+
+      Divider().overlay(.white.opacity(0.24))
+
+      HStack {
+        Label("When", systemImage: "calendar")
+          .font(.subheadline.weight(.medium))
+          .foregroundStyle(.white)
+        Spacer()
+        DatePicker("Concert date", selection: $draft.concertDate, displayedComponents: .date)
+          .datePickerStyle(.compact)
+          .labelsHidden()
+          .tint(.white)
+      }
+    }
+  }
+
+  private var detailsPrompt: some View {
+    Button {
+      isShowingDetails = true
+    } label: {
+      HStack(spacing: 13) {
+        Image(systemName: "sparkles")
+          .font(.title3.weight(.bold))
+          .foregroundStyle(TunedInDesign.actionForeground)
+          .frame(width: 43, height: 43)
+          .background(TunedInDesign.accent, in: Circle())
+        VStack(alignment: .leading, spacing: 2) {
+          Text("Make it yours")
+            .font(.headline)
+            .foregroundStyle(TunedInDesign.primaryText)
+          Text(detailsSummary)
+            .font(.subheadline)
+            .foregroundStyle(TunedInDesign.mutedText)
+            .lineLimit(1)
+        }
+        Spacer()
+        Image(systemName: "arrow.up.right")
+          .font(.subheadline.weight(.bold))
+          .foregroundStyle(TunedInDesign.accent)
+      }
+      .padding(14)
+      .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+      .overlay {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+          .strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
+      }
+    }
+    .buttonStyle(.plain)
+    .accessibilityHint("Add the lineup, context, and setlist")
+  }
+
+  private var detailsSummary: String {
+    let additions = (draft.artists.count - 1) + draft.setlist.count
+    if additions == 0, draft.city.isEmpty, draft.tour.isEmpty, !draft.hasStartTime {
+      return "Lineup, songs, time, and little details"
+    }
+    return "\(additions) detail\(additions == 1 ? "" : "s") held for this night"
+  }
+
+  private func captureValidationLabel(_ message: String) -> some View {
+    Label(message, systemImage: "exclamationmark.circle.fill")
+      .font(.caption)
+      .foregroundStyle(.white.opacity(0.92))
+  }
+
+  private func artistNameBinding(for id: UUID) -> Binding<String> {
+    Binding(
+      get: { draft.artists.first(where: { $0.id == id })?.name ?? "" },
+      set: { value in
+        guard let index = draft.artists.firstIndex(where: { $0.id == id }) else { return }
+        draft.artists[index].name = value
       }
     )
   }

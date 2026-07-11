@@ -1,6 +1,6 @@
 begin;
 
-select plan(40);
+select plan(41);
 
 insert into auth.users (
   id,
@@ -86,6 +86,12 @@ select set_config(
   ),
   true
 );
+
+select lives_ok(
+  $$set constraints all immediate$$,
+  'an authenticated concert creation can commit its deferred lineup validation'
+);
+set constraints all deferred;
 
 select is(
   (select visibility::text from public.concerts where id = current_setting('test.private_concert_id')::uuid),

@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import tunedIn
 
@@ -59,5 +60,17 @@ struct ConcertDraftTests {
 
     #expect(draft.artists.map(\.name) == ["Buck Meek", "Big Thief"])
     #expect(draft.artists.map(\.isPrimary) == [true, false])
+  }
+
+  @Test
+  func venueLocalDateRoundTripsForWestOfUTCEditors() throws {
+    let pacific = try #require(TimeZone(identifier: "America/Los_Angeles"))
+    let date = try #require(ConcertDraft.date(from: "2026-07-10", timeZone: pacific))
+
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = pacific
+    #expect(calendar.dateComponents([.year, .month, .day], from: date) == DateComponents(year: 2026, month: 7, day: 10))
+    #expect(ConcertDraft.concertDateString(for: date, timeZone: pacific) == "2026-07-10")
+    #expect(ConcertDisplay.day(from: "2026-07-10") == "10")
   }
 }

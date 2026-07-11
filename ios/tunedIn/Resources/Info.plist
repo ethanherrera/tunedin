@@ -33,6 +33,8 @@
 	</array>
 	<key>TUNEDIN_APP_ENVIRONMENT</key>
 	<string>$(APP_ENVIRONMENT)</string>
+	<key>TUNEDIN_USE_LOCAL_AUTH_STORAGE</key>
+	<string>$(TUNEDIN_USE_LOCAL_AUTH_STORAGE)</string>
 	<key>TUNEDIN_SUPABASE_PUBLISHABLE_KEY</key>
 	<string>$(SUPABASE_PUBLISHABLE_KEY)</string>
 	<key>TUNEDIN_SUPABASE_URL</key>

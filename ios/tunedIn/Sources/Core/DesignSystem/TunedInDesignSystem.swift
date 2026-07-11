@@ -47,10 +47,11 @@ struct TunedInFloatingAction: View {
       Image(systemName: "plus")
         .font(.system(size: 20, weight: .bold))
         .foregroundStyle(TunedInDesign.actionForeground)
-        .frame(width: 56, height: 56)
-        .modifier(TunedInLiquidGlassActionSurface())
     }
     .buttonStyle(.plain)
+    .frame(width: 56, height: 56)
+    .contentShape(Circle())
+    .modifier(TunedInLiquidGlassActionSurface())
     .accessibilityLabel("Log concert")
     .accessibilityHint("Opens the new concert form")
   }
@@ -93,6 +94,47 @@ struct TunedInFormCard<Content: View>: View {
   }
 }
 
+struct TunedInGlassSection<Content: View>: View {
+  @ViewBuilder let content: Content
+
+  var body: some View {
+    content
+      .padding(16)
+      .modifier(TunedInLiquidGlassSectionSurface())
+  }
+}
+
+struct TunedInGlassSearchField: View {
+  @Binding var text: String
+  let prompt: String
+
+  var body: some View {
+    HStack(spacing: 10) {
+      Image(systemName: "magnifyingglass")
+        .foregroundStyle(TunedInDesign.mutedText)
+
+      TextField(prompt, text: $text)
+        .textInputAutocapitalization(.never)
+        .autocorrectionDisabled()
+        .foregroundStyle(TunedInDesign.primaryText)
+
+      if !text.isEmpty {
+        Button {
+          text = ""
+        } label: {
+          Image(systemName: "xmark.circle.fill")
+            .foregroundStyle(TunedInDesign.mutedText)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Clear search")
+      }
+    }
+    .padding(.horizontal, 14)
+    .padding(.vertical, 13)
+    .modifier(TunedInLiquidGlassSearchSurface())
+  }
+}
+
 struct TunedInTicketCard<Content: View>: View {
   @ViewBuilder let content: Content
 
@@ -132,5 +174,51 @@ struct TunedInPrivacyBadge: View {
       .padding(.vertical, 6)
       .background(TunedInDesign.accent, in: Capsule())
       .accessibilityLabel("Private concert")
+  }
+}
+
+private struct TunedInLiquidGlassSectionSurface: ViewModifier {
+  func body(content: Content) -> some View {
+    if #available(iOS 26.0, *) {
+      content
+        .glassEffect(
+          .regular.tint(TunedInDesign.accent.opacity(0.08)).interactive(),
+          in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
+        )
+    } else {
+      content
+        .background(
+          .thinMaterial,
+          in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
+        )
+        .background(
+          TunedInDesign.cardBackground.opacity(0.72),
+          in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
+        )
+        .overlay {
+          RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
+            .strokeBorder(.white.opacity(0.46))
+        }
+    }
+  }
+}
+
+private struct TunedInLiquidGlassSearchSurface: ViewModifier {
+  func body(content: Content) -> some View {
+    if #available(iOS 26.0, *) {
+      content
+        .glassEffect(
+          .regular.tint(TunedInDesign.accent.opacity(0.05)).interactive(),
+          in: Capsule()
+        )
+    } else {
+      content
+        .background(.ultraThinMaterial, in: Capsule())
+        .background(TunedInDesign.cardBackground.opacity(0.8), in: Capsule())
+        .overlay {
+          Capsule()
+            .strokeBorder(TunedInDesign.cardBorder.opacity(0.85))
+        }
+    }
   }
 }

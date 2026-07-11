@@ -7,6 +7,7 @@ options:
   generateEmptyDirectories: true
 
 configs:
+  Local: debug
   Development: debug
   Staging: debug
   Production: release
@@ -33,6 +34,7 @@ targets:
         excludes:
           - Info.plist
     configFiles:
+      Local: ios/Config/Local.xcconfig
       Development: ios/Config/Development.xcconfig
       Staging: ios/Config/Staging.xcconfig
       Production: ios/Config/Production.xcconfig
@@ -57,6 +59,7 @@ targets:
     dependencies:
       - target: tunedIn
     configFiles:
+      Local: ios/Config/Local.xcconfig
       Development: ios/Config/Development.xcconfig
       Staging: ios/Config/Staging.xcconfig
       Production: ios/Config/Production.xcconfig
@@ -66,6 +69,18 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
 
 schemes:
+  tunedIn-Local:
+    build:
+      targets:
+        tunedIn: all
+        tunedInTests: [test]
+    run:
+      config: Local
+    test:
+      config: Local
+      targets:
+        - tunedInTests
+
   tunedIn-Development:
     build:
       targets:

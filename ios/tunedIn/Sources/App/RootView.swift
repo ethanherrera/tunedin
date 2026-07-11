@@ -3,6 +3,7 @@ import SwiftUI
 struct RootView: View {
   @Bindable var session: AppSession
   let concertRepository: any ConcertRepository
+  let socialRepository: any SocialRepository
 
   var body: some View {
     switch session.phase {
@@ -24,7 +25,8 @@ struct RootView: View {
         session: session,
         user: user,
         profile: profile,
-        concertRepository: concertRepository
+        concertRepository: concertRepository,
+        socialRepository: socialRepository
       )
     }
   }

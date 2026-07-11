@@ -35,4 +35,4 @@ if ! xcrun simctl openurl booted "${auth_url}" >/dev/null; then
 fi
 
 unset auth_url
-printf 'Opened the Supabase sign-in link in the booted iOS Simulator.\n'
+printf 'Opened the Supabase sign-in link in the booted iOS Simulator. Choose Open if iOS asks to reopen tunedIn.\n'

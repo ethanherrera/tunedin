@@ -5,6 +5,7 @@ struct AppConfiguration: Sendable {
   let supabasePublishableKey: String
   let environment: AppEnvironment
   let authEmailDeliveryMode: AuthEmailDeliveryMode
+  let usesLocalSimulatorAuthStorage: Bool
 
   static let authCallbackURL = URL(string: "com.ethanherrera.tunedin://auth-callback")!
 
@@ -50,6 +51,16 @@ struct AppConfiguration: Sendable {
       throw AppConfigurationError.invalid("APP_ENVIRONMENT")
     }
 
+    let usesLocalSimulatorAuthStorage = configurationBundle.object(
+      forInfoDictionaryKey: "TUNEDIN_USE_LOCAL_AUTH_STORAGE"
+    ) as? String == "YES"
+
+    if usesLocalSimulatorAuthStorage,
+      !["127.0.0.1", "localhost"].contains(supabaseURL.host)
+    {
+      throw AppConfigurationError.invalid("TUNEDIN_USE_LOCAL_AUTH_STORAGE")
+    }
+
     let authEmailDeliveryMode: AuthEmailDeliveryMode = environment == .development
       ? .magicLink
       : .oneTimeCode
@@ -58,7 +69,8 @@ struct AppConfiguration: Sendable {
       supabaseURL: supabaseURL,
       supabasePublishableKey: supabasePublishableKey,
       environment: environment,
-      authEmailDeliveryMode: authEmailDeliveryMode
+      authEmailDeliveryMode: authEmailDeliveryMode,
+      usesLocalSimulatorAuthStorage: usesLocalSimulatorAuthStorage
     )
   }
 }

@@ -1,319 +1,239 @@
 import SwiftUI
 
-extension ConcertCreationView {
-  var introductionSection: some View {
-    Section {
-      VStack(alignment: .leading, spacing: 12) {
-        HStack {
-          Text("tunedIn")
-            .font(.subheadline.weight(.black))
-            .foregroundStyle(TunedInDesign.accent)
+struct ConcertCreationDetailsView: View {
+  private enum DetailPage: Int, CaseIterable, Identifiable {
+    case lineup
+    case context
+    case setlist
 
-          Spacer()
+    var id: Int {
+      rawValue
+    }
 
-          TunedInPrivacyBadge()
-        }
-
-        Text("Keep the night.")
-          .font(.system(size: 38, weight: .bold, design: .serif))
-          .foregroundStyle(TunedInDesign.primaryText)
-
-        Text("The show is still ringing. Catch the feeling before it fades.")
-          .font(.subheadline)
-          .foregroundStyle(TunedInDesign.mutedText)
+    var title: String {
+      switch self {
+      case .lineup: "Lineup"
+      case .context: "Context"
+      case .setlist: "Setlist"
       }
-      .padding(.top, 18)
-      .padding(.bottom, 6)
-      .listRowBackground(TunedInDesign.pageBackground)
-      .listRowInsets(EdgeInsets(top: 0, leading: 24, bottom: 0, trailing: 24))
-      .listRowSeparator(.hidden)
+    }
+
+    var icon: String {
+      switch self {
+      case .lineup: "person.2.fill"
+      case .context: "sparkles"
+      case .setlist: "music.note.list"
+      }
     }
   }
 
-  var quickCaptureSection: some View {
-    Section {
-      TunedInTicketCard {
-        Text("The quick capture")
-          .font(.caption.weight(.semibold))
-          .foregroundStyle(.white.opacity(0.82))
-          .textCase(.uppercase)
+  @Binding var draft: ConcertDraft
+  @Environment(\.dismiss) private var dismiss
+  @State private var page: DetailPage = .lineup
 
-        VStack(alignment: .leading, spacing: 6) {
-          Text("Who did you see?")
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(.white)
+  var body: some View {
+    NavigationStack {
+      ZStack {
+        TunedInDesign.pageBackground
+          .ignoresSafeArea()
 
-          TextField(
-            "",
-            text: artistNameBinding(for: draft.artists[0].id),
-            prompt: Text("Artist").foregroundStyle(.white.opacity(0.54))
-          )
-          .font(.title2.weight(.semibold))
-          .foregroundStyle(.white)
-          .tint(.white)
-          .textInputAutocapitalization(.words)
-          .submitLabel(.next)
-          .accessibilityLabel("Primary artist")
-
-          if draft.hasAttemptedSave, !ConcertInput.isValidRequiredText(
-            draft.artists[0].name,
-            maximumLength: 160
-          ) {
-            validationLabel("Enter the artist you saw.")
+        VStack(spacing: 0) {
+          pagePicker
+          TabView(selection: $page) {
+            lineupPage.tag(DetailPage.lineup)
+            contextPage.tag(DetailPage.context)
+            setlistPage.tag(DetailPage.setlist)
           }
-        }
-
-        Divider().overlay(.white.opacity(0.24))
-
-        VStack(alignment: .leading, spacing: 6) {
-          Text("Where was it?")
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(.white)
-
-          TextField(
-            "",
-            text: $draft.venueName,
-            prompt: Text("Venue").foregroundStyle(.white.opacity(0.54))
-          )
-          .font(.title3.weight(.medium))
-          .foregroundStyle(.white)
-          .tint(.white)
-          .textContentType(.location)
-          .textInputAutocapitalization(.words)
-          .submitLabel(.done)
-          .accessibilityLabel("Venue")
-
-          if draft.hasAttemptedSave, !ConcertInput.isValidRequiredText(
-            draft.venueName,
-            maximumLength: 160
-          ) {
-            validationLabel("Enter the venue.")
-          }
-        }
-
-        Divider().overlay(.white.opacity(0.24))
-
-        HStack {
-          Label("When", systemImage: "calendar")
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(.white)
-          Spacer()
-          DatePicker("Concert date", selection: $draft.concertDate, displayedComponents: .date)
-            .datePickerStyle(.compact)
-            .labelsHidden()
-            .tint(.white)
+          .tabViewStyle(.page(indexDisplayMode: .never))
         }
       }
-      .listRowBackground(TunedInDesign.pageBackground)
-      .listRowInsets(EdgeInsets(top: 14, leading: 20, bottom: 0, trailing: 20))
-      .listRowSeparator(.hidden)
+      .toolbar {
+        ToolbarItem(placement: .topBarLeading) {
+          Button("Done") { dismiss() }
+        }
+        ToolbarItem(placement: .principal) {
+          Text("Make it yours")
+            .font(.headline)
+            .foregroundStyle(TunedInDesign.primaryText)
+        }
+      }
+    }
+    .tint(TunedInDesign.accent)
+  }
+
+  private var pagePicker: some View {
+    HStack(spacing: 8) {
+      ForEach(DetailPage.allCases) { item in
+        Button {
+          withAnimation(.snappy) { page = item }
+        } label: {
+          Label(item.title, systemImage: item.icon)
+            .font(.caption.weight(.bold))
+            .lineLimit(1)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 11)
+            .foregroundStyle(page == item ? TunedInDesign.actionForeground : TunedInDesign.primaryText)
+            .background(page == item ? TunedInDesign.accent : TunedInDesign.raisedSurface, in: Capsule())
+        }
+        .buttonStyle(.plain)
+      }
+    }
+    .padding(.horizontal, 20)
+    .padding(.vertical, 12)
+  }
+
+  private var lineupPage: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      pageHeading(
+        title: "Who shared the stage?",
+        subtitle: "The first artist is the headliner. Add the rest only if it matters."
+      )
+
+      List {
+        ForEach(draft.artists) { artist in
+          HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+              TextField(artist.isPrimary ? "Headliner" : "Artist", text: artistBinding(for: artist.id))
+                .textInputAutocapitalization(.words)
+              if artist.isPrimary {
+                Text("HEADLINER")
+                  .font(.caption2.weight(.black))
+                  .foregroundStyle(TunedInDesign.accent)
+              }
+            }
+            Spacer()
+            if !artist.isPrimary {
+              Menu {
+                Button("Make headliner") { draft.makePrimary(artist.id) }
+                Button("Remove", role: .destructive) { draft.removeArtist(artist.id) }
+              } label: {
+                Image(systemName: "ellipsis.circle")
+                  .font(.title3)
+                  .foregroundStyle(TunedInDesign.mutedText)
+              }
+            }
+          }
+          .listRowBackground(TunedInDesign.cardBackground)
+        }
+        .onMove { source, destination in
+          draft.moveArtists(from: source, to: destination)
+        }
+
+        Button {
+          draft.addArtist()
+        } label: {
+          Label("Add another artist", systemImage: "plus")
+            .font(.headline)
+            .foregroundStyle(TunedInDesign.accent)
+        }
+        .disabled(draft.artists.count == 10)
+        .listRowBackground(TunedInDesign.raisedSurface)
+      }
+      .listStyle(.insetGrouped)
+      .scrollContentBackground(.hidden)
+      .background(TunedInDesign.pageBackground)
     }
   }
 
-  var personalizationSection: some View {
-    Section {
-      Button {
-        withAnimation(.snappy) {
-          isShowingDetails.toggle()
-        }
-      } label: {
-        HStack(spacing: 14) {
-          Image(systemName: "sparkles")
-            .font(.title3)
-            .foregroundStyle(TunedInDesign.accent)
-            .frame(width: 34, height: 34)
-            .background(TunedInDesign.accentTint, in: Circle())
+  private var contextPage: some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 18) {
+        pageHeading(
+          title: "Let the night breathe.",
+          subtitle: "These details are optional—keep only the ones you’ll be glad to remember."
+        )
 
-          VStack(alignment: .leading, spacing: 2) {
-            Text(isShowingDetails ? "Make it yours" : "Add details")
-              .font(.headline)
-              .foregroundStyle(TunedInDesign.primaryText)
-            Text(isShowingDetails ? "Lineup, setlist, time, and more" : "Only if you feel like it")
+        TunedInFormCard {
+          Text("Place and tour")
+            .font(.headline)
+            .foregroundStyle(TunedInDesign.primaryText)
+          TextField("City", text: $draft.city)
+            .textContentType(.addressCity)
+            .textInputAutocapitalization(.words)
+          TextField("Tour", text: $draft.tour)
+            .textInputAutocapitalization(.words)
+        }
+
+        TunedInFormCard {
+          Toggle("Remember the start time", isOn: $draft.hasStartTime)
+            .font(.headline)
+            .foregroundStyle(TunedInDesign.primaryText)
+
+          if draft.hasStartTime {
+            DatePicker("Start time", selection: $draft.startTime, displayedComponents: .hourAndMinute)
+            Picker("Venue time zone", selection: $draft.venueTimeZoneIdentifier) {
+              ForEach(TimeZone.knownTimeZoneIdentifiers.sorted(), id: \.self) { identifier in
+                Text(identifier).tag(identifier)
+              }
+            }
+            Text("The time is anchored to the venue, not your current location.")
               .font(.caption)
               .foregroundStyle(TunedInDesign.mutedText)
           }
-
-          Spacer()
-
-          Image(systemName: isShowingDetails ? "chevron.up" : "chevron.down")
-            .font(.caption.weight(.bold))
-            .foregroundStyle(TunedInDesign.mutedText)
         }
-        .padding(.vertical, 7)
       }
-      .buttonStyle(.plain)
-      .listRowBackground(TunedInDesign.pageBackground)
-      .listRowInsets(EdgeInsets(top: 16, leading: 24, bottom: 6, trailing: 24))
-      .listRowSeparator(.hidden)
-
-      if isShowingDetails {
-        lineupDetailsCard
-        contextDetailsCard
-        setlistDetailsCard
-      }
+      .padding(.horizontal, 20)
+      .padding(.top, 10)
+      .padding(.bottom, 28)
     }
   }
 
-  private var lineupDetailsCard: some View {
-    TunedInFormCard {
-      HStack(alignment: .firstTextBaseline) {
-        VStack(alignment: .leading, spacing: 3) {
-          Text("Lineup")
-            .font(.headline)
-            .foregroundStyle(TunedInDesign.primaryText)
-          Text("Choose one headliner. The order is the bill.")
-            .font(.caption)
-            .foregroundStyle(TunedInDesign.mutedText)
-        }
+  private var setlistPage: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      pageHeading(
+        title: "The songs that stayed.",
+        subtitle: "Put them in the order you remember. Skip this if the feeling is enough."
+      )
 
-        Spacer()
-
-        Text("\(draft.artists.count)/10")
-          .font(.caption.monospacedDigit())
-          .foregroundStyle(TunedInDesign.mutedText)
-      }
-
-      ForEach(draft.artists.dropFirst()) { artist in
-        HStack(spacing: 10) {
-          TextField("Another artist", text: artistNameBinding(for: artist.id))
-            .accessibilityLabel("Artist name")
-
-          Button {
-            draft.makePrimary(artist.id)
-          } label: {
-            Text(artist.isPrimary ? "Headliner" : "Make headliner")
-              .font(.caption.weight(.semibold))
+      List {
+        ForEach(draft.setlist) { item in
+          HStack(spacing: 11) {
+            Image(systemName: "line.3.horizontal")
+              .foregroundStyle(TunedInDesign.mutedText)
+            TextField("Song title", text: setlistBinding(for: item.id))
+              .textInputAutocapitalization(.words)
           }
-          .buttonStyle(.bordered)
-          .tint(artist.isPrimary ? TunedInDesign.accent : .secondary)
-          .accessibilityLabel(artist.isPrimary ? "Headliner" : "Make this artist the headliner")
-        }
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-          Button(role: .destructive) {
-            draft.removeArtist(artist.id)
-          } label: {
-            Label("Remove", systemImage: "trash")
-          }
-        }
-      }
-      .onMove { source, destination in
-        let adjustedSource = IndexSet(source.map { $0 + 1 })
-        draft.moveArtists(from: adjustedSource, to: destination + 1)
-      }
-
-      Button {
-        draft.addArtist()
-      } label: {
-        Label("Add another artist", systemImage: "plus")
-      }
-      .disabled(draft.artists.count == 10)
-    }
-    .listRowBackground(TunedInDesign.pageBackground)
-    .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 0, trailing: 20))
-    .listRowSeparator(.hidden)
-  }
-
-  private var contextDetailsCard: some View {
-    TunedInFormCard {
-      Text("The context")
-        .font(.headline)
-        .foregroundStyle(TunedInDesign.primaryText)
-
-      TextField("City (optional)", text: $draft.city)
-        .textContentType(.addressCity)
-        .textInputAutocapitalization(.words)
-        .accessibilityLabel("City, optional")
-
-      if draft.hasAttemptedSave, !ConcertInput.isValidOptionalText(draft.city, maximumLength: 100) {
-        validationLabel("City can be up to 100 characters.")
-      }
-
-      DisclosureGroup("Tour (optional)", isExpanded: $draft.isTourExpanded) {
-        TextField("Tour name", text: $draft.tour)
-          .textInputAutocapitalization(.words)
-          .accessibilityLabel("Tour name, optional")
-          .padding(.top, 8)
-      }
-
-      if draft.hasAttemptedSave, !ConcertInput.isValidOptionalText(draft.tour, maximumLength: 160) {
-        validationLabel("Tour can be up to 160 characters.")
-      }
-
-      Toggle("Add start time", isOn: $draft.hasStartTime)
-
-      if draft.hasStartTime {
-        DatePicker("Start time", selection: $draft.startTime, displayedComponents: .hourAndMinute)
-
-        Picker("Venue time zone", selection: $draft.venueTimeZoneIdentifier) {
-          ForEach(TimeZone.knownTimeZoneIdentifiers.sorted(), id: \.self) { identifier in
-            Text(identifier).tag(identifier)
-          }
-        }
-        .pickerStyle(.navigationLink)
-
-        Text("The time is saved in the venue’s time zone.")
-          .font(.caption)
-          .foregroundStyle(TunedInDesign.mutedText)
-      }
-    }
-    .listRowBackground(TunedInDesign.pageBackground)
-    .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 0, trailing: 20))
-    .listRowSeparator(.hidden)
-  }
-
-  private var setlistDetailsCard: some View {
-    TunedInFormCard {
-      HStack(alignment: .firstTextBaseline) {
-        VStack(alignment: .leading, spacing: 3) {
-          Text("Setlist")
-            .font(.headline)
-            .foregroundStyle(TunedInDesign.primaryText)
-          Text("Add every song, or leave it as a feeling.")
-            .font(.caption)
-            .foregroundStyle(TunedInDesign.mutedText)
-        }
-
-        Spacer()
-
-        Text("\(draft.setlist.count)/50")
-          .font(.caption.monospacedDigit())
-          .foregroundStyle(TunedInDesign.mutedText)
-      }
-
-      ForEach(draft.setlist) { item in
-        TextField("Song title", text: setlistTitleBinding(for: item.id))
-          .accessibilityLabel("Setlist song title")
-          .swipeActions(edge: .trailing) {
-            Button(role: .destructive) {
-              draft.removeSetlistItem(item.id)
-            } label: {
+          .swipeActions {
+            Button(role: .destructive) { draft.removeSetlistItem(item.id) } label: {
               Label("Remove", systemImage: "trash")
             }
           }
-      }
-      .onMove { source, destination in
-        draft.moveSetlist(from: source, to: destination)
-      }
+          .listRowBackground(TunedInDesign.cardBackground)
+        }
+        .onMove { source, destination in
+          draft.moveSetlist(from: source, to: destination)
+        }
 
-      Button {
-        draft.addSetlistItem()
-      } label: {
-        Label("Add a song", systemImage: "plus")
+        Button {
+          draft.addSetlistItem()
+        } label: {
+          Label("Add a song", systemImage: "plus")
+            .font(.headline)
+            .foregroundStyle(TunedInDesign.accent)
+        }
+        .disabled(draft.setlist.count == 50)
+        .listRowBackground(TunedInDesign.raisedSurface)
       }
-      .disabled(draft.setlist.count == 50)
+      .listStyle(.insetGrouped)
+      .scrollContentBackground(.hidden)
+      .background(TunedInDesign.pageBackground)
     }
-    .listRowBackground(TunedInDesign.pageBackground)
-    .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 12, trailing: 20))
-    .listRowSeparator(.hidden)
   }
 
-  func validationLabel(_ message: String) -> some View {
-    Label(message, systemImage: "exclamationmark.circle.fill")
-      .font(.caption)
-      .foregroundStyle(.red)
+  private func pageHeading(title: String, subtitle: String) -> some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text(title)
+        .font(.system(size: 29, weight: .bold, design: .serif))
+        .foregroundStyle(TunedInDesign.primaryText)
+      Text(subtitle)
+        .font(.subheadline)
+        .foregroundStyle(TunedInDesign.mutedText)
+    }
+    .padding(.horizontal, 20)
+    .padding(.top, 10)
   }
 
-  func artistNameBinding(for id: UUID) -> Binding<String> {
+  private func artistBinding(for id: UUID) -> Binding<String> {
     Binding(
       get: { draft.artists.first(where: { $0.id == id })?.name ?? "" },
       set: { value in
@@ -323,7 +243,7 @@ extension ConcertCreationView {
     )
   }
 
-  func setlistTitleBinding(for id: UUID) -> Binding<String> {
+  private func setlistBinding(for id: UUID) -> Binding<String> {
     Binding(
       get: { draft.setlist.first(where: { $0.id == id })?.title ?? "" },
       set: { value in

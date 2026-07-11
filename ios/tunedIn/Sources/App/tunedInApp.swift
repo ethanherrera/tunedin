@@ -14,7 +14,8 @@ struct TunedInApp: App {
     WindowGroup {
       RootView(
         session: container.appSession,
-        concertRepository: container.concertRepository
+        concertRepository: container.concertRepository,
+        socialRepository: container.socialRepository
       )
       .tint(TunedInDesign.accent)
       .preferredColorScheme(appearance.colorScheme)

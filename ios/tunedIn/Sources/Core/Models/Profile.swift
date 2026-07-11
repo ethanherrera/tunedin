@@ -27,6 +27,27 @@ struct Profile: Codable, Equatable, Sendable {
   }
 }
 
+enum RelationshipState: String, Codable, CaseIterable, Equatable, Sendable {
+  case none
+  case outgoing
+  case incoming
+  case friends
+  case declined
+  case blocked
+  case unavailable
+
+  var canViewFriendContent: Bool {
+    self == .friends
+  }
+}
+
+struct SocialProfile: Identifiable, Codable, Equatable, Sendable {
+  let id: UUID
+  let username: String
+  let displayName: String
+  let relationship: RelationshipState
+}
+
 enum ProfileInput {
   static func normalizedUsername(_ value: String) -> String {
     value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()

@@ -5,18 +5,29 @@ import Supabase
 final class AppContainer {
   let appSession: AppSession
   let concertRepository: any ConcertRepository
+  let socialRepository: any SocialRepository
 
-  private init(appSession: AppSession, concertRepository: any ConcertRepository) {
+  private init(
+    appSession: AppSession,
+    concertRepository: any ConcertRepository,
+    socialRepository: any SocialRepository
+  ) {
     self.appSession = appSession
     self.concertRepository = concertRepository
+    self.socialRepository = socialRepository
   }
 
   init(configuration: AppConfiguration) {
+    let authStorage: any AuthLocalStorage = configuration.usesLocalSimulatorAuthStorage
+      ? LocalSimulatorAuthStorage()
+      : AuthClient.Configuration.defaultLocalStorage
+
     let client = SupabaseClient(
       supabaseURL: configuration.supabaseURL,
       supabaseKey: configuration.supabasePublishableKey,
       options: .init(
         auth: .init(
+          storage: authStorage,
           redirectToURL: AppConfiguration.authCallbackURL,
           storageKey: "com.ethanherrera.tunedin.auth.session"
         )
@@ -29,6 +40,7 @@ final class AppContainer {
       authEmailDeliveryMode: configuration.authEmailDeliveryMode
     )
     concertRepository = SupabaseConcertRepository(client: client)
+    socialRepository = SupabaseSocialRepository(client: client)
   }
 
   static func live() -> AppContainer {
@@ -42,7 +54,8 @@ final class AppContainer {
               appSession: scenario.makeAppSession(
                 authEmailDeliveryMode: configuration.authEmailDeliveryMode
               ),
-              concertRepository: DevelopmentConcertRepository()
+              concertRepository: DevelopmentConcertRepository(),
+              socialRepository: DevelopmentSocialRepository()
             )
           }
         }

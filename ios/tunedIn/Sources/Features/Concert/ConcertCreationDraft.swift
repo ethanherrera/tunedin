@@ -25,6 +25,23 @@ struct ConcertDraft {
   var setlist: [SetlistItem] = []
   var hasAttemptedSave = false
 
+  init() {}
+
+  init(detail: ConcertDetail) {
+    artists = detail.artists.map {
+      Artist(id: $0.id, name: $0.name, isPrimary: $0.isPrimary)
+    }
+    venueName = detail.concert.venueName
+    concertDate = Self.date(from: detail.concert.concertDate) ?? Date()
+    city = detail.concert.city ?? ""
+    isTourExpanded = detail.concert.tour != nil
+    tour = detail.concert.tour ?? ""
+    hasStartTime = detail.concert.startsAt != nil
+    startTime = detail.concert.startsAt ?? Date()
+    venueTimeZoneIdentifier = detail.concert.venueTimeZone ?? Self.defaultTimeZoneIdentifier
+    setlist = detail.setlist.map { SetlistItem(id: $0.id, title: $0.title) }
+  }
+
   var hasEnteredContent: Bool {
     artists.contains { !ConcertInput.normalizedText($0.name).isEmpty }
       || !ConcertInput.normalizedText(venueName).isEmpty
@@ -69,6 +86,27 @@ struct ConcertDraft {
       startsAt: hasStartTime ? venueStartDate() : nil,
       venueTimeZone: hasStartTime ? venueTimeZoneIdentifier : nil,
       setlist: setlist.map { ConcertInput.normalizedText($0.title) }
+    )
+  }
+
+  func updateInput(
+    concertID: UUID,
+    expectedVersion: Int64,
+    visibility: ConcertVisibility
+  ) -> ConcertUpdateInput? {
+    guard let input = creationInput else { return nil }
+    return ConcertUpdateInput(
+      concertID: concertID,
+      expectedVersion: expectedVersion,
+      artists: input.artists,
+      venueName: input.venueName,
+      concertDate: input.concertDate,
+      city: input.city,
+      tour: input.tour,
+      startsAt: input.startsAt,
+      venueTimeZone: input.venueTimeZone,
+      setlist: input.setlist,
+      visibility: visibility
     )
   }
 
@@ -142,13 +180,25 @@ struct ConcertDraft {
     return normalized.isEmpty ? nil : normalized
   }
 
-  private static func concertDateString(for date: Date) -> String {
+  /// A concert date is a venue-local calendar day, not an instant in UTC.
+  /// Keep picker values at midnight in the user's calendar so an edit does not
+  /// move the selected day west of UTC before it is saved again.
+  static func concertDateString(for date: Date, timeZone: TimeZone = .current) -> String {
     let formatter = DateFormatter()
     formatter.calendar = Calendar(identifier: .gregorian)
     formatter.locale = Locale(identifier: "en_US_POSIX")
-    formatter.timeZone = .current
+    formatter.timeZone = timeZone
     formatter.dateFormat = "yyyy-MM-dd"
     return formatter.string(from: date)
+  }
+
+  static func date(from value: String, timeZone: TimeZone = .current) -> Date? {
+    let formatter = DateFormatter()
+    formatter.calendar = Calendar(identifier: .gregorian)
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.timeZone = timeZone
+    formatter.dateFormat = "yyyy-MM-dd"
+    return formatter.date(from: value)
   }
 
   private static let defaultTimeZoneIdentifier: String = {
