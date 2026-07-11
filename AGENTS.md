@@ -12,6 +12,11 @@ This repository contains the native tunedIn MVP: a SwiftUI iOS client and its Su
 - Authorization belongs in Postgres RLS and narrowly scoped hardened RPCs, not client checks.
 - Development launch scenarios may bypass email only by injecting deterministic in-memory client repositories. They must not create privileged Supabase sessions, weaken RLS, or be treated as backend/auth verification; use the live Development flow for integration testing.
 
+## iPhone navigation
+
+- For in-app sub-screens, use the contextual bottom liquid-glass control bar: the leftmost control returns to the previous screen and the remaining controls switch the relevant views or actions. Do not place back, close, or other in-app navigation controls in the top corners.
+- Animate contextual liquid-glass changes as one cohesive transition; selected segments should glide between positions instead of snapping or leaving an underlying control bar visible.
+
 ## Configuration and secrets
 
 - Copy `ios/Config/*.xcconfig.example` to ignored `.xcconfig` files for local configuration.

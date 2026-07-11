@@ -14,15 +14,15 @@ struct ConcertEditView: View {
 
     var title: String {
       switch self {
-      case .night: "The night"
-      case .songs: "Songs"
+      case .night: "Details"
+      case .songs: "Setlist"
       case .sharing: "Sharing"
       }
     }
 
     var icon: String {
       switch self {
-      case .night: "sparkles"
+      case .night: "calendar"
       case .songs: "music.note.list"
       case .sharing: "person.2.fill"
       }
@@ -72,12 +72,8 @@ struct ConcertEditView: View {
         saveBar
       }
       .toolbar {
-        ToolbarItem(placement: .topBarLeading) {
-          Button("Cancel") { dismiss() }
-            .disabled(isSaving)
-        }
         ToolbarItem(placement: .principal) {
-          Text("Shape the night")
+          Text("Edit concert")
             .font(.headline)
             .foregroundStyle(TunedInDesign.primaryText)
         }
@@ -117,7 +113,7 @@ struct ConcertEditView: View {
   private var nightPage: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 18) {
-        Text("What made it this night?")
+        Text("Concert details")
           .font(.system(size: 32, weight: .bold, design: .serif))
           .foregroundStyle(TunedInDesign.primaryText)
           .padding(.top, 8)
@@ -154,7 +150,7 @@ struct ConcertEditView: View {
         }
 
         TunedInFormCard {
-          Text("A little context")
+          Text("Details")
             .font(.headline)
             .foregroundStyle(TunedInDesign.primaryText)
           TextField("City", text: $draft.city)
@@ -196,10 +192,10 @@ struct ConcertEditView: View {
   private var songsPage: some View {
     VStack(alignment: .leading, spacing: 16) {
       VStack(alignment: .leading, spacing: 4) {
-        Text("The songs that stayed")
+        Text("Setlist")
           .font(.system(size: 30, weight: .bold, design: .serif))
           .foregroundStyle(TunedInDesign.primaryText)
-        Text("Drag them into the order you remember.")
+        Text("Drag to reorder.")
           .font(.subheadline)
           .foregroundStyle(TunedInDesign.mutedText)
       }
@@ -208,9 +204,7 @@ struct ConcertEditView: View {
 
       List {
         ForEach(draft.setlist) { item in
-          HStack(spacing: 12) {
-            Image(systemName: "line.3.horizontal")
-              .foregroundStyle(TunedInDesign.mutedText)
+          HStack {
             TextField("Song title", text: setlistBinding(for: item.id))
               .textInputAutocapitalization(.words)
           }
@@ -238,13 +232,14 @@ struct ConcertEditView: View {
       .listStyle(.insetGrouped)
       .scrollContentBackground(.hidden)
       .background(TunedInDesign.pageBackground)
+      .environment(\.editMode, .constant(.active))
     }
   }
 
   private var sharingPage: some View {
     VStack(alignment: .leading, spacing: 18) {
       VStack(alignment: .leading, spacing: 5) {
-        Text("Who gets the feeling?")
+        Text("Visibility")
           .font(.system(size: 30, weight: .bold, design: .serif))
           .foregroundStyle(TunedInDesign.primaryText)
         Text("People are added from the concert after you save this choice.")
@@ -295,7 +290,9 @@ struct ConcertEditView: View {
             .font(.headline)
           Text(visibilitySubtitle(option))
             .font(.subheadline)
-            .foregroundStyle(visibility == option ? TunedInDesign.actionForeground.opacity(0.8) : TunedInDesign.mutedText)
+            .foregroundStyle(
+              visibility == option ? TunedInDesign.actionForeground.opacity(0.8) : TunedInDesign.mutedText
+            )
         }
         Spacer()
         if visibility == option {
@@ -319,35 +316,46 @@ struct ConcertEditView: View {
   private var sharingTitle: String {
     switch visibility {
     case .private: "Only you can see this."
-    case .collaborators: "Tagged people can shape it with you."
-    case .friends: "Friends can see the night and leave a note."
+    case .collaborators: "Tagged people can edit."
+    case .friends: "Friends can view and comment."
     }
   }
 
   private var sharingDescription: String {
     switch visibility {
-    case .private: "You can broaden it later, whenever it feels right."
+    case .private: "You can change this later."
     case .collaborators: "Editors can update the details and setlist."
     case .friends: "Editors keep editing rights; friends cannot change the night."
     }
   }
 
   private var saveBar: some View {
-    Button(action: save) {
-      HStack(spacing: 8) {
-        if isSaving {
-          ProgressView().tint(TunedInDesign.actionForeground)
-        }
-        Text(isSaving ? "Saving…" : "Save this version")
-          .font(.headline)
+    HStack(spacing: 10) {
+      TunedInFloatingAction(
+        systemImage: "chevron.backward",
+        accessibilityLabel: "Cancel editing",
+        accessibilityHint: "Returns to the concert without saving"
+      ) {
+        dismiss()
       }
-      .foregroundStyle(TunedInDesign.actionForeground)
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, 16)
-      .background(TunedInDesign.accent, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+      .disabled(isSaving)
+
+      Button(action: save) {
+        HStack(spacing: 8) {
+          if isSaving {
+            ProgressView().tint(TunedInDesign.actionForeground)
+          }
+          Text(isSaving ? "Saving…" : "Save this version")
+            .font(.headline)
+        }
+        .foregroundStyle(TunedInDesign.actionForeground)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(TunedInDesign.accent, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+      }
+      .buttonStyle(.plain)
+      .disabled(isSaving)
     }
-    .buttonStyle(.plain)
-    .disabled(isSaving)
     .padding(.horizontal, 20)
     .padding(.top, 12)
     .padding(.bottom, 8)
@@ -426,4 +434,5 @@ struct ConcertEditView: View {
     }
   }
 }
+
 // swiftlint:enable type_body_length

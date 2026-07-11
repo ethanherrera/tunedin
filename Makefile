@@ -51,19 +51,19 @@ simulator-auth-link: ## Open a copied Supabase sign-in link in the booted Simula
 simulator-local: build-local ## Install and launch the Local Supabase build in the booted Simulator.
 	@./scripts/install-local-simulator.sh
 
-simulator-live: ## Launch the installed app with live Supabase repositories.
+simulator-live: build ## Install and launch the fresh Development app with live Supabase repositories.
 	@./scripts/launch-development-scenario.sh live
 
-simulator-signed-out: ## Launch the installed app at the deterministic sign-in screen.
+simulator-signed-out: build ## Install and launch the fresh Development app at the deterministic sign-in screen.
 	@./scripts/launch-development-scenario.sh signed-out
 
-simulator-onboarding: ## Launch the installed app with deterministic onboarding fixtures.
+simulator-onboarding: build ## Install and launch the fresh Development app with deterministic onboarding fixtures.
 	@./scripts/launch-development-scenario.sh onboarding
 
-simulator-profile: ## Launch the installed app with a deterministic completed profile.
+simulator-profile: build ## Install and launch the fresh Development app with a deterministic completed profile.
 	@./scripts/launch-development-scenario.sh profile
 
-simulator-profile-error: ## Launch the installed app with a deterministic profile failure.
+simulator-profile-error: build ## Install and launch the fresh Development app with a deterministic profile failure.
 	@./scripts/launch-development-scenario.sh profile-error
 
 local-db-reset: ## Reset the disposable local Supabase database, migrations, and development seed.

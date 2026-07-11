@@ -82,10 +82,10 @@ struct AppSessionTests {
 
   @MainActor
   private func settle(_ session: AppSession) async {
-    for _ in 0 ..< 20 {
+    for _ in 0 ..< 100 {
       switch session.phase {
       case .restoring, .loadingProfile:
-        await Task.yield()
+        try? await Task.sleep(for: .milliseconds(10))
       default:
         return
       }

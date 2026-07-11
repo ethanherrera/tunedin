@@ -40,20 +40,44 @@ private extension UIColor {
 }
 
 struct TunedInFloatingAction: View {
+  let systemImage: String
+  let accessibilityLabel: String
+  let accessibilityHint: String
   let action: () -> Void
+
+  init(
+    systemImage: String = "plus",
+    accessibilityLabel: String = "Log concert",
+    accessibilityHint: String = "Opens the new concert form",
+    action: @escaping () -> Void
+  ) {
+    self.systemImage = systemImage
+    self.accessibilityLabel = accessibilityLabel
+    self.accessibilityHint = accessibilityHint
+    self.action = action
+  }
 
   var body: some View {
     Button(action: action) {
-      Image(systemName: "plus")
-        .font(.system(size: 20, weight: .bold))
-        .foregroundStyle(TunedInDesign.actionForeground)
+      TunedInFloatingActionLabel(systemImage: systemImage)
     }
     .buttonStyle(.plain)
-    .frame(width: 56, height: 56)
     .contentShape(Circle())
-    .modifier(TunedInLiquidGlassActionSurface())
-    .accessibilityLabel("Log concert")
-    .accessibilityHint("Opens the new concert form")
+    .accessibilityLabel(accessibilityLabel)
+    .accessibilityHint(accessibilityHint)
+  }
+}
+
+struct TunedInFloatingActionLabel: View {
+  let systemImage: String
+
+  var body: some View {
+    Image(systemName: systemImage)
+      .font(.system(size: 20, weight: .bold))
+      .foregroundStyle(TunedInDesign.actionForeground)
+      .frame(width: 56, height: 56)
+      .contentShape(Circle())
+      .modifier(TunedInLiquidGlassActionSurface())
   }
 }
 
@@ -82,6 +106,7 @@ struct TunedInFormCard<Content: View>: View {
     VStack(alignment: .leading, spacing: 14) {
       content
     }
+    .frame(maxWidth: .infinity, alignment: .leading)
     .padding(16)
     .background(
       TunedInDesign.cardBackground,
@@ -105,8 +130,20 @@ struct TunedInGlassSection<Content: View>: View {
 }
 
 struct TunedInGlassSearchField: View {
+  enum Style: Equatable {
+    case standard
+    case neutralPopover
+  }
+
   @Binding var text: String
   let prompt: String
+  let style: Style
+
+  init(text: Binding<String>, prompt: String, style: Style = .standard) {
+    _text = text
+    self.prompt = prompt
+    self.style = style
+  }
 
   var body: some View {
     HStack(spacing: 10) {
@@ -131,7 +168,58 @@ struct TunedInGlassSearchField: View {
     }
     .padding(.horizontal, 14)
     .padding(.vertical, 13)
-    .modifier(TunedInLiquidGlassSearchSurface())
+    .modifier(TunedInLiquidGlassSearchSurface(style: style))
+  }
+}
+
+struct TunedInGlassBottomBar<Content: View>: View {
+  @ViewBuilder let content: Content
+
+  var body: some View {
+    content
+      .padding(5)
+      .modifier(TunedInLiquidGlassBottomBarSurface())
+  }
+}
+
+struct TunedInSubscreenBackBar: View {
+  let title: String
+  let action: () -> Void
+
+  var body: some View {
+    TunedInGlassBottomBar {
+      HStack(spacing: 2) {
+        Button(action: action) {
+          Image(systemName: "chevron.backward")
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
+            .frame(width: 44, height: 46)
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Back to previous screen")
+
+        Divider()
+          .overlay(.white.opacity(0.18))
+          .frame(height: 30)
+
+        Text(title)
+          .font(.subheadline.weight(.bold))
+          .foregroundStyle(TunedInDesign.primaryText)
+          .lineLimit(1)
+          .frame(minWidth: 100, alignment: .leading)
+          .padding(.horizontal, 10)
+      }
+    }
+  }
+}
+
+struct TunedInGlassPopover<Content: View>: View {
+  @ViewBuilder let content: Content
+
+  var body: some View {
+    content
+      .modifier(TunedInLiquidGlassPopoverSurface())
   }
 }
 
@@ -204,17 +292,73 @@ private struct TunedInLiquidGlassSectionSurface: ViewModifier {
 }
 
 private struct TunedInLiquidGlassSearchSurface: ViewModifier {
+  let style: TunedInGlassSearchField.Style
+
   func body(content: Content) -> some View {
     if #available(iOS 26.0, *) {
       content
         .glassEffect(
-          .regular.tint(TunedInDesign.accent.opacity(0.05)).interactive(),
+          .regular.tint(tint).interactive(),
           in: Capsule()
         )
     } else {
       content
         .background(.ultraThinMaterial, in: Capsule())
-        .background(TunedInDesign.cardBackground.opacity(0.8), in: Capsule())
+        .background(backgroundTint, in: Capsule())
+        .overlay {
+          Capsule()
+            .strokeBorder(TunedInDesign.cardBorder.opacity(0.85))
+      }
+    }
+  }
+
+  private var tint: Color {
+    style == .neutralPopover ? .white.opacity(0.1) : TunedInDesign.accent.opacity(0.05)
+  }
+
+  private var backgroundTint: Color {
+    style == .neutralPopover ? .white.opacity(0.08) : TunedInDesign.cardBackground.opacity(0.8)
+  }
+}
+
+private struct TunedInLiquidGlassPopoverSurface: ViewModifier {
+  func body(content: Content) -> some View {
+    if #available(iOS 26.0, *) {
+      content
+        .glassEffect(
+          .regular.tint(.white.opacity(0.08)).interactive(),
+          in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
+        )
+    } else {
+      content
+        .background(
+          .ultraThinMaterial,
+          in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
+        )
+        .background(
+          .white.opacity(0.05),
+          in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
+        )
+        .overlay {
+          RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
+            .strokeBorder(.white.opacity(0.34))
+        }
+    }
+  }
+}
+
+private struct TunedInLiquidGlassBottomBarSurface: ViewModifier {
+  func body(content: Content) -> some View {
+    if #available(iOS 26.0, *) {
+      content
+        .glassEffect(
+          .regular.tint(TunedInDesign.accent.opacity(0.06)).interactive(),
+          in: Capsule()
+        )
+    } else {
+      content
+        .background(.ultraThinMaterial, in: Capsule())
+        .background(TunedInDesign.cardBackground.opacity(0.86), in: Capsule())
         .overlay {
           Capsule()
             .strokeBorder(TunedInDesign.cardBorder.opacity(0.85))

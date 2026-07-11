@@ -6,7 +6,10 @@ struct PersonProfileView: View {
   let currentUsername: String
   let socialRepository: any SocialRepository
   let concertRepository: any ConcertRepository
+  let onDismiss: (() -> Void)?
 
+  @Environment(\.dismiss) private var dismiss
+  @EnvironmentObject private var floatingControls: ConcertFloatingControls
   @State private var profile: SocialProfile
   @State private var friends: [SocialProfile] = []
   @State private var isPerformingAction = false
@@ -18,12 +21,14 @@ struct PersonProfileView: View {
     currentUserID: UUID,
     currentUsername: String,
     socialRepository: any SocialRepository,
-    concertRepository: any ConcertRepository
+    concertRepository: any ConcertRepository,
+    onDismiss: (() -> Void)? = nil
   ) {
     self.currentUserID = currentUserID
     self.currentUsername = currentUsername
     self.socialRepository = socialRepository
     self.concertRepository = concertRepository
+    self.onDismiss = onDismiss
     _profile = State(initialValue: profile)
   }
 
@@ -70,6 +75,7 @@ struct PersonProfileView: View {
     }
     .navigationTitle("Profile")
     .navigationBarTitleDisplayMode(.inline)
+    .navigationBarBackButtonHidden(onDismiss == nil)
     .confirmationDialog(
       "Remove \(profile.displayName)?",
       isPresented: $isShowingRemoveConfirmation,
@@ -83,6 +89,23 @@ struct PersonProfileView: View {
     }
     .task {
       await loadFriendList()
+    }
+    .onAppear {
+      guard onDismiss == nil else { return }
+      floatingControls.configureBackOnly(title: "Profile") {
+        floatingControls.reset()
+        dismiss()
+      }
+    }
+    .onDisappear {
+      guard onDismiss == nil else { return }
+      floatingControls.reset()
+    }
+    .safeAreaInset(edge: .bottom, spacing: 0) {
+      if let onDismiss {
+        TunedInSubscreenBackBar(title: "Profile", action: onDismiss)
+          .padding(.vertical, 8)
+      }
     }
   }
 

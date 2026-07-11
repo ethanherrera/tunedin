@@ -64,6 +64,9 @@ struct FriendsActivityFeedView: View {
           .padding(.top, 18)
           .padding(.bottom, 112)
         }
+        .refreshable {
+          await model.refreshVisibleSlice()
+        }
       }
     }
     .toolbar(.hidden, for: .navigationBar)
@@ -78,30 +81,14 @@ struct FriendsActivityFeedView: View {
   }
 
   private var feedHeader: some View {
-    HStack(alignment: .lastTextBaseline) {
-      VStack(alignment: .leading, spacing: 4) {
-        Text("tunedIn")
-          .font(.caption.weight(.black))
-          .foregroundStyle(TunedInDesign.accent)
-          .textCase(.uppercase)
-        Text("From your people")
-          .font(.system(size: 31, weight: .bold, design: .serif))
-          .foregroundStyle(TunedInDesign.primaryText)
-      }
-
-      Spacer()
-
-      Button {
-        Task { await model.refreshVisibleSlice() }
-      } label: {
-        Image(systemName: "arrow.clockwise")
-          .font(.subheadline.weight(.bold))
-          .foregroundStyle(TunedInDesign.primaryText)
-          .frame(width: 42, height: 42)
-          .background(TunedInDesign.raisedSurface, in: Circle())
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel("Refresh activity")
+    VStack(alignment: .leading, spacing: 4) {
+      Text("tunedIn")
+        .font(.caption.weight(.black))
+        .foregroundStyle(TunedInDesign.accent)
+        .textCase(.uppercase)
+      Text("Activity")
+        .font(.system(size: 31, weight: .bold, design: .serif))
+        .foregroundStyle(TunedInDesign.primaryText)
     }
     .padding(.bottom, 18)
   }
@@ -112,8 +99,8 @@ struct FriendsActivityFeedView: View {
         .font(.subheadline.weight(.semibold))
         .foregroundStyle(TunedInDesign.mutedText)
 
-      LazyVStack(spacing: 16) {
-        ForEach(Array(model.activities.enumerated()), id: \.element.id) { index, activity in
+      LazyVStack(spacing: 10) {
+        ForEach(model.activities) { activity in
           NavigationLink {
             ConcertDetailView(
               concertID: activity.concertID,
@@ -123,7 +110,7 @@ struct FriendsActivityFeedView: View {
               socialRepository: socialRepository
             )
           } label: {
-            ActivityMomentCard(activity: activity, isFeatured: index == 0)
+            ActivityMomentCard(activity: activity)
           }
           .buttonStyle(.plain)
         }
@@ -161,23 +148,16 @@ struct FriendsActivityFeedView: View {
   }
 
   private var emptyState: some View {
-    VStack(alignment: .leading, spacing: 22) {
+    VStack(spacing: 16) {
       Spacer()
-      TunedInTicketCard {
-        Label("THE ROOM IS QUIET", systemImage: "waveform")
-          .font(.caption.weight(.bold))
-          .foregroundStyle(.white.opacity(0.82))
-        Text("No new nights\nfrom your circle.")
-          .font(.system(size: 29, weight: .bold, design: .serif))
-          .foregroundStyle(.white)
-        Text("When your friends share a moment, it will feel at home here.")
-          .font(.subheadline)
-          .foregroundStyle(.white.opacity(0.86))
+      ContentUnavailableView {
+        Label("No activity yet", systemImage: "person.2")
+      } description: {
+        Text("Friends’ concerts will appear here.")
       }
-      Text("Keep your own nights close. The orange plus is always there when something stays with you.")
+      Text("Use the plus button to log a concert.")
         .font(.subheadline)
         .foregroundStyle(TunedInDesign.mutedText)
-        .padding(.horizontal, 4)
       Spacer()
     }
   }
@@ -199,26 +179,26 @@ struct FriendsActivityFeedView: View {
 
 private struct ActivityMomentCard: View {
   let activity: FriendActivity
-  let isFeatured: Bool
 
   var body: some View {
     ZStack(alignment: .bottomLeading) {
       ConcertArtworkImage(artistName: activity.primaryArtistName)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
+        .frame(height: 152)
         .overlay {
           LinearGradient(
-            colors: [.clear, .black.opacity(0.18), .black.opacity(0.82)],
+            colors: [.black.opacity(0.3), .clear, .black.opacity(0.82)],
             startPoint: .top,
             endPoint: .bottom
           )
         }
 
-      VStack(alignment: .leading, spacing: 10) {
+      VStack(alignment: .leading, spacing: 0) {
         HStack(spacing: 7) {
           Text(activity.actorDisplayName)
-            .font(.subheadline.weight(.bold))
+            .font(.caption.weight(.bold))
           Text(activity.activityTitle)
-            .font(.subheadline)
+            .font(.caption)
             .foregroundStyle(.white.opacity(0.82))
           Spacer()
           Text(ConcertDisplay.relativeDate(activity.occurredAt))
@@ -226,33 +206,29 @@ private struct ActivityMomentCard: View {
             .foregroundStyle(.white.opacity(0.72))
         }
 
+        Spacer(minLength: 0)
+
         VStack(alignment: .leading, spacing: 3) {
           Text(activity.primaryArtistName)
-            .font(.system(size: 35, weight: .bold, design: .serif))
+            .font(.system(size: 24, weight: .bold, design: .serif))
             .foregroundStyle(.white)
-            .lineLimit(2)
-          Text(activity.venueName)
-            .font(.headline)
+            .lineLimit(1)
+          Text([activity.venueName, ConcertDisplay.longDate(from: activity.concertDate)]
+            .joined(separator: " · "))
+            .font(.subheadline.weight(.semibold))
             .foregroundStyle(.white.opacity(0.92))
+            .lineLimit(1)
         }
-
-        Label("Open the night", systemImage: "arrow.up.right")
-          .font(.caption.weight(.bold))
-          .foregroundStyle(.white)
-          .padding(.horizontal, 11)
-          .padding(.vertical, 8)
-          .background(.white.opacity(0.18), in: Capsule())
       }
-      .padding(22)
+      .padding(16)
     }
     .frame(maxWidth: .infinity)
-    .frame(height: isFeatured ? 430 : 300)
-    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+    .frame(height: 152)
+    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     .overlay {
-      RoundedRectangle(cornerRadius: 28, style: .continuous)
+      RoundedRectangle(cornerRadius: 20, style: .continuous)
         .strokeBorder(.white.opacity(0.22))
     }
-    .shadow(color: TunedInDesign.accent.opacity(0.18), radius: 24, y: 12)
     .accessibilityElement(children: .combine)
   }
 }

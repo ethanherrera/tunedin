@@ -1,6 +1,11 @@
 import SwiftUI
 
 struct MainTabView: View {
+  private enum Tab: Hashable {
+    case feed
+    case profile
+  }
+
   let session: AppSession
   let user: AuthenticatedUser
   let profile: Profile
@@ -8,10 +13,122 @@ struct MainTabView: View {
   let socialRepository: any SocialRepository
 
   @State private var isPresentingConcertCreation = false
+  @State private var isPresentingPeopleSearch = false
+  @State private var pendingSearchedProfile: SocialProfile?
+  @State private var presentedSearchedProfile: SocialProfile?
   @State private var archiveRefreshToken = 0
+  @State private var selectedTab: Tab = .feed
+  @State private var isPresentingConcertEditMenu = false
+  @StateObject private var concertFloatingControls = ConcertFloatingControls()
 
   var body: some View {
-    TabView {
+    selectedContent
+    .environmentObject(concertFloatingControls)
+    .padding(.bottom, 80)
+    .overlay(alignment: .bottom) {
+      bottomControls
+      .padding(.horizontal, 16)
+      .padding(.top, 8)
+      .padding(.bottom, 8)
+    }
+    .fullScreenCover(
+      isPresented: $isPresentingConcertCreation,
+      onDismiss: { archiveRefreshToken += 1 },
+      content: { ConcertCreationView(concertRepository: concertRepository) }
+    )
+    .fullScreenCover(item: $presentedSearchedProfile) { searchedProfile in
+      NavigationStack {
+        PersonProfileView(
+          profile: searchedProfile,
+          currentUserID: profile.id,
+          currentUsername: profile.username ?? "",
+          socialRepository: socialRepository,
+          concertRepository: concertRepository,
+          onDismiss: { presentedSearchedProfile = nil }
+        )
+      }
+      .environmentObject(concertFloatingControls)
+    }
+    .onChange(of: isPresentingPeopleSearch) { _, isPresented in
+      guard !isPresented, let pendingSearchedProfile else { return }
+      self.pendingSearchedProfile = nil
+      presentedSearchedProfile = pendingSearchedProfile
+    }
+    .onChange(of: concertFloatingControls.isShowingEditMenu) { _, isShowingEditMenu in
+      if !isShowingEditMenu {
+        isPresentingConcertEditMenu = false
+      }
+    }
+    .tint(TunedInDesign.accent)
+  }
+
+  @ViewBuilder
+  private var bottomControls: some View {
+    ZStack(alignment: .bottom) {
+      switch concertFloatingControls.navigationContext {
+      case .concert:
+        ConcertContextBottomBar(
+          controls: concertFloatingControls,
+          isPresentingEditMenu: $isPresentingConcertEditMenu
+        )
+        .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
+      case let .backOnly(title):
+        subscreenBottomBar(title: title)
+        .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
+      case .none:
+        HStack(alignment: .bottom, spacing: 8) {
+          TunedInGlassBottomBar {
+            HStack(spacing: 2) {
+              tabButton(.feed, title: "Feed", icon: "music.note.house")
+              tabButton(.profile, title: "Profile", icon: "person.crop.circle")
+            }
+          }
+
+          TunedInFloatingAction(
+            systemImage: "magnifyingglass",
+            accessibilityLabel: "Search people",
+            accessibilityHint: "Opens people search"
+          ) {
+            isPresentingPeopleSearch = true
+          }
+          .popover(
+            isPresented: $isPresentingPeopleSearch,
+            attachmentAnchor: .point(.top),
+            arrowEdge: .bottom
+          ) {
+            NavigationStack {
+              FriendSearchView(
+                currentUserID: profile.id,
+                currentUsername: profile.username ?? "",
+                socialRepository: socialRepository,
+                concertRepository: concertRepository,
+                presentation: .popover,
+                onSelectProfile: { searchedProfile in
+                  pendingSearchedProfile = searchedProfile
+                  isPresentingPeopleSearch = false
+                }
+              )
+            }
+            .frame(width: 330, height: 260)
+            .presentationCompactAdaptation(.popover)
+            .presentationBackground(.clear)
+          }
+
+          TunedInFloatingAction {
+            isPresentingConcertCreation = true
+          }
+        }
+        .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
+      }
+    }
+    .frame(maxWidth: .infinity, alignment: .center)
+    .animation(.smooth(duration: 0.28, extraBounce: 0), value: concertFloatingControls.navigationContext)
+  }
+
+  @ViewBuilder
+  private var selectedContent: some View {
+    switch selectedTab {
+    case .feed:
       NavigationStack {
         FriendsActivityFeedView(
           viewerID: profile.id,
@@ -20,10 +137,7 @@ struct MainTabView: View {
           socialRepository: socialRepository
         )
       }
-      .tabItem {
-        Label("Feed", systemImage: "music.note.house")
-      }
-
+    case .profile:
       ProfileTabView(
         session: session,
         user: user,
@@ -32,23 +146,246 @@ struct MainTabView: View {
         socialRepository: socialRepository,
         archiveRefreshToken: archiveRefreshToken
       )
-      .tabItem {
-        Label("Profile", systemImage: "person.crop.circle")
+    }
+  }
+
+  private func tabButton(_ tab: Tab, title: String, icon: String) -> some View {
+    Button {
+      selectedTab = tab
+    } label: {
+      navigationLabel(title: title, icon: icon, isSelected: selectedTab == tab)
+    }
+    .buttonStyle(.plain)
+  }
+
+  private func subscreenBottomBar(title: String) -> some View {
+    TunedInGlassBottomBar {
+      HStack(spacing: 2) {
+        Button {
+          concertFloatingControls.back()
+        } label: {
+          Image(systemName: "chevron.backward")
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
+            .frame(width: 42, height: 46)
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Back to \(title.lowercased())")
+
+        Divider()
+          .overlay(.white.opacity(0.18))
+          .frame(height: 30)
+
+        tabButton(.feed, title: "Feed", icon: "music.note.house")
+        tabButton(.profile, title: "Profile", icon: "person.crop.circle")
       }
     }
-    .overlay(alignment: .bottomTrailing) {
-      TunedInFloatingAction {
-        isPresentingConcertCreation = true
-      }
-      .padding(.trailing, 24)
-      .padding(.bottom, -8)
+  }
+
+  private func navigationLabel(title: String, icon: String, isSelected: Bool) -> some View {
+    VStack(spacing: 2) {
+      Image(systemName: icon)
+        .font(.subheadline.weight(.bold))
+      Text(title)
+        .font(.caption2.weight(.bold))
     }
-    .fullScreenCover(
-      isPresented: $isPresentingConcertCreation,
-      onDismiss: { archiveRefreshToken += 1 },
-      content: { ConcertCreationView(concertRepository: concertRepository) }
-    )
-    .tint(TunedInDesign.accent)
+    .foregroundStyle(isSelected ? TunedInDesign.actionForeground : TunedInDesign.primaryText)
+    .frame(width: 68, height: 46)
+    .background(isSelected ? TunedInDesign.accent : .clear, in: Capsule())
+  }
+}
+
+enum BottomNavigationContext: Equatable {
+  case none
+  case backOnly(String)
+  case concert
+}
+
+@MainActor
+final class ConcertFloatingControls: ObservableObject {
+  @Published private(set) var navigationContext: BottomNavigationContext = .none
+  @Published private(set) var isShowingEditMenu = false
+  @Published private(set) var canDelete = false
+  @Published private(set) var selectedPage: ConcertDetailPage = .concert
+
+  private var backAction: (() -> Void)?
+  private var selectPageAction: ((ConcertDetailPage) -> Void)?
+  private var editAction: (() -> Void)?
+  private var deleteAction: (() -> Void)?
+
+  func configure(
+    selectedPage: ConcertDetailPage,
+    back: @escaping () -> Void,
+    selectPage: @escaping (ConcertDetailPage) -> Void,
+    edit: (() -> Void)?,
+    delete: (() -> Void)?
+  ) {
+    withAnimation(.smooth(duration: 0.28, extraBounce: 0)) {
+      self.selectedPage = selectedPage
+      backAction = back
+      selectPageAction = selectPage
+      editAction = edit
+      deleteAction = delete
+      canDelete = delete != nil
+      isShowingEditMenu = edit != nil
+      navigationContext = .concert
+    }
+  }
+
+  func configureBackOnly(title: String, back: @escaping () -> Void) {
+    withAnimation(.smooth(duration: 0.28, extraBounce: 0)) {
+      backAction = back
+      selectPageAction = nil
+      editAction = nil
+      deleteAction = nil
+      canDelete = false
+      isShowingEditMenu = false
+      navigationContext = .backOnly(title)
+    }
+  }
+
+  func reset() {
+    withAnimation(.smooth(duration: 0.28, extraBounce: 0)) {
+      backAction = nil
+      selectPageAction = nil
+      editAction = nil
+      deleteAction = nil
+      canDelete = false
+      isShowingEditMenu = false
+      navigationContext = .none
+      selectedPage = .concert
+    }
+  }
+
+  func back() {
+    backAction?()
+  }
+
+  func select(page: ConcertDetailPage) {
+    withAnimation(.smooth(duration: 0.24, extraBounce: 0)) {
+      selectedPage = page
+      selectPageAction?(page)
+    }
+  }
+
+  func edit() {
+    editAction?()
+  }
+
+  func delete() {
+    deleteAction?()
+  }
+}
+
+private struct ConcertContextBottomBar: View {
+  @ObservedObject var controls: ConcertFloatingControls
+  @Binding var isPresentingEditMenu: Bool
+  @Namespace private var selectionNamespace
+
+  var body: some View {
+    HStack(alignment: .bottom, spacing: 8) {
+      TunedInGlassBottomBar {
+        HStack(spacing: 2) {
+          Button {
+            controls.back()
+          } label: {
+            Image(systemName: "chevron.backward")
+              .font(.subheadline.weight(.bold))
+              .foregroundStyle(TunedInDesign.primaryText)
+              .frame(width: 42, height: 46)
+              .contentShape(Capsule())
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel("Back to previous screen")
+
+          Divider()
+            .overlay(.white.opacity(0.18))
+            .frame(height: 30)
+
+          ForEach(ConcertDetailPage.allCases, id: \.self) { page in
+            Button {
+              controls.select(page: page)
+            } label: {
+              VStack(spacing: 2) {
+                Image(systemName: page.icon)
+                  .font(.caption.weight(.bold))
+                Text(page.title)
+                  .font(.caption2.weight(.bold))
+                  .lineLimit(1)
+                  .minimumScaleFactor(0.75)
+              }
+              .foregroundStyle(
+                controls.selectedPage == page ? TunedInDesign.actionForeground : TunedInDesign.primaryText
+              )
+              .frame(maxWidth: .infinity)
+              .frame(height: 46)
+              .background {
+                if controls.selectedPage == page {
+                  Capsule()
+                    .fill(TunedInDesign.accent)
+                    .matchedGeometryEffect(id: "concert-context-selection", in: selectionNamespace)
+                }
+              }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Show \(page.title.lowercased())")
+          }
+        }
+      }
+      .frame(maxWidth: .infinity)
+
+      if controls.isShowingEditMenu {
+        TunedInFloatingAction(
+          systemImage: "pencil",
+          accessibilityLabel: "Edit concert menu",
+          accessibilityHint: "Shows concert edit actions"
+        ) {
+          isPresentingEditMenu = true
+        }
+        .popover(
+          isPresented: $isPresentingEditMenu,
+          attachmentAnchor: .point(.top),
+          arrowEdge: .bottom
+        ) {
+          TunedInGlassPopover {
+            VStack(spacing: 4) {
+              Button {
+                isPresentingEditMenu = false
+                controls.edit()
+              } label: {
+                Label("Edit concert", systemImage: "pencil")
+                  .foregroundStyle(TunedInDesign.primaryText)
+                  .frame(maxWidth: .infinity, alignment: .leading)
+                  .padding(.horizontal, 14)
+                  .padding(.vertical, 12)
+              }
+              .buttonStyle(.plain)
+
+              if controls.canDelete {
+                Divider()
+                  .overlay(.white.opacity(0.15))
+                Button(role: .destructive) {
+                  isPresentingEditMenu = false
+                  controls.delete()
+                } label: {
+                  Label("Delete concert", systemImage: "trash")
+                    .foregroundStyle(.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                }
+                .buttonStyle(.plain)
+              }
+            }
+            .frame(width: 210)
+            .padding(8)
+          }
+          .presentationCompactAdaptation(.popover)
+          .presentationBackground(.clear)
+        }
+      }
+    }
   }
 }
 
@@ -59,9 +396,7 @@ struct ProfileTabView: View {
   let concertRepository: any ConcertRepository
   let socialRepository: any SocialRepository
   let archiveRefreshToken: Int
-
   @State private var friendCount = 0
-  @State private var requestCount = 0
 
   var body: some View {
     NavigationStack {
@@ -72,7 +407,7 @@ struct ProfileTabView: View {
         ScrollView {
           VStack(alignment: .leading, spacing: 24) {
             profileHeader
-            friendsEntry
+            friendCountLink
             ConcertArchiveView(
               profileID: profile.id,
               viewerID: profile.id,
@@ -82,9 +417,6 @@ struct ProfileTabView: View {
               socialRepository: socialRepository,
               refreshToken: archiveRefreshToken
             )
-            privateArchiveNote
-            accountSection
-            AppearancePicker()
           }
           .padding(.horizontal, 20)
           .padding(.top, 18)
@@ -93,8 +425,8 @@ struct ProfileTabView: View {
       }
       .toolbar(.hidden, for: .navigationBar)
     }
-    .task {
-      await loadSocialSummary()
+    .task(id: profile.username) {
+      await loadFriendCount()
     }
   }
 
@@ -108,40 +440,40 @@ struct ProfileTabView: View {
   }
 
   private var profileHeader: some View {
-    HStack(alignment: .top, spacing: 15) {
-      ProfileMonogram(profile: currentSocialProfile, size: 66)
-      VStack(alignment: .leading, spacing: 5) {
+    HStack(alignment: .top, spacing: 12) {
+      ProfileMonogram(profile: currentSocialProfile, size: 58)
+      VStack(alignment: .leading, spacing: 3) {
         Text("tunedIn")
           .font(.caption.weight(.black))
           .foregroundStyle(TunedInDesign.accent)
           .textCase(.uppercase)
         Text(profile.displayName ?? "")
-          .font(.system(size: 28, weight: .bold, design: .serif))
+          .font(.system(size: 26, weight: .bold, design: .serif))
           .foregroundStyle(TunedInDesign.primaryText)
-        Text("@\(profile.username ?? "")")
-          .font(.subheadline)
-          .foregroundStyle(TunedInDesign.mutedText)
+          .lineLimit(2)
+          .minimumScaleFactor(0.82)
+       Text("@\(profile.username ?? "")")
+         .font(.subheadline)
+         .foregroundStyle(TunedInDesign.mutedText)
       }
+      .layoutPriority(1)
       Spacer(minLength: 0)
-      NavigationLink {
-        FriendsListView(
-          currentUserID: profile.id,
-          currentUsername: profile.username ?? "",
-          socialRepository: socialRepository,
-          concertRepository: concertRepository
-        )
-      } label: {
-        Image(systemName: "person.2.fill")
-          .font(.headline.weight(.bold))
-          .foregroundStyle(TunedInDesign.primaryText)
-          .frame(width: 46, height: 46)
-          .background(TunedInDesign.raisedSurface, in: Circle())
-      }
-      .accessibilityLabel("Open friends")
-    }
-  }
+      HStack(spacing: 8) {
+        NavigationLink {
+          SettingsView(session: session, user: user)
+        } label: {
+          Image(systemName: "gearshape")
+            .font(.headline.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
+            .frame(width: 42, height: 42)
+            .background(TunedInDesign.raisedSurface, in: Circle())
+        }
+        .accessibilityLabel("Open settings")
+     }
+   }
+ }
 
-  private var friendsEntry: some View {
+  private var friendCountLink: some View {
     NavigationLink {
       FriendsListView(
         currentUserID: profile.id,
@@ -150,54 +482,75 @@ struct ProfileTabView: View {
         concertRepository: concertRepository
       )
     } label: {
-      TunedInGlassSection {
-        HStack(alignment: .center, spacing: 14) {
-          Image(systemName: "person.2.fill")
-            .font(.title3.weight(.bold))
-            .foregroundStyle(TunedInDesign.actionForeground)
-            .frame(width: 48, height: 48)
-            .background(TunedInDesign.accent, in: Circle())
-
-          VStack(alignment: .leading, spacing: 4) {
-            Text(friendCount == 0 ? "Friends" : "Friends · \(friendCount)")
-              .font(.headline)
-              .foregroundStyle(TunedInDesign.primaryText)
-            Text(friendsSubtitle)
-              .font(.subheadline)
-              .foregroundStyle(TunedInDesign.mutedText)
-              .lineLimit(2)
-          }
-
-          Spacer(minLength: 0)
-          Image(systemName: "arrow.up.right")
-            .font(.subheadline.weight(.bold))
-            .foregroundStyle(TunedInDesign.accent)
-        }
+      HStack(spacing: 10) {
+        Image(systemName: "person.2.fill")
+          .font(.headline)
+          .foregroundStyle(TunedInDesign.accent)
+          .frame(width: 26)
+        Text(friendCountLabel)
+          .font(.headline)
+          .foregroundStyle(TunedInDesign.primaryText)
+        Spacer()
+        Image(systemName: "chevron.right")
+          .font(.caption.weight(.bold))
+          .foregroundStyle(TunedInDesign.mutedText)
+      }
+      .padding(.horizontal, 15)
+      .padding(.vertical, 14)
+      .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+      .overlay {
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+          .strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
       }
     }
     .buttonStyle(.plain)
-    .accessibilityHint("View friends, requests, and people search")
+    .accessibilityLabel("Open \(friendCountLabel)")
   }
 
-  private var friendsSubtitle: String {
-    if requestCount > 0 {
-      return "\(requestCount) friend request\(requestCount == 1 ? "" : "s") waiting for you"
-    }
-    if friendCount > 0 {
-      return "\(friendCount) friend\(friendCount == 1 ? "" : "s") in your circle · find more people"
-    }
-    return "Find people by @username. Your diary stays yours until then."
+  private var friendCountLabel: String {
+    return String(friendCount) + (friendCount == 1 ? " friend" : " friends")
   }
 
-  private var privateArchiveNote: some View {
-    HStack(spacing: 10) {
-      Image(systemName: "lock.fill")
-        .foregroundStyle(TunedInDesign.accent)
-      Text("Everything you add starts private. Share only when it feels right.")
-        .font(.subheadline)
-        .foregroundStyle(TunedInDesign.mutedText)
+  private func loadFriendCount() async {
+    guard let username = profile.username, !username.isEmpty else { return }
+    do {
+      friendCount = try await socialRepository.friends(username: username).count
+    } catch {}
+  }
+}
+
+struct SettingsView: View {
+  let session: AppSession
+  let user: AuthenticatedUser
+
+  @Environment(\.dismiss) private var dismiss
+  @EnvironmentObject private var floatingControls: ConcertFloatingControls
+
+  var body: some View {
+    ZStack {
+      TunedInDesign.pageBackground
+        .ignoresSafeArea()
+
+      ScrollView {
+        VStack(alignment: .leading, spacing: 24) {
+          AppearancePicker()
+          accountSection
+        }
+        .padding(20)
+        .padding(.bottom, 32)
+      }
     }
-    .padding(.horizontal, 4)
+    .navigationTitle("Settings")
+    .navigationBarTitleDisplayMode(.inline)
+    .navigationBarBackButtonHidden()
+    .onAppear {
+      floatingControls.configureBackOnly(title: "Settings") {
+        floatingControls.reset()
+        dismiss()
+      }
+    }
+    .onDisappear { floatingControls.reset() }
+    .tint(TunedInDesign.accent)
   }
 
   private var accountSection: some View {
@@ -215,21 +568,6 @@ struct ProfileTabView: View {
         }
       }
       .font(.subheadline.weight(.semibold))
-    }
-  }
-
-  private func loadSocialSummary() async {
-    guard let username = profile.username else { return }
-    async let friends = socialRepository.friends(username: username)
-    async let incomingRequests = socialRepository.incomingFriendRequests()
-
-    do {
-      let (loadedFriends, loadedRequests) = try await (friends, incomingRequests)
-      friendCount = loadedFriends.count
-      requestCount = loadedRequests.count
-    } catch {
-      friendCount = 0
-      requestCount = 0
     }
   }
 }
