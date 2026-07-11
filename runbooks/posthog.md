@@ -4,10 +4,11 @@
 
 Operate tunedIn’s privacy-restricted PostHog observability projects. The iOS SDK remains deferred until beta readiness; this runbook governs project configuration and access only.
 
-## Current Development project
+## Projects
 
-- Project: `tunedIn Development`
-- Project ID: `507315`
+- `tunedIn Development` — project ID `507315`
+- `tunedIn Staging` — project ID `507318`
+- `tunedIn Production` — project ID `507319`
 - Region: US
 - Management API key location: macOS Keychain item `tunedin/posthog/management-api`
 
@@ -18,11 +19,9 @@ Operate tunedIn’s privacy-restricted PostHog observability projects. The iOS S
 - No experiments or feature flags are to be created for the MVP.
 - The iOS client will later send only the approved explicit telemetry events through an app-owned wrapper.
 
-## Current plan constraints
+## Retention
 
-The active free plan allows one PostHog project and retains events for 84 months. It cannot meet the MVP requirement for separate Development, Staging, and Production projects or 30-day retention.
-
-Before beta readiness, upgrade through the PostHog billing UI, create `tunedIn Staging` and `tunedIn Production`, set each project to the shortest available retention at or below 30 days, and duplicate the privacy settings above. Do not mix Development data with beta or production data.
+All three projects currently report an 84-month event-retention setting. The Management API does not apply the requested one-month value, so use the PostHog dashboard’s retention/billing controls to set the shortest available retention at or below 30 days before beta readiness. Do not mix Development data with beta or production data.
 
 ## Verification
 

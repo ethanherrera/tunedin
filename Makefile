@@ -6,7 +6,7 @@ DESTINATION := platform=iOS Simulator,name=iPhone 13
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup configure generate format lint build test check supabase-types backend-test
+.PHONY: help setup configure generate format lint build test check supabase-types check-supabase-types backend-test
 
 help: ## List available development commands.
 	@awk 'BEGIN {FS = ":.*##"}; /^[a-zA-Z_-]+:.*##/ { printf "%-18s %s\\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -36,6 +36,9 @@ check: generate lint test ## Run generation, linting, and logic tests.
 
 supabase-types: ## Generate and commit Swift database DTOs for the linked project.
 	@./scripts/generate-supabase-types.sh
+
+check-supabase-types: ## Fail when generated Swift DTOs differ from the local schema.
+	@./scripts/check-supabase-types.sh
 
 backend-test: ## Run pgTAP tests against a disposable local Supabase stack.
 	@supabase test db

@@ -1,0 +1,48 @@
+name: Backend
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - supabase/**
+      - ios/tunedIn/Sources/Data/Generated/**
+      - scripts/check-supabase-types.sh
+      - .github/workflows/backend.yml
+  push:
+    branches: [main]
+    paths:
+      - supabase/**
+      - ios/tunedIn/Sources/Data/Generated/**
+      - scripts/check-supabase-types.sh
+      - .github/workflows/backend.yml
+
+permissions:
+  contents: read
+
+jobs:
+  schema-and-types:
+    name: Schema and generated types
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.1
+
+      - name: Start disposable Supabase stack
+        run: supabase start
+
+      - name: Apply migrations and seed data
+        run: supabase db reset
+
+      - name: Verify generated Swift types
+        run: make check-supabase-types
+
+      - name: Run pgTAP tests when present
+        run: |
+          if find supabase/tests -type f -name '*.sql' -print -quit | grep -q .; then
+            supabase test db
+          fi
