@@ -8,7 +8,13 @@ xcuserdata/
 .env.*
 !.env.example
 *.p8
+*.p12
+*.pfx
+*.key
+*.jks
+*.keystore
 *.mobileprovision
+*.provisionprofile
 ios/Config/*.xcconfig
 !ios/Config/*.xcconfig.example
 supabase/.temp/

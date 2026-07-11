@@ -4,6 +4,7 @@ included:
 
 excluded:
   - ios/tunedIn.xcodeproj
+  - ios/tunedIn/Sources/Data/Generated
 
 disabled_rules:
   - trailing_whitespace
