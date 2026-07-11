@@ -22,6 +22,11 @@ if ! xcodebuild -version >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! docker info >/dev/null 2>&1; then
+  printf 'Docker Desktop is installed but not running. Open Docker and rerun: make setup\n' >&2
+  exit 1
+fi
+
 if [[ ! -f ios/Config/Development.xcconfig ]]; then
   printf 'Missing local Xcode configuration. Run: make configure\n' >&2
   exit 1
