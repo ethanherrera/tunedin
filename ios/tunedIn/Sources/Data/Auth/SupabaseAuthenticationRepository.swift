@@ -1,0 +1,47 @@
+import Foundation
+import Supabase
+
+struct SupabaseAuthenticationRepository: AuthenticationRepository {
+  let client: SupabaseClient
+
+  var authenticationStateChanges: AsyncStream<AuthenticatedUser?> {
+    AsyncStream { continuation in
+      let task = Task {
+        for await (event, session) in client.auth.authStateChanges {
+          switch event {
+          case .initialSession, .signedIn, .signedOut, .tokenRefreshed:
+            continuation.yield(session.map(Self.authenticatedUser))
+          default:
+            break
+          }
+        }
+
+        continuation.finish()
+      }
+
+      continuation.onTermination = { _ in
+        task.cancel()
+      }
+    }
+  }
+
+  func sendEmailOTP(to email: String) async throws {
+    try await client.auth.signInWithOTP(email: email)
+  }
+
+  func verifyEmailOTP(email: String, code: String) async throws {
+    _ = try await client.auth.verifyOTP(email: email, token: code, type: .magiclink)
+  }
+
+  func signOut() async throws {
+    try await client.auth.signOut()
+  }
+
+  func handleAuthCallback(_ url: URL) {
+    client.handle(url)
+  }
+
+  private static func authenticatedUser(from session: Session) -> AuthenticatedUser {
+    AuthenticatedUser(id: session.user.id, email: session.user.email)
+  }
+}

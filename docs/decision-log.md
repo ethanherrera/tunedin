@@ -1,5 +1,11 @@
 # Implementation Decision Log
 
+## 2026-07-11 — Profile foundation validation
+
+The profile foundation stores normalized lowercase ASCII usernames. Usernames are 3–24 characters, may contain letters, numbers, and interior underscores, and must begin and end with a letter or number. Display names are required at onboarding, normalized to single interior whitespace, reject control characters, and are limited to 50 characters.
+
+The database trigger creates an incomplete profile row synchronously with every Auth user. The only authenticated mutation path is the hardened `complete_onboarding` RPC, so a client cannot bypass the profile invariant or win a username race with a check-then-write flow. Username availability is advisory only; the RPC remains the final authority.
+
 ## 2026-07-10 — Development email delivery
 
 Supabase’s free default email provider does not permit custom templates. For internal Development-only work, tunedIn temporarily uses the provider’s standard magic-link template while retaining the configured 10-minute token expiry and 60-second resend cooldown.

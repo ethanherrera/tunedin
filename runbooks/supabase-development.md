@@ -24,7 +24,7 @@ supabase db push
 
 - The CLI reports the linked `tunedin-dev` project and configuration update.
 - `supabase projects list` lists `tunedin-dev` as `ACTIVE_HEALTHY` in `us-west-1`.
-- `make supabase-types` is run and its generated Swift DTO change is committed after every public-schema change.
+- `make supabase-types` is run against the migrated disposable local schema and its generated Swift DTO change is committed after every public-schema change. Set `SUPABASE_PROJECT_REF` only when an explicit hosted-schema comparison is needed.
 - Before deploying a migration or RLS/RPC change, run `supabase test db` against the disposable local stack.
 
 ## Email delivery constraint

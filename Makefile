@@ -21,7 +21,8 @@ generate: ## Regenerate the committed Xcode project from project.yml.
 	@xcodegen generate --spec project.yml
 
 format: ## Format Swift source on the current branch.
-	@swiftformat ios/tunedIn/Sources ios/tunedIn/Tests --config .swiftformat
+	@swiftformat ios/tunedIn/Sources ios/tunedIn/Tests --config .swiftformat \
+		--exclude ios/tunedIn/Sources/Data/Generated
 
 lint: ## Check Swift style without changing files.
 	@swiftlint lint --config .swiftlint.yml
@@ -34,7 +35,7 @@ test: generate ## Run the Swift Testing suite on the iPhone 13 Simulator.
 
 check: generate lint test ## Run generation, linting, and logic tests.
 
-supabase-types: ## Generate and commit Swift database DTOs for the linked project.
+supabase-types: ## Generate Swift database DTOs from the migrated local schema.
 	@./scripts/generate-supabase-types.sh
 
 check-supabase-types: ## Fail when generated Swift DTOs differ from the local schema.

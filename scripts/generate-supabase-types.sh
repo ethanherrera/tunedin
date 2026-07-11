@@ -3,7 +3,7 @@ set -euo pipefail
 
 output="ios/tunedIn/Sources/Data/Generated/SupabaseTypes.swift"
 
-arguments=(--linked)
+arguments=(--local)
 if [[ -n "${SUPABASE_PROJECT_REF:-}" ]]; then
   arguments=(--project-id "${SUPABASE_PROJECT_REF}")
 fi
