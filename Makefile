@@ -1,4 +1,4 @@
-SHELL := /bin/zsh
+SHELL := /bin/bash
 
 PROJECT := tunedIn.xcodeproj
 SCHEME := tunedIn-Development
