@@ -1,0 +1,109 @@
+name: tunedIn
+
+options:
+  bundleIdPrefix: com.ethanherrera
+  deploymentTarget:
+    iOS: "17.0"
+  generateEmptyDirectories: true
+
+configs:
+  Development: debug
+  Staging: debug
+  Production: release
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+
+packages:
+  Supabase:
+    url: https://github.com/supabase/supabase-swift.git
+    from: "2.0.0"
+
+targets:
+  tunedIn:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: ios/tunedIn/Sources
+      - path: ios/tunedIn/Resources
+        excludes:
+          - Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ethanherrera.tunedin
+        PRODUCT_NAME: tunedIn
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: ios/tunedIn/Resources/Info.plist
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+      configs:
+        Development:
+          xcconfig: ios/Config/Development.xcconfig
+        Staging:
+          xcconfig: ios/Config/Staging.xcconfig
+        Production:
+          xcconfig: ios/Config/Production.xcconfig
+    dependencies:
+      - package: Supabase
+        product: Supabase
+
+  tunedInTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: ios/tunedIn/Tests
+    dependencies:
+      - target: tunedIn
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ethanherrera.tunedin.tests
+        GENERATE_INFOPLIST_FILE: YES
+      configs:
+        Development:
+          xcconfig: ios/Config/Development.xcconfig
+        Staging:
+          xcconfig: ios/Config/Staging.xcconfig
+        Production:
+          xcconfig: ios/Config/Production.xcconfig
+
+schemes:
+  tunedIn-Development:
+    build:
+      targets:
+        tunedIn: all
+        tunedInTests: [test]
+    run:
+      config: Development
+    test:
+      config: Development
+      targets:
+        - tunedInTests
+
+  tunedIn-Staging:
+    build:
+      targets:
+        tunedIn: all
+        tunedInTests: [test]
+    run:
+      config: Staging
+    test:
+      config: Staging
+      targets:
+        - tunedInTests
+
+  tunedIn-Production:
+    build:
+      targets:
+        tunedIn: all
+        tunedInTests: [test]
+    run:
+      config: Production
+    test:
+      config: Production
+      targets:
+        - tunedInTests
