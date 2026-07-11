@@ -26,7 +26,10 @@ struct SupabaseAuthenticationRepository: AuthenticationRepository {
   }
 
   func sendEmailOTP(to email: String) async throws {
-    try await client.auth.signInWithOTP(email: email)
+    try await client.auth.signInWithOTP(
+      email: email,
+      redirectTo: AppConfiguration.authCallbackURL
+    )
   }
 
   func verifyEmailOTP(email: String, code: String) async throws {

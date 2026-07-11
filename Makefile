@@ -6,7 +6,7 @@ DESTINATION := platform=iOS Simulator,name=iPhone 13
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup configure generate format lint build test check supabase-types check-supabase-types backend-test
+.PHONY: help setup configure generate format lint build test check simulator-auth-link supabase-types check-supabase-types backend-test
 
 help: ## List available development commands.
 	@awk 'BEGIN {FS = ":.*##"}; /^[a-zA-Z_-]+:.*##/ { printf "%-18s %s\\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -34,6 +34,9 @@ test: generate ## Run the Swift Testing suite on the iPhone 13 Simulator.
 	@xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' CODE_SIGNING_ALLOWED=NO test
 
 check: generate lint test ## Run generation, linting, and logic tests.
+
+simulator-auth-link: ## Open a copied Supabase sign-in link in the booted Simulator.
+	@./scripts/open-simulator-auth-link.sh
 
 supabase-types: ## Generate Swift database DTOs from the migrated local schema.
 	@./scripts/generate-supabase-types.sh

@@ -20,14 +20,17 @@ final class AppSession {
   private var currentUser: AuthenticatedUser?
   private var profileLoadGeneration = 0
 
+  let authEmailDeliveryMode: AuthEmailDeliveryMode
   private(set) var phase: AppSessionPhase = .restoring
 
   init(
     authenticationRepository: any AuthenticationRepository,
-    profileRepository: any ProfileRepository
+    profileRepository: any ProfileRepository,
+    authEmailDeliveryMode: AuthEmailDeliveryMode = .oneTimeCode
   ) {
     self.authenticationRepository = authenticationRepository
     self.profileRepository = profileRepository
+    self.authEmailDeliveryMode = authEmailDeliveryMode
 
     authStateTask = Task { [weak self, authenticationRepository] in
       for await user in authenticationRepository.authenticationStateChanges {

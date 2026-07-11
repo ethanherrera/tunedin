@@ -16,3 +16,4 @@
 - `project.yml` is the source for the root `tunedIn.xcodeproj`; run `make generate` after changing it.
 - Configuration files in `Config/` are ignored; only `.xcconfig.example` templates belong in Git.
 - Run `make lint` and `make test`. Use Xcode/Simulator for visual inspection, runtime logs, crashes, profiling, signing, or capabilities.
+- When testing the temporary Development magic-link flow, copy the email button's link address and run `make simulator-auth-link` with tunedIn installed in a booted Simulator. Never paste, print, or commit the one-time Auth URL or token.

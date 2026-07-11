@@ -30,8 +30,13 @@ make build
 make test
 make lint
 make format
+make simulator-auth-link
 make supabase-types
 make backend-test
 ```
+
+For the temporary Development magic-link flow, copy the email button's link address and run
+`make simulator-auth-link` while tunedIn is installed in a booted Simulator. The helper validates
+the clipboard URL and never prints the one-time token.
 
 Use focused `feature/`, `fix/`, or `chore/` branches and open pull requests into `main`. Squash merge approved changes and tag external releases as `vMAJOR.MINOR.PATCH`.

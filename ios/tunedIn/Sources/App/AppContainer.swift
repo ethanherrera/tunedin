@@ -19,7 +19,8 @@ final class AppContainer {
 
     appSession = AppSession(
       authenticationRepository: SupabaseAuthenticationRepository(client: client),
-      profileRepository: SupabaseProfileRepository(client: client)
+      profileRepository: SupabaseProfileRepository(client: client),
+      authEmailDeliveryMode: configuration.authEmailDeliveryMode
     )
   }
 

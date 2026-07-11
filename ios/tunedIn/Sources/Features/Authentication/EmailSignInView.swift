@@ -22,7 +22,7 @@ struct EmailSignInView: View {
           Text("Welcome to tunedIn")
             .font(.largeTitle.bold())
 
-          Text("Enter your email and we’ll send a six-digit sign-in code.")
+          Text(signInExplanation)
             .foregroundStyle(.secondary)
         }
 
@@ -47,7 +47,7 @@ struct EmailSignInView: View {
             ProgressView()
               .frame(maxWidth: .infinity)
           } else {
-            Text("Email me a code")
+            Text(submitButtonTitle)
               .frame(maxWidth: .infinity)
           }
         }
@@ -66,6 +66,24 @@ struct EmailSignInView: View {
 
   private var normalizedEmail: String {
     email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+  }
+
+  private var signInExplanation: String {
+    switch session.authEmailDeliveryMode {
+    case .magicLink:
+      "Enter your email and we’ll send a secure sign-in link."
+    case .oneTimeCode:
+      "Enter your email and we’ll send a six-digit sign-in code."
+    }
+  }
+
+  private var submitButtonTitle: String {
+    switch session.authEmailDeliveryMode {
+    case .magicLink:
+      "Email me a sign-in link"
+    case .oneTimeCode:
+      "Email me a code"
+    }
   }
 
   private var isEmailValid: Bool {

@@ -3,6 +3,7 @@ import Foundation
 struct AppConfiguration: Sendable {
   let supabaseURL: URL
   let supabasePublishableKey: String
+  let authEmailDeliveryMode: AuthEmailDeliveryMode
 
   static let authCallbackURL = URL(string: "com.ethanherrera.tunedin://auth-callback")!
 
@@ -35,11 +36,30 @@ struct AppConfiguration: Sendable {
       throw AppConfigurationError.missing("SUPABASE_PUBLISHABLE_KEY")
     }
 
+    guard
+      let appEnvironment = configurationBundle.object(
+        forInfoDictionaryKey: "TUNEDIN_APP_ENVIRONMENT"
+      ) as? String
+    else {
+      throw AppConfigurationError.missing("APP_ENVIRONMENT")
+    }
+
+    let authEmailDeliveryMode: AuthEmailDeliveryMode =
+      appEnvironment.trimmingCharacters(in: .whitespacesAndNewlines) == "Development"
+        ? .magicLink
+        : .oneTimeCode
+
     return Self(
       supabaseURL: supabaseURL,
-      supabasePublishableKey: supabasePublishableKey
+      supabasePublishableKey: supabasePublishableKey,
+      authEmailDeliveryMode: authEmailDeliveryMode
     )
   }
+}
+
+enum AuthEmailDeliveryMode: Equatable, Sendable {
+  case magicLink
+  case oneTimeCode
 }
 
 private final class TunedInBundleMarker {}
