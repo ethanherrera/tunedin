@@ -10,4 +10,10 @@ fi
 
 mkdir -p "$(dirname "${output}")"
 supabase gen types "${arguments[@]}" --lang swift --swift-access-control public --schema public >"${output}"
+
+# The CLI currently emits the Postgres enum value `private` without escaping the
+# Swift keyword. Keep the generated API accurate and compilable until upstream
+# handles Swift reserved words.
+perl -0pi -e 's/^    case private = "private"$/    case `private` = "private"/m' "${output}"
+
 printf 'Generated %s\n' "${output}"
