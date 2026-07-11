@@ -2,7 +2,7 @@
 set -euo pipefail
 
 config_dir="ios/Config"
-names=(Base Development Staging Production)
+names=(Base Local Development Staging Production)
 
 for name in "${names[@]}"; do
   source_file="${config_dir}/${name}.xcconfig.example"
@@ -47,3 +47,4 @@ for name in "${names[@]}"; do
 done
 
 printf 'Add your Development Supabase URL and publishable key to ios/Config/Development.xcconfig.\n'
+printf 'Run make configure-local-supabase after supabase start to configure ios/Config/Local.xcconfig.\n'

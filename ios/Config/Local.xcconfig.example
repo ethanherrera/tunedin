@@ -1,0 +1,12 @@
+#include "Base.xcconfig"
+
+// `make configure-local-supabase` replaces both values from `supabase status`.
+// Keep APP_ENVIRONMENT as Development so local email uses the same magic-link UX.
+APP_ENVIRONMENT = Development
+// The command-line Simulator build is intentionally unsigned. This keeps PKCE
+// state in the app sandbox for the disposable local stack only.
+TUNEDIN_USE_LOCAL_AUTH_STORAGE = YES
+SUPABASE_URL = http:/$(TUNEDIN_URL_SLASH)127.0.0.1:54321
+SUPABASE_PUBLISHABLE_KEY = REPLACE_WITH_LOCAL_PUBLISHABLE_KEY
+POSTHOG_API_KEY =
+POSTHOG_HOST = https:/$(TUNEDIN_URL_SLASH)us.i.posthog.com
