@@ -102,6 +102,9 @@ struct ConcertAlbumView: View {
       async let loadedPolicy = concertRepository.albumPolicy()
       async let loadedPhotos = concertRepository.albumPhotos(concertID: detail.concert.id, cursor: nil)
       (policy, photos) = try await (loadedPolicy, loadedPhotos)
+      if let policy {
+        concertFloatingControls.setAlbumPolicy(policy)
+      }
       canLoadMore = photos.count == 30
     } catch { errorMessage = error.localizedDescription }
     isLoading = false
@@ -126,7 +129,7 @@ struct ConcertAlbumView: View {
       concertFloatingControls.setInteractionLocked(false)
     }
     uploadProgress = 0; uploadTotal = uploads.count; failedUploads = []; errorMessage = nil
-    for upload in uploads {
+    let result = await AlbumUploadBatchExecutor.run(uploads) { upload in
       var reservation = upload.reservation
       do {
         guard let source = try await upload.item.loadTransferable(type: Data.self) else {
@@ -141,16 +144,26 @@ struct ConcertAlbumView: View {
         }
         guard let reservation else { throw AlbumPickerError.unreadable }
         let photo = try await concertRepository.uploadReservedAlbumPhoto(data, reservation: reservation)
-        photos.insert(photo, at: 0)
+        return .success(photo)
       } catch {
-        failedUploads.append(FailedAlbumUpload(
+        let failed = FailedAlbumUpload(
           photoID: upload.photoID,
           item: upload.item,
           reservation: reservation
-        ))
+        )
+        return .failure(AlbumUploadAttemptError(item: failed, underlying: error))
+      }
+    } progress: { completed, _ in
+      uploadProgress = completed
+    }
+    photos.insert(contentsOf: result.successes.reversed(), at: 0)
+    failedUploads = result.failures.map(\.item)
+    if let failure = result.failures.first {
+      if failure.error.localizedDescription.localizedCaseInsensitiveContains("timed out") {
+        errorMessage = "The server did not respond in time. Successful photos are already in the album."
+      } else {
         errorMessage = "Some photos could not be added. Successful photos are already in the album."
       }
-      uploadProgress += 1
     }
     concertFloatingControls.pendingPhotoSelections = []
   }

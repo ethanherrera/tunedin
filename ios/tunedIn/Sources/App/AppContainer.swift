@@ -32,7 +32,8 @@ final class AppContainer {
           storage: authStorage,
           redirectToURL: AppConfiguration.authCallbackURL,
           storageKey: "com.ethanherrera.tunedin.auth.session"
-        )
+        ),
+        global: .init(session: AppNetworkSession.makeSession())
       )
     )
 

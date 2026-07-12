@@ -6,6 +6,7 @@ import Supabase
 struct SupabaseConcertRepository: ConcertRepository {
   let client: SupabaseClient
   private let photoURLs = AvatarURLCache()
+  private let albumPolicies = AlbumPolicyCache()
 
   func createPrivateConcert(_ input: ConcertCreationInput) async throws -> Concert {
     do {
@@ -70,8 +71,10 @@ struct SupabaseConcertRepository: ConcertRepository {
   }
 
   func albumPolicy() async throws -> ConcertAlbumPolicy {
+    if let cached = await albumPolicies.value() { return cached }
     let response: PostgrestResponse<ConcertAlbumPolicy> = try await client
       .rpc("concert_album_policy").single().execute()
+    await albumPolicies.insert(response.value)
     return response.value
   }
 
@@ -83,10 +86,18 @@ struct SupabaseConcertRepository: ConcertRepository {
   }
 
   func uploadReservedAlbumPhoto(_ jpegData: Data, reservation: ConcertPhotoReservation) async throws -> ConcertAlbumPhoto {
-    try await client.storage.from("images").upload(
-      reservation.objectPath, data: jpegData,
-      options: FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: false)
-    )
+    let options = FileOptions(cacheControl: "3600", contentType: "image/jpeg")
+    do {
+      try await client.storage.from("images").upload(
+        reservation.objectPath, data: jpegData, options: options
+      )
+    } catch {
+      // The immutable reservation path permits a safe explicit retry after an
+      // earlier request uploaded bytes but did not receive/finish attachment.
+      try await client.storage.from("images").update(
+        reservation.objectPath, data: jpegData, options: options
+      )
+    }
     let _: PostgrestResponse<ConcertPhotoReservationRecord> = try await client
       .rpc("attach_concert_photo", params: PhotoIDParameters(photoID: reservation.photoID)).single().execute()
     let photos = try await albumPhotos(concertID: reservation.concertID, cursor: nil)
