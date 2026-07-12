@@ -113,6 +113,8 @@ struct FriendsActivityFeedView: View {
             ActivityMomentCard(activity: activity)
           }
           .buttonStyle(.plain)
+          .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+          .accessibilityLabel("Open \(activity.primaryArtistName)")
         }
       }
 
@@ -229,6 +231,7 @@ private struct ActivityMomentCard: View {
       RoundedRectangle(cornerRadius: 20, style: .continuous)
         .strokeBorder(.white.opacity(0.22))
     }
+    .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     .accessibilityElement(children: .combine)
   }
 }

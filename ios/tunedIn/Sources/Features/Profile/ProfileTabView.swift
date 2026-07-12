@@ -18,63 +18,65 @@ struct MainTabView: View {
   @State private var presentedSearchedProfile: SocialProfile?
   @State private var archiveRefreshToken = 0
   @State private var selectedTab: Tab = .feed
+  @State private var feedNavigationID = UUID()
+  @State private var profileNavigationID = UUID()
   @State private var isPresentingConcertEditMenu = false
   @StateObject private var concertFloatingControls = ConcertFloatingControls()
 
   var body: some View {
     selectedContent
-    .environmentObject(concertFloatingControls)
-    .padding(.bottom, 80)
-    .overlay(alignment: .bottom) {
-      bottomControls
-      .padding(.horizontal, 16)
-      .padding(.top, 8)
-      .padding(.bottom, 8)
-    }
-    .fullScreenCover(
-      isPresented: $isPresentingConcertCreation,
-      onDismiss: { archiveRefreshToken += 1 },
-      content: { ConcertCreationView(concertRepository: concertRepository) }
-    )
-    .fullScreenCover(item: $presentedSearchedProfile) { searchedProfile in
-      NavigationStack {
-        PersonProfileView(
-          profile: searchedProfile,
-          currentUserID: profile.id,
-          currentUsername: profile.username ?? "",
-          socialRepository: socialRepository,
-          concertRepository: concertRepository,
-          onDismiss: { presentedSearchedProfile = nil }
-        )
-      }
       .environmentObject(concertFloatingControls)
-    }
-    .onChange(of: isPresentingPeopleSearch) { _, isPresented in
-      guard !isPresented, let pendingSearchedProfile else { return }
-      self.pendingSearchedProfile = nil
-      presentedSearchedProfile = pendingSearchedProfile
-    }
-    .onChange(of: concertFloatingControls.isShowingEditMenu) { _, isShowingEditMenu in
-      if !isShowingEditMenu {
-        isPresentingConcertEditMenu = false
+      .padding(.bottom, 80)
+      .overlay(alignment: .bottom) {
+        bottomControls
+          .padding(.horizontal, 16)
+          .padding(.top, 8)
+          .padding(.bottom, 8)
       }
-    }
-    .tint(TunedInDesign.accent)
+      .fullScreenCover(
+        isPresented: $isPresentingConcertCreation,
+        onDismiss: { archiveRefreshToken += 1 },
+        content: { ConcertCreationView(concertRepository: concertRepository) }
+      )
+      .fullScreenCover(item: $presentedSearchedProfile) { searchedProfile in
+        NavigationStack {
+          PersonProfileView(
+            profile: searchedProfile,
+            currentUserID: profile.id,
+            currentUsername: profile.username ?? "",
+            socialRepository: socialRepository,
+            concertRepository: concertRepository,
+            onDismiss: { presentedSearchedProfile = nil }
+          )
+        }
+        .environmentObject(concertFloatingControls)
+      }
+      .onChange(of: isPresentingPeopleSearch) { _, isPresented in
+        guard !isPresented, let pendingSearchedProfile else { return }
+        self.pendingSearchedProfile = nil
+        presentedSearchedProfile = pendingSearchedProfile
+      }
+      .onChange(of: concertFloatingControls.isShowingEditMenu) { _, isShowingEditMenu in
+        if !isShowingEditMenu {
+          isPresentingConcertEditMenu = false
+        }
+      }
+      .tint(TunedInDesign.accent)
   }
 
-  @ViewBuilder
   private var bottomControls: some View {
     ZStack(alignment: .bottom) {
       switch concertFloatingControls.navigationContext {
       case .concert:
         ConcertContextBottomBar(
           controls: concertFloatingControls,
-          isPresentingEditMenu: $isPresentingConcertEditMenu
+          isPresentingEditMenu: $isPresentingConcertEditMenu,
+          fallbackToProfile: { activateTab(.profile) }
         )
         .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
       case let .backOnly(title):
         subscreenBottomBar(title: title)
-        .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
+          .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
       case .none:
         HStack(alignment: .bottom, spacing: 8) {
           TunedInGlassBottomBar {
@@ -137,6 +139,7 @@ struct MainTabView: View {
           socialRepository: socialRepository
         )
       }
+      .id(feedNavigationID)
     case .profile:
       ProfileTabView(
         session: session,
@@ -146,23 +149,37 @@ struct MainTabView: View {
         socialRepository: socialRepository,
         archiveRefreshToken: archiveRefreshToken
       )
+      .id(profileNavigationID)
     }
   }
 
   private func tabButton(_ tab: Tab, title: String, icon: String) -> some View {
     Button {
-      selectedTab = tab
+      activateTab(tab)
     } label: {
       navigationLabel(title: title, icon: icon, isSelected: selectedTab == tab)
     }
     .buttonStyle(.plain)
   }
 
+  private func activateTab(_ tab: Tab) {
+    concertFloatingControls.reset()
+
+    switch tab {
+    case .feed:
+      feedNavigationID = UUID()
+    case .profile:
+      profileNavigationID = UUID()
+    }
+
+    selectedTab = tab
+  }
+
   private func subscreenBottomBar(title: String) -> some View {
     TunedInGlassBottomBar {
       HStack(spacing: 2) {
         Button {
-          concertFloatingControls.back()
+          concertFloatingControls.back(or: { activateTab(.profile) })
         } label: {
           Image(systemName: "chevron.backward")
             .font(.subheadline.weight(.bold))
@@ -267,8 +284,12 @@ final class ConcertFloatingControls: ObservableObject {
     reset()
   }
 
-  func back() {
-    backAction?()
+  func back(or fallback: () -> Void) {
+    guard let backAction else {
+      fallback()
+      return
+    }
+    backAction()
   }
 
   func select(page: ConcertDetailPage) {
@@ -290,6 +311,7 @@ final class ConcertFloatingControls: ObservableObject {
 private struct ConcertContextBottomBar: View {
   @ObservedObject var controls: ConcertFloatingControls
   @Binding var isPresentingEditMenu: Bool
+  let fallbackToProfile: () -> Void
   @Namespace private var selectionNamespace
 
   var body: some View {
@@ -297,7 +319,7 @@ private struct ConcertContextBottomBar: View {
       TunedInGlassBottomBar {
         HStack(spacing: 2) {
           Button {
-            controls.back()
+            controls.back(or: fallbackToProfile)
           } label: {
             Image(systemName: "chevron.backward")
               .font(.subheadline.weight(.bold))
@@ -449,24 +471,7 @@ struct ProfileTabView: View {
   }
 
   private var profileHeader: some View {
-    HStack(alignment: .top, spacing: 12) {
-      ProfileMonogram(profile: currentSocialProfile, size: 58)
-      VStack(alignment: .leading, spacing: 3) {
-        Text("tunedIn")
-          .font(.caption.weight(.black))
-          .foregroundStyle(TunedInDesign.accent)
-          .textCase(.uppercase)
-        Text(profile.displayName ?? "")
-          .font(.system(size: 26, weight: .bold, design: .serif))
-          .foregroundStyle(TunedInDesign.primaryText)
-          .lineLimit(2)
-          .minimumScaleFactor(0.82)
-       Text("@\(profile.username ?? "")")
-         .font(.subheadline)
-         .foregroundStyle(TunedInDesign.mutedText)
-      }
-      .layoutPriority(1)
-      Spacer(minLength: 0)
+    ProfileIdentityHeader(profile: currentSocialProfile) {
       HStack(spacing: 8) {
         NavigationLink {
           SettingsView(session: session, user: user)
@@ -478,18 +483,64 @@ struct ProfileTabView: View {
             .background(TunedInDesign.raisedSurface, in: Circle())
         }
         .accessibilityLabel("Open settings")
-     }
-   }
- }
+      }
+    }
+  }
 
   private var friendCountLink: some View {
-    NavigationLink {
+    ProfileFriendsLink(count: friendCount) {
       FriendsListView(
         currentUserID: profile.id,
         currentUsername: profile.username ?? "",
         socialRepository: socialRepository,
         concertRepository: concertRepository
       )
+    }
+  }
+
+  private func loadFriendCount() async {
+    guard let username = profile.username, !username.isEmpty else { return }
+    do {
+      friendCount = try await socialRepository.friends(username: username).count
+    } catch {}
+  }
+}
+
+struct ProfileIdentityHeader<Trailing: View>: View {
+  let profile: SocialProfile
+  @ViewBuilder let trailing: Trailing
+
+  var body: some View {
+    HStack(alignment: .top, spacing: 12) {
+      ProfileMonogram(profile: profile, size: 58)
+      VStack(alignment: .leading, spacing: 3) {
+        Text("tunedIn")
+          .font(.caption.weight(.black))
+          .foregroundStyle(TunedInDesign.accent)
+          .textCase(.uppercase)
+        Text(profile.displayName)
+          .font(.system(size: 26, weight: .bold, design: .serif))
+          .foregroundStyle(TunedInDesign.primaryText)
+          .lineLimit(2)
+          .minimumScaleFactor(0.82)
+        Text("@\(profile.username)")
+          .font(.subheadline)
+          .foregroundStyle(TunedInDesign.mutedText)
+      }
+      .layoutPriority(1)
+      Spacer(minLength: 0)
+      trailing
+    }
+  }
+}
+
+struct ProfileFriendsLink<Destination: View>: View {
+  let count: Int
+  @ViewBuilder let destination: () -> Destination
+
+  var body: some View {
+    NavigationLink {
+      destination()
     } label: {
       HStack(spacing: 10) {
         Image(systemName: "person.2.fill")
@@ -506,25 +557,20 @@ struct ProfileTabView: View {
       }
       .padding(.horizontal, 15)
       .padding(.vertical, 14)
+      .frame(maxWidth: .infinity)
       .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
       .overlay {
         RoundedRectangle(cornerRadius: 16, style: .continuous)
           .strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
       }
+      .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
     .buttonStyle(.plain)
     .accessibilityLabel("Open \(friendCountLabel)")
   }
 
   private var friendCountLabel: String {
-    return String(friendCount) + (friendCount == 1 ? " friend" : " friends")
-  }
-
-  private func loadFriendCount() async {
-    guard let username = profile.username, !username.isEmpty else { return }
-    do {
-      friendCount = try await socialRepository.friends(username: username).count
-    } catch {}
+    "\(count) \(count == 1 ? "friend" : "friends")"
   }
 }
 
