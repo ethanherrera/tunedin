@@ -39,7 +39,7 @@ make dev-deploy
 
 ## Expected result and verification
 
-- The workflow recreates the schema in a disposable Docker Supabase stack, checks generated Swift DTOs, and runs pgTAP before contacting the hosted database.
+- The workflow recreates the schema in a disposable Docker Supabase stack, checks the seed and generated Swift DTOs, runs pgTAP, and exercises the Storage API before contacting the hosted database. If the local stack fails during startup or reset, verification destroys only that disposable stack and retries once from a clean state.
 - It prints the remote migration plan, applies only pending migrations, then prints local/remote migration parity.
 - Its GitHub Actions summary records the exact deployed commit and states the limited scope.
 - Run the impacted real iOS journey against Development. For Auth, use `make simulator-live`, request a fresh magic link, and complete the [Development smoke test](./supabase-development.md#simulator-magic-link-smoke-test). For a migration affecting concert data, create and reopen a concert; for a relationship change, exercise the relevant request or visibility rule with real Development accounts.
@@ -47,6 +47,7 @@ make dev-deploy
 ## Recovery and rollback
 
 - Never rewrite a migration already applied to `tunedin-dev`, and never run a destructive remote reset.
+- If disposable verification still fails after its one clean retry, inspect that workflow step before rerunning it. The retry never contacts or resets hosted Development.
 - Correct a defect with a new forward-only migration. Use expand → migrate → contract for incompatible schema changes.
 - For a suspected data-loss incident, stop further deployments, preserve the GitHub Actions run URL and Supabase logs, and follow the backup/recovery decision process in the Supabase Development runbook.
 

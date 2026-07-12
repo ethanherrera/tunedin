@@ -72,8 +72,8 @@ simulator-profile: build ## Install and launch the fresh Development app with a 
 simulator-profile-error: build ## Install and launch the fresh Development app with a deterministic profile failure.
 	@./scripts/launch-development-scenario.sh profile-error
 
-local-db-reset: local-db-start ## Reset the disposable local Supabase database, migrations, and development seed.
-	@supabase db reset
+local-db-reset: ## Reset the disposable local Supabase database, migrations, and development seed.
+	@./scripts/reset-local-supabase.sh
 	@./scripts/verify-local-seed.sh
 	@$(MAKE) --no-print-directory local-next-steps
 

@@ -22,20 +22,5 @@ jobs:
         with:
           version: 2.109.1
 
-      - name: Start disposable Supabase stack
-        run: supabase start >/dev/null
-
-      - name: Apply migrations and seed data
-        run: supabase db reset
-
-      - name: Verify generated Swift types
-        run: make check-supabase-types
-
-      - name: Run pgTAP tests when present
-        run: |
-          if find supabase/tests -type f -name '*.sql' -print -quit | grep -q .; then
-            supabase test db
-          fi
-
-      - name: Exercise the Storage API
-        run: make storage-integration-test
+      - name: Verify the disposable backend
+        run: make backend-verify
