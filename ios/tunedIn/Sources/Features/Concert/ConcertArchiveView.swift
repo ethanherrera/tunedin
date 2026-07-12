@@ -557,36 +557,6 @@ struct ConcertDetailView: View {
           }
         }
 
-        DisclosureGroup("History") {
-          VStack(alignment: .leading, spacing: 14) {
-            ForEach(detail.history) { event in
-              HStack(alignment: .top, spacing: 12) {
-                Circle()
-                  .fill(TunedInDesign.accent)
-                  .frame(width: 8, height: 8)
-                  .padding(.top, 5)
-                VStack(alignment: .leading, spacing: 3) {
-                  Text(event.title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(TunedInDesign.primaryText)
-                  Text(ConcertDisplay.longDateTime(event.occurredAt))
-                    .font(.caption)
-                    .foregroundStyle(TunedInDesign.mutedText)
-                }
-              }
-            }
-          }
-        }
-        .font(.headline)
-        .foregroundStyle(TunedInDesign.primaryText)
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-          TunedInDesign.raisedSurface.opacity(0.6),
-          in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-        )
-        .accessibilityLabel("Concert history")
-
         VStack(alignment: .leading, spacing: 12) {
           Text("Moments")
             .font(.title2.weight(.bold))

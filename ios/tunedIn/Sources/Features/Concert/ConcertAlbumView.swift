@@ -326,8 +326,8 @@ private struct ConcertAlbumViewer: View {
           .accessibilityLabel("Photo actions")
         }
       }
-      .padding(.horizontal, 16)
-      .padding(.bottom, 10)
+      .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+      .padding(.bottom, TunedInDesign.bottomControlInset)
     }
     .sheet(isPresented: $isEditingCaption) {
       NavigationStack {

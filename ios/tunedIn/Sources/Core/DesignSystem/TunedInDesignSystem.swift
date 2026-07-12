@@ -16,6 +16,8 @@ enum TunedInDesign {
   static let ticketViolet = adaptive(light: 0xFC552B, dark: 0xE03317)
   static let ticketRose = adaptive(light: 0xB52E46, dark: 0x701626)
   static let cornerRadius: CGFloat = 18
+  static let bottomControlInset: CGFloat = 44
+  static let bottomControlHorizontalInset: CGFloat = 16
 
   private static func adaptive(light: Int, dark: Int) -> Color {
     Color(

@@ -463,9 +463,9 @@ struct ConcertEditView: View {
       )
       .disabled(isSaving)
     }
-    .padding(.horizontal, 16)
+    .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
     .padding(.top, 8)
-    .padding(.bottom, 8)
+    .padding(.bottom, TunedInDesign.bottomControlInset)
   }
 
   private var isShowingError: Binding<Bool> {

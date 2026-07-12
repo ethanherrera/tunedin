@@ -30,9 +30,9 @@ struct MainTabView: View {
       .environmentObject(concertFloatingControls)
       .overlay(alignment: .bottom) {
         bottomControls
-          .padding(.horizontal, 16)
+          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
           .padding(.top, 8)
-          .padding(.bottom, 8)
+          .padding(.bottom, TunedInDesign.bottomControlInset)
       }
       .tunedInEdgeSwipeBack(
         isEnabled: concertFloatingControls.navigationContext != .none
@@ -85,7 +85,7 @@ struct MainTabView: View {
         subscreenBottomBar(title: title)
           .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
       case .none:
-        TunedInGlassTraversalLayout(sideReservation: 140) {
+        TunedInGlassTraversalLayout {
           EmptyView()
         } center: {
           TunedInGlassBottomBar {
@@ -95,7 +95,7 @@ struct MainTabView: View {
             }
           }
         } trailing: {
-          HStack(alignment: .bottom, spacing: 8) {
+          VStack(alignment: .trailing, spacing: 8) {
             TunedInGlassIconButton(
               systemImage: "magnifyingglass",
               accessibilityLabel: "Search people",

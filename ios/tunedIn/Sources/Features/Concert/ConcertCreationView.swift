@@ -115,9 +115,9 @@ struct ConcertCreationView: View {
       .disabled(!draft.canSave || isSaving)
       .accessibilityHint("Saves this concert privately")
     }
-    .padding(.horizontal, 20)
+    .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
     .padding(.top, 12)
-    .padding(.bottom, 8)
+    .padding(.bottom, TunedInDesign.bottomControlInset)
   }
 
   private var isShowingSaveError: Binding<Bool> {

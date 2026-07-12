@@ -58,10 +58,12 @@ struct ConcertPeopleView: View {
         if let errorMessage {
           ConcertPeopleErrorCard(message: errorMessage)
         }
+
+        ConcertEditingHistoryView(events: detail.history)
       }
       .padding(.horizontal, 20)
       .padding(.top, 12)
-      .padding(.bottom, 32)
+      .padding(.bottom, 128)
     }
     .task {
       await loadFriends()
@@ -356,6 +358,55 @@ struct ConcertPeopleView: View {
       }
       isWorking = false
     }
+  }
+}
+
+private struct ConcertEditingHistoryView: View {
+  let events: [ConcertTimelineEvent]
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Text("Editing history")
+        .font(.title3.weight(.bold))
+        .foregroundStyle(TunedInDesign.primaryText)
+
+      Text("Changes made by the people editing this concert.")
+        .font(.subheadline)
+        .foregroundStyle(TunedInDesign.mutedText)
+
+      if events.isEmpty {
+        Text("No edits recorded yet.")
+          .font(.subheadline)
+          .foregroundStyle(TunedInDesign.mutedText)
+      } else {
+        VStack(alignment: .leading, spacing: 14) {
+          ForEach(events) { event in
+            HStack(alignment: .top, spacing: 12) {
+              Circle()
+                .fill(TunedInDesign.accent)
+                .frame(width: 8, height: 8)
+                .padding(.top, 5)
+              VStack(alignment: .leading, spacing: 3) {
+                Text(event.title)
+                  .font(.subheadline.weight(.semibold))
+                  .foregroundStyle(TunedInDesign.primaryText)
+                Text(ConcertDisplay.longDateTime(event.occurredAt))
+                  .font(.caption)
+                  .foregroundStyle(TunedInDesign.mutedText)
+              }
+            }
+          }
+        }
+      }
+    }
+    .padding(16)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(
+      TunedInDesign.raisedSurface.opacity(0.6),
+      in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+    )
+    .accessibilityElement(children: .contain)
+    .accessibilityLabel("Editing history")
   }
 }
 

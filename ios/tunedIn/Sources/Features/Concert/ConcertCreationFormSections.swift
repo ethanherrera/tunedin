@@ -58,8 +58,9 @@ struct ConcertCreationDetailsView: View {
         TunedInSubscreenBackBar(title: "Concert details") {
           dismiss()
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+        .padding(.top, 8)
+        .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
     .tint(TunedInDesign.accent)

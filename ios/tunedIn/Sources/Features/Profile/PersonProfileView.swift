@@ -113,8 +113,9 @@ struct PersonProfileView: View {
     .overlay(alignment: .bottom) {
       if let onDismiss {
         TunedInSubscreenBackBar(title: "Profile", action: onDismiss)
-          .padding(.horizontal, 16)
-          .padding(.vertical, 8)
+          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+          .padding(.top, 8)
+          .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
     .tunedInEdgeSwipeBack {
