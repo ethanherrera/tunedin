@@ -54,12 +54,12 @@ struct ConcertCreationDetailsView: View {
             .foregroundStyle(TunedInDesign.primaryText)
         }
       }
-      .safeAreaInset(edge: .bottom, spacing: 0) {
+      .overlay(alignment: .bottom) {
         TunedInSubscreenBackBar(title: "Concert details") {
           dismiss()
         }
+        .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(TunedInDesign.pageBackground.opacity(0.96))
       }
     }
     .tint(TunedInDesign.accent)

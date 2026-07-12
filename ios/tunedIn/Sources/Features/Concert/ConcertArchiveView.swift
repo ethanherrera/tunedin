@@ -65,14 +65,13 @@ struct ConcertArchiveView: View {
       TunedInGlassSearchField(text: $query.searchText, prompt: "Search artists, venues, cities")
 
       if isLoading, concerts.isEmpty {
-        HStack {
-          ProgressView()
-          Text("Finding the good nights…")
-            .font(.subheadline)
-            .foregroundStyle(TunedInDesign.mutedText)
+        VStack(spacing: 10) {
+          ForEach(0 ..< 3, id: \.self) { _ in
+            TunedInSkeletonBlock(cornerRadius: 20)
+              .frame(height: 142)
+          }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 28)
+        .accessibilityLabel("Loading concerts")
       } else if let errorMessage {
         ContentUnavailableView {
           Label("Couldn’t load this archive", systemImage: "exclamationmark.triangle")
@@ -369,7 +368,19 @@ struct ConcertDetailView: View {
           Text(errorMessage)
         }
       } else {
-        ProgressView("Opening concert…")
+        ScrollView {
+          VStack(alignment: .leading, spacing: 18) {
+            TunedInSkeletonBlock(cornerRadius: 24)
+              .aspectRatio(CGSize(width: 3, height: 4), contentMode: .fit)
+            TunedInSkeletonBlock(cornerRadius: 7).frame(width: 150, height: 20)
+            TunedInSkeletonBlock(cornerRadius: 18).frame(height: 140)
+            TunedInSkeletonBlock(cornerRadius: 18).frame(height: 110)
+          }
+          .padding(.horizontal, 20)
+          .padding(.top, 14)
+          .padding(.bottom, 120)
+        }
+        .accessibilityLabel("Opening concert")
       }
     }
     .toolbar(.hidden, for: .navigationBar)

@@ -3,8 +3,8 @@ import Supabase
 
 /// Used only by the disposable Local configuration. Command-line Simulator
 /// builds are unsigned, so they cannot claim a Keychain access group.
-// UserDefaults serializes its own access; this small adapter holds no mutable
-// state beyond that system-owned store.
+/// UserDefaults serializes its own access; this small adapter holds no mutable
+/// state beyond that system-owned store.
 struct LocalSimulatorAuthStorage: AuthLocalStorage, @unchecked Sendable {
   private let defaults = UserDefaults.standard
   private let prefix = "com.ethanherrera.tunedin.local-auth."

@@ -144,13 +144,15 @@ struct ConcertPeopleView: View {
   @ViewBuilder
   private var addPeople: some View {
     if isLoadingFriends {
-      HStack(spacing: 10) {
-        ProgressView()
-        Text("Finding your friends…")
-          .font(.subheadline)
-          .foregroundStyle(TunedInDesign.mutedText)
+      VStack(spacing: 10) {
+        ForEach(0 ..< 3, id: \.self) { _ in
+          HStack(spacing: 12) {
+            TunedInSkeletonBlock(cornerRadius: 23).frame(width: 46, height: 46)
+            TunedInSkeletonBlock(cornerRadius: 6).frame(height: 16)
+          }
+        }
       }
-      .padding(.vertical, 8)
+      .accessibilityLabel("Loading friends")
     } else if availableFriends.isEmpty {
       TunedInFormCard {
         Text("No one else to add right now.")
@@ -675,41 +677,50 @@ struct ConcertCommentsView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-        pageHeader
+      pageHeader
 
-        if isLoading {
-          ProgressView("Opening comments…")
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 120)
-        } else if comments.isEmpty {
-          emptyState
-        } else {
-          LazyVStack(alignment: .leading, spacing: 12) {
-            if canLoadOlder {
-              Button {
-                Task { await loadOlderComments() }
-              } label: {
-                HStack(spacing: 8) {
-                  if isLoadingOlder {
-                    ProgressView()
-                  }
-                  Text(isLoadingOlder ? "Loading earlier comments…" : "Show earlier comments")
-                }
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(TunedInDesign.primaryText)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+      if isLoading {
+        VStack(spacing: 12) {
+          ForEach(0 ..< 3, id: \.self) { _ in
+            HStack(alignment: .top, spacing: 11) {
+              TunedInSkeletonBlock(cornerRadius: 20).frame(width: 40, height: 40)
+              VStack(alignment: .leading, spacing: 8) {
+                TunedInSkeletonBlock(cornerRadius: 5).frame(width: 124, height: 14)
+                TunedInSkeletonBlock(cornerRadius: 9).frame(height: 48)
               }
-              .buttonStyle(.plain)
-              .disabled(isLoadingOlder)
-            }
-            ForEach(comments.sorted(by: { $0.createdAt < $1.createdAt })) { comment in
-              commentCard(comment)
             }
           }
         }
-        composer
+        .accessibilityLabel("Opening comments")
+      } else if comments.isEmpty {
+        emptyState
+      } else {
+        LazyVStack(alignment: .leading, spacing: 12) {
+          if canLoadOlder {
+            Button {
+              Task { await loadOlderComments() }
+            } label: {
+              HStack(spacing: 8) {
+                if isLoadingOlder {
+                  ProgressView()
+                }
+                Text(isLoadingOlder ? "Loading earlier comments…" : "Show earlier comments")
+              }
+              .font(.subheadline.weight(.bold))
+              .foregroundStyle(TunedInDesign.primaryText)
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 12)
+              .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(isLoadingOlder)
+          }
+          ForEach(comments.sorted(by: { $0.createdAt < $1.createdAt })) { comment in
+            commentCard(comment)
+          }
+        }
+      }
+      composer
     }
     .task { await loadComments() }
     .confirmationDialog(
@@ -767,7 +778,6 @@ struct ConcertCommentsView: View {
     .padding(.horizontal, 16)
     .padding(.top, 10)
     .padding(.bottom, 8)
-    .background(TunedInDesign.pageBackground.opacity(0.98))
   }
 
   private func commentCard(_ comment: ConcertComment) -> some View {

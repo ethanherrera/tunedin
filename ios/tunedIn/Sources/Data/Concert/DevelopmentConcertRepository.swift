@@ -83,22 +83,40 @@
     }
 
     nonisolated func albumPolicy() async throws -> ConcertAlbumPolicy {
-      ConcertAlbumPolicy(policyVersion: 1, concertPhotoLimit: 100, contributorPhotoLimit: 30,
-        reservationLimit24Hours: 10, pickerBatchLimit: 10, captionCharacterLimit: 300,
-        attachedFileByteLimit: 2_097_152, pendingReservationLifetimeSeconds: 3_600)
+      ConcertAlbumPolicy(
+        policyVersion: 1,
+        concertPhotoLimit: 100,
+        contributorPhotoLimit: 30,
+        reservationLimit24Hours: 10,
+        pickerBatchLimit: 10,
+        captionCharacterLimit: 300,
+        attachedFileByteLimit: 2_097_152,
+        pendingReservationLifetimeSeconds: 3600
+      )
     }
 
     func reserveAlbumPhoto(concertID: UUID, photoID: UUID) async throws -> ConcertPhotoReservation {
       _ = try detail(for: concertID)
-      return ConcertPhotoReservation(photoID: photoID, concertID: concertID,
+      return ConcertPhotoReservation(
+        photoID: photoID,
+        concertID: concertID,
         objectPath: "concerts/\(concertID.uuidString.lowercased())/album/\(photoID.uuidString.lowercased()).jpg",
-        expiresAt: Date().addingTimeInterval(3_600))
+        expiresAt: Date().addingTimeInterval(3600)
+      )
     }
 
     func uploadReservedAlbumPhoto(_: Data, reservation: ConcertPhotoReservation) async throws -> ConcertAlbumPhoto {
-      let photo = ConcertAlbumPhoto(id: reservation.photoID, concertID: reservation.concertID,
-        uploaderID: DevelopmentSocialFixture.currentUserID, username: "you", displayName: "You",
-        objectPath: reservation.objectPath, caption: nil, version: 1, attachedAt: Date())
+      let photo = ConcertAlbumPhoto(
+        id: reservation.photoID,
+        concertID: reservation.concertID,
+        uploaderID: DevelopmentSocialFixture.currentUserID,
+        username: "you",
+        displayName: "You",
+        objectPath: reservation.objectPath,
+        caption: nil,
+        version: 1,
+        attachedAt: Date()
+      )
       albumPhotosByConcert[reservation.concertID, default: []].insert(photo, at: 0)
       return photo
     }
@@ -116,10 +134,18 @@
     func updateAlbumPhotoCaption(photoID: UUID, caption: String?) async throws -> ConcertAlbumPhoto {
       for concertID in albumPhotosByConcert.keys {
         guard let index = albumPhotosByConcert[concertID]?.firstIndex(where: { $0.id == photoID }),
-          let photo = albumPhotosByConcert[concertID]?[index] else { continue }
-        let updated = ConcertAlbumPhoto(id: photo.id, concertID: photo.concertID, uploaderID: photo.uploaderID,
-          username: photo.username, displayName: photo.displayName, objectPath: photo.objectPath,
-          caption: caption, version: photo.version + 1, attachedAt: photo.attachedAt)
+              let photo = albumPhotosByConcert[concertID]?[index] else { continue }
+        let updated = ConcertAlbumPhoto(
+          id: photo.id,
+          concertID: photo.concertID,
+          uploaderID: photo.uploaderID,
+          username: photo.username,
+          displayName: photo.displayName,
+          objectPath: photo.objectPath,
+          caption: caption,
+          version: photo.version + 1,
+          attachedAt: photo.attachedAt
+        )
         albumPhotosByConcert[concertID]?[index] = updated
         return updated
       }

@@ -4,6 +4,11 @@ import Observation
 import SwiftUI
 
 struct FriendsListView: View {
+  private enum Section: String, CaseIterable {
+    case friends = "Friends"
+    case requests = "Requests"
+  }
+
   let profileUsername: String
   let currentUserID: UUID
   let currentUsername: String
@@ -12,6 +17,7 @@ struct FriendsListView: View {
 
   @State private var model: PeopleHubModel
   @State private var query = ""
+  @State private var selectedSection: Section = .friends
   @State private var floatingControlOwner = UUID()
   @Environment(\.dismiss) private var dismiss
   @EnvironmentObject private var floatingControls: ConcertFloatingControls
@@ -44,9 +50,43 @@ struct FriendsListView: View {
 
       ScrollView {
         VStack(alignment: .leading, spacing: 16) {
-          TunedInGlassSearchField(text: $query, prompt: "Search friends")
+          if isOwnList {
+            TunedInGlassBottomBar {
+              HStack(spacing: 4) {
+                ForEach(Section.allCases, id: \.self) { section in
+                  Button {
+                    withAnimation(.smooth(duration: 0.22)) { selectedSection = section }
+                  } label: {
+                    HStack(spacing: 6) {
+                      Text(section.rawValue)
+                      if section == .requests, !model.incomingRequests.isEmpty {
+                        Text("\(model.incomingRequests.count)")
+                          .font(.caption2.weight(.black))
+                          .padding(.horizontal, 6)
+                          .padding(.vertical, 3)
+                          .background(.white.opacity(0.2), in: Capsule())
+                      }
+                    }
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(
+                      selectedSection == section ? TunedInDesign.actionForeground : TunedInDesign.primaryText
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .background(selectedSection == section ? TunedInDesign.accent : .clear, in: Capsule())
+                  }
+                  .buttonStyle(.plain)
+                }
+              }
+            }
+          }
 
-          if let errorMessage = model.errorMessage {
+          TunedInGlassSearchField(text: $query, prompt: "Search friends")
+            .opacity(selectedSection == .friends ? 1 : 0)
+            .frame(height: selectedSection == .friends ? nil : 0)
+
+          if model.isLoading, model.friends.isEmpty, model.incomingRequests.isEmpty {
+            friendsSkeleton
+          } else if let errorMessage = model.errorMessage {
             ContentUnavailableView {
               Label("Couldn’t refresh friends", systemImage: "exclamationmark.triangle")
             } description: {
@@ -54,6 +94,8 @@ struct FriendsListView: View {
             } actions: {
               Button("Try again") { Task { await model.refreshFriends() } }
             }
+          } else if selectedSection == .requests {
+            requestsContent
           } else if model.friends.isEmpty {
             ContentUnavailableView(
               "No friends yet",
@@ -86,7 +128,13 @@ struct FriendsListView: View {
     .navigationTitle("Friends")
     .navigationBarTitleDisplayMode(.inline)
     .navigationBarBackButtonHidden()
-    .task { await model.refreshFriends() }
+    .task {
+      if isOwnList {
+        await model.refresh()
+      } else {
+        await model.refreshFriends()
+      }
+    }
     .onAppear {
       floatingControls.configureBackOnly(title: "Friends", owner: floatingControlOwner) {
         floatingControls.reset()
@@ -94,6 +142,53 @@ struct FriendsListView: View {
       }
     }
     .onDisappear { floatingControls.resetBackOnly(owner: floatingControlOwner) }
+    .tunedInEdgeSwipeBack {
+      floatingControls.reset()
+      dismiss()
+    }
+  }
+
+  @ViewBuilder
+  private var requestsContent: some View {
+    if model.incomingRequests.isEmpty {
+      ContentUnavailableView {
+        Label("You’re all caught up", systemImage: "checkmark.circle")
+      } description: {
+        Text("New friend requests will appear here.")
+      }
+      .padding(.top, 48)
+    } else {
+      LazyVStack(spacing: 10) {
+        ForEach(model.incomingRequests) { profile in
+          FriendRequestCard(profile: profile) {
+            Task { await model.perform(.accept, for: profile) }
+          } onDecline: {
+            Task { await model.perform(.decline, for: profile) }
+          }
+        }
+      }
+    }
+  }
+
+  private var friendsSkeleton: some View {
+    VStack(spacing: 10) {
+      ForEach(0 ..< 5, id: \.self) { _ in
+        HStack(spacing: 13) {
+          TunedInSkeletonBlock(cornerRadius: 24).frame(width: 48, height: 48)
+          VStack(alignment: .leading, spacing: 7) {
+            TunedInSkeletonBlock(cornerRadius: 5).frame(width: 150, height: 15)
+            TunedInSkeletonBlock(cornerRadius: 5).frame(width: 100, height: 12)
+          }
+          Spacer()
+        }
+        .padding(13)
+      }
+    }
+    .accessibilityLabel("Loading friends")
+  }
+
+  private var isOwnList: Bool {
+    profileUsername.caseInsensitiveCompare(currentUsername) == .orderedSame
   }
 
   private func friendProfileLink(_ profile: SocialProfile) -> some View {
@@ -346,6 +441,7 @@ final class PeopleHubModel {
   private(set) var friends: [SocialProfile] = []
   private(set) var incomingRequests: [SocialProfile] = []
   private(set) var isSearching = false
+  private(set) var isLoading = false
   private(set) var errorMessage: String?
 
   private let repository: any SocialRepository
@@ -357,6 +453,8 @@ final class PeopleHubModel {
   }
 
   func refreshFriends() async {
+    isLoading = true
+    defer { isLoading = false }
     do {
       friends = try await repository.friends(username: currentUsername)
       errorMessage = nil
@@ -366,6 +464,8 @@ final class PeopleHubModel {
   }
 
   func refresh() async {
+    isLoading = true
+    defer { isLoading = false }
     do {
       async let friendValues = repository.friends(username: currentUsername)
       async let incomingValues = repository.incomingFriendRequests()

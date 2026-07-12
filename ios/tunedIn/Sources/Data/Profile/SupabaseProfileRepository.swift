@@ -130,7 +130,7 @@ actor AlbumPolicyCache {
 
   func value(now: Date = .now) -> ConcertAlbumPolicy? {
     guard let entry, entry.expiresAt > now else {
-      self.entry = nil
+      entry = nil
       return nil
     }
     return entry.policy

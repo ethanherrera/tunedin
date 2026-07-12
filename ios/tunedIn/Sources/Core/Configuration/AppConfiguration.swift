@@ -56,7 +56,7 @@ struct AppConfiguration: Sendable {
     ) as? String == "YES"
 
     if usesLocalSimulatorAuthStorage,
-      !["127.0.0.1", "localhost"].contains(supabaseURL.host)
+       !["127.0.0.1", "localhost"].contains(supabaseURL.host)
     {
       throw AppConfigurationError.invalid("TUNEDIN_USE_LOCAL_AUTH_STORAGE")
     }

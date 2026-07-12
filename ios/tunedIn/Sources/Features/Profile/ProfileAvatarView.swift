@@ -9,28 +9,49 @@ struct ProfileAvatarView: View {
   let size: CGFloat
   @Environment(\.profileRepository) private var repository
   @State private var url: URL?
+  @State private var isResolvingURL = false
+  @State private var failed = false
 
   var body: some View {
-    ZStack {
-      ProfileMonogram(profile: profile, size: size)
-      if let url {
+    Group {
+      if profile.avatarObjectPath == nil || failed {
+        ProfileMonogram(profile: profile, size: size)
+      } else if let url {
         AsyncImage(url: url) { phase in
-          if case let .success(image) = phase {
+          switch phase {
+          case let .success(image):
             image.resizable().scaledToFill()
+          case .failure:
+            ProfileMonogram(profile: profile, size: size)
+          case .empty:
+            TunedInSkeletonBlock(cornerRadius: size / 2)
+          @unknown default:
+            TunedInSkeletonBlock(cornerRadius: size / 2)
           }
         }
+      } else if isResolvingURL {
+        TunedInSkeletonBlock(cornerRadius: size / 2)
+      } else {
+        ProfileMonogram(profile: profile, size: size)
       }
     }
     .frame(width: size, height: size)
     .clipShape(Circle())
     .task(id: cacheKey) {
       url = nil
+      failed = false
       guard let path = profile.avatarObjectPath else { return }
-      url = try? await repository.avatarURL(
-        profileID: profile.id,
-        objectPath: path,
-        version: profile.avatarVersion
-      )
+      isResolvingURL = true
+      defer { isResolvingURL = false }
+      do {
+        url = try await repository.avatarURL(
+          profileID: profile.id,
+          objectPath: path,
+          version: profile.avatarVersion
+        )
+      } catch {
+        failed = true
+      }
     }
   }
 

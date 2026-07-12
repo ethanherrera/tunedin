@@ -25,7 +25,9 @@ enum LocalSeededAccount: String, CaseIterable, Identifiable, Sendable {
 
   static let password = "tunedIn-local-seeded-account"
 
-  var id: String { rawValue }
+  var id: String {
+    rawValue
+  }
 
   var email: String {
     "\(rawValue)@tunedin.local"

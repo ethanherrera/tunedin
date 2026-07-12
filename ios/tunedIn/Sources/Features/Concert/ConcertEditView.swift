@@ -94,7 +94,7 @@ struct ConcertEditView: View {
           .tabViewStyle(.page(indexDisplayMode: .never))
         }
       }
-      .safeAreaInset(edge: .bottom, spacing: 0) {
+      .overlay(alignment: .bottom) {
         saveBar
       }
       .toolbar {
@@ -431,10 +431,14 @@ struct ConcertEditView: View {
             } label: {
               VStack(spacing: 2) {
                 Image(systemName: item.icon).font(.subheadline.weight(.bold))
-                Text(item.title).font(.caption2.weight(.bold))
+                Text(item.title)
+                  .font(.caption2.weight(.bold))
+                  .lineLimit(1)
+                  .minimumScaleFactor(0.68)
               }
               .foregroundStyle(page == item ? TunedInDesign.actionForeground : TunedInDesign.primaryText)
-              .frame(width: 62, height: 46)
+              .frame(maxWidth: .infinity)
+              .frame(height: 48)
               .background {
                 if page == item {
                   Capsule()
@@ -449,6 +453,7 @@ struct ConcertEditView: View {
           }
         }
       }
+      .frame(maxWidth: 252)
     } trailing: {
       TunedInFloatingAction(
         systemImage: isSaving ? "ellipsis" : "checkmark",
@@ -458,10 +463,9 @@ struct ConcertEditView: View {
       )
       .disabled(isSaving)
     }
-    .padding(.horizontal, 20)
+    .padding(.horizontal, 16)
     .padding(.top, 8)
     .padding(.bottom, 8)
-    .background(TunedInDesign.pageBackground.opacity(0.9))
   }
 
   private var isShowingError: Binding<Bool> {

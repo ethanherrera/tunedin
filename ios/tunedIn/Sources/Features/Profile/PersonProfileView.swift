@@ -41,7 +41,15 @@ struct PersonProfileView: View {
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
           profileHeader
-          relationshipCard
+          if isCurrentUser {
+            TunedInGlassSection {
+              Label("This is your profile", systemImage: "person.crop.circle.badge.checkmark")
+                .font(.headline)
+                .foregroundStyle(TunedInDesign.primaryText)
+            }
+          } else {
+            relationshipCard
+          }
 
           if let errorMessage {
             TunedInFormCard {
@@ -54,13 +62,13 @@ struct PersonProfileView: View {
             }
           }
 
-          if profile.relationship.canViewFriendContent {
+          if isCurrentUser || profile.relationship.canViewFriendContent {
             friendCountLink
             ConcertArchiveView(
               profileID: profile.id,
               viewerID: currentUserID,
               viewerUsername: currentUsername,
-              isOwner: false,
+              isOwner: isCurrentUser,
               concertRepository: concertRepository,
               socialRepository: socialRepository,
               refreshToken: 0
@@ -102,10 +110,19 @@ struct PersonProfileView: View {
       guard onDismiss == nil else { return }
       floatingControls.resetBackOnly(owner: floatingControlOwner)
     }
-    .safeAreaInset(edge: .bottom, spacing: 0) {
+    .overlay(alignment: .bottom) {
       if let onDismiss {
         TunedInSubscreenBackBar(title: "Profile", action: onDismiss)
+          .padding(.horizontal, 16)
           .padding(.vertical, 8)
+      }
+    }
+    .tunedInEdgeSwipeBack {
+      if let onDismiss {
+        onDismiss()
+      } else {
+        floatingControls.reset()
+        dismiss()
       }
     }
   }
@@ -114,6 +131,10 @@ struct PersonProfileView: View {
     ProfileIdentityHeader(profile: profile) {
       RelationshipPill(relationship: profile.relationship)
     }
+  }
+
+  private var isCurrentUser: Bool {
+    profile.id == currentUserID
   }
 
   private var relationshipCard: some View {
@@ -309,6 +330,7 @@ struct PersonProfileView: View {
   }
 
   private func perform(_ action: PersonAction) {
+    guard !isCurrentUser else { return }
     Task {
       isPerformingAction = true
       do {
@@ -329,7 +351,7 @@ struct PersonProfileView: View {
   }
 
   private func loadFriendCount() async {
-    guard profile.relationship.canViewFriendContent else {
+    guard isCurrentUser || profile.relationship.canViewFriendContent else {
       friendCount = 0
       return
     }

@@ -30,13 +30,18 @@ struct FriendsActivityFeedView: View {
         .ignoresSafeArea()
 
       if model.isLoading, model.activities.isEmpty {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 14) {
           feedHeader
-          Spacer()
-          ProgressView("Finding the good noise…")
-            .foregroundStyle(TunedInDesign.mutedText)
-            .frame(maxWidth: .infinity)
-          Spacer()
+          ForEach(0 ..< 4, id: \.self) { _ in
+            HStack(alignment: .top, spacing: 11) {
+              TunedInSkeletonBlock(cornerRadius: 21).frame(width: 42, height: 42)
+              VStack(alignment: .leading, spacing: 9) {
+                TunedInSkeletonBlock(cornerRadius: 5).frame(height: 16)
+                TunedInSkeletonBlock(cornerRadius: 12).frame(height: 86)
+              }
+            }
+            .padding(15)
+          }
         }
         .padding(.horizontal, 20)
         .padding(.top, 18)
@@ -118,7 +123,11 @@ struct FriendsActivityFeedView: View {
                   socialRepository: socialRepository
                 )
               } label: {
-                ActivityMomentCard(activity: activity, repository: concertRepository)
+                ActivityMomentCard(
+                  activity: activity,
+                  repository: concertRepository,
+                  socialRepository: socialRepository
+                )
               }
               .buttonStyle(.plain)
               .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
@@ -174,8 +183,12 @@ struct FriendsActivityFeedView: View {
   }
 
   private func activityDayTitle(_ day: Date, calendar: Calendar) -> String {
-    if calendar.isDateInToday(day) { return "Today" }
-    if calendar.isDateInYesterday(day) { return "Yesterday" }
+    if calendar.isDateInToday(day) {
+      return "Today"
+    }
+    if calendar.isDateInYesterday(day) {
+      return "Yesterday"
+    }
     return day.formatted(.dateTime.month(.wide).day())
   }
 
@@ -212,15 +225,12 @@ struct FriendsActivityFeedView: View {
 private struct ActivityMomentCard: View {
   let activity: FriendActivity
   let repository: any ConcertRepository
+  let socialRepository: any SocialRepository
 
   var body: some View {
     VStack(alignment: .leading, spacing: 13) {
       HStack(alignment: .top, spacing: 11) {
-        Text(String(activity.actorDisplayName.prefix(1)).uppercased())
-          .font(.subheadline.weight(.black))
-          .foregroundStyle(TunedInDesign.actionForeground)
-          .frame(width: 42, height: 42)
-          .background(TunedInDesign.accentTint, in: Circle())
+        FeedActorAvatar(activity: activity, socialRepository: socialRepository)
 
         (Text(activity.actorDisplayName).fontWeight(.bold)
           + Text(" \(activity.feedActionTitle.lowercased())"))
@@ -262,8 +272,8 @@ private struct ActivityMomentCard: View {
             objectPath: objectPath,
             repository: repository
           )
-            .frame(height: 176)
-            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+          .frame(height: 176)
+          .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
         }
         Text(activity.primaryArtistName)
           .font(.headline)
@@ -331,29 +341,29 @@ private struct ActivityMomentCard: View {
   }
 
   private var setlistDetail: some View {
-      VStack(alignment: .leading, spacing: 9) {
-        eventBadge
-        Text(activity.primaryArtistName)
-          .font(.headline)
-          .foregroundStyle(TunedInDesign.primaryText)
-        ForEach(Array(activity.setlistPreview.prefix(3).enumerated()), id: \.offset) { index, song in
-          HStack(spacing: 9) {
-            Text("\(index + 1)")
-              .font(.caption.weight(.black))
-              .foregroundStyle(TunedInDesign.accent)
-              .frame(width: 17, alignment: .leading)
-            Text(song)
-              .font(.subheadline)
-              .foregroundStyle(TunedInDesign.primaryText)
-              .lineLimit(1)
-          }
-        }
-        if activity.setlistCount > activity.setlistPreview.count {
-          Text("+ \(activity.setlistCount - activity.setlistPreview.count) more songs")
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(TunedInDesign.mutedText)
+    VStack(alignment: .leading, spacing: 9) {
+      eventBadge
+      Text(activity.primaryArtistName)
+        .font(.headline)
+        .foregroundStyle(TunedInDesign.primaryText)
+      ForEach(Array(activity.setlistPreview.prefix(3).enumerated()), id: \.offset) { index, song in
+        HStack(spacing: 9) {
+          Text("\(index + 1)")
+            .font(.caption.weight(.black))
+            .foregroundStyle(TunedInDesign.accent)
+            .frame(width: 17, alignment: .leading)
+          Text(song)
+            .font(.subheadline)
+            .foregroundStyle(TunedInDesign.primaryText)
+            .lineLimit(1)
         }
       }
+      if activity.setlistCount > activity.setlistPreview.count {
+        Text("+ \(activity.setlistCount - activity.setlistPreview.count) more songs")
+          .font(.caption.weight(.semibold))
+          .foregroundStyle(TunedInDesign.mutedText)
+      }
+    }
   }
 
   private var eventBadge: some View {
@@ -376,10 +386,10 @@ private struct ActivityPhotoPreview: View {
         AsyncImage(url: url) { image in
           image.resizable().scaledToFill()
         } placeholder: {
-          ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+          TunedInImagePlaceholder()
         }
       } else {
-        ConcertArtworkImage(artistName: activity.primaryArtistName)
+        TunedInImagePlaceholder()
       }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -394,11 +404,46 @@ private struct ActivityPhotoPreview: View {
   }
 }
 
+private struct FeedActorAvatar: View {
+  let activity: FriendActivity
+  let socialRepository: any SocialRepository
+
+  @State private var profile: SocialProfile?
+  @State private var didFail = false
+
+  var body: some View {
+    Group {
+      if let profile {
+        ProfileAvatarView(profile: profile, size: 42)
+      } else if didFail {
+        Text(String(activity.actorDisplayName.prefix(1)).uppercased())
+          .font(.subheadline.weight(.black))
+          .foregroundStyle(TunedInDesign.actionForeground)
+          .frame(width: 42, height: 42)
+          .background(TunedInDesign.accentTint, in: Circle())
+      } else {
+        TunedInSkeletonBlock(cornerRadius: 21)
+          .frame(width: 42, height: 42)
+      }
+    }
+    .task(id: activity.actorID) {
+      do {
+        profile = try await socialRepository.profile(username: activity.actorUsername)
+        didFail = profile == nil
+      } catch {
+        didFail = true
+      }
+    }
+  }
+}
+
 private struct ActivityDayGroup: Identifiable {
   let day: Date
   let title: String
   let activities: [FriendActivity]
-  var id: Date { day }
+  var id: Date {
+    day
+  }
 }
 
 private extension FriendActivity {
