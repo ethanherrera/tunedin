@@ -55,6 +55,10 @@ struct EmailSignInView: View {
         .controlSize(.large)
         .disabled(isSubmitting || !isEmailValid)
 
+        if session.allowsLocalSeededSignIn {
+          localSeededAccountSignIn
+        }
+
         Spacer()
       }
       .padding(24)
@@ -93,6 +97,43 @@ struct EmailSignInView: View {
     ) != nil
   }
 
+  private var localSeededAccountSignIn: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Divider()
+
+      Text("Local test accounts")
+        .font(.headline)
+
+      Text("Sign in as a seeded account without waiting for an email link.")
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+
+      Button {
+        signIn(to: .listener)
+      } label: {
+        Label("Continue as Local Listener", systemImage: "person.fill.checkmark")
+          .frame(maxWidth: .infinity)
+      }
+      .buttonStyle(.bordered)
+      .controlSize(.large)
+      .disabled(isSubmitting)
+
+      Menu {
+        ForEach(LocalSeededAccount.allCases) { account in
+          Button(account.displayName) {
+            signIn(to: account)
+          }
+        }
+      } label: {
+        Label("Choose another seeded account", systemImage: "person.2")
+          .frame(maxWidth: .infinity)
+      }
+      .buttonStyle(.bordered)
+      .controlSize(.large)
+      .disabled(isSubmitting)
+    }
+  }
+
   private func sendCode() {
     isSubmitting = true
     errorMessage = nil
@@ -102,6 +143,20 @@ struct EmailSignInView: View {
       do {
         try await session.sendEmailOTP(to: address)
         path.append(address)
+      } catch {
+        errorMessage = error.localizedDescription
+      }
+      isSubmitting = false
+    }
+  }
+
+  private func signIn(to account: LocalSeededAccount) {
+    isSubmitting = true
+    errorMessage = nil
+
+    Task {
+      do {
+        try await session.signIn(to: account)
       } catch {
         errorMessage = error.localizedDescription
       }

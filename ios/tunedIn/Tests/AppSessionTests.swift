@@ -104,6 +104,7 @@ private struct StaticAuthenticationRepository: AuthenticationRepository {
   }
 
   func sendEmailOTP(to _: String) async throws {}
+  func signInWithPassword(email _: String, password _: String) async throws {}
   func verifyEmailOTP(email _: String, code _: String) async throws {}
   func signOut() async throws {}
   func handleAuthCallback(_: URL) {}

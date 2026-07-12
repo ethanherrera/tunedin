@@ -13,6 +13,7 @@ This directory contains the versioned Supabase schema, RLS policies, hardened RP
 - Apply reviewed migrations to the hosted project only through `make dev-deploy` after `main` contains the approved change. The workflow reruns disposable backend verification before it mutates `tunedin-dev`.
 - `supabase/seeds/development.sql` is for disposable local resets only. Never reset or seed the shared hosted project through a migration deployment.
 - Seed data must be deterministic and synthetic; never copy production data.
+- The seed is a real local journey catalog, not a visual fixture. Keep its auth accounts, completed/onboarding profiles, relationship states, concerts, collaborations, comments, and events internally valid under the current schema. Update `scripts/verify-local-seed.sh` whenever the catalog or its expected coverage changes, and verify it with `make local-seed-verify`.
 
 ## Secrets and verification
 

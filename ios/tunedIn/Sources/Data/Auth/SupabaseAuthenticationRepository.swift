@@ -32,6 +32,10 @@ struct SupabaseAuthenticationRepository: AuthenticationRepository {
     )
   }
 
+  func signInWithPassword(email: String, password: String) async throws {
+    _ = try await client.auth.signIn(email: email, password: password)
+  }
+
   func verifyEmailOTP(email: String, code: String) async throws {
     _ = try await client.auth.verifyOTP(email: email, token: code, type: .magiclink)
   }
