@@ -381,6 +381,7 @@ struct ConcertDetailView: View {
       if let detail {
         ConcertEditView(
           detail: detail,
+          canMakePrivate: viewerRole == .owner,
           concertRepository: concertRepository,
           loadLatestDetail: {
             try await concertRepository.fetchConcertDetail(id: concertID, viewerID: viewerID)

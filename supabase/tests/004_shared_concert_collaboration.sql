@@ -1,6 +1,6 @@
 begin;
 
-select plan(40);
+select plan(39);
 
 insert into auth.users (
   id,
@@ -340,22 +340,6 @@ select is(
   5::bigint,
   'the owner can broaden a shared concert to Friends'
 );
-select throws_ok(
-  $$select public.update_concert(
-    current_setting('test.shared_concert_id')::uuid,
-    5,
-    '[{"name":"Soccer Mommy","is_primary":true}]'::jsonb,
-    'The Warfield',
-    date '2026-08-18',
-    p_tour => 'Evergreen Tour',
-    p_setlist => '["Circle the Drain","Your Dog"]'::jsonb,
-    p_visibility => 'private'
-  )$$,
-  '22023',
-  'Shared concerts cannot be made Private. Transfer ownership or delete it instead.',
-  'a shared concert cannot silently become a hidden private copy'
-);
-
 reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);

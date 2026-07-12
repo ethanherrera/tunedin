@@ -11,14 +11,13 @@ struct ConcertPeopleView: View {
 
   @State private var friends: [SocialProfile] = []
   @State private var visibility: ConcertVisibility
-  @State private var hasBeenShared: Bool
   @State private var isLoadingFriends = true
   @State private var isWorking = false
   @State private var errorMessage: String?
   @State private var transferCandidate: ConcertCollaborator?
   @State private var isShowingTransferConfirmation = false
   @State private var removalCandidate: ConcertCollaborator?
-  @State private var pendingVisibilityNarrowing: ConcertVisibility?
+  @State private var pendingAccessRestriction: ConcertVisibility?
 
   init(
     detail: ConcertDetail,
@@ -37,7 +36,6 @@ struct ConcertPeopleView: View {
     self.onChanged = onChanged
     self.pageHeader = pageHeader
     _visibility = State(initialValue: detail.concert.visibility)
-    _hasBeenShared = State(initialValue: detail.concert.visibility != .private)
   }
 
   var body: some View {
@@ -66,7 +64,6 @@ struct ConcertPeopleView: View {
     }
     .onChange(of: detail.concert.version) { _, _ in
       visibility = detail.concert.visibility
-      hasBeenShared = hasBeenShared || detail.concert.visibility != .private
     }
     .confirmationDialog(
       "Hand over this concert?",
@@ -111,24 +108,24 @@ struct ConcertPeopleView: View {
           ? "Set sharing and choose who can help with this concert."
           : "See who helps with this concert."
       )
-        .font(.subheadline)
-        .foregroundStyle(TunedInDesign.mutedText)
+      .font(.subheadline)
+      .foregroundStyle(TunedInDesign.mutedText)
     }
   }
 
   private var sharingControls: some View {
     ConcertSharingControls(
       visibility: visibility,
-      hasBeenShared: hasBeenShared,
       canManagePeople: viewerRole.canManagePeople,
+      canMakePrivate: viewerRole == .owner,
       isWorking: isWorking,
       selectVisibility: requestVisibilityChange,
-      pendingVisibilityNarrowing: pendingVisibilityNarrowing,
-      confirmVisibilityNarrowing: { option in
+      pendingAccessRestriction: pendingAccessRestriction,
+      confirmAccessRestriction: { option in
         updateVisibility(to: option)
-        pendingVisibilityNarrowing = nil
+        pendingAccessRestriction = nil
       },
-      cancelVisibilityNarrowing: { pendingVisibilityNarrowing = nil }
+      cancelAccessRestriction: { pendingAccessRestriction = nil }
     )
   }
 
@@ -255,8 +252,8 @@ struct ConcertPeopleView: View {
 
   private func requestVisibilityChange(to option: ConcertVisibility) {
     guard option != visibility else { return }
-    if visibility == .friends, option == .collaborators {
-      pendingVisibilityNarrowing = option
+    if option == .private || (visibility == .friends && option == .collaborators) {
+      pendingAccessRestriction = option
     } else {
       updateVisibility(to: option)
     }
@@ -275,7 +272,6 @@ struct ConcertPeopleView: View {
       do {
         let updated = try await concertRepository.updateConcert(input)
         visibility = updated.visibility
-        hasBeenShared = hasBeenShared || updated.visibility != .private
         onChanged()
       } catch {
         errorMessage = error.localizedDescription
@@ -372,13 +368,13 @@ private struct ConcertPeopleErrorCard: View {
 
 private struct ConcertSharingControls: View {
   let visibility: ConcertVisibility
-  let hasBeenShared: Bool
   let canManagePeople: Bool
+  let canMakePrivate: Bool
   let isWorking: Bool
   let selectVisibility: (ConcertVisibility) -> Void
-  let pendingVisibilityNarrowing: ConcertVisibility?
-  let confirmVisibilityNarrowing: (ConcertVisibility) -> Void
-  let cancelVisibilityNarrowing: () -> Void
+  let pendingAccessRestriction: ConcertVisibility?
+  let confirmAccessRestriction: (ConcertVisibility) -> Void
+  let cancelAccessRestriction: () -> Void
 
   var body: some View {
     TunedInGlassSection {
@@ -399,14 +395,14 @@ private struct ConcertSharingControls: View {
           .font(.subheadline)
           .foregroundStyle(TunedInDesign.mutedText)
 
-        if hasBeenShared {
-          Text("Shared concerts stay shared.")
+        if !canMakePrivate, visibility != .private {
+          Text("Only the owner can make this concert private.")
             .font(.caption.weight(.semibold))
             .foregroundStyle(TunedInDesign.mutedText)
         }
 
-        if let pendingVisibilityNarrowing {
-          visibilityNarrowingConfirmation(for: pendingVisibilityNarrowing)
+        if let pendingAccessRestriction {
+          accessRestrictionConfirmation(for: pendingAccessRestriction)
         }
       }
     }
@@ -429,28 +425,26 @@ private struct ConcertSharingControls: View {
         )
     }
     .buttonStyle(.plain)
-    .disabled(isWorking || (option == .private && hasBeenShared))
-    .opacity(option == .private && hasBeenShared ? 0.45 : 1)
+    .disabled(isWorking || (option == .private && !canMakePrivate))
+    .opacity(option == .private && !canMakePrivate ? 0.45 : 1)
   }
 
-  private func visibilityNarrowingConfirmation(for option: ConcertVisibility) -> some View {
+  private func accessRestrictionConfirmation(for option: ConcertVisibility) -> some View {
     VStack(alignment: .leading, spacing: 10) {
       Divider()
         .overlay(TunedInDesign.cardBorder.opacity(0.5))
 
-      Text("Remove Friends access?")
+      Text(accessRestrictionTitle(for: option))
         .font(.subheadline.weight(.bold))
         .foregroundStyle(TunedInDesign.primaryText)
 
-      Text(
-        "Friends who are not tagged editors will lose access. Tagged editors keep their role."
-      )
-      .font(.caption)
-      .foregroundStyle(TunedInDesign.mutedText)
+      Text(accessRestrictionDescription(for: option))
+        .font(.caption)
+        .foregroundStyle(TunedInDesign.mutedText)
 
       HStack(spacing: 8) {
-        Button("Keep Friends") {
-          cancelVisibilityNarrowing()
+        Button(cancelAccessRestrictionTitle(for: option)) {
+          cancelAccessRestriction()
         }
         .buttonStyle(.plain)
         .font(.caption.weight(.bold))
@@ -459,8 +453,8 @@ private struct ConcertSharingControls: View {
         .padding(.vertical, 10)
         .background(TunedInDesign.raisedSurface, in: Capsule())
 
-        Button("Limit to \(option.displayTitle)") {
-          confirmVisibilityNarrowing(option)
+        Button(confirmAccessRestrictionTitle(for: option)) {
+          confirmAccessRestriction(option)
         }
         .buttonStyle(.plain)
         .font(.caption.weight(.bold))
@@ -471,6 +465,24 @@ private struct ConcertSharingControls: View {
       }
       .disabled(isWorking)
     }
+  }
+
+  private func accessRestrictionTitle(for option: ConcertVisibility) -> String {
+    option == .private ? "Make this concert private?" : "Remove Friends access?"
+  }
+
+  private func accessRestrictionDescription(for option: ConcertVisibility) -> String {
+    option == .private
+      ? "Everyone you tagged will lose access immediately. You will be the only person who can see this concert."
+      : "Friends who are not tagged editors will lose access. Tagged editors keep their role."
+  }
+
+  private func cancelAccessRestrictionTitle(for option: ConcertVisibility) -> String {
+    option == .private ? "Keep sharing" : "Keep Friends"
+  }
+
+  private func confirmAccessRestrictionTitle(for option: ConcertVisibility) -> String {
+    option == .private ? "Make Private" : "Limit to \(option.displayTitle)"
   }
 
   private var visibilityDescription: String {

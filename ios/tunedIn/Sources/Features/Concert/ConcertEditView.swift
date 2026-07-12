@@ -30,6 +30,7 @@ struct ConcertEditView: View {
   }
 
   let detail: ConcertDetail
+  let canMakePrivate: Bool
   let concertRepository: any ConcertRepository
   let loadLatestDetail: @Sendable () async throws -> ConcertDetail
   let onSaved: (Concert) -> Void
@@ -38,7 +39,6 @@ struct ConcertEditView: View {
   @State private var draft: ConcertDraft
   @State private var visibility: ConcertVisibility
   @State private var expectedVersion: Int64
-  @State private var hasBeenShared: Bool
   @State private var page: EditPage = .night
   @State private var isSaving = false
   @State private var isReloadingAfterConflict = false
@@ -48,18 +48,19 @@ struct ConcertEditView: View {
 
   init(
     detail: ConcertDetail,
+    canMakePrivate: Bool,
     concertRepository: any ConcertRepository,
     loadLatestDetail: @escaping @Sendable () async throws -> ConcertDetail,
     onSaved: @escaping (Concert) -> Void
   ) {
     self.detail = detail
+    self.canMakePrivate = canMakePrivate
     self.concertRepository = concertRepository
     self.loadLatestDetail = loadLatestDetail
     self.onSaved = onSaved
     _draft = State(initialValue: ConcertDraft(detail: detail))
     _visibility = State(initialValue: detail.concert.visibility)
     _expectedVersion = State(initialValue: detail.concert.version)
-    _hasBeenShared = State(initialValue: detail.concert.visibility != .private)
   }
 
   var body: some View {
@@ -106,23 +107,20 @@ struct ConcertEditView: View {
         )
       }
       .confirmationDialog(
-        "Remove Friends access?",
+        accessRestrictionTitle,
         isPresented: isShowingVisibilityNarrowingConfirmation,
         titleVisibility: .visible,
         presenting: pendingVisibilityNarrowing
       ) { option in
-        Button("Limit to \(visibilityTitle(option))", role: .destructive) {
+        Button(confirmAccessRestrictionTitle(for: option), role: .destructive) {
           visibility = option
           pendingVisibilityNarrowing = nil
         }
-        Button("Keep Friends access", role: .cancel) {
+        Button(cancelAccessRestrictionTitle(for: option), role: .cancel) {
           pendingVisibilityNarrowing = nil
         }
       } message: { _ in
-        Text(
-          "Friends who are not tagged editors will lose access without receiving a private copy. "
-            + "Tagged editors keep their role."
-        )
+        Text(accessRestrictionDescription)
       }
     }
     .tint(TunedInDesign.accent)
@@ -313,14 +311,12 @@ struct ConcertEditView: View {
   }
 
   private var availableVisibility: [ConcertVisibility] {
-    !hasBeenShared
-      ? ConcertVisibility.allCases
-      : [.collaborators, .friends]
+    canMakePrivate ? ConcertVisibility.allCases : [.collaborators, .friends]
   }
 
   private func visibilityChoice(_ option: ConcertVisibility) -> some View {
     Button {
-      if visibility == .friends, option == .collaborators {
+      if option == .private || (visibility == .friends && option == .collaborators) {
         pendingVisibilityNarrowing = option
       } else {
         withAnimation(.snappy) { visibility = option }
@@ -425,6 +421,24 @@ struct ConcertEditView: View {
     })
   }
 
+  private var accessRestrictionTitle: String {
+    pendingVisibilityNarrowing == .private ? "Make this concert private?" : "Remove Friends access?"
+  }
+
+  private var accessRestrictionDescription: String {
+    pendingVisibilityNarrowing == .private
+      ? "Everyone you tagged will lose access immediately. You will be the only person who can see this concert."
+      : "Friends who are not tagged editors will lose access. Tagged editors keep their role."
+  }
+
+  private func cancelAccessRestrictionTitle(for option: ConcertVisibility) -> String {
+    option == .private ? "Keep sharing" : "Keep Friends access"
+  }
+
+  private func confirmAccessRestrictionTitle(for option: ConcertVisibility) -> String {
+    option == .private ? "Make Private" : "Limit to \(visibilityTitle(option))"
+  }
+
   private var isShowingConflict: Binding<Bool> {
     Binding(get: { conflictMessage != nil }, set: {
       if !$0 {
@@ -510,7 +524,6 @@ struct ConcertEditView: View {
       draft = ConcertDraft(detail: latest)
       visibility = latest.concert.visibility
       expectedVersion = latest.concert.version
-      hasBeenShared = hasBeenShared || latest.concert.visibility != .private
       conflictMessage = nil
       errorMessage = nil
     } catch {

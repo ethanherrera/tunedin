@@ -70,11 +70,12 @@
     func updateConcert(_ input: ConcertUpdateInput) async throws -> Concert {
       var detail = try detail(for: input.concertID)
       try assertCurrentVersion(detail.concert, expected: input.expectedVersion)
-      guard currentRole(in: detail) != .viewer else {
+      let role = currentRole(in: detail)
+      guard role != .viewer else {
         throw DevelopmentConcertRepositoryError.permissionDenied
       }
-      guard detail.concert.visibility == .private || input.visibility != .private else {
-        throw DevelopmentConcertRepositoryError.sharedConcertCannotBePrivate
+      if detail.concert.visibility != .private, input.visibility == .private, role != .owner {
+        throw DevelopmentConcertRepositoryError.ownerRequired
       }
 
       let now = Date()
@@ -112,7 +113,7 @@
         artists: artists,
         setlist: setlist,
         history: detail.history + [timelineEvent(kind: kind, at: now)],
-        collaborators: detail.collaborators
+        collaborators: input.visibility == .private ? [] : detail.collaborators
       )
       details[input.concertID] = detail
       return updatedConcert
@@ -633,7 +634,6 @@
     case ownerRequired
     case conflict
     case privateConcert
-    case sharedConcertCannotBePrivate
     case invalidComment
     case commentAuthorRequired
 
@@ -649,8 +649,6 @@
         "This concert changed elsewhere. Refresh and try again."
       case .privateConcert:
         "Choose Collaborators or Friends before adding someone."
-      case .sharedConcertCannotBePrivate:
-        "Shared concerts cannot become Private. Transfer ownership or delete the concert instead."
       case .invalidComment:
         "Write a comment before sharing it."
       case .commentAuthorRequired:
