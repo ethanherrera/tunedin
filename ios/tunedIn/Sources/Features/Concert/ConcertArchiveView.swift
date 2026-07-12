@@ -102,6 +102,8 @@ struct ConcertArchiveView: View {
               ConcertArchiveRow(preview: preview)
             }
             .buttonStyle(.plain)
+            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .accessibilityLabel("Open \(preview.primaryArtistName)")
           }
 
           if canLoadMore {
@@ -259,6 +261,8 @@ private struct ConcertArchiveRow: View {
       RoundedRectangle(cornerRadius: 20, style: .continuous)
         .strokeBorder(.white.opacity(0.18))
     }
+    .frame(maxWidth: .infinity)
+    .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     .accessibilityElement(children: .combine)
   }
 

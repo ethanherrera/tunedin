@@ -4,22 +4,27 @@ import Observation
 import SwiftUI
 
 struct FriendsListView: View {
+  let profileUsername: String
   let currentUserID: UUID
   let currentUsername: String
   let socialRepository: any SocialRepository
   let concertRepository: any ConcertRepository
 
   @State private var model: PeopleHubModel
+  @State private var query = ""
   @State private var floatingControlOwner = UUID()
   @Environment(\.dismiss) private var dismiss
   @EnvironmentObject private var floatingControls: ConcertFloatingControls
 
   init(
+    profileUsername: String? = nil,
     currentUserID: UUID,
     currentUsername: String,
     socialRepository: any SocialRepository,
     concertRepository: any ConcertRepository
   ) {
+    let requestedProfileUsername = profileUsername ?? currentUsername
+    self.profileUsername = requestedProfileUsername
     self.currentUserID = currentUserID
     self.currentUsername = currentUsername
     self.socialRepository = socialRepository
@@ -27,7 +32,7 @@ struct FriendsListView: View {
     _model = State(
       initialValue: PeopleHubModel(
         repository: socialRepository,
-        currentUsername: currentUsername
+        currentUsername: requestedProfileUsername
       )
     )
   }
@@ -39,25 +44,35 @@ struct FriendsListView: View {
 
       ScrollView {
         VStack(alignment: .leading, spacing: 16) {
+          TunedInGlassSearchField(text: $query, prompt: "Search friends")
+
           if let errorMessage = model.errorMessage {
             ContentUnavailableView {
               Label("Couldn’t refresh friends", systemImage: "exclamationmark.triangle")
             } description: {
               Text(errorMessage)
             } actions: {
-              Button("Try again") { Task { await model.refresh() } }
+              Button("Try again") { Task { await model.refreshFriends() } }
             }
           } else if model.friends.isEmpty {
             ContentUnavailableView(
               "No friends yet",
               systemImage: "person.2",
-              description: Text("Search by @username to find someone.")
+              description: Text("There’s nobody to show here yet.")
             )
             .frame(maxWidth: .infinity)
             .padding(.top, 72)
+          } else if filteredFriends.isEmpty {
+            ContentUnavailableView(
+              "No matching friends",
+              systemImage: "magnifyingglass",
+              description: Text("Try a different name or @username.")
+            )
+            .frame(maxWidth: .infinity)
+            .padding(.top, 56)
           } else {
             LazyVStack(spacing: 10) {
-              ForEach(model.friends) { profile in
+              ForEach(filteredFriends) { profile in
                 friendProfileLink(profile)
               }
             }
@@ -71,22 +86,7 @@ struct FriendsListView: View {
     .navigationTitle("Friends")
     .navigationBarTitleDisplayMode(.inline)
     .navigationBarBackButtonHidden()
-    .toolbar {
-      ToolbarItem(placement: .topBarTrailing) {
-        NavigationLink {
-          FriendSearchView(
-            currentUserID: currentUserID,
-            currentUsername: currentUsername,
-            socialRepository: socialRepository,
-            concertRepository: concertRepository
-          )
-        } label: {
-          Image(systemName: "magnifyingglass")
-        }
-        .accessibilityLabel("Search people")
-      }
-    }
-    .task { await model.refresh() }
+    .task { await model.refreshFriends() }
     .onAppear {
       floatingControls.configureBackOnly(title: "Friends", owner: floatingControlOwner) {
         floatingControls.reset()
@@ -109,6 +109,16 @@ struct FriendsListView: View {
       PersonRow(profile: profile)
     }
     .buttonStyle(.plain)
+  }
+
+  private var filteredFriends: [SocialProfile] {
+    let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !normalizedQuery.isEmpty else { return model.friends }
+
+    return model.friends.filter { profile in
+      profile.displayName.localizedCaseInsensitiveContains(normalizedQuery)
+        || profile.username.localizedCaseInsensitiveContains(normalizedQuery)
+    }
   }
 }
 
@@ -344,6 +354,15 @@ final class PeopleHubModel {
   init(repository: any SocialRepository, currentUsername: String) {
     self.repository = repository
     self.currentUsername = currentUsername
+  }
+
+  func refreshFriends() async {
+    do {
+      friends = try await repository.friends(username: currentUsername)
+      errorMessage = nil
+    } catch {
+      errorMessage = error.localizedDescription
+    }
   }
 
   func refresh() async {

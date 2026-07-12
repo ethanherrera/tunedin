@@ -14,6 +14,7 @@ struct ConcertPeopleView: View {
   @State private var isLoadingFriends = true
   @State private var isWorking = false
   @State private var errorMessage: String?
+  @State private var isPresentingEditorPicker = false
   @State private var transferCandidate: ConcertCollaborator?
   @State private var isShowingTransferConfirmation = false
   @State private var removalCandidate: ConcertCollaborator?
@@ -96,6 +97,14 @@ struct ConcertPeopleView: View {
     } message: { member in
       Text(removalMessage(for: member))
     }
+    .sheet(isPresented: $isPresentingEditorPicker) {
+      ConcertEditorPickerView(friends: availableFriends) { friend in
+        isPresentingEditorPicker = false
+        add(friend)
+      }
+      .presentationDetents([.medium, .large])
+      .presentationDragIndicator(.visible)
+    }
   }
 
   private var header: some View {
@@ -149,14 +158,8 @@ struct ConcertPeopleView: View {
           .foregroundStyle(TunedInDesign.mutedText)
       }
     } else {
-      Menu {
-        ForEach(availableFriends) { friend in
-          Button {
-            add(friend)
-          } label: {
-            Label(friend.displayName, systemImage: "person.badge.plus")
-          }
-        }
+      Button {
+        isPresentingEditorPicker = true
       } label: {
         Label("Add a friend as an editor", systemImage: "person.badge.plus")
           .font(.headline)
@@ -375,8 +378,47 @@ private struct ConcertSharingControls: View {
   let pendingAccessRestriction: ConcertVisibility?
   let confirmAccessRestriction: (ConcertVisibility) -> Void
   let cancelAccessRestriction: () -> Void
+  @State private var isExpanded = false
 
   var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      sharingPill
+
+      if isExpanded {
+        sharingOptions
+      }
+    }
+  }
+
+  private var sharingPill: some View {
+    Button {
+      withAnimation(.snappy) { isExpanded.toggle() }
+    } label: {
+      HStack(spacing: 7) {
+        Image(systemName: visibilityIcon)
+        Text(visibility.displayTitle)
+        if canManagePeople {
+          Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+            .font(.caption.weight(.bold))
+        }
+      }
+      .font(.caption.weight(.bold))
+      .foregroundStyle(TunedInDesign.primaryText)
+      .padding(.horizontal, 12)
+      .padding(.vertical, 9)
+      .background(TunedInDesign.raisedSurface, in: Capsule())
+      .overlay {
+        Capsule()
+          .strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
+      }
+    }
+    .buttonStyle(.plain)
+    .disabled(!canManagePeople)
+    .accessibilityLabel("Sharing: \(visibility.displayTitle)")
+    .accessibilityHint(canManagePeople ? "Shows sharing options" : "Only the owner can change sharing")
+  }
+
+  private var sharingOptions: some View {
     TunedInGlassSection {
       VStack(alignment: .leading, spacing: 10) {
         Text("Sharing")
@@ -405,6 +447,14 @@ private struct ConcertSharingControls: View {
           accessRestrictionConfirmation(for: pendingAccessRestriction)
         }
       }
+    }
+  }
+
+  private var visibilityIcon: String {
+    switch visibility {
+    case .private: "lock.fill"
+    case .collaborators: "person.2.fill"
+    case .friends: "heart.fill"
     }
   }
 
@@ -497,6 +547,102 @@ private struct ConcertSharingControls: View {
   }
 }
 
+private struct ConcertEditorPickerView: View {
+  let friends: [SocialProfile]
+  let onSelect: (SocialProfile) -> Void
+
+  @Environment(\.dismiss) private var dismiss
+  @State private var query = ""
+
+  var body: some View {
+    NavigationStack {
+      ZStack {
+        TunedInDesign.pageBackground
+          .ignoresSafeArea()
+
+        ScrollView {
+          VStack(alignment: .leading, spacing: 12) {
+            TunedInGlassSearchField(text: $query, prompt: "Search friends")
+
+            if filteredFriends.isEmpty {
+              ContentUnavailableView(
+                query.isEmpty ? "No friends to add" : "No matching friends",
+                systemImage: query.isEmpty ? "person.2" : "magnifyingglass",
+                description: Text(
+                  query.isEmpty
+                    ? "Everyone eligible is already an editor."
+                    : "Try a different name or @username."
+                )
+              )
+              .frame(maxWidth: .infinity)
+              .padding(.top, 56)
+            } else {
+              LazyVStack(spacing: 0) {
+                ForEach(filteredFriends) { friend in
+                  Button {
+                    onSelect(friend)
+                  } label: {
+                    friendRow(friend)
+                  }
+                  .buttonStyle(.plain)
+                  .accessibilityLabel("Add \(friend.displayName) as an editor")
+
+                  if friend.id != filteredFriends.last?.id {
+                    Divider()
+                      .overlay(TunedInDesign.cardBorder.opacity(0.7))
+                      .padding(.leading, 64)
+                  }
+                }
+              }
+              .padding(.top, 6)
+            }
+          }
+          .padding(.horizontal, 20)
+          .padding(.top, 12)
+          .padding(.bottom, 32)
+        }
+      }
+      .navigationTitle("Add an editor")
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button("Cancel") { dismiss() }
+        }
+      }
+    }
+  }
+
+  private var filteredFriends: [SocialProfile] {
+    let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !normalizedQuery.isEmpty else { return friends }
+
+    return friends.filter { friend in
+      friend.displayName.localizedCaseInsensitiveContains(normalizedQuery)
+        || friend.username.localizedCaseInsensitiveContains(normalizedQuery)
+    }
+  }
+
+  private func friendRow(_ friend: SocialProfile) -> some View {
+    HStack(spacing: 12) {
+      ProfileMonogram(profile: friend, size: 52)
+      VStack(alignment: .leading, spacing: 2) {
+        Text(friend.username)
+          .font(.headline)
+          .foregroundStyle(TunedInDesign.primaryText)
+        Text(friend.displayName)
+          .font(.subheadline)
+          .foregroundStyle(TunedInDesign.mutedText)
+      }
+      Spacer(minLength: 0)
+      Image(systemName: "plus.circle.fill")
+        .font(.title3)
+        .foregroundStyle(TunedInDesign.accent)
+    }
+    .padding(.vertical, 10)
+    .contentShape(Rectangle())
+  }
+}
+
 private extension ConcertVisibility {
   var displayTitle: String {
     switch self {
@@ -583,16 +729,11 @@ struct ConcertCommentsView: View {
   }
 
   private var emptyState: some View {
-    VStack(alignment: .leading, spacing: 18) {
-      TunedInTicketCard {
-        Label("NO COMMENTS YET", systemImage: "text.bubble")
-          .font(.caption.weight(.bold))
-          .foregroundStyle(.white.opacity(0.8))
-        Text("Leave the first comment.")
-          .font(.system(size: 28, weight: .bold, design: .serif))
-          .foregroundStyle(.white)
-      }
-    }
+    Text("No comments yet. Leave the first one.")
+      .font(.subheadline)
+      .foregroundStyle(TunedInDesign.mutedText)
+      .padding(.horizontal, 4)
+      .padding(.vertical, 12)
   }
 
   private var composer: some View {

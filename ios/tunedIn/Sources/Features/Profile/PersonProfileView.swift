@@ -12,7 +12,7 @@ struct PersonProfileView: View {
   @EnvironmentObject private var floatingControls: ConcertFloatingControls
   @State private var floatingControlOwner = UUID()
   @State private var profile: SocialProfile
-  @State private var friends: [SocialProfile] = []
+  @State private var friendCount = 0
   @State private var isPerformingAction = false
   @State private var errorMessage: String?
   @State private var isShowingRemoveConfirmation = false
@@ -55,7 +55,7 @@ struct PersonProfileView: View {
           }
 
           if profile.relationship.canViewFriendContent {
-            friendListSection
+            friendCountLink
             ConcertArchiveView(
               profileID: profile.id,
               viewerID: currentUserID,
@@ -89,7 +89,7 @@ struct PersonProfileView: View {
       Text("Friends-visible concerts disappear for both of you unless you are tagged collaborators.")
     }
     .task {
-      await loadFriendList()
+      await loadFriendCount()
     }
     .onAppear {
       guard onDismiss == nil else { return }
@@ -111,35 +111,27 @@ struct PersonProfileView: View {
   }
 
   private var profileHeader: some View {
-    HStack(spacing: 16) {
-      ProfileMonogram(profile: profile, size: 78)
-      VStack(alignment: .leading, spacing: 5) {
-        Text(profile.displayName)
-          .font(.system(size: 28, weight: .bold, design: .serif))
-          .foregroundStyle(TunedInDesign.primaryText)
-        Text("@\(profile.username)")
-          .font(.subheadline)
-          .foregroundStyle(TunedInDesign.mutedText)
-        RelationshipPill(relationship: profile.relationship)
-      }
-      Spacer(minLength: 0)
+    ProfileIdentityHeader(profile: profile) {
+      RelationshipPill(relationship: profile.relationship)
     }
   }
 
   private var relationshipCard: some View {
     TunedInGlassSection {
-      HStack(alignment: .top, spacing: 12) {
-        Image(systemName: relationshipIcon)
-          .font(.title3.weight(.semibold))
-          .foregroundStyle(TunedInDesign.accent)
-          .frame(width: 28)
-        VStack(alignment: .leading, spacing: 4) {
-          Text(relationshipTitle)
-            .font(.headline)
-            .foregroundStyle(TunedInDesign.primaryText)
-          Text(relationshipDescription)
-            .font(.subheadline)
-            .foregroundStyle(TunedInDesign.mutedText)
+      if profile.relationship != .friends {
+        HStack(alignment: .top, spacing: 12) {
+          Image(systemName: relationshipIcon)
+            .font(.title3.weight(.semibold))
+            .foregroundStyle(TunedInDesign.accent)
+            .frame(width: 28)
+          VStack(alignment: .leading, spacing: 4) {
+            Text(relationshipTitle)
+              .font(.headline)
+              .foregroundStyle(TunedInDesign.primaryText)
+            Text(relationshipDescription)
+              .font(.subheadline)
+              .foregroundStyle(TunedInDesign.mutedText)
+          }
         }
       }
 
@@ -177,7 +169,7 @@ struct PersonProfileView: View {
       }
     case .friends:
       HStack(spacing: 10) {
-        Label("You’re friends", systemImage: "heart.fill")
+        Label("Friends", systemImage: "heart.fill")
           .font(.subheadline.weight(.bold))
           .foregroundStyle(TunedInDesign.actionForeground)
           .frame(maxWidth: .infinity)
@@ -211,40 +203,15 @@ struct PersonProfileView: View {
     }
   }
 
-  private var friendListSection: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      HStack {
-        Text("Friends")
-          .font(.headline)
-          .foregroundStyle(TunedInDesign.primaryText)
-        Text("\(friends.count)")
-          .font(.caption.weight(.bold))
-          .foregroundStyle(TunedInDesign.actionForeground)
-          .padding(.horizontal, 7)
-          .padding(.vertical, 3)
-          .background(TunedInDesign.accent, in: Capsule())
-      }
-
-      if friends.isEmpty {
-        Text("Their circle is taking shape.")
-          .font(.subheadline)
-          .foregroundStyle(TunedInDesign.mutedText)
-      } else {
-        ScrollView(.horizontal, showsIndicators: false) {
-          HStack(spacing: 10) {
-            ForEach(friends) { friend in
-              VStack(spacing: 6) {
-                ProfileMonogram(profile: friend, size: 48)
-                Text(friend.displayName.split(separator: " ").first.map(String.init) ?? friend.displayName)
-                  .font(.caption.weight(.semibold))
-                  .foregroundStyle(TunedInDesign.primaryText)
-                  .lineLimit(1)
-              }
-              .frame(width: 66)
-            }
-          }
-        }
-      }
+  private var friendCountLink: some View {
+    ProfileFriendsLink(count: friendCount) {
+      FriendsListView(
+        profileUsername: profile.username,
+        currentUserID: currentUserID,
+        currentUsername: currentUsername,
+        socialRepository: socialRepository,
+        concertRepository: concertRepository
+      )
     }
   }
 
@@ -253,11 +220,11 @@ struct PersonProfileView: View {
       Image(systemName: "eye.slash.fill")
         .font(.title2)
         .foregroundStyle(TunedInDesign.accent)
-      Text("A profile, not a window.")
+      Text("Friends-only archive")
         .font(.headline)
         .foregroundStyle(TunedInDesign.primaryText)
       Text(
-        "You can see who \(profile.displayName) is. Their friends and concert diary stay private until you’re friends."
+        "Their friend list and friends-visible concerts unlock once you’re friends."
       )
       .font(.subheadline)
       .foregroundStyle(TunedInDesign.mutedText)
@@ -273,7 +240,7 @@ struct PersonProfileView: View {
     case .incoming:
       "They want to be friends"
     case .friends:
-      "In each other’s circle"
+      "Friends"
     case .declined:
       "Give it a little space"
     case .blocked:
@@ -290,9 +257,9 @@ struct PersonProfileView: View {
     case .outgoing:
       "You can take it back any time before they respond."
     case .incoming:
-      "Accept to see Friends-visible concerts and each other’s friend lists."
+      "Accept to see friends-visible concerts and their friend list."
     case .friends:
-      "You can see Friends-visible concerts and the people in each other’s circle."
+      "You can see friends-visible concerts and their friend list."
     case .declined:
       "They passed for now. You can try again after a short cooldown."
     case .blocked:
@@ -352,7 +319,7 @@ struct PersonProfileView: View {
             profile = refreshed
           }
         }
-        await loadFriendList()
+        await loadFriendCount()
         errorMessage = nil
       } catch {
         errorMessage = error.localizedDescription
@@ -361,14 +328,14 @@ struct PersonProfileView: View {
     }
   }
 
-  private func loadFriendList() async {
+  private func loadFriendCount() async {
     guard profile.relationship.canViewFriendContent else {
-      friends = []
+      friendCount = 0
       return
     }
 
     do {
-      friends = try await socialRepository.friends(username: profile.username)
+      friendCount = try await socialRepository.friends(username: profile.username).count
     } catch {
       errorMessage = error.localizedDescription
     }
