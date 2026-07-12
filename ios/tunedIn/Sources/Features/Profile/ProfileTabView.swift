@@ -85,7 +85,7 @@ struct MainTabView: View {
         subscreenBottomBar(title: title)
           .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
       case .none:
-        TunedInGlassTraversalLayout {
+        TunedInGlassTraversalLayout(sideReservation: 140) {
           EmptyView()
         } center: {
           TunedInGlassBottomBar {
@@ -218,8 +218,8 @@ struct MainTabView: View {
         .font(.caption2.weight(.bold))
     }
     .foregroundStyle(isSelected ? TunedInDesign.actionForeground : TunedInDesign.primaryText)
-    .frame(minWidth: 76, minHeight: 48)
-    .padding(.horizontal, 2)
+    .frame(minWidth: 58, minHeight: 48)
+    .padding(.horizontal, 3)
     .background(isSelected ? TunedInDesign.accent : .clear, in: Capsule())
   }
 }

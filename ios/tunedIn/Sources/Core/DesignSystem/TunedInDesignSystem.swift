@@ -107,6 +107,7 @@ struct TunedInGlassIconButton: View {
 }
 
 struct TunedInGlassTraversalLayout<Leading: View, Center: View, Trailing: View>: View {
+  var sideReservation: CGFloat = 74
   @ViewBuilder let leading: Leading
   @ViewBuilder let center: Center
   @ViewBuilder let trailing: Trailing
@@ -115,7 +116,7 @@ struct TunedInGlassTraversalLayout<Leading: View, Center: View, Trailing: View>:
     GeometryReader { proxy in
       ZStack(alignment: .bottom) {
         center
-          .frame(maxWidth: max(0, proxy.size.width - 148))
+          .frame(maxWidth: max(0, proxy.size.width - (sideReservation * 2)))
 
         HStack(alignment: .bottom, spacing: 12) {
           leading
