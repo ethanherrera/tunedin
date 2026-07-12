@@ -81,6 +81,70 @@ struct TunedInFloatingActionLabel: View {
   }
 }
 
+struct TunedInGlassIconButton: View {
+  enum Style: Equatable {
+    case neutral
+    case accent
+  }
+
+  let systemImage: String
+  let accessibilityLabel: String
+  var style: Style = .neutral
+  let action: () -> Void
+
+  var body: some View {
+    Button(action: action) {
+      Image(systemName: systemImage)
+        .font(.subheadline.weight(.bold))
+        .foregroundStyle(TunedInDesign.primaryText)
+        .frame(width: 46, height: 46)
+        .contentShape(Circle())
+        .modifier(TunedInLiquidGlassIconSurface(style: style))
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel(accessibilityLabel)
+  }
+}
+
+struct TunedInGlassTraversalLayout<Leading: View, Center: View, Trailing: View>: View {
+  @ViewBuilder let leading: Leading
+  @ViewBuilder let center: Center
+  @ViewBuilder let trailing: Trailing
+
+  var body: some View {
+    ZStack(alignment: .bottom) {
+      center
+
+      HStack(alignment: .bottom, spacing: 8) {
+        leading
+        Spacer(minLength: 8)
+        trailing
+      }
+    }
+    .frame(maxWidth: .infinity)
+  }
+}
+
+private struct TunedInLiquidGlassIconSurface: ViewModifier {
+  let style: TunedInGlassIconButton.Style
+
+  func body(content: Content) -> some View {
+    if #available(iOS 26.0, *) {
+      if style == .accent {
+        content.glassEffect(.regular.tint(TunedInDesign.accent.opacity(0.28)).interactive(), in: .circle)
+      } else {
+        content.glassEffect(.regular.interactive(), in: .circle)
+      }
+    } else {
+      content
+        .background(.ultraThinMaterial, in: Circle())
+        .background(style == .accent ? TunedInDesign.accent.opacity(0.18) : .clear, in: Circle())
+        .overlay { Circle().strokeBorder(.white.opacity(0.42)) }
+        .shadow(color: style == .accent ? TunedInDesign.accent.opacity(0.2) : .clear, radius: 10, y: 5)
+    }
+  }
+}
+
 private struct TunedInLiquidGlassActionSurface: ViewModifier {
   func body(content: Content) -> some View {
     if #available(iOS 26.0, *) {
@@ -187,29 +251,19 @@ struct TunedInSubscreenBackBar: View {
   let action: () -> Void
 
   var body: some View {
-    TunedInGlassBottomBar {
-      HStack(spacing: 2) {
-        Button(action: action) {
-          Image(systemName: "chevron.backward")
-            .font(.subheadline.weight(.bold))
-            .foregroundStyle(TunedInDesign.primaryText)
-            .frame(width: 44, height: 46)
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Back to previous screen")
-
-        Divider()
-          .overlay(.white.opacity(0.18))
-          .frame(height: 30)
-
+    TunedInGlassTraversalLayout {
+      TunedInGlassIconButton(systemImage: "chevron.backward", accessibilityLabel: "Back to previous screen", action: action)
+    } center: {
+      TunedInGlassBottomBar {
         Text(title)
           .font(.subheadline.weight(.bold))
           .foregroundStyle(TunedInDesign.primaryText)
           .lineLimit(1)
-          .frame(minWidth: 100, alignment: .leading)
-          .padding(.horizontal, 10)
+          .frame(minWidth: 104, minHeight: 46, alignment: .center)
+          .padding(.horizontal, 14)
       }
+    } trailing: {
+      EmptyView()
     }
   }
 }

@@ -6,6 +6,7 @@
   actor DevelopmentConcertRepository: ConcertRepository {
     private var details: [UUID: ConcertDetail]
     private var commentsByConcert: [UUID: [ConcertComment]] = [:]
+    private var albumPhotosByConcert: [UUID: [ConcertAlbumPhoto]] = [:]
 
     init() {
       details = Dictionary(uniqueKeysWithValues: Self.seededDetails.map { ($0.concert.id, $0) })
@@ -65,6 +66,70 @@
         ]
       )
       return concert
+    }
+
+    func setConcertPhoto(_: Data, concertID: UUID) async throws -> Concert {
+      guard let detail = details[concertID] else { throw DevelopmentConcertRepositoryError.notFound }
+      return detail.concert
+    }
+
+    func removeConcertPhoto(concertID: UUID) async throws -> Concert {
+      guard let detail = details[concertID] else { throw DevelopmentConcertRepositoryError.notFound }
+      return detail.concert
+    }
+
+    nonisolated func concertPhotoURL(concertID _: UUID, objectPath _: String, version _: Int64) async throws -> URL {
+      throw DevelopmentConcertRepositoryError.notFound
+    }
+
+    nonisolated func albumPolicy() async throws -> ConcertAlbumPolicy {
+      ConcertAlbumPolicy(policyVersion: 1, concertPhotoLimit: 100, contributorPhotoLimit: 30,
+        reservationLimit24Hours: 10, pickerBatchLimit: 10, captionCharacterLimit: 300,
+        attachedFileByteLimit: 2_097_152, pendingReservationLifetimeSeconds: 3_600)
+    }
+
+    func reserveAlbumPhoto(concertID: UUID, photoID: UUID) async throws -> ConcertPhotoReservation {
+      _ = try detail(for: concertID)
+      return ConcertPhotoReservation(photoID: photoID, concertID: concertID,
+        objectPath: "concerts/\(concertID.uuidString.lowercased())/album/\(photoID.uuidString.lowercased()).jpg",
+        expiresAt: Date().addingTimeInterval(3_600))
+    }
+
+    func uploadReservedAlbumPhoto(_: Data, reservation: ConcertPhotoReservation) async throws -> ConcertAlbumPhoto {
+      let photo = ConcertAlbumPhoto(id: reservation.photoID, concertID: reservation.concertID,
+        uploaderID: DevelopmentSocialFixture.currentUserID, username: "you", displayName: "You",
+        objectPath: reservation.objectPath, caption: nil, version: 1, attachedAt: Date())
+      albumPhotosByConcert[reservation.concertID, default: []].insert(photo, at: 0)
+      return photo
+    }
+
+    func albumPhotos(concertID: UUID, cursor: ConcertAlbumPhotoCursor?) async throws -> [ConcertAlbumPhoto] {
+      let photos = albumPhotosByConcert[concertID] ?? []
+      guard let cursor else { return Array(photos.prefix(30)) }
+      return Array(photos.drop(while: { $0.id != cursor.photoID }).dropFirst().prefix(30))
+    }
+
+    nonisolated func albumPhotoURL(photoID _: UUID, objectPath _: String, version _: Int64) async throws -> URL {
+      throw DevelopmentConcertRepositoryError.notFound
+    }
+
+    func updateAlbumPhotoCaption(photoID: UUID, caption: String?) async throws -> ConcertAlbumPhoto {
+      for concertID in albumPhotosByConcert.keys {
+        guard let index = albumPhotosByConcert[concertID]?.firstIndex(where: { $0.id == photoID }),
+          let photo = albumPhotosByConcert[concertID]?[index] else { continue }
+        let updated = ConcertAlbumPhoto(id: photo.id, concertID: photo.concertID, uploaderID: photo.uploaderID,
+          username: photo.username, displayName: photo.displayName, objectPath: photo.objectPath,
+          caption: caption, version: photo.version + 1, attachedAt: photo.attachedAt)
+        albumPhotosByConcert[concertID]?[index] = updated
+        return updated
+      }
+      throw DevelopmentConcertRepositoryError.notFound
+    }
+
+    func deleteAlbumPhoto(photoID: UUID) async throws {
+      for concertID in albumPhotosByConcert.keys {
+        albumPhotosByConcert[concertID]?.removeAll(where: { $0.id == photoID })
+      }
     }
 
     func updateConcert(_ input: ConcertUpdateInput) async throws -> Concert {

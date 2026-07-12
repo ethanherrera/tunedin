@@ -30,13 +30,15 @@ metrics="$(docker exec "$database_container" psql -U postgres -d postgres -v ON_
     (select count(*) from public.comments where concert_id between 'd2000000-0000-0000-0000-000000000001'::uuid and 'd2000000-0000-0000-0000-000000000024'::uuid),
     (select count(*) from public.concert_events where concert_id between 'd2000000-0000-0000-0000-000000000001'::uuid and 'd2000000-0000-0000-0000-000000000024'::uuid),
     (select count(*) from public.concerts as concert join public.concert_collaborators as collaborator on collaborator.concert_id = concert.id where concert.visibility = 'private'),
-    (select count(*) from public.comments as comment join public.concerts as concert on concert.id = comment.concert_id where comment.concert_id between 'd2000000-0000-0000-0000-000000000001'::uuid and 'd2000000-0000-0000-0000-000000000024'::uuid and comment.author_id <> concert.owner_id and not exists (select 1 from public.concert_collaborators as collaborator where collaborator.concert_id = concert.id and collaborator.profile_id = comment.author_id) and not exists (select 1 from public.relationships as relationship where relationship.status = 'accepted' and comment.author_id in (relationship.user_low_id, relationship.user_high_id) and concert.owner_id in (relationship.user_low_id, relationship.user_high_id)));
+    (select count(*) from public.comments as comment join public.concerts as concert on concert.id = comment.concert_id where comment.concert_id between 'd2000000-0000-0000-0000-000000000001'::uuid and 'd2000000-0000-0000-0000-000000000024'::uuid and comment.author_id <> concert.owner_id and not exists (select 1 from public.concert_collaborators as collaborator where collaborator.concert_id = concert.id and collaborator.profile_id = comment.author_id) and not exists (select 1 from public.relationships as relationship where relationship.status = 'accepted' and comment.author_id in (relationship.user_low_id, relationship.user_high_id) and concert.owner_id in (relationship.user_low_id, relationship.user_high_id))),
+    (select count(*) from storage.buckets where id = 'images' and public = false and file_size_limit = 5242880 and allowed_mime_types = array['image/jpeg']::text[]),
+    (select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name in ('avatar_object_path', 'avatar_version'));
 ")"
 
-expected="16|16|16|16|15|1|5|1|1|1|6|24|8|12|73|0|0"
+expected="16|16|16|16|15|1|5|1|1|1|6|24|8|12|73|0|0|1|2"
 if [[ "$metrics" != "$expected" ]]; then
   echo "Local Supabase seed integrity check failed (expected ${expected}; received ${metrics})." >&2
   exit 1
 fi
 
-echo "Local Supabase journey seed verified: 16 accounts, 24 concerts, 8 collaborations, 12 comments, and 73 activity events."
+echo "Local Supabase journey seed and private profile-image contract verified."

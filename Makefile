@@ -7,7 +7,7 @@ DESTINATION := platform=iOS Simulator,name=iPhone 13
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup configure local-db-start configure-local-supabase local-next-steps generate format lint build build-local test test-local check simulator-auth-link simulator-local simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error local-db-reset local-seed-verify supabase-types check-supabase-types backend-test backend-verify dev-status dev-plan dev-deploy
+.PHONY: help setup configure local-db-start configure-local-supabase local-next-steps generate format lint build build-local test test-local check simulator-auth-link simulator-local simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error local-db-reset local-seed-verify supabase-types check-supabase-types backend-test storage-integration-test backend-verify dev-status dev-plan dev-deploy
 
 help: ## List available development commands.
 	@awk 'BEGIN {FS = ":.*##"}; /^[a-zA-Z_-]+:.*##/ { printf "%-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -96,7 +96,10 @@ check-supabase-types: ## Fail when generated Swift DTOs differ from the local sc
 backend-test: ## Run pgTAP tests against a disposable local Supabase stack.
 	@supabase test db
 
-backend-verify: local-db-reset check-supabase-types backend-test ## Rebuild and verify the disposable backend schema, types, and pgTAP tests.
+storage-integration-test: ## Exercise private avatar authorization through the Local Storage API.
+	@./scripts/test-profile-storage-api.sh
+
+backend-verify: local-db-reset check-supabase-types backend-test storage-integration-test ## Rebuild and verify schema, types, RLS, and Storage API behavior.
 
 dev-status: ## Show remote migration parity for the hosted tunedin-dev database.
 	@./scripts/development-database.sh status

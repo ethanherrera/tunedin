@@ -13,6 +13,12 @@ public enum PublicSchema {
     case commentAdded = "comment_added"
     case commentUpdated = "comment_updated"
     case commentDeleted = "comment_deleted"
+    case albumPhotoAdded = "album_photo_added"
+  }
+  public enum ConcertPhotoStatus: String, Codable, Hashable, Sendable {
+    case pending = "pending"
+    case ready = "ready"
+    case deleting = "deleting"
   }
   public enum ConcertVisibility: String, Codable, Hashable, Sendable {
     case `private` = "private"
@@ -229,13 +235,101 @@ public enum PublicSchema {
       case subjectId = "subject_id"
     }
   }
+  public struct ConcertPhotosSelect: Codable, Hashable, Sendable {
+    public let attachedAt: String?
+    public let caption: String?
+    public let concertId: UUID
+    public let createdAt: String
+    public let deletedAt: String?
+    public let deletionRequestedAt: String?
+    public let expiresAt: String
+    public let id: UUID
+    public let objectPath: String
+    public let status: ConcertPhotoStatus
+    public let uploaderId: UUID
+    public let version: Int64
+    public enum CodingKeys: String, CodingKey {
+      case attachedAt = "attached_at"
+      case caption = "caption"
+      case concertId = "concert_id"
+      case createdAt = "created_at"
+      case deletedAt = "deleted_at"
+      case deletionRequestedAt = "deletion_requested_at"
+      case expiresAt = "expires_at"
+      case id = "id"
+      case objectPath = "object_path"
+      case status = "status"
+      case uploaderId = "uploader_id"
+      case version = "version"
+    }
+  }
+  public struct ConcertPhotosInsert: Codable, Hashable, Sendable {
+    public let attachedAt: String?
+    public let caption: String?
+    public let concertId: UUID
+    public let createdAt: String?
+    public let deletedAt: String?
+    public let deletionRequestedAt: String?
+    public let expiresAt: String?
+    public let id: UUID?
+    public let objectPath: String
+    public let status: ConcertPhotoStatus?
+    public let uploaderId: UUID
+    public let version: Int64?
+    public enum CodingKeys: String, CodingKey {
+      case attachedAt = "attached_at"
+      case caption = "caption"
+      case concertId = "concert_id"
+      case createdAt = "created_at"
+      case deletedAt = "deleted_at"
+      case deletionRequestedAt = "deletion_requested_at"
+      case expiresAt = "expires_at"
+      case id = "id"
+      case objectPath = "object_path"
+      case status = "status"
+      case uploaderId = "uploader_id"
+      case version = "version"
+    }
+  }
+  public struct ConcertPhotosUpdate: Codable, Hashable, Sendable {
+    public let attachedAt: String?
+    public let caption: String?
+    public let concertId: UUID?
+    public let createdAt: String?
+    public let deletedAt: String?
+    public let deletionRequestedAt: String?
+    public let expiresAt: String?
+    public let id: UUID?
+    public let objectPath: String?
+    public let status: ConcertPhotoStatus?
+    public let uploaderId: UUID?
+    public let version: Int64?
+    public enum CodingKeys: String, CodingKey {
+      case attachedAt = "attached_at"
+      case caption = "caption"
+      case concertId = "concert_id"
+      case createdAt = "created_at"
+      case deletedAt = "deleted_at"
+      case deletionRequestedAt = "deletion_requested_at"
+      case expiresAt = "expires_at"
+      case id = "id"
+      case objectPath = "object_path"
+      case status = "status"
+      case uploaderId = "uploader_id"
+      case version = "version"
+    }
+  }
   public struct ConcertsSelect: Codable, Hashable, Sendable {
     public let city: String?
     public let concertDate: String
     public let createdAt: String
+    public let deletionRequestedAt: String?
+    public let deletionStatus: String
     public let id: UUID
     public let lastActivityAt: String
     public let ownerId: UUID
+    public let photoObjectPath: String?
+    public let photoVersion: Int64
     public let startsAt: String?
     public let tour: String?
     public let updatedAt: String
@@ -247,9 +341,13 @@ public enum PublicSchema {
       case city = "city"
       case concertDate = "concert_date"
       case createdAt = "created_at"
+      case deletionRequestedAt = "deletion_requested_at"
+      case deletionStatus = "deletion_status"
       case id = "id"
       case lastActivityAt = "last_activity_at"
       case ownerId = "owner_id"
+      case photoObjectPath = "photo_object_path"
+      case photoVersion = "photo_version"
       case startsAt = "starts_at"
       case tour = "tour"
       case updatedAt = "updated_at"
@@ -263,9 +361,13 @@ public enum PublicSchema {
     public let city: String?
     public let concertDate: String
     public let createdAt: String?
+    public let deletionRequestedAt: String?
+    public let deletionStatus: String?
     public let id: UUID?
     public let lastActivityAt: String?
     public let ownerId: UUID
+    public let photoObjectPath: String?
+    public let photoVersion: Int64?
     public let startsAt: String?
     public let tour: String?
     public let updatedAt: String?
@@ -277,9 +379,13 @@ public enum PublicSchema {
       case city = "city"
       case concertDate = "concert_date"
       case createdAt = "created_at"
+      case deletionRequestedAt = "deletion_requested_at"
+      case deletionStatus = "deletion_status"
       case id = "id"
       case lastActivityAt = "last_activity_at"
       case ownerId = "owner_id"
+      case photoObjectPath = "photo_object_path"
+      case photoVersion = "photo_version"
       case startsAt = "starts_at"
       case tour = "tour"
       case updatedAt = "updated_at"
@@ -293,9 +399,13 @@ public enum PublicSchema {
     public let city: String?
     public let concertDate: String?
     public let createdAt: String?
+    public let deletionRequestedAt: String?
+    public let deletionStatus: String?
     public let id: UUID?
     public let lastActivityAt: String?
     public let ownerId: UUID?
+    public let photoObjectPath: String?
+    public let photoVersion: Int64?
     public let startsAt: String?
     public let tour: String?
     public let updatedAt: String?
@@ -307,9 +417,13 @@ public enum PublicSchema {
       case city = "city"
       case concertDate = "concert_date"
       case createdAt = "created_at"
+      case deletionRequestedAt = "deletion_requested_at"
+      case deletionStatus = "deletion_status"
       case id = "id"
       case lastActivityAt = "last_activity_at"
       case ownerId = "owner_id"
+      case photoObjectPath = "photo_object_path"
+      case photoVersion = "photo_version"
       case startsAt = "starts_at"
       case tour = "tour"
       case updatedAt = "updated_at"
@@ -398,6 +512,8 @@ public enum PublicSchema {
     }
   }
   public struct ProfilesSelect: Codable, Hashable, Sendable {
+    public let avatarObjectPath: String?
+    public let avatarVersion: Int64
     public let createdAt: String
     public let displayName: String?
     public let id: UUID
@@ -405,6 +521,8 @@ public enum PublicSchema {
     public let updatedAt: String
     public let username: String?
     public enum CodingKeys: String, CodingKey {
+      case avatarObjectPath = "avatar_object_path"
+      case avatarVersion = "avatar_version"
       case createdAt = "created_at"
       case displayName = "display_name"
       case id = "id"
@@ -414,6 +532,8 @@ public enum PublicSchema {
     }
   }
   public struct ProfilesInsert: Codable, Hashable, Sendable {
+    public let avatarObjectPath: String?
+    public let avatarVersion: Int64?
     public let createdAt: String?
     public let displayName: String?
     public let id: UUID
@@ -421,6 +541,8 @@ public enum PublicSchema {
     public let updatedAt: String?
     public let username: String?
     public enum CodingKeys: String, CodingKey {
+      case avatarObjectPath = "avatar_object_path"
+      case avatarVersion = "avatar_version"
       case createdAt = "created_at"
       case displayName = "display_name"
       case id = "id"
@@ -430,6 +552,8 @@ public enum PublicSchema {
     }
   }
   public struct ProfilesUpdate: Codable, Hashable, Sendable {
+    public let avatarObjectPath: String?
+    public let avatarVersion: Int64?
     public let createdAt: String?
     public let displayName: String?
     public let id: UUID?
@@ -437,6 +561,8 @@ public enum PublicSchema {
     public let updatedAt: String?
     public let username: String?
     public enum CodingKeys: String, CodingKey {
+      case avatarObjectPath = "avatar_object_path"
+      case avatarVersion = "avatar_version"
       case createdAt = "created_at"
       case displayName = "display_name"
       case id = "id"

@@ -1,5 +1,6 @@
 // The three focused editing pages share one draft and save boundary.
 // swiftlint:disable type_body_length
+import PhotosUI
 import SwiftUI
 
 struct ConcertEditView: View {
@@ -31,6 +32,9 @@ struct ConcertEditView: View {
 
   let detail: ConcertDetail
   let canMakePrivate: Bool
+  let viewerRole: ConcertViewerRole
+  let viewerUsername: String
+  let socialRepository: any SocialRepository
   let concertRepository: any ConcertRepository
   let loadLatestDetail: @Sendable () async throws -> ConcertDetail
   let onSaved: (Concert) -> Void
@@ -45,22 +49,34 @@ struct ConcertEditView: View {
   @State private var errorMessage: String?
   @State private var conflictMessage: String?
   @State private var pendingVisibilityNarrowing: ConcertVisibility?
+  @State private var selectedPhoto: PhotosPickerItem?
+  @State private var isChangingPhoto = false
+  @State private var isConfirmingPhotoRemoval = false
+  @State private var workingDetail: ConcertDetail
+  @Namespace private var editSelectionNamespace
 
   init(
     detail: ConcertDetail,
     canMakePrivate: Bool,
+    viewerRole: ConcertViewerRole,
+    viewerUsername: String,
+    socialRepository: any SocialRepository,
     concertRepository: any ConcertRepository,
     loadLatestDetail: @escaping @Sendable () async throws -> ConcertDetail,
     onSaved: @escaping (Concert) -> Void
   ) {
     self.detail = detail
     self.canMakePrivate = canMakePrivate
+    self.viewerRole = viewerRole
+    self.viewerUsername = viewerUsername
+    self.socialRepository = socialRepository
     self.concertRepository = concertRepository
     self.loadLatestDetail = loadLatestDetail
     self.onSaved = onSaved
     _draft = State(initialValue: ConcertDraft(detail: detail))
     _visibility = State(initialValue: detail.concert.visibility)
     _expectedVersion = State(initialValue: detail.concert.version)
+    _workingDetail = State(initialValue: detail)
   }
 
   var body: some View {
@@ -70,7 +86,6 @@ struct ConcertEditView: View {
           .ignoresSafeArea()
 
         VStack(spacing: 0) {
-          pagePicker
           TabView(selection: $page) {
             nightPage.tag(EditPage.night)
             songsPage.tag(EditPage.songs)
@@ -94,6 +109,10 @@ struct ConcertEditView: View {
       } message: {
         Text(errorMessage ?? "Please try again.")
       }
+      .alert("Remove concert photo?", isPresented: $isConfirmingPhotoRemoval) {
+        Button("Cancel", role: .cancel) {}
+        Button("Remove", role: .destructive) { Task { await removePhoto() } }
+      } message: { Text("The generated concert artwork will be shown instead.") }
       .alert("This concert changed", isPresented: isShowingConflict) {
         Button(isReloadingAfterConflict ? "Loading latest…" : "Load latest version") {
           Task { await reloadAfterConflict() }
@@ -124,38 +143,16 @@ struct ConcertEditView: View {
       }
     }
     .tint(TunedInDesign.accent)
-  }
-
-  private var pagePicker: some View {
-    HStack(spacing: 8) {
-      ForEach(EditPage.allCases) { item in
-        Button {
-          withAnimation(.snappy) { page = item }
-        } label: {
-          Label(item.title, systemImage: item.icon)
-            .font(.caption.weight(.bold))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 11)
-            .foregroundStyle(page == item ? TunedInDesign.actionForeground : TunedInDesign.primaryText)
-            .background(
-              page == item ? TunedInDesign.accent : TunedInDesign.raisedSurface,
-              in: Capsule()
-            )
-        }
-        .buttonStyle(.plain)
-      }
+    .onChange(of: selectedPhoto) { _, item in
+      guard let item else { return }
+      Task { await uploadPhoto(item) }
     }
-    .padding(.horizontal, 20)
-    .padding(.vertical, 12)
   }
 
   private var nightPage: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 18) {
-        Text("Concert details")
-          .font(.system(size: 32, weight: .bold, design: .serif))
-          .foregroundStyle(TunedInDesign.primaryText)
-          .padding(.top, 8)
+        concertPhotoEditor
 
         TunedInTicketCard {
           Text("HEADLINER")
@@ -228,6 +225,60 @@ struct ConcertEditView: View {
     }
   }
 
+  private var concertPhotoEditor: some View {
+    HStack(spacing: 14) {
+      ConcertPhotoView(
+        concert: detail.concert,
+        artistName: detail.artists.first(where: \.isPrimary)?.name ?? "Concert",
+        repository: concertRepository
+      )
+      .frame(width: 104, height: 138)
+      .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+      VStack(alignment: .leading, spacing: 9) {
+        Text("Main photo").font(.headline).foregroundStyle(TunedInDesign.primaryText)
+        Text("Portrait 3:4").font(.caption).foregroundStyle(TunedInDesign.mutedText)
+        PhotosPicker(selection: $selectedPhoto, matching: .images) {
+          Label(detail.concert.photoObjectPath == nil ? "Add photo" : "Change photo", systemImage: "photo")
+            .font(.subheadline.weight(.semibold))
+        }
+        if detail.concert.photoObjectPath != nil {
+          Button("Remove", role: .destructive) { isConfirmingPhotoRemoval = true }
+            .font(.subheadline.weight(.semibold))
+        }
+        if isChangingPhoto {
+          ProgressView().controlSize(.small)
+        }
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .disabled(isChangingPhoto)
+    }
+    .padding(14)
+    .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+  }
+
+  private func uploadPhoto(_ item: PhotosPickerItem) async {
+    isChangingPhoto = true
+    defer { isChangingPhoto = false }
+    do {
+      guard let data = try await item.loadTransferable(type: Data.self) else { return }
+      let jpeg = try await AvatarImageProcessor.processConcertPhoto(data)
+      let updated = try await concertRepository.setConcertPhoto(jpeg, concertID: detail.concert.id)
+      onSaved(updated)
+      dismiss()
+    } catch { errorMessage = error.localizedDescription }
+  }
+
+  private func removePhoto() async {
+    isChangingPhoto = true
+    defer { isChangingPhoto = false }
+    do {
+      let updated = try await concertRepository.removeConcertPhoto(concertID: detail.concert.id)
+      onSaved(updated)
+      dismiss()
+    } catch { errorMessage = error.localizedDescription }
+  }
+
   private var songsPage: some View {
     VStack(alignment: .leading, spacing: 16) {
       VStack(alignment: .leading, spacing: 4) {
@@ -276,38 +327,28 @@ struct ConcertEditView: View {
   }
 
   private var sharingPage: some View {
-    VStack(alignment: .leading, spacing: 18) {
-      VStack(alignment: .leading, spacing: 5) {
-        Text("Visibility")
-          .font(.system(size: 30, weight: .bold, design: .serif))
-          .foregroundStyle(TunedInDesign.primaryText)
-        Text("People are added from the concert after you save this choice.")
-          .font(.subheadline)
-          .foregroundStyle(TunedInDesign.mutedText)
-      }
+    ConcertPeopleView(
+      detail: workingDetail,
+      viewerRole: viewerRole,
+      viewerUsername: viewerUsername,
+      socialRepository: socialRepository,
+      concertRepository: concertRepository,
+      onChanged: { Task { await refreshSharingDetail() } },
+      pageHeader: AnyView(EmptyView())
+    )
+    .padding(.bottom, 76)
+  }
 
-      VStack(spacing: 10) {
-        ForEach(availableVisibility, id: \.rawValue) { option in
-          visibilityChoice(option)
-        }
-      }
-
-      TunedInGlassSection {
-        Image(systemName: visibility == .private ? "lock.fill" : "person.2.fill")
-          .font(.title3)
-          .foregroundStyle(TunedInDesign.accent)
-        Text(sharingTitle)
-          .font(.headline)
-          .foregroundStyle(TunedInDesign.primaryText)
-        Text(sharingDescription)
-          .font(.subheadline)
-          .foregroundStyle(TunedInDesign.mutedText)
-      }
-
-      Spacer()
+  private func refreshSharingDetail() async {
+    do {
+      let latest = try await loadLatestDetail()
+      workingDetail = latest
+      visibility = latest.concert.visibility
+      expectedVersion = latest.concert.version
+      errorMessage = nil
+    } catch {
+      errorMessage = error.localizedDescription
     }
-    .padding(20)
-    .padding(.bottom, 88)
   }
 
   private var availableVisibility: [ConcertVisibility] {
@@ -373,36 +414,54 @@ struct ConcertEditView: View {
   }
 
   private var saveBar: some View {
-    HStack(spacing: 10) {
-      TunedInFloatingAction(
+    TunedInGlassTraversalLayout {
+      TunedInGlassIconButton(
         systemImage: "chevron.backward",
-        accessibilityLabel: "Cancel editing",
-        accessibilityHint: "Returns to the concert without saving"
+        accessibilityLabel: "Cancel editing"
       ) {
         dismiss()
       }
       .disabled(isSaving)
-
-      Button(action: save) {
-        HStack(spacing: 8) {
-          if isSaving {
-            ProgressView().tint(TunedInDesign.actionForeground)
+    } center: {
+      TunedInGlassBottomBar {
+        HStack(spacing: 2) {
+          ForEach(EditPage.allCases) { item in
+            Button {
+              withAnimation(.smooth(duration: 0.24, extraBounce: 0)) { page = item }
+            } label: {
+              VStack(spacing: 2) {
+                Image(systemName: item.icon).font(.subheadline.weight(.bold))
+                Text(item.title).font(.caption2.weight(.bold))
+              }
+              .foregroundStyle(page == item ? TunedInDesign.actionForeground : TunedInDesign.primaryText)
+              .frame(width: 62, height: 46)
+              .background {
+                if page == item {
+                  Capsule()
+                    .fill(TunedInDesign.accent)
+                    .matchedGeometryEffect(id: "edit-page", in: editSelectionNamespace)
+                }
+              }
+              .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Show \(item.title.lowercased())")
           }
-          Text(isSaving ? "Saving…" : "Save this version")
-            .font(.headline)
         }
-        .foregroundStyle(TunedInDesign.actionForeground)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background(TunedInDesign.accent, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
       }
-      .buttonStyle(.plain)
+    } trailing: {
+      TunedInFloatingAction(
+        systemImage: isSaving ? "ellipsis" : "checkmark",
+        accessibilityLabel: isSaving ? "Saving concert" : "Save concert",
+        accessibilityHint: "Saves this version and returns to the concert",
+        action: save
+      )
       .disabled(isSaving)
     }
     .padding(.horizontal, 20)
-    .padding(.top, 12)
+    .padding(.top, 8)
     .padding(.bottom, 8)
-    .background(TunedInDesign.pageBackground.opacity(0.96))
+    .background(TunedInDesign.pageBackground.opacity(0.9))
   }
 
   private var isShowingError: Binding<Bool> {

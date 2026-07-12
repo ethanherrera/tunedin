@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 
 struct MainTabView: View {
@@ -25,6 +26,7 @@ struct MainTabView: View {
 
   var body: some View {
     selectedContent
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
       .environmentObject(concertFloatingControls)
       .padding(.bottom, 80)
       .overlay(alignment: .bottom) {
@@ -78,18 +80,21 @@ struct MainTabView: View {
         subscreenBottomBar(title: title)
           .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
       case .none:
-        HStack(alignment: .bottom, spacing: 8) {
+        TunedInGlassTraversalLayout {
+          EmptyView()
+        } center: {
           TunedInGlassBottomBar {
             HStack(spacing: 2) {
               tabButton(.feed, title: "Feed", icon: "music.note.house")
               tabButton(.profile, title: "Profile", icon: "person.crop.circle")
             }
           }
-
-          TunedInFloatingAction(
+        } trailing: {
+          HStack(alignment: .bottom, spacing: 8) {
+          TunedInGlassIconButton(
             systemImage: "magnifyingglass",
             accessibilityLabel: "Search people",
-            accessibilityHint: "Opens people search"
+            style: .accent
           ) {
             isPresentingPeopleSearch = true
           }
@@ -116,8 +121,13 @@ struct MainTabView: View {
             .presentationBackground(.clear)
           }
 
-          TunedInFloatingAction {
+          TunedInGlassIconButton(
+            systemImage: "plus",
+            accessibilityLabel: "Log concert",
+            style: .accent
+          ) {
             isPresentingConcertCreation = true
+          }
           }
         }
         .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
@@ -176,27 +186,22 @@ struct MainTabView: View {
   }
 
   private func subscreenBottomBar(title: String) -> some View {
-    TunedInGlassBottomBar {
-      HStack(spacing: 2) {
-        Button {
-          concertFloatingControls.back(or: { activateTab(.profile) })
-        } label: {
-          Image(systemName: "chevron.backward")
-            .font(.subheadline.weight(.bold))
-            .foregroundStyle(TunedInDesign.primaryText)
-            .frame(width: 42, height: 46)
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Back to \(title.lowercased())")
-
-        Divider()
-          .overlay(.white.opacity(0.18))
-          .frame(height: 30)
-
+    TunedInGlassTraversalLayout {
+      TunedInGlassIconButton(
+        systemImage: "chevron.backward",
+        accessibilityLabel: "Back to \(title.lowercased())"
+      ) {
+        concertFloatingControls.back(or: { activateTab(.profile) })
+      }
+    } center: {
+      TunedInGlassBottomBar {
+        HStack(spacing: 2) {
         tabButton(.feed, title: "Feed", icon: "music.note.house")
         tabButton(.profile, title: "Profile", icon: "person.crop.circle")
+        }
       }
+    } trailing: {
+      EmptyView()
     }
   }
 
@@ -225,6 +230,8 @@ final class ConcertFloatingControls: ObservableObject {
   @Published private(set) var isShowingEditMenu = false
   @Published private(set) var canDelete = false
   @Published private(set) var selectedPage: ConcertDetailPage = .concert
+  @Published private(set) var isInteractionLocked = false
+  @Published var pendingPhotoSelections: [PhotosPickerItem] = []
 
   private var backAction: (() -> Void)?
   private var selectPageAction: ((ConcertDetailPage) -> Void)?
@@ -276,6 +283,8 @@ final class ConcertFloatingControls: ObservableObject {
       isShowingEditMenu = false
       navigationContext = .none
       selectedPage = .concert
+      isInteractionLocked = false
+      pendingPhotoSelections = []
     }
   }
 
@@ -285,6 +294,7 @@ final class ConcertFloatingControls: ObservableObject {
   }
 
   func back(or fallback: () -> Void) {
+    guard !isInteractionLocked else { return }
     guard let backAction else {
       fallback()
       return
@@ -293,6 +303,7 @@ final class ConcertFloatingControls: ObservableObject {
   }
 
   func select(page: ConcertDetailPage) {
+    guard !isInteractionLocked else { return }
     withAnimation(.smooth(duration: 0.24, extraBounce: 0)) {
       selectedPage = page
       selectPageAction?(page)
@@ -300,11 +311,17 @@ final class ConcertFloatingControls: ObservableObject {
   }
 
   func edit() {
+    guard !isInteractionLocked else { return }
     editAction?()
   }
 
   func delete() {
+    guard !isInteractionLocked else { return }
     deleteAction?()
+  }
+
+  func setInteractionLocked(_ locked: Bool) {
+    isInteractionLocked = locked
   }
 }
 
@@ -315,25 +332,17 @@ private struct ConcertContextBottomBar: View {
   @Namespace private var selectionNamespace
 
   var body: some View {
-    HStack(alignment: .bottom, spacing: 8) {
+    TunedInGlassTraversalLayout {
+      TunedInGlassIconButton(
+        systemImage: "chevron.backward",
+        accessibilityLabel: "Back to previous screen"
+      ) {
+        controls.back(or: fallbackToProfile)
+      }
+      .disabled(controls.isInteractionLocked)
+    } center: {
       TunedInGlassBottomBar {
         HStack(spacing: 2) {
-          Button {
-            controls.back(or: fallbackToProfile)
-          } label: {
-            Image(systemName: "chevron.backward")
-              .font(.subheadline.weight(.bold))
-              .foregroundStyle(TunedInDesign.primaryText)
-              .frame(width: 42, height: 46)
-              .contentShape(Capsule())
-          }
-          .buttonStyle(.plain)
-          .accessibilityLabel("Back to previous screen")
-
-          Divider()
-            .overlay(.white.opacity(0.18))
-            .frame(height: 30)
-
           ForEach(ConcertDetailPage.allCases, id: \.self) { page in
             Button {
               controls.select(page: page)
@@ -360,60 +369,74 @@ private struct ConcertContextBottomBar: View {
               }
             }
             .buttonStyle(.plain)
+            .disabled(controls.isInteractionLocked)
             .accessibilityLabel("Show \(page.title.lowercased())")
           }
         }
       }
-      .frame(maxWidth: .infinity)
-
+      .frame(width: 238)
+    } trailing: {
       if controls.isShowingEditMenu {
-        TunedInFloatingAction(
-          systemImage: "pencil",
-          accessibilityLabel: "Edit concert menu",
-          accessibilityHint: "Shows concert edit actions"
-        ) {
-          isPresentingEditMenu = true
-        }
-        .popover(
-          isPresented: $isPresentingEditMenu,
-          attachmentAnchor: .point(.top),
-          arrowEdge: .bottom
-        ) {
-          TunedInGlassPopover {
-            VStack(spacing: 4) {
-              Button {
-                isPresentingEditMenu = false
-                controls.edit()
-              } label: {
-                Label("Edit concert", systemImage: "pencil")
-                  .foregroundStyle(TunedInDesign.primaryText)
-                  .frame(maxWidth: .infinity, alignment: .leading)
-                  .padding(.horizontal, 14)
-                  .padding(.vertical, 12)
-              }
-              .buttonStyle(.plain)
-
-              if controls.canDelete {
-                Divider()
-                  .overlay(.white.opacity(0.15))
-                Button(role: .destructive) {
+        if controls.selectedPage == .photos {
+          PhotosPicker(
+            selection: $controls.pendingPhotoSelections,
+            maxSelectionCount: 10,
+            matching: .images
+          ) {
+            TunedInFloatingActionLabel(systemImage: "plus")
+          }
+          .buttonStyle(.plain)
+          .disabled(controls.isInteractionLocked)
+          .accessibilityLabel("Add photos")
+        } else {
+          TunedInFloatingAction(
+            systemImage: "pencil",
+            accessibilityLabel: "Edit concert menu",
+            accessibilityHint: "Shows concert edit actions"
+          ) {
+            isPresentingEditMenu = true
+          }
+          .disabled(controls.isInteractionLocked)
+          .popover(
+            isPresented: $isPresentingEditMenu,
+            attachmentAnchor: .point(.top),
+            arrowEdge: .bottom
+          ) {
+            TunedInGlassPopover {
+              VStack(spacing: 4) {
+                Button {
                   isPresentingEditMenu = false
-                  controls.delete()
+                  controls.edit()
                 } label: {
-                  Label("Delete concert", systemImage: "trash")
-                    .foregroundStyle(.red)
+                  Label("Edit concert", systemImage: "pencil")
+                    .foregroundStyle(TunedInDesign.primaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
                 }
                 .buttonStyle(.plain)
+
+                if controls.canDelete {
+                  Divider().overlay(.white.opacity(0.15))
+                  Button(role: .destructive) {
+                    isPresentingEditMenu = false
+                    controls.delete()
+                  } label: {
+                    Label("Delete concert", systemImage: "trash")
+                      .foregroundStyle(.red)
+                      .frame(maxWidth: .infinity, alignment: .leading)
+                      .padding(.horizontal, 14)
+                      .padding(.vertical, 12)
+                  }
+                  .buttonStyle(.plain)
+                }
               }
+              .frame(width: 210)
+              .padding(8)
             }
-            .frame(width: 210)
-            .padding(8)
+            .presentationCompactAdaptation(.popover)
+            .presentationBackground(.clear)
           }
-          .presentationCompactAdaptation(.popover)
-          .presentationBackground(.clear)
         }
       }
     }
@@ -466,7 +489,9 @@ struct ProfileTabView: View {
       id: profile.id,
       username: profile.username ?? "listener",
       displayName: profile.displayName ?? "Concert listener",
-      relationship: .friends
+      relationship: .friends,
+      avatarObjectPath: profile.avatarObjectPath,
+      avatarVersion: profile.avatarVersion
     )
   }
 
@@ -474,7 +499,7 @@ struct ProfileTabView: View {
     ProfileIdentityHeader(profile: currentSocialProfile) {
       HStack(spacing: 8) {
         NavigationLink {
-          SettingsView(session: session, user: user)
+          SettingsView(session: session, user: user, profile: profile)
         } label: {
           Image(systemName: "gearshape")
             .font(.headline.weight(.bold))
@@ -512,7 +537,7 @@ struct ProfileIdentityHeader<Trailing: View>: View {
 
   var body: some View {
     HStack(alignment: .top, spacing: 12) {
-      ProfileMonogram(profile: profile, size: 58)
+      ProfileAvatarView(profile: profile, size: 58)
       VStack(alignment: .leading, spacing: 3) {
         Text("tunedIn")
           .font(.caption.weight(.black))
@@ -577,10 +602,15 @@ struct ProfileFriendsLink<Destination: View>: View {
 struct SettingsView: View {
   let session: AppSession
   let user: AuthenticatedUser
+  let profile: Profile
 
   @Environment(\.dismiss) private var dismiss
   @EnvironmentObject private var floatingControls: ConcertFloatingControls
   @State private var floatingControlOwner = UUID()
+  @State private var selectedPhoto: PhotosPickerItem?
+  @State private var isChangingPhoto = false
+  @State private var photoError: String?
+  @State private var isConfirmingRemoval = false
 
   var body: some View {
     ZStack {
@@ -589,6 +619,7 @@ struct SettingsView: View {
 
       ScrollView {
         VStack(alignment: .leading, spacing: 24) {
+          profilePhotoSection
           AppearancePicker()
           accountSection
         }
@@ -607,6 +638,87 @@ struct SettingsView: View {
     }
     .onDisappear { floatingControls.resetBackOnly(owner: floatingControlOwner) }
     .tint(TunedInDesign.accent)
+    .onChange(of: selectedPhoto) { _, item in
+      guard let item else { return }
+      Task { await upload(item) }
+    }
+    .alert("Remove profile photo?", isPresented: $isConfirmingRemoval) {
+      Button("Cancel", role: .cancel) {}
+      Button("Remove", role: .destructive) { Task { await removePhoto() } }
+    } message: {
+      Text("Your profile will return to its monogram.")
+    }
+  }
+
+  private var profilePhotoSection: some View {
+    TunedInFormCard {
+      Text("Profile Photo").font(.headline).foregroundStyle(TunedInDesign.primaryText)
+      HStack(spacing: 16) {
+        ProfileAvatarView(
+          profile: SocialProfile(
+            id: displayedProfile.id,
+            username: displayedProfile.username ?? "listener",
+            displayName: displayedProfile.displayName ?? "Listener",
+            relationship: .friends,
+            avatarObjectPath: displayedProfile.avatarObjectPath,
+            avatarVersion: displayedProfile.avatarVersion
+          ),
+          size: 72
+        )
+        VStack(alignment: .leading, spacing: 8) {
+          PhotosPicker(selection: $selectedPhoto, matching: .images) {
+            Text(displayedProfile.avatarObjectPath == nil ? "Choose photo" : "Change photo")
+          }
+          .disabled(isChangingPhoto)
+          if displayedProfile.avatarObjectPath != nil {
+            Button("Remove photo", role: .destructive) { isConfirmingRemoval = true }
+              .disabled(isChangingPhoto)
+          }
+        }
+      }
+      if isChangingPhoto {
+        ProgressView("Updating photo…")
+      }
+      if let photoError {
+        Text(photoError).font(.footnote).foregroundStyle(.red)
+        Button("Try again") {
+          guard let selectedPhoto else { return }
+          Task { await upload(selectedPhoto) }
+        }
+        .disabled(isChangingPhoto)
+      }
+    }
+  }
+
+  private var displayedProfile: Profile {
+    if case let .signedIn(signedInUser, currentProfile) = session.phase, signedInUser.id == user.id {
+      return currentProfile
+    }
+    return profile
+  }
+
+  private func upload(_ item: PhotosPickerItem) async {
+    isChangingPhoto = true
+    photoError = nil
+    defer { isChangingPhoto = false }
+    do {
+      guard let data = try await item.loadTransferable(type: Data.self) else { return }
+      let jpeg = try await AvatarImageProcessor.process(data)
+      try Task.checkCancellation()
+      try await session.setAvatar(jpegData: jpeg)
+      selectedPhoto = nil
+    } catch is CancellationError {
+      return
+    } catch {
+      photoError = error.localizedDescription
+    }
+  }
+
+  private func removePhoto() async {
+    isChangingPhoto = true
+    photoError = nil
+    defer { isChangingPhoto = false }
+    do { try await session.removeAvatar() } catch { photoError = error.localizedDescription }
   }
 
   private var accountSection: some View {

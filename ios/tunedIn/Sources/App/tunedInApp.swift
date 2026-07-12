@@ -17,6 +17,7 @@ struct TunedInApp: App {
         concertRepository: container.concertRepository,
         socialRepository: container.socialRepository
       )
+      .environment(\.profileRepository, container.profileRepository)
       .tint(TunedInDesign.accent)
       .preferredColorScheme(appearance.colorScheme)
       .onOpenURL { url in

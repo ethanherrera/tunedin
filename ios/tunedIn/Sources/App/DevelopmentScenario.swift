@@ -73,6 +73,8 @@
         id: userID,
         username: nil,
         displayName: nil,
+        avatarObjectPath: nil,
+        avatarVersion: 0,
         onboardingCompletedAt: nil,
         createdAt: createdAt,
         updatedAt: createdAt
@@ -84,6 +86,8 @@
         id: userID,
         username: "dev_listener",
         displayName: "Development Listener",
+        avatarObjectPath: nil,
+        avatarVersion: 0,
         onboardingCompletedAt: createdAt,
         createdAt: createdAt,
         updatedAt: createdAt
@@ -144,10 +148,24 @@
         id: fixture.userID,
         username: ProfileInput.normalizedUsername(username),
         displayName: ProfileInput.normalizedDisplayName(displayName),
+        avatarObjectPath: nil,
+        avatarVersion: 0,
         onboardingCompletedAt: Date(),
         createdAt: fixture.createdAt,
         updatedAt: Date()
       )
+    }
+
+    func setAvatar(jpegData _: Data, for _: UUID) async throws -> Profile {
+      throw DevelopmentScenarioError.liveAuthenticationRequired
+    }
+
+    func removeAvatar(for _: UUID) async throws -> Profile {
+      throw DevelopmentScenarioError.liveAuthenticationRequired
+    }
+
+    func avatarURL(profileID _: UUID, objectPath _: String, version _: Int64) async throws -> URL {
+      throw DevelopmentScenarioError.liveAuthenticationRequired
     }
   }
 
