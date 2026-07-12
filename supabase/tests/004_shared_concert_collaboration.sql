@@ -437,61 +437,75 @@ select lives_ok(
 );
 
 reset role;
-delete from public.direct_collaboration_notifications
-where concert_id = current_setting('test.shared_concert_id')::uuid
-  and recipient_id = '41000000-0000-0000-0000-000000000001'
-  and actor_id = '42000000-0000-0000-0000-000000000002'
-  and kind = 'concert_updated';
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
 select set_config('request.jwt.claim.sub', '42000000-0000-0000-0000-000000000002', true);
 
 select is(
   (select count(*) from public.concerts where id = current_setting('test.shared_concert_id')::uuid),
-  1::bigint,
-  'blocking does not revoke a tagged collaborator’s existing editor access'
+  0::bigint,
+  'blocking immediately revokes a tagged collaborator’s concert access'
 );
-select is(
-  (
-    select (public.update_concert(
-      current_setting('test.shared_concert_id')::uuid,
-      5,
-      '[{"name":"Soccer Mommy","is_primary":true}]'::jsonb,
-      'The Warfield',
-      date '2026-08-18',
-      p_tour => 'Evergreen Tour',
-      p_setlist => '["Circle the Drain","Your Dog","Still Clean"]'::jsonb,
-      p_visibility => 'friends'
-    )).version
-  ),
-  6::bigint,
-  'a blocked collaborator can still edit the existing shared concert'
+select throws_ok(
+  $$select public.update_concert(
+    current_setting('test.shared_concert_id')::uuid,
+    5,
+    '[{"name":"Soccer Mommy","is_primary":true}]'::jsonb,
+    'The Warfield',
+    date '2026-08-18',
+    p_tour => 'Evergreen Tour',
+    p_setlist => '["Circle the Drain","Your Dog","Still Clean"]'::jsonb,
+    p_visibility => 'friends'
+  )$$,
+  '42501',
+  'You no longer have permission to edit this concert',
+  'a blocked collaborator cannot keep editing the shared concert'
 );
 
 reset role;
-select is(
-  (
-    select count(*)
-    from public.direct_collaboration_notifications
-    where concert_id = current_setting('test.shared_concert_id')::uuid
-      and recipient_id = '41000000-0000-0000-0000-000000000001'
-      and actor_id = '42000000-0000-0000-0000-000000000002'
-      and kind = 'concert_updated'
-  ),
-  0::bigint,
-  'direct collaboration notifications are suppressed across a blocked pair'
+delete from public.relationships
+where user_low_id = '41000000-0000-0000-0000-000000000001'
+  and user_high_id = '42000000-0000-0000-0000-000000000002';
+insert into public.relationships (
+  user_low_id,
+  user_high_id,
+  status,
+  initiator_id,
+  responder_id,
+  requested_at,
+  responded_at
+)
+values (
+  '41000000-0000-0000-0000-000000000001',
+  '42000000-0000-0000-0000-000000000002',
+  'accepted',
+  '41000000-0000-0000-0000-000000000001',
+  '42000000-0000-0000-0000-000000000002',
+  now(),
+  now()
 );
-
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
 select set_config('request.jwt.claim.sub', '41000000-0000-0000-0000-000000000001', true);
 
 select is(
   (
-    select (public.transfer_concert_ownership(
+    select (public.tag_concert_collaborator(
       current_setting('test.shared_concert_id')::uuid,
       '42000000-0000-0000-0000-000000000002',
       6
+    )).version
+  ),
+  7::bigint,
+  'a new accepted friendship can explicitly grant a fresh collaborator role'
+);
+
+select is(
+  (
+    select (public.transfer_concert_ownership(
+      current_setting('test.shared_concert_id')::uuid,
+      '42000000-0000-0000-0000-000000000002',
+      7
     )).owner_id
   ),
   '42000000-0000-0000-0000-000000000002'::uuid,
@@ -528,10 +542,10 @@ select is(
     select (public.remove_concert_collaborator(
       current_setting('test.shared_concert_id')::uuid,
       '41000000-0000-0000-0000-000000000001',
-      7
+      8
     )).version
   ),
-  8::bigint,
+  9::bigint,
   'the new owner can immediately revoke the former owner’s editor role'
 );
 
@@ -543,7 +557,7 @@ select set_config('request.jwt.claim.sub', '41000000-0000-0000-0000-000000000001
 select throws_ok(
   $$select public.update_concert(
     current_setting('test.shared_concert_id')::uuid,
-    8,
+    9,
     '[{"name":"Soccer Mommy","is_primary":true}]'::jsonb,
     'The Warfield',
     date '2026-08-18',

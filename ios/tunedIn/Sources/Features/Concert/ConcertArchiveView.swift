@@ -42,6 +42,9 @@ struct ConcertArchiveView: View {
               setVisibilityFilter(.private)
             }
           }
+          Button("Collaborators") {
+            setVisibilityFilter(.collaborators)
+          }
           Button("With friends") {
             setVisibilityFilter(.friends)
           }
@@ -302,7 +305,6 @@ enum ConcertDetailPage: CaseIterable, Hashable {
 
 // swiftlint:disable:next type_body_length
 struct ConcertDetailView: View {
-
   private enum ArtworkStyle: Equatable {
     case full
     case preview
@@ -377,9 +379,16 @@ struct ConcertDetailView: View {
     }
     .sheet(isPresented: $isShowingEditor) {
       if let detail {
-        ConcertEditView(detail: detail, concertRepository: concertRepository) { _ in
-          Task { await loadDetail() }
-        }
+        ConcertEditView(
+          detail: detail,
+          concertRepository: concertRepository,
+          loadLatestDetail: {
+            try await concertRepository.fetchConcertDetail(id: concertID, viewerID: viewerID)
+          },
+          onSaved: { _ in
+            Task { await loadDetail() }
+          }
+        )
       }
     }
     .confirmationDialog(
@@ -391,7 +400,7 @@ struct ConcertDetailView: View {
         isShowingFinalDeleteConfirmation = true
       }
     } message: {
-      Text("Its setlist, comments, and history will disappear for everyone who can see it.")
+      Text(deleteImpactMessage)
     }
     .alert("Delete it permanently?", isPresented: $isShowingFinalDeleteConfirmation) {
       Button("Delete concert", role: .destructive) {
@@ -636,6 +645,16 @@ struct ConcertDetailView: View {
       }
       isDeleting = false
     }
+  }
+
+  private var deleteImpactMessage: String {
+    guard let detail else {
+      return "Its setlist, comments, and history will disappear permanently."
+    }
+
+    let editorCount = detail.collaborators.filter { !$0.isOwner }.count
+    let people = editorCount == 1 ? "1 collaborator will" : "\(editorCount) collaborators will"
+    return "Its setlist, comments, and history will disappear permanently. \(people) lose access."
   }
 }
 

@@ -73,6 +73,9 @@
       guard currentRole(in: detail) != .viewer else {
         throw DevelopmentConcertRepositoryError.permissionDenied
       }
+      guard detail.concert.visibility == .private || input.visibility != .private else {
+        throw DevelopmentConcertRepositoryError.sharedConcertCannotBePrivate
+      }
 
       let now = Date()
       let updatedConcert = Concert(
@@ -630,6 +633,7 @@
     case ownerRequired
     case conflict
     case privateConcert
+    case sharedConcertCannotBePrivate
     case invalidComment
     case commentAuthorRequired
 
@@ -645,6 +649,8 @@
         "This concert changed elsewhere. Refresh and try again."
       case .privateConcert:
         "Choose Collaborators or Friends before adding someone."
+      case .sharedConcertCannotBePrivate:
+        "Shared concerts cannot become Private. Transfer ownership or delete the concert instead."
       case .invalidComment:
         "Write a comment before sharing it."
       case .commentAuthorRequired:

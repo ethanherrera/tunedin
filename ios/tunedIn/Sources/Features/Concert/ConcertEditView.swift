@@ -31,25 +31,35 @@ struct ConcertEditView: View {
 
   let detail: ConcertDetail
   let concertRepository: any ConcertRepository
+  let loadLatestDetail: @Sendable () async throws -> ConcertDetail
   let onSaved: (Concert) -> Void
 
   @Environment(\.dismiss) private var dismiss
   @State private var draft: ConcertDraft
   @State private var visibility: ConcertVisibility
+  @State private var expectedVersion: Int64
+  @State private var hasBeenShared: Bool
   @State private var page: EditPage = .night
   @State private var isSaving = false
+  @State private var isReloadingAfterConflict = false
   @State private var errorMessage: String?
+  @State private var conflictMessage: String?
+  @State private var pendingVisibilityNarrowing: ConcertVisibility?
 
   init(
     detail: ConcertDetail,
     concertRepository: any ConcertRepository,
+    loadLatestDetail: @escaping @Sendable () async throws -> ConcertDetail,
     onSaved: @escaping (Concert) -> Void
   ) {
     self.detail = detail
     self.concertRepository = concertRepository
+    self.loadLatestDetail = loadLatestDetail
     self.onSaved = onSaved
     _draft = State(initialValue: ConcertDraft(detail: detail))
     _visibility = State(initialValue: detail.concert.visibility)
+    _expectedVersion = State(initialValue: detail.concert.version)
+    _hasBeenShared = State(initialValue: detail.concert.visibility != .private)
   }
 
   var body: some View {
@@ -82,6 +92,37 @@ struct ConcertEditView: View {
         Button("OK", role: .cancel) {}
       } message: {
         Text(errorMessage ?? "Please try again.")
+      }
+      .alert("This concert changed", isPresented: isShowingConflict) {
+        Button(isReloadingAfterConflict ? "Loading latest…" : "Load latest version") {
+          Task { await reloadAfterConflict() }
+        }
+        .disabled(isReloadingAfterConflict)
+        Button("Keep editing", role: .cancel) {}
+      } message: {
+        Text(
+          conflictMessage
+            ?? "Someone saved changes first. Load the latest version, review it, then make your edit again."
+        )
+      }
+      .confirmationDialog(
+        "Remove Friends access?",
+        isPresented: isShowingVisibilityNarrowingConfirmation,
+        titleVisibility: .visible,
+        presenting: pendingVisibilityNarrowing
+      ) { option in
+        Button("Limit to \(visibilityTitle(option))", role: .destructive) {
+          visibility = option
+          pendingVisibilityNarrowing = nil
+        }
+        Button("Keep Friends access", role: .cancel) {
+          pendingVisibilityNarrowing = nil
+        }
+      } message: { _ in
+        Text(
+          "Friends who are not tagged editors will lose access without receiving a private copy. "
+            + "Tagged editors keep their role."
+        )
       }
     }
     .tint(TunedInDesign.accent)
@@ -272,12 +313,18 @@ struct ConcertEditView: View {
   }
 
   private var availableVisibility: [ConcertVisibility] {
-    ConcertVisibility.allCases
+    !hasBeenShared
+      ? ConcertVisibility.allCases
+      : [.collaborators, .friends]
   }
 
   private func visibilityChoice(_ option: ConcertVisibility) -> some View {
     Button {
-      withAnimation(.snappy) { visibility = option }
+      if visibility == .friends, option == .collaborators {
+        pendingVisibilityNarrowing = option
+      } else {
+        withAnimation(.snappy) { visibility = option }
+      }
     } label: {
       HStack(spacing: 14) {
         Image(systemName: visibilityIcon(option))
@@ -370,6 +417,22 @@ struct ConcertEditView: View {
     })
   }
 
+  private var isShowingVisibilityNarrowingConfirmation: Binding<Bool> {
+    Binding(get: { pendingVisibilityNarrowing != nil }, set: {
+      if !$0 {
+        pendingVisibilityNarrowing = nil
+      }
+    })
+  }
+
+  private var isShowingConflict: Binding<Bool> {
+    Binding(get: { conflictMessage != nil }, set: {
+      if !$0 {
+        conflictMessage = nil
+      }
+    })
+  }
+
   private func artistBinding(for id: UUID?) -> Binding<String> {
     Binding(
       get: { draft.artists.first(where: { $0.id == id })?.name ?? "" },
@@ -418,7 +481,7 @@ struct ConcertEditView: View {
     draft.hasAttemptedSave = true
     guard let input = draft.updateInput(
       concertID: detail.concert.id,
-      expectedVersion: detail.concert.version,
+      expectedVersion: expectedVersion,
       visibility: visibility
     ) else { return }
     isSaving = true
@@ -428,10 +491,36 @@ struct ConcertEditView: View {
         onSaved(updated)
         dismiss()
       } catch {
-        errorMessage = error.localizedDescription
+        if isConcertConflict(error) {
+          conflictMessage = error.localizedDescription
+        } else {
+          errorMessage = error.localizedDescription
+        }
       }
       isSaving = false
     }
+  }
+
+  private func reloadAfterConflict() async {
+    isReloadingAfterConflict = true
+    defer { isReloadingAfterConflict = false }
+
+    do {
+      let latest = try await loadLatestDetail()
+      draft = ConcertDraft(detail: latest)
+      visibility = latest.concert.visibility
+      expectedVersion = latest.concert.version
+      hasBeenShared = hasBeenShared || latest.concert.visibility != .private
+      conflictMessage = nil
+      errorMessage = nil
+    } catch {
+      conflictMessage = nil
+      errorMessage = error.localizedDescription
+    }
+  }
+
+  private func isConcertConflict(_ error: Error) -> Bool {
+    error.localizedDescription.localizedCaseInsensitiveContains("concert changed")
   }
 }
 

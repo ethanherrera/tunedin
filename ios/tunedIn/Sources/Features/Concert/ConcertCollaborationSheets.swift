@@ -15,6 +15,7 @@ struct ConcertPeopleView: View {
   @State private var errorMessage: String?
   @State private var transferCandidate: ConcertCollaborator?
   @State private var isShowingTransferConfirmation = false
+  @State private var removalCandidate: ConcertCollaborator?
 
   var body: some View {
     ScrollView {
@@ -40,7 +41,7 @@ struct ConcertPeopleView: View {
               .font(.subheadline)
               .foregroundStyle(TunedInDesign.mutedText)
           }
-            }
+        }
       }
       .padding(.horizontal, 20)
       .padding(.top, 12)
@@ -63,6 +64,22 @@ struct ConcertPeopleView: View {
         "\(candidate.displayName) becomes the owner immediately. "
           + "You remain an editor, but only they can delete or transfer the concert."
       )
+    }
+    .confirmationDialog(
+      "Remove this editor?",
+      isPresented: isShowingRemovalConfirmation,
+      titleVisibility: .visible,
+      presenting: removalCandidate
+    ) { member in
+      Button("Remove \(member.displayName)", role: .destructive) {
+        remove(member)
+        removalCandidate = nil
+      }
+      Button("Keep editor", role: .cancel) {
+        removalCandidate = nil
+      }
+    } message: { member in
+      Text(removalMessage(for: member))
     }
   }
 
@@ -185,7 +202,7 @@ struct ConcertPeopleView: View {
             isShowingTransferConfirmation = true
           }
           Button("Remove from concert", role: .destructive) {
-            remove(member)
+            removalCandidate = member
           }
         } label: {
           Image(systemName: "ellipsis")
@@ -258,6 +275,23 @@ struct ConcertPeopleView: View {
     }
   }
 
+  private func removalMessage(for member: ConcertCollaborator) -> String {
+    if detail.concert.visibility == .friends {
+      return "\(member.displayName) will immediately lose editor access without a copy. "
+        + "As an accepted friend, they can still view and comment while this concert stays Friends-visible."
+    }
+
+    return "\(member.displayName) will immediately lose access without receiving a private copy."
+  }
+
+  private var isShowingRemovalConfirmation: Binding<Bool> {
+    Binding(get: { removalCandidate != nil }, set: {
+      if !$0 {
+        removalCandidate = nil
+      }
+    })
+  }
+
   private func transfer(to member: ConcertCollaborator) {
     perform {
       try await concertRepository.transferOwnership(
@@ -293,6 +327,8 @@ struct ConcertCommentsView: View {
   @State private var editingCommentID: UUID?
   @State private var editDraft = ""
   @State private var isLoading = true
+  @State private var isLoadingOlder = false
+  @State private var canLoadOlder = false
   @State private var isSending = false
   @State private var errorMessage: String?
   @State private var commentPendingDeletion: ConcertComment?
@@ -310,6 +346,25 @@ struct ConcertCommentsView: View {
           emptyState
         } else {
           LazyVStack(alignment: .leading, spacing: 12) {
+            if canLoadOlder {
+              Button {
+                Task { await loadOlderComments() }
+              } label: {
+                HStack(spacing: 8) {
+                  if isLoadingOlder {
+                    ProgressView()
+                  }
+                  Text(isLoadingOlder ? "Loading earlier comments…" : "Show earlier comments")
+                }
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(TunedInDesign.primaryText)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+              }
+              .buttonStyle(.plain)
+              .disabled(isLoadingOlder)
+            }
             ForEach(comments.sorted(by: { $0.createdAt < $1.createdAt })) { comment in
               commentCard(comment)
             }
@@ -458,10 +513,38 @@ struct ConcertCommentsView: View {
   private func loadComments() async {
     defer { isLoading = false }
     do {
-      comments = try await concertRepository.comments(concertID: concertID, cursor: nil)
+      let loaded = try await concertRepository.comments(concertID: concertID, cursor: nil)
+      comments = loaded
+      canLoadOlder = loaded.count == 30
     } catch {
       errorMessage = error.localizedDescription
     }
+  }
+
+  private func loadOlderComments() async {
+    guard let oldestComment = comments.min(by: isOlderComment), !isLoadingOlder else { return }
+    isLoadingOlder = true
+
+    do {
+      let loaded = try await concertRepository.comments(
+        concertID: concertID,
+        cursor: ConcertCommentCursor(createdAt: oldestComment.createdAt, commentID: oldestComment.id)
+      )
+      comments.append(contentsOf: loaded)
+      canLoadOlder = loaded.count == 30
+      errorMessage = nil
+    } catch {
+      errorMessage = error.localizedDescription
+    }
+
+    isLoadingOlder = false
+  }
+
+  private func isOlderComment(_ lhs: ConcertComment, _ rhs: ConcertComment) -> Bool {
+    if lhs.createdAt == rhs.createdAt {
+      return lhs.id.uuidString < rhs.id.uuidString
+    }
+    return lhs.createdAt < rhs.createdAt
   }
 
   private func send() {
