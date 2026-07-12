@@ -213,6 +213,7 @@ final class ConcertFloatingControls: ObservableObject {
   private var selectPageAction: ((ConcertDetailPage) -> Void)?
   private var editAction: (() -> Void)?
   private var deleteAction: (() -> Void)?
+  private var backControlOwner: UUID?
 
   func configure(
     selectedPage: ConcertDetailPage,
@@ -227,18 +228,20 @@ final class ConcertFloatingControls: ObservableObject {
       selectPageAction = selectPage
       editAction = edit
       deleteAction = delete
+      backControlOwner = nil
       canDelete = delete != nil
       isShowingEditMenu = edit != nil
       navigationContext = .concert
     }
   }
 
-  func configureBackOnly(title: String, back: @escaping () -> Void) {
+  func configureBackOnly(title: String, owner: UUID, back: @escaping () -> Void) {
     withAnimation(.smooth(duration: 0.28, extraBounce: 0)) {
       backAction = back
       selectPageAction = nil
       editAction = nil
       deleteAction = nil
+      backControlOwner = owner
       canDelete = false
       isShowingEditMenu = false
       navigationContext = .backOnly(title)
@@ -251,11 +254,17 @@ final class ConcertFloatingControls: ObservableObject {
       selectPageAction = nil
       editAction = nil
       deleteAction = nil
+      backControlOwner = nil
       canDelete = false
       isShowingEditMenu = false
       navigationContext = .none
       selectedPage = .concert
     }
+  }
+
+  func resetBackOnly(owner: UUID) {
+    guard backControlOwner == owner else { return }
+    reset()
   }
 
   func back() {
@@ -525,6 +534,7 @@ struct SettingsView: View {
 
   @Environment(\.dismiss) private var dismiss
   @EnvironmentObject private var floatingControls: ConcertFloatingControls
+  @State private var floatingControlOwner = UUID()
 
   var body: some View {
     ZStack {
@@ -544,12 +554,12 @@ struct SettingsView: View {
     .navigationBarTitleDisplayMode(.inline)
     .navigationBarBackButtonHidden()
     .onAppear {
-      floatingControls.configureBackOnly(title: "Settings") {
+      floatingControls.configureBackOnly(title: "Settings", owner: floatingControlOwner) {
         floatingControls.reset()
         dismiss()
       }
     }
-    .onDisappear { floatingControls.reset() }
+    .onDisappear { floatingControls.resetBackOnly(owner: floatingControlOwner) }
     .tint(TunedInDesign.accent)
   }
 

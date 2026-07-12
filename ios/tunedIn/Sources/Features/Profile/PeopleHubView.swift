@@ -10,6 +10,7 @@ struct FriendsListView: View {
   let concertRepository: any ConcertRepository
 
   @State private var model: PeopleHubModel
+  @State private var floatingControlOwner = UUID()
   @Environment(\.dismiss) private var dismiss
   @EnvironmentObject private var floatingControls: ConcertFloatingControls
 
@@ -87,12 +88,12 @@ struct FriendsListView: View {
     }
     .task { await model.refresh() }
     .onAppear {
-      floatingControls.configureBackOnly(title: "Friends") {
+      floatingControls.configureBackOnly(title: "Friends", owner: floatingControlOwner) {
         floatingControls.reset()
         dismiss()
       }
     }
-    .onDisappear { floatingControls.reset() }
+    .onDisappear { floatingControls.resetBackOnly(owner: floatingControlOwner) }
   }
 
   private func friendProfileLink(_ profile: SocialProfile) -> some View {
@@ -125,6 +126,7 @@ struct FriendSearchView: View {
   let onSelectProfile: ((SocialProfile) -> Void)?
 
   @State private var model: PeopleHubModel
+  @State private var floatingControlOwner = UUID()
   @Environment(\.dismiss) private var dismiss
   @EnvironmentObject private var floatingControls: ConcertFloatingControls
 
@@ -179,14 +181,14 @@ struct FriendSearchView: View {
     }
     .onAppear {
       guard presentation == .page else { return }
-      floatingControls.configureBackOnly(title: "Search") {
+      floatingControls.configureBackOnly(title: "Search", owner: floatingControlOwner) {
         floatingControls.reset()
         dismiss()
       }
     }
     .onDisappear {
       guard presentation == .page else { return }
-      floatingControls.reset()
+      floatingControls.resetBackOnly(owner: floatingControlOwner)
     }
   }
 

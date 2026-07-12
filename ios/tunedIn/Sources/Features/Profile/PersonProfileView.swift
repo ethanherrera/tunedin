@@ -10,6 +10,7 @@ struct PersonProfileView: View {
 
   @Environment(\.dismiss) private var dismiss
   @EnvironmentObject private var floatingControls: ConcertFloatingControls
+  @State private var floatingControlOwner = UUID()
   @State private var profile: SocialProfile
   @State private var friends: [SocialProfile] = []
   @State private var isPerformingAction = false
@@ -92,14 +93,14 @@ struct PersonProfileView: View {
     }
     .onAppear {
       guard onDismiss == nil else { return }
-      floatingControls.configureBackOnly(title: "Profile") {
+      floatingControls.configureBackOnly(title: "Profile", owner: floatingControlOwner) {
         floatingControls.reset()
         dismiss()
       }
     }
     .onDisappear {
       guard onDismiss == nil else { return }
-      floatingControls.reset()
+      floatingControls.resetBackOnly(owner: floatingControlOwner)
     }
     .safeAreaInset(edge: .bottom, spacing: 0) {
       if let onDismiss {

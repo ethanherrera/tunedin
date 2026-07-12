@@ -99,25 +99,6 @@ struct ConcertPeopleView: View {
     } message: { member in
       Text(removalMessage(for: member))
     }
-    .confirmationDialog(
-      "Remove Friends access?",
-      isPresented: isShowingVisibilityNarrowingConfirmation,
-      titleVisibility: .visible,
-      presenting: pendingVisibilityNarrowing
-    ) { option in
-      Button("Limit to \(option.displayTitle)", role: .destructive) {
-        updateVisibility(to: option)
-        pendingVisibilityNarrowing = nil
-      }
-      Button("Keep Friends access", role: .cancel) {
-        pendingVisibilityNarrowing = nil
-      }
-    } message: { _ in
-      Text(
-        "Friends who are not tagged editors will lose access without receiving a private copy. "
-          + "Tagged editors keep their role."
-      )
-    }
   }
 
   private var header: some View {
@@ -141,7 +122,13 @@ struct ConcertPeopleView: View {
       hasBeenShared: hasBeenShared,
       canManagePeople: viewerRole.canManagePeople,
       isWorking: isWorking,
-      selectVisibility: requestVisibilityChange
+      selectVisibility: requestVisibilityChange,
+      pendingVisibilityNarrowing: pendingVisibilityNarrowing,
+      confirmVisibilityNarrowing: { option in
+        updateVisibility(to: option)
+        pendingVisibilityNarrowing = nil
+      },
+      cancelVisibilityNarrowing: { pendingVisibilityNarrowing = nil }
     )
   }
 
@@ -344,14 +331,6 @@ struct ConcertPeopleView: View {
     })
   }
 
-  private var isShowingVisibilityNarrowingConfirmation: Binding<Bool> {
-    Binding(get: { pendingVisibilityNarrowing != nil }, set: {
-      if !$0 {
-        pendingVisibilityNarrowing = nil
-      }
-    })
-  }
-
   private func transfer(to member: ConcertCollaborator) {
     perform {
       try await concertRepository.transferOwnership(
@@ -397,6 +376,9 @@ private struct ConcertSharingControls: View {
   let canManagePeople: Bool
   let isWorking: Bool
   let selectVisibility: (ConcertVisibility) -> Void
+  let pendingVisibilityNarrowing: ConcertVisibility?
+  let confirmVisibilityNarrowing: (ConcertVisibility) -> Void
+  let cancelVisibilityNarrowing: () -> Void
 
   var body: some View {
     TunedInGlassSection {
@@ -422,6 +404,10 @@ private struct ConcertSharingControls: View {
             .font(.caption.weight(.semibold))
             .foregroundStyle(TunedInDesign.mutedText)
         }
+
+        if let pendingVisibilityNarrowing {
+          visibilityNarrowingConfirmation(for: pendingVisibilityNarrowing)
+        }
       }
     }
   }
@@ -445,6 +431,46 @@ private struct ConcertSharingControls: View {
     .buttonStyle(.plain)
     .disabled(isWorking || (option == .private && hasBeenShared))
     .opacity(option == .private && hasBeenShared ? 0.45 : 1)
+  }
+
+  private func visibilityNarrowingConfirmation(for option: ConcertVisibility) -> some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Divider()
+        .overlay(TunedInDesign.cardBorder.opacity(0.5))
+
+      Text("Remove Friends access?")
+        .font(.subheadline.weight(.bold))
+        .foregroundStyle(TunedInDesign.primaryText)
+
+      Text(
+        "Friends who are not tagged editors will lose access. Tagged editors keep their role."
+      )
+      .font(.caption)
+      .foregroundStyle(TunedInDesign.mutedText)
+
+      HStack(spacing: 8) {
+        Button("Keep Friends") {
+          cancelVisibilityNarrowing()
+        }
+        .buttonStyle(.plain)
+        .font(.caption.weight(.bold))
+        .foregroundStyle(TunedInDesign.primaryText)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(TunedInDesign.raisedSurface, in: Capsule())
+
+        Button("Limit to \(option.displayTitle)") {
+          confirmVisibilityNarrowing(option)
+        }
+        .buttonStyle(.plain)
+        .font(.caption.weight(.bold))
+        .foregroundStyle(.red)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(TunedInDesign.raisedSurface, in: Capsule())
+      }
+      .disabled(isWorking)
+    }
   }
 
   private var visibilityDescription: String {
