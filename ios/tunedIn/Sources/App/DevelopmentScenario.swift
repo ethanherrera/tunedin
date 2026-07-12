@@ -105,6 +105,10 @@
       throw DevelopmentScenarioError.liveAuthenticationRequired
     }
 
+    func signInWithPassword(email _: String, password _: String) async throws {
+      throw DevelopmentScenarioError.liveAuthenticationRequired
+    }
+
     func verifyEmailOTP(email _: String, code _: String) async throws {
       throw DevelopmentScenarioError.liveAuthenticationRequired
     }

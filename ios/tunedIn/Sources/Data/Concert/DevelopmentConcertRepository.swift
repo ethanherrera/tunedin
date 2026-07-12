@@ -70,8 +70,12 @@
     func updateConcert(_ input: ConcertUpdateInput) async throws -> Concert {
       var detail = try detail(for: input.concertID)
       try assertCurrentVersion(detail.concert, expected: input.expectedVersion)
-      guard currentRole(in: detail) != .viewer else {
+      let role = currentRole(in: detail)
+      guard role != .viewer else {
         throw DevelopmentConcertRepositoryError.permissionDenied
+      }
+      if detail.concert.visibility != .private, input.visibility == .private, role != .owner {
+        throw DevelopmentConcertRepositoryError.ownerRequired
       }
 
       let now = Date()
@@ -109,7 +113,7 @@
         artists: artists,
         setlist: setlist,
         history: detail.history + [timelineEvent(kind: kind, at: now)],
-        collaborators: detail.collaborators
+        collaborators: input.visibility == .private ? [] : detail.collaborators
       )
       details[input.concertID] = detail
       return updatedConcert

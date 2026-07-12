@@ -67,5 +67,43 @@
       #expect(finalDetail.history.contains(where: { $0.kind == .setlistUpdated }))
       #expect(finalDetail.history.contains(where: { $0.kind == .commentUpdated }))
     }
+
+    @Test
+    func ownerCanMakeASharedConcertPrivateAndRevokeEditors() async throws {
+      let repository = DevelopmentConcertRepository()
+      let archive = try await repository.profileConcertHistory(
+        profileID: DevelopmentSocialFixture.currentUserID,
+        query: ConcertHistoryQuery(),
+        cursor: nil
+      )
+      let mitski = try #require(archive.first(where: { $0.primaryArtistName == "Mitski" }))
+      let original = try await repository.fetchConcertDetail(
+        id: mitski.id,
+        viewerID: DevelopmentSocialFixture.currentUserID
+      )
+
+      let privateConcert = try await repository.updateConcert(
+        ConcertUpdateInput(
+          concertID: original.concert.id,
+          expectedVersion: original.concert.version,
+          artists: [ConcertArtistInput(name: "Mitski", isPrimary: true)],
+          venueName: "The Greek Theatre",
+          concertDate: "2025-09-18",
+          city: "Berkeley",
+          tour: "The Land Is Inhospitable Tour",
+          startsAt: nil,
+          venueTimeZone: nil,
+          setlist: ["First Love / Late Spring", "My Love Mine All Mine", "I Bet on Losing Dogs"],
+          visibility: .private
+        )
+      )
+      #expect(privateConcert.visibility == .private)
+
+      let finalDetail = try await repository.fetchConcertDetail(
+        id: original.concert.id,
+        viewerID: DevelopmentSocialFixture.currentUserID
+      )
+      #expect(finalDetail.collaborators.isEmpty)
+    }
   }
 #endif

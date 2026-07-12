@@ -37,7 +37,8 @@ final class AppContainer {
     appSession = AppSession(
       authenticationRepository: SupabaseAuthenticationRepository(client: client),
       profileRepository: SupabaseProfileRepository(client: client),
-      authEmailDeliveryMode: configuration.authEmailDeliveryMode
+      authEmailDeliveryMode: configuration.authEmailDeliveryMode,
+      allowsLocalSeededSignIn: configuration.usesLocalSimulatorAuthStorage
     )
     concertRepository = SupabaseConcertRepository(client: client)
     socialRepository = SupabaseSocialRepository(client: client)

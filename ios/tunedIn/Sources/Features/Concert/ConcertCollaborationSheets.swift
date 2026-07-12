@@ -10,37 +10,50 @@ struct ConcertPeopleView: View {
   let pageHeader: AnyView
 
   @State private var friends: [SocialProfile] = []
+  @State private var visibility: ConcertVisibility
   @State private var isLoadingFriends = true
   @State private var isWorking = false
   @State private var errorMessage: String?
   @State private var transferCandidate: ConcertCollaborator?
   @State private var isShowingTransferConfirmation = false
+  @State private var removalCandidate: ConcertCollaborator?
+  @State private var pendingAccessRestriction: ConcertVisibility?
+
+  init(
+    detail: ConcertDetail,
+    viewerRole: ConcertViewerRole,
+    viewerUsername: String,
+    socialRepository: any SocialRepository,
+    concertRepository: any ConcertRepository,
+    onChanged: @escaping () -> Void,
+    pageHeader: AnyView
+  ) {
+    self.detail = detail
+    self.viewerRole = viewerRole
+    self.viewerUsername = viewerUsername
+    self.socialRepository = socialRepository
+    self.concertRepository = concertRepository
+    self.onChanged = onChanged
+    self.pageHeader = pageHeader
+    _visibility = State(initialValue: detail.concert.visibility)
+  }
 
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 18) {
         pageHeader
         header
-        membershipSummary
+        sharingControls
 
         if canAddPeople {
           addPeople
-        } else if viewerRole.canManagePeople {
-          privateBoundary
         }
 
         memberList
 
         if let errorMessage {
-          TunedInFormCard {
-            Label("Couldn’t change the circle", systemImage: "exclamationmark.triangle")
-              .font(.headline)
-              .foregroundStyle(TunedInDesign.primaryText)
-            Text(errorMessage)
-              .font(.subheadline)
-              .foregroundStyle(TunedInDesign.mutedText)
-          }
-            }
+          ConcertPeopleErrorCard(message: errorMessage)
+        }
       }
       .padding(.horizontal, 20)
       .padding(.top, 12)
@@ -48,6 +61,9 @@ struct ConcertPeopleView: View {
     }
     .task {
       await loadFriends()
+    }
+    .onChange(of: detail.concert.version) { _, _ in
+      visibility = detail.concert.visibility
     }
     .confirmationDialog(
       "Hand over this concert?",
@@ -64,6 +80,22 @@ struct ConcertPeopleView: View {
           + "You remain an editor, but only they can delete or transfer the concert."
       )
     }
+    .confirmationDialog(
+      "Remove this editor?",
+      isPresented: isShowingRemovalConfirmation,
+      titleVisibility: .visible,
+      presenting: removalCandidate
+    ) { member in
+      Button("Remove \(member.displayName)", role: .destructive) {
+        remove(member)
+        removalCandidate = nil
+      }
+      Button("Keep editor", role: .cancel) {
+        removalCandidate = nil
+      }
+    } message: { member in
+      Text(removalMessage(for: member))
+    }
   }
 
   private var header: some View {
@@ -71,29 +103,30 @@ struct ConcertPeopleView: View {
       Text("The people in this night")
         .font(.system(size: 29, weight: .bold, design: .serif))
         .foregroundStyle(TunedInDesign.primaryText)
-      Text(viewerRole == .owner ? "Choose who can edit this concert." : "Editors can update concert details.")
-        .font(.subheadline)
-        .foregroundStyle(TunedInDesign.mutedText)
+      Text(
+        viewerRole.canManagePeople
+          ? "Set sharing and choose who can help with this concert."
+          : "See who helps with this concert."
+      )
+      .font(.subheadline)
+      .foregroundStyle(TunedInDesign.mutedText)
     }
   }
 
-  private var membershipSummary: some View {
-    TunedInGlassSection {
-      HStack(alignment: .top, spacing: 12) {
-        Image(systemName: "person.2.fill")
-          .font(.title3)
-          .foregroundStyle(TunedInDesign.accent)
-          .frame(width: 30)
-        VStack(alignment: .leading, spacing: 4) {
-          Text("Editors can change the night")
-            .font(.headline)
-            .foregroundStyle(TunedInDesign.primaryText)
-          Text("Friends can view a Friends-visible concert, but only editors can change it.")
-            .font(.subheadline)
-            .foregroundStyle(TunedInDesign.mutedText)
-        }
-      }
-    }
+  private var sharingControls: some View {
+    ConcertSharingControls(
+      visibility: visibility,
+      canManagePeople: viewerRole.canManagePeople,
+      canMakePrivate: viewerRole == .owner,
+      isWorking: isWorking,
+      selectVisibility: requestVisibilityChange,
+      pendingAccessRestriction: pendingAccessRestriction,
+      confirmAccessRestriction: { option in
+        updateVisibility(to: option)
+        pendingAccessRestriction = nil
+      },
+      cancelAccessRestriction: { pendingAccessRestriction = nil }
+    )
   }
 
   @ViewBuilder
@@ -137,17 +170,6 @@ struct ConcertPeopleView: View {
     }
   }
 
-  private var privateBoundary: some View {
-    TunedInFormCard {
-      Label("This night is still private", systemImage: "lock.fill")
-        .font(.headline)
-        .foregroundStyle(TunedInDesign.primaryText)
-      Text("Change visibility in Edit before inviting someone to edit.")
-        .font(.subheadline)
-        .foregroundStyle(TunedInDesign.mutedText)
-    }
-  }
-
   private var memberList: some View {
     VStack(alignment: .leading, spacing: 10) {
       Text("The circle")
@@ -185,7 +207,7 @@ struct ConcertPeopleView: View {
             isShowingTransferConfirmation = true
           }
           Button("Remove from concert", role: .destructive) {
-            remove(member)
+            removalCandidate = member
           }
         } label: {
           Image(systemName: "ellipsis")
@@ -225,7 +247,37 @@ struct ConcertPeopleView: View {
   }
 
   private var canAddPeople: Bool {
-    viewerRole.canManagePeople && detail.concert.visibility != .private
+    viewerRole.canManagePeople && visibility != .private
+  }
+
+  private func requestVisibilityChange(to option: ConcertVisibility) {
+    guard option != visibility else { return }
+    if option == .private || (visibility == .friends && option == .collaborators) {
+      pendingAccessRestriction = option
+    } else {
+      updateVisibility(to: option)
+    }
+  }
+
+  private func updateVisibility(to option: ConcertVisibility) {
+    let draft = ConcertDraft(detail: detail)
+    guard let input = draft.updateInput(
+      concertID: detail.concert.id,
+      expectedVersion: detail.concert.version,
+      visibility: option
+    ) else { return }
+
+    isWorking = true
+    Task {
+      do {
+        let updated = try await concertRepository.updateConcert(input)
+        visibility = updated.visibility
+        onChanged()
+      } catch {
+        errorMessage = error.localizedDescription
+      }
+      isWorking = false
+    }
   }
 
   private func loadFriends() async {
@@ -258,6 +310,23 @@ struct ConcertPeopleView: View {
     }
   }
 
+  private func removalMessage(for member: ConcertCollaborator) -> String {
+    if detail.concert.visibility == .friends {
+      return "\(member.displayName) will immediately lose editor access without a copy. "
+        + "As an accepted friend, they can still view and comment while this concert stays Friends-visible."
+    }
+
+    return "\(member.displayName) will immediately lose access without receiving a private copy."
+  }
+
+  private var isShowingRemovalConfirmation: Binding<Bool> {
+    Binding(get: { removalCandidate != nil }, set: {
+      if !$0 {
+        removalCandidate = nil
+      }
+    })
+  }
+
   private func transfer(to member: ConcertCollaborator) {
     perform {
       try await concertRepository.transferOwnership(
@@ -282,6 +351,162 @@ struct ConcertPeopleView: View {
   }
 }
 
+private struct ConcertPeopleErrorCard: View {
+  let message: String
+
+  var body: some View {
+    TunedInFormCard {
+      Label("Couldn’t change the circle", systemImage: "exclamationmark.triangle")
+        .font(.headline)
+        .foregroundStyle(TunedInDesign.primaryText)
+      Text(message)
+        .font(.subheadline)
+        .foregroundStyle(TunedInDesign.mutedText)
+    }
+  }
+}
+
+private struct ConcertSharingControls: View {
+  let visibility: ConcertVisibility
+  let canManagePeople: Bool
+  let canMakePrivate: Bool
+  let isWorking: Bool
+  let selectVisibility: (ConcertVisibility) -> Void
+  let pendingAccessRestriction: ConcertVisibility?
+  let confirmAccessRestriction: (ConcertVisibility) -> Void
+  let cancelAccessRestriction: () -> Void
+
+  var body: some View {
+    TunedInGlassSection {
+      VStack(alignment: .leading, spacing: 10) {
+        Text("Sharing")
+          .font(.headline)
+          .foregroundStyle(TunedInDesign.primaryText)
+
+        if canManagePeople {
+          HStack(spacing: 6) {
+            ForEach(ConcertVisibility.allCases, id: \.rawValue) { option in
+              visibilityToggle(option)
+            }
+          }
+        }
+
+        Text(visibilityDescription)
+          .font(.subheadline)
+          .foregroundStyle(TunedInDesign.mutedText)
+
+        if !canMakePrivate, visibility != .private {
+          Text("Only the owner can make this concert private.")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(TunedInDesign.mutedText)
+        }
+
+        if let pendingAccessRestriction {
+          accessRestrictionConfirmation(for: pendingAccessRestriction)
+        }
+      }
+    }
+  }
+
+  private func visibilityToggle(_ option: ConcertVisibility) -> some View {
+    Button {
+      selectVisibility(option)
+    } label: {
+      Text(option.displayTitle)
+        .font(.caption.weight(.bold))
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+        .foregroundStyle(visibility == option ? TunedInDesign.actionForeground : TunedInDesign.primaryText)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(
+          visibility == option ? TunedInDesign.accent : TunedInDesign.raisedSurface,
+          in: Capsule()
+        )
+    }
+    .buttonStyle(.plain)
+    .disabled(isWorking || (option == .private && !canMakePrivate))
+    .opacity(option == .private && !canMakePrivate ? 0.45 : 1)
+  }
+
+  private func accessRestrictionConfirmation(for option: ConcertVisibility) -> some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Divider()
+        .overlay(TunedInDesign.cardBorder.opacity(0.5))
+
+      Text(accessRestrictionTitle(for: option))
+        .font(.subheadline.weight(.bold))
+        .foregroundStyle(TunedInDesign.primaryText)
+
+      Text(accessRestrictionDescription(for: option))
+        .font(.caption)
+        .foregroundStyle(TunedInDesign.mutedText)
+
+      HStack(spacing: 8) {
+        Button(cancelAccessRestrictionTitle(for: option)) {
+          cancelAccessRestriction()
+        }
+        .buttonStyle(.plain)
+        .font(.caption.weight(.bold))
+        .foregroundStyle(TunedInDesign.primaryText)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(TunedInDesign.raisedSurface, in: Capsule())
+
+        Button(confirmAccessRestrictionTitle(for: option)) {
+          confirmAccessRestriction(option)
+        }
+        .buttonStyle(.plain)
+        .font(.caption.weight(.bold))
+        .foregroundStyle(.red)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(TunedInDesign.raisedSurface, in: Capsule())
+      }
+      .disabled(isWorking)
+    }
+  }
+
+  private func accessRestrictionTitle(for option: ConcertVisibility) -> String {
+    option == .private ? "Make this concert private?" : "Remove Friends access?"
+  }
+
+  private func accessRestrictionDescription(for option: ConcertVisibility) -> String {
+    option == .private
+      ? "Everyone you tagged will lose access immediately. You will be the only person who can see this concert."
+      : "Friends who are not tagged editors will lose access. Tagged editors keep their role."
+  }
+
+  private func cancelAccessRestrictionTitle(for option: ConcertVisibility) -> String {
+    option == .private ? "Keep sharing" : "Keep Friends"
+  }
+
+  private func confirmAccessRestrictionTitle(for option: ConcertVisibility) -> String {
+    option == .private ? "Make Private" : "Limit to \(option.displayTitle)"
+  }
+
+  private var visibilityDescription: String {
+    switch visibility {
+    case .private:
+      "Only you can see this concert. Pick Collaborators or Friends to share it."
+    case .collaborators:
+      "Only tagged editors can see and update this concert."
+    case .friends:
+      "Accepted friends can view and comment; tagged editors can update it."
+    }
+  }
+}
+
+private extension ConcertVisibility {
+  var displayTitle: String {
+    switch self {
+    case .private: "Private"
+    case .collaborators: "Collaborators"
+    case .friends: "Friends"
+    }
+  }
+}
+
 struct ConcertCommentsView: View {
   let concertID: UUID
   let viewerID: UUID
@@ -293,6 +518,8 @@ struct ConcertCommentsView: View {
   @State private var editingCommentID: UUID?
   @State private var editDraft = ""
   @State private var isLoading = true
+  @State private var isLoadingOlder = false
+  @State private var canLoadOlder = false
   @State private var isSending = false
   @State private var errorMessage: String?
   @State private var commentPendingDeletion: ConcertComment?
@@ -310,6 +537,25 @@ struct ConcertCommentsView: View {
           emptyState
         } else {
           LazyVStack(alignment: .leading, spacing: 12) {
+            if canLoadOlder {
+              Button {
+                Task { await loadOlderComments() }
+              } label: {
+                HStack(spacing: 8) {
+                  if isLoadingOlder {
+                    ProgressView()
+                  }
+                  Text(isLoadingOlder ? "Loading earlier comments…" : "Show earlier comments")
+                }
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(TunedInDesign.primaryText)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+              }
+              .buttonStyle(.plain)
+              .disabled(isLoadingOlder)
+            }
             ForEach(comments.sorted(by: { $0.createdAt < $1.createdAt })) { comment in
               commentCard(comment)
             }
@@ -458,10 +704,38 @@ struct ConcertCommentsView: View {
   private func loadComments() async {
     defer { isLoading = false }
     do {
-      comments = try await concertRepository.comments(concertID: concertID, cursor: nil)
+      let loaded = try await concertRepository.comments(concertID: concertID, cursor: nil)
+      comments = loaded
+      canLoadOlder = loaded.count == 30
     } catch {
       errorMessage = error.localizedDescription
     }
+  }
+
+  private func loadOlderComments() async {
+    guard let oldestComment = comments.min(by: isOlderComment), !isLoadingOlder else { return }
+    isLoadingOlder = true
+
+    do {
+      let loaded = try await concertRepository.comments(
+        concertID: concertID,
+        cursor: ConcertCommentCursor(createdAt: oldestComment.createdAt, commentID: oldestComment.id)
+      )
+      comments.append(contentsOf: loaded)
+      canLoadOlder = loaded.count == 30
+      errorMessage = nil
+    } catch {
+      errorMessage = error.localizedDescription
+    }
+
+    isLoadingOlder = false
+  }
+
+  private func isOlderComment(_ lhs: ConcertComment, _ rhs: ConcertComment) -> Bool {
+    if lhs.createdAt == rhs.createdAt {
+      return lhs.id.uuidString < rhs.id.uuidString
+    }
+    return lhs.createdAt < rhs.createdAt
   }
 
   private func send() {

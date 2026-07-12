@@ -21,16 +21,19 @@ final class AppSession {
   private var profileLoadGeneration = 0
 
   let authEmailDeliveryMode: AuthEmailDeliveryMode
+  let allowsLocalSeededSignIn: Bool
   private(set) var phase: AppSessionPhase = .restoring
 
   init(
     authenticationRepository: any AuthenticationRepository,
     profileRepository: any ProfileRepository,
-    authEmailDeliveryMode: AuthEmailDeliveryMode = .oneTimeCode
+    authEmailDeliveryMode: AuthEmailDeliveryMode = .oneTimeCode,
+    allowsLocalSeededSignIn: Bool = false
   ) {
     self.authenticationRepository = authenticationRepository
     self.profileRepository = profileRepository
     self.authEmailDeliveryMode = authEmailDeliveryMode
+    self.allowsLocalSeededSignIn = allowsLocalSeededSignIn
 
     authStateTask = Task { [weak self, authenticationRepository] in
       for await user in authenticationRepository.authenticationStateChanges {
@@ -42,6 +45,17 @@ final class AppSession {
 
   func sendEmailOTP(to email: String) async throws {
     try await authenticationRepository.sendEmailOTP(to: email)
+  }
+
+  func signIn(to localAccount: LocalSeededAccount) async throws {
+    guard allowsLocalSeededSignIn else {
+      throw AppSessionError.localSeededSignInUnavailable
+    }
+
+    try await authenticationRepository.signInWithPassword(
+      email: localAccount.email,
+      password: LocalSeededAccount.password
+    )
   }
 
   func verifyEmailOTP(email: String, code: String) async throws {
@@ -132,11 +146,14 @@ final class AppSession {
 
 enum AppSessionError: LocalizedError {
   case missingAuthenticatedUser
+  case localSeededSignInUnavailable
 
   var errorDescription: String? {
     switch self {
     case .missingAuthenticatedUser:
       "Your sign-in session is no longer available. Please sign in again."
+    case .localSeededSignInUnavailable:
+      "Seeded account sign-in is available only for the disposable Local Supabase stack."
     }
   }
 }

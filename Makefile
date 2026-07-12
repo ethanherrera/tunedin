@@ -7,7 +7,7 @@ DESTINATION := platform=iOS Simulator,name=iPhone 13
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup configure configure-local-supabase generate format lint build build-local test test-local check simulator-auth-link simulator-local simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error local-db-reset supabase-types check-supabase-types backend-test backend-verify dev-status dev-plan dev-deploy
+.PHONY: help setup configure local-db-start configure-local-supabase local-next-steps generate format lint build build-local test test-local check simulator-auth-link simulator-local simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error local-db-reset local-seed-verify supabase-types check-supabase-types backend-test backend-verify dev-status dev-plan dev-deploy
 
 help: ## List available development commands.
 	@awk 'BEGIN {FS = ":.*##"}; /^[a-zA-Z_-]+:.*##/ { printf "%-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -18,7 +18,10 @@ setup: ## Verify the local native and backend toolchain.
 configure: ## Create ignored local Xcode configuration files from templates.
 	@./scripts/configure-local.sh
 
-configure-local-supabase: ## Point the ignored Local Xcode configuration at the running local Supabase stack.
+local-db-start: ## Start or reuse the disposable local Supabase stack without changing its data.
+	@supabase start >/dev/null
+
+configure-local-supabase: local-db-start ## Point the ignored Local Xcode configuration at the local Supabase stack.
 	@./scripts/configure-local-supabase.sh
 
 generate: ## Regenerate the committed Xcode project from project.yml.
@@ -48,8 +51,11 @@ check: generate lint test ## Run generation, linting, and logic tests.
 simulator-auth-link: ## Open a copied Supabase sign-in link in the booted Simulator.
 	@./scripts/open-simulator-auth-link.sh
 
-simulator-local: build-local ## Install and launch the Local Supabase build in the booted Simulator.
+simulator-local: ## Start Local Supabase, configure, build, install, and launch without resetting local data.
+	@$(MAKE) configure-local-supabase
+	@$(MAKE) build-local
 	@./scripts/install-local-simulator.sh
+	@$(MAKE) --no-print-directory local-next-steps
 
 simulator-live: build ## Install and launch the fresh Development app with live Supabase repositories.
 	@./scripts/launch-development-scenario.sh live
@@ -66,9 +72,20 @@ simulator-profile: build ## Install and launch the fresh Development app with a 
 simulator-profile-error: build ## Install and launch the fresh Development app with a deterministic profile failure.
 	@./scripts/launch-development-scenario.sh profile-error
 
-local-db-reset: ## Reset the disposable local Supabase database, migrations, and development seed.
-	@supabase start >/dev/null
+local-db-reset: local-db-start ## Reset the disposable local Supabase database, migrations, and development seed.
 	@supabase db reset
+	@./scripts/verify-local-seed.sh
+	@$(MAKE) --no-print-directory local-next-steps
+
+local-seed-verify: ## Verify the deterministic local Supabase journey catalog.
+	@./scripts/verify-local-seed.sh
+
+local-next-steps:
+	@printf '\nNext steps for Local testing:\n'
+	@printf '  1. In the app, tap Continue as Local Listener (no email link needed).\n'
+	@printf '  2. Use Choose another seeded account to switch journeys.\n'
+	@printf '  Other journeys: newcomer for onboarding; sasha/theo/june for request states.\n'
+	@printf '  To test email auth itself, use Inbucket at http://127.0.0.1:54324 and make simulator-auth-link.\n\n'
 
 supabase-types: ## Generate Swift database DTOs from the migrated local schema.
 	@./scripts/generate-supabase-types.sh
