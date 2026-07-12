@@ -231,6 +231,7 @@ final class ConcertFloatingControls: ObservableObject {
   @Published private(set) var canDelete = false
   @Published private(set) var selectedPage: ConcertDetailPage = .concert
   @Published private(set) var isInteractionLocked = false
+  @Published private(set) var albumPickerLimit: Int?
   @Published var pendingPhotoSelections: [PhotosPickerItem] = []
 
   private var backAction: (() -> Void)?
@@ -284,6 +285,7 @@ final class ConcertFloatingControls: ObservableObject {
       navigationContext = .none
       selectedPage = .concert
       isInteractionLocked = false
+      albumPickerLimit = nil
       pendingPhotoSelections = []
     }
   }
@@ -322,6 +324,10 @@ final class ConcertFloatingControls: ObservableObject {
 
   func setInteractionLocked(_ locked: Bool) {
     isInteractionLocked = locked
+  }
+
+  func setAlbumPolicy(_ policy: ConcertAlbumPolicy) {
+    albumPickerLimit = policy.pickerBatchLimit
   }
 }
 
@@ -380,14 +386,17 @@ private struct ConcertContextBottomBar: View {
         if controls.selectedPage == .photos {
           PhotosPicker(
             selection: $controls.pendingPhotoSelections,
-            maxSelectionCount: 10,
+            maxSelectionCount: controls.albumPickerLimit ?? 1,
             matching: .images
           ) {
             TunedInFloatingActionLabel(systemImage: "plus")
           }
           .buttonStyle(.plain)
-          .disabled(controls.isInteractionLocked)
+          .disabled(controls.isInteractionLocked || controls.albumPickerLimit == nil)
           .accessibilityLabel("Add photos")
+          .accessibilityHint(
+            controls.albumPickerLimit == nil ? "Album policy is loading" : "Select photos for this album"
+          )
         } else {
           TunedInFloatingAction(
             systemImage: "pencil",

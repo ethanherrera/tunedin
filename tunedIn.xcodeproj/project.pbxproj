@@ -14,6 +14,7 @@
 		1793E9051F51C7519FF80E6E /* ConcertInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21073FA12796111F79010BBE /* ConcertInputTests.swift */; };
 		1B3DDAF057B8F6E131BDC885 /* LocalSeededAccountTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC42DD81FFABFB4F55ECBD0E /* LocalSeededAccountTests.swift */; };
 		1F370D3E3BCB807C700E18B0 /* ProfileTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0FBCDF44CFFCD6B78B8DD54 /* ProfileTabView.swift */; };
+		239BFE8594ABAC004DDA2D9E /* AlbumUploadBatchExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36855C0A3DE0CB302D9FE025 /* AlbumUploadBatchExecutor.swift */; };
 		2577832D8CB24FADB94E3250 /* ConcertRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C87D147D8C4F0FABCE333EE /* ConcertRepository.swift */; };
 		29178E4550968F8687FE86CA /* DevelopmentConcertRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D20A416A01449F03EA5661F /* DevelopmentConcertRepositoryTests.swift */; };
 		2AEC9C708B7ADD5C38F331BE /* SupabaseAuthenticationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D967C5B386F95DD48B19CAE9 /* SupabaseAuthenticationRepository.swift */; };
@@ -37,6 +38,7 @@
 		8F3C5D513BD8199AFC4896DC /* AuthenticationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 075C8094B7B7249F8E4DF36F /* AuthenticationRepository.swift */; };
 		8FCAFFA83A941FD8C0EB2B6F /* tunedInApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8046DFD22BCA47A3E52C7793 /* tunedInApp.swift */; };
 		905E3D91E2B813DA12200AAD /* SupabaseConcertRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B89C2123769CE8C8EE2427 /* SupabaseConcertRepository.swift */; };
+		92360D3D1229A15146C11DFE /* AlbumReadinessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B185CD800E6B9369C52FD98 /* AlbumReadinessTests.swift */; };
 		9B82FB9B7F094931B9622D52 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52FC5FA5CC195C96AC2F7E11 /* AppContainer.swift */; };
 		A111EE6F1E729528DDD55F8D /* ProfileAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B583B6D8C84821B5F36ABC1A /* ProfileAvatarView.swift */; };
 		A555A5875A5637540E1BC35E /* SupabaseProfileRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = C659A65B20724EDB509145AB /* SupabaseProfileRepository.swift */; };
@@ -54,6 +56,7 @@
 		D6331F38545589E8EC42E675 /* ProfileInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1237B11A854A5A058C98A39C /* ProfileInputTests.swift */; };
 		DD9DF4D5F2A6DFA4463F9723 /* ConcertCreationDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48D5349FC56B2CBC9101478D /* ConcertCreationDraft.swift */; };
 		DE9D4024F47CD0B1936B8812 /* PersonProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74193CBB4CFA490AEC77ACC8 /* PersonProfileView.swift */; };
+		E4D4BB4077D2B6C7E74F7E08 /* AppNetworkSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E5567493126633FA6F89B8A /* AppNetworkSession.swift */; };
 		EC79DB067047705BFA83DD0E /* SupabaseTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CFC17EF319FD32E400CFE04 /* SupabaseTypes.swift */; };
 		F4E200A9A3F2B4A822C52209 /* AppSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7788CE273B97F5DF8299CB3 /* AppSessionTests.swift */; };
 		F65D718B16A14EDEF2F1E39D /* DevelopmentScenario.swift in Sources */ = {isa = PBXBuildFile; fileRef = 889BD9CC3B0A992D16F66A9A /* DevelopmentScenario.swift */; };
@@ -82,8 +85,10 @@
 		2644431350079CF5B9312C52 /* EmailVerificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailVerificationView.swift; sourceTree = "<group>"; };
 		32C1D6763D82D3E1FE54AAB8 /* LocalSimulatorAuthStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSimulatorAuthStorage.swift; sourceTree = "<group>"; };
 		3531262D0A7C77D265C40BCC /* AvatarImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarImageProcessor.swift; sourceTree = "<group>"; };
+		36855C0A3DE0CB302D9FE025 /* AlbumUploadBatchExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumUploadBatchExecutor.swift; sourceTree = "<group>"; };
 		48D5349FC56B2CBC9101478D /* ConcertCreationDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertCreationDraft.swift; sourceTree = "<group>"; };
 		4A5DDFF994E4A5513CAD3917 /* midnight-theatre.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "midnight-theatre.png"; sourceTree = "<group>"; };
+		4B185CD800E6B9369C52FD98 /* AlbumReadinessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumReadinessTests.swift; sourceTree = "<group>"; };
 		52FC5FA5CC195C96AC2F7E11 /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
 		532F8D6E5EB000F34B910F42 /* TunedInDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunedInDesignSystem.swift; sourceTree = "<group>"; };
 		5459A1928EB0514BA0734156 /* DevelopmentSocialRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentSocialRepositoryTests.swift; sourceTree = "<group>"; };
@@ -103,6 +108,7 @@
 		889BD9CC3B0A992D16F66A9A /* DevelopmentScenario.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentScenario.swift; sourceTree = "<group>"; };
 		8BB6E4FE735BE91A1C03412D /* TunedInAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunedInAppearance.swift; sourceTree = "<group>"; };
 		8D20A416A01449F03EA5661F /* DevelopmentConcertRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentConcertRepositoryTests.swift; sourceTree = "<group>"; };
+		8E5567493126633FA6F89B8A /* AppNetworkSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNetworkSession.swift; sourceTree = "<group>"; };
 		928728B8414A847C3CE27348 /* ConcertEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertEditView.swift; sourceTree = "<group>"; };
 		93B17BB128F3EE14857B0AEB /* TunedInAppearanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunedInAppearanceTests.swift; sourceTree = "<group>"; };
 		96E0DD7FF8EEA60EC2BF9AFB /* DevelopmentSocialRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentSocialRepository.swift; sourceTree = "<group>"; };
@@ -170,6 +176,7 @@
 		103D49F6DBCA17735ED319D2 /* Concert */ = {
 			isa = PBXGroup;
 			children = (
+				36855C0A3DE0CB302D9FE025 /* AlbumUploadBatchExecutor.swift */,
 				CEF24A80EA0C54BE0246F2EC /* ConcertAlbumImageProcessor.swift */,
 				7C87D147D8C4F0FABCE333EE /* ConcertRepository.swift */,
 				ED1E308009003391C9687626 /* DevelopmentConcertRepository.swift */,
@@ -207,6 +214,7 @@
 			isa = PBXGroup;
 			children = (
 				B70F123405BE8D8AEC81A601 /* AppConfiguration.swift */,
+				8E5567493126633FA6F89B8A /* AppNetworkSession.swift */,
 			);
 			path = Configuration;
 			sourceTree = "<group>";
@@ -336,6 +344,7 @@
 		D3F55AC61B7F81BB7215EAAA /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				4B185CD800E6B9369C52FD98 /* AlbumReadinessTests.swift */,
 				B7788CE273B97F5DF8299CB3 /* AppSessionTests.swift */,
 				57FDDFA7886E6E8E872E5AF9 /* AvatarImageProcessorTests.swift */,
 				21073FA12796111F79010BBE /* ConcertInputTests.swift */,
@@ -473,8 +482,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				239BFE8594ABAC004DDA2D9E /* AlbumUploadBatchExecutor.swift in Sources */,
 				690FC5B8BB56B1E30AC47B72 /* AppConfiguration.swift in Sources */,
 				9B82FB9B7F094931B9622D52 /* AppContainer.swift in Sources */,
+				E4D4BB4077D2B6C7E74F7E08 /* AppNetworkSession.swift in Sources */,
 				50A81F38CF306B62FD2C87D7 /* AppSession.swift in Sources */,
 				8F3C5D513BD8199AFC4896DC /* AuthenticationRepository.swift in Sources */,
 				8A0FCDC894E557A1EFB27587 /* AvatarImageProcessor.swift in Sources */,
@@ -521,6 +532,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				92360D3D1229A15146C11DFE /* AlbumReadinessTests.swift in Sources */,
 				F4E200A9A3F2B4A822C52209 /* AppSessionTests.swift in Sources */,
 				113D27B6136FBB89C6B8D9A0 /* AvatarImageProcessorTests.swift in Sources */,
 				1793E9051F51C7519FF80E6E /* ConcertInputTests.swift in Sources */,

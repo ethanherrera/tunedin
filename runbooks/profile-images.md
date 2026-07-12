@@ -26,6 +26,8 @@ Migrations are forward-only. Correct a bad contract with a new migration. If rem
 
 Album uploads retry the same reservation ID and object path. For a stuck deletion, list rows in `deleting` status, delete their exact objects through the authenticated Storage API, then call the matching finalize RPC. Concert deletion follows the same prepare → Storage API cleanup → finalize sequence, so rerunning it is safe after partial cleanup. Never finalize by directly deleting database or Storage metadata rows.
 
+The iOS client bounds API requests at 30 seconds and whole-resource transfers at 60 seconds. A timeout is a terminal item failure, not an automatic retry: successful batch items remain attached, navigation unlocks after the batch resolves, and the user explicitly retries the failed item with its original photo ID and reservation path. Storage replacement is authorized only while that caller still owns a live pending reservation.
+
 ## Audit location and cadence
 
 Git migrations and protected workflow logs are the provisioning audit trail. Review bucket bytes and ready/pending/deleting row counts monthly during the private beta and after reported deletion failures. Objects are environment-local and must never be copied between Local, Development, Staging, or Production.
