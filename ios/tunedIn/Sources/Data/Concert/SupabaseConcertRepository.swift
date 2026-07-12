@@ -1,8 +1,11 @@
+// swiftlint:disable file_length type_body_length
+
 import Foundation
 import Supabase
 
 struct SupabaseConcertRepository: ConcertRepository {
   let client: SupabaseClient
+  private let photoURLs = AvatarURLCache()
 
   func createPrivateConcert(_ input: ConcertCreationInput) async throws -> Concert {
     do {
@@ -26,6 +29,109 @@ struct SupabaseConcertRepository: ConcertRepository {
     } catch {
       throw ConcertRepositoryFailure(error)
     }
+  }
+
+  func setConcertPhoto(_ jpegData: Data, concertID: UUID) async throws -> Concert {
+    let path = "concerts/\(concertID.uuidString.lowercased())/main.jpg"
+    try await client.storage.from("images").upload(
+      path, data: jpegData,
+      options: FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: true)
+    )
+    do {
+      let response: PostgrestResponse<PublicSchema.ConcertsSelect> = try await client
+        .rpc("set_concert_photo", params: ConcertIDParameters(concertID: concertID)).single().execute()
+      await photoURLs.remove(profileID: concertID)
+      return try Concert(databaseRecord: response.value)
+    } catch {
+      _ = try? await client.storage.from("images").remove(paths: [path])
+      throw ConcertRepositoryFailure(error)
+    }
+  }
+
+  func removeConcertPhoto(concertID: UUID) async throws -> Concert {
+    let response: PostgrestResponse<String?> = try await client
+      .rpc("remove_concert_photo", params: ConcertIDParameters(concertID: concertID)).execute()
+    let path = response.value ?? "concerts/\(concertID.uuidString.lowercased())/main.jpg"
+    _ = try await client.storage.from("images").remove(paths: [path])
+    await photoURLs.remove(profileID: concertID)
+    let userID = try await client.auth.session.user.id
+    return try await fetchConcertDetail(id: concertID, viewerID: userID).concert
+  }
+
+  func concertPhotoURL(concertID: UUID, objectPath: String, version: Int64) async throws -> URL {
+    if let url = await photoURLs.value(profileID: concertID, version: version) {
+      return url
+    }
+    let url = try await client.storage.from("images").createSignedURL(
+      path: objectPath, expiresIn: 3600, cacheNonce: String(version)
+    )
+    await photoURLs.insert(url, profileID: concertID, version: version)
+    return url
+  }
+
+  func albumPolicy() async throws -> ConcertAlbumPolicy {
+    let response: PostgrestResponse<ConcertAlbumPolicy> = try await client
+      .rpc("concert_album_policy").single().execute()
+    return response.value
+  }
+
+  func reserveAlbumPhoto(concertID: UUID, photoID: UUID) async throws -> ConcertPhotoReservation {
+    let response: PostgrestResponse<ConcertPhotoReservationRecord> = try await client
+      .rpc("reserve_concert_photo", params: AlbumReservationParameters(concertID: concertID, photoID: photoID))
+      .single().execute()
+    return try ConcertPhotoReservation(databaseRecord: response.value)
+  }
+
+  func uploadReservedAlbumPhoto(_ jpegData: Data, reservation: ConcertPhotoReservation) async throws -> ConcertAlbumPhoto {
+    try await client.storage.from("images").upload(
+      reservation.objectPath, data: jpegData,
+      options: FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: false)
+    )
+    let _: PostgrestResponse<ConcertPhotoReservationRecord> = try await client
+      .rpc("attach_concert_photo", params: PhotoIDParameters(photoID: reservation.photoID)).single().execute()
+    let photos = try await albumPhotos(concertID: reservation.concertID, cursor: nil)
+    guard let attached = photos.first(where: { $0.id == reservation.photoID }) else {
+      throw ConcertRepositoryFailure.invalidRecord
+    }
+    return attached
+  }
+
+  func albumPhotos(concertID: UUID, cursor: ConcertAlbumPhotoCursor?) async throws -> [ConcertAlbumPhoto] {
+    let response: PostgrestResponse<[ConcertAlbumPhotoRecord]> = try await client
+      .rpc("list_concert_photos", params: AlbumListParameters(concertID: concertID, cursor: cursor)).execute()
+    return try response.value.map(ConcertAlbumPhoto.init(databaseRecord:))
+  }
+
+  func albumPhotoURL(photoID: UUID, objectPath: String, version: Int64) async throws -> URL {
+    if let url = await photoURLs.value(profileID: photoID, version: version) { return url }
+    let url = try await client.storage.from("images").createSignedURL(
+      path: objectPath, expiresIn: 3600, cacheNonce: String(version)
+    )
+    await photoURLs.insert(url, profileID: photoID, version: version)
+    return url
+  }
+
+  func updateAlbumPhotoCaption(photoID: UUID, caption: String?) async throws -> ConcertAlbumPhoto {
+    let response: PostgrestResponse<ConcertPhotoReservationRecord> = try await client
+      .rpc("update_concert_photo_caption", params: AlbumCaptionParameters(photoID: photoID, caption: caption))
+      .single().execute()
+    let record = response.value
+    let currentUser = try await client.auth.session.user.id
+    guard let attachedAt = record.attachedAt.flatMap(ConcertDateCoding.dateTime(from:)) else {
+      throw ConcertRepositoryFailure.invalidRecord
+    }
+    return ConcertAlbumPhoto(id: record.id, concertID: record.concertID, uploaderID: record.uploaderID,
+      username: record.uploaderID == currentUser ? "you" : "", displayName: record.uploaderID == currentUser ? "You" : "",
+      objectPath: record.objectPath, caption: record.caption, version: record.version, attachedAt: attachedAt)
+  }
+
+  func deleteAlbumPhoto(photoID: UUID) async throws {
+    let prepared: PostgrestResponse<String> = try await client
+      .rpc("prepare_concert_photo_deletion", params: PhotoIDParameters(photoID: photoID)).single().execute()
+    _ = try await client.storage.from("images").remove(paths: [prepared.value])
+    let _: PostgrestResponse<Void> = try await client
+      .rpc("finalize_concert_photo_deletion", params: PhotoIDParameters(photoID: photoID)).execute()
+    await photoURLs.remove(profileID: photoID)
   }
 
   func tagCollaborator(
@@ -83,8 +189,13 @@ struct SupabaseConcertRepository: ConcertRepository {
 
   func deleteConcert(id: UUID) async throws {
     do {
+      let paths: PostgrestResponse<[ConcertDeletionPathRecord]> = try await client
+        .rpc("prepare_concert_deletion", params: ConcertIDParameters(concertID: id)).execute()
+      if !paths.value.isEmpty {
+        _ = try await client.storage.from("images").remove(paths: paths.value.map(\.objectPath))
+      }
       let _: PostgrestResponse<Void> = try await client
-        .rpc("delete_concert", params: ConcertIDParameters(concertID: id))
+        .rpc("finalize_concert_deletion", params: ConcertIDParameters(concertID: id))
         .execute()
     } catch {
       throw ConcertRepositoryFailure(error)
@@ -247,7 +358,8 @@ struct SupabaseConcertRepository: ConcertRepository {
       name: "concert-\(id.uuidString)",
       subscriptions: [
         ("concert_events", "concert_id=eq.\(id.uuidString)"),
-        ("concerts", "id=eq.\(id.uuidString)")
+        ("concerts", "id=eq.\(id.uuidString)"),
+        ("concert_photos", "concert_id=eq.\(id.uuidString)")
       ]
     )
   }
@@ -402,6 +514,47 @@ private struct ConcertIDParameters: Encodable, Sendable {
   }
 }
 
+private struct PhotoIDParameters: Encodable, Sendable {
+  let photoID: UUID
+  enum CodingKeys: String, CodingKey { case photoID = "p_photo_id" }
+}
+
+private struct AlbumReservationParameters: Encodable, Sendable {
+  let concertID: UUID
+  let photoID: UUID
+  enum CodingKeys: String, CodingKey {
+    case concertID = "p_concert_id"
+    case photoID = "p_photo_id"
+  }
+}
+
+private struct AlbumCaptionParameters: Encodable, Sendable {
+  let photoID: UUID
+  let caption: String?
+  enum CodingKeys: String, CodingKey {
+    case photoID = "p_photo_id"
+    case caption = "p_caption"
+  }
+}
+
+private struct AlbumListParameters: Encodable, Sendable {
+  let concertID: UUID
+  let cursorAttachedAt: String?
+  let cursorID: UUID?
+  let limit = 30
+  init(concertID: UUID, cursor: ConcertAlbumPhotoCursor?) {
+    self.concertID = concertID
+    cursorAttachedAt = cursor.map { ConcertDateCoding.dateTimeString($0.attachedAt) }
+    cursorID = cursor?.photoID
+  }
+  enum CodingKeys: String, CodingKey {
+    case concertID = "p_concert_id"
+    case cursorAttachedAt = "p_cursor_attached_at"
+    case cursorID = "p_cursor_id"
+    case limit = "p_limit"
+  }
+}
+
 private struct CollaboratorMutationParameters: Encodable, Sendable {
   let concertID: UUID
   let profileID: UUID
@@ -538,6 +691,11 @@ private struct ConcertCollaboratorRecord: Decodable, Sendable {
   }
 }
 
+private struct ConcertDeletionPathRecord: Decodable, Sendable {
+  let objectPath: String
+  enum CodingKeys: String, CodingKey { case objectPath = "object_path" }
+}
+
 private struct ConcertCommentRecord: Decodable, Sendable {
   let id: UUID
   let concertID: UUID
@@ -562,6 +720,48 @@ private struct ConcertCommentRecord: Decodable, Sendable {
   }
 }
 
+private struct ConcertPhotoReservationRecord: Decodable, Sendable {
+  let id: UUID
+  let concertID: UUID
+  let uploaderID: UUID
+  let objectPath: String
+  let caption: String?
+  let version: Int64
+  let attachedAt: String?
+  let expiresAt: String
+  enum CodingKeys: String, CodingKey {
+    case id
+    case concertID = "concert_id"
+    case uploaderID = "uploader_id"
+    case objectPath = "object_path"
+    case caption, version
+    case attachedAt = "attached_at"
+    case expiresAt = "expires_at"
+  }
+}
+
+private struct ConcertAlbumPhotoRecord: Decodable, Sendable {
+  let id: UUID
+  let concertID: UUID
+  let uploaderID: UUID
+  let username: String
+  let displayName: String
+  let objectPath: String
+  let caption: String?
+  let version: Int64
+  let attachedAt: String
+  enum CodingKeys: String, CodingKey {
+    case id
+    case concertID = "concert_id"
+    case uploaderID = "uploader_id"
+    case username
+    case displayName = "display_name"
+    case objectPath = "object_path"
+    case caption, version
+    case attachedAt = "attached_at"
+  }
+}
+
 private struct FriendActivityRecord: Decodable, Sendable {
   let id: UUID
   let concertID: UUID
@@ -573,6 +773,12 @@ private struct FriendActivityRecord: Decodable, Sendable {
   let primaryArtist: String
   let venueName: String
   let concertDate: String
+  let changedFields: [String]
+  let setlistPreview: [String]
+  let setlistCount: Int
+  let photoID: UUID?
+  let photoObjectPath: String?
+  let photoVersion: Int64
 
   enum CodingKeys: String, CodingKey {
     case id
@@ -585,6 +791,12 @@ private struct FriendActivityRecord: Decodable, Sendable {
     case primaryArtist = "primary_artist"
     case venueName = "venue_name"
     case concertDate = "concert_date"
+    case changedFields = "changed_fields"
+    case setlistPreview = "setlist_preview"
+    case setlistCount = "setlist_count"
+    case photoID = "photo_id"
+    case photoObjectPath = "photo_object_path"
+    case photoVersion = "photo_version"
   }
 }
 
@@ -602,6 +814,8 @@ private struct ProfileConcertHistoryRecord: Decodable, Sendable {
   let updatedAt: String
   let lastActivityAt: String
   let primaryArtist: String
+  let photoObjectPath: String?
+  let photoVersion: Int64
 
   enum CodingKeys: String, CodingKey {
     case id
@@ -617,6 +831,8 @@ private struct ProfileConcertHistoryRecord: Decodable, Sendable {
     case updatedAt = "updated_at"
     case lastActivityAt = "last_activity_at"
     case primaryArtist = "primary_artist"
+    case photoObjectPath = "photo_object_path"
+    case photoVersion = "photo_version"
   }
 }
 
@@ -655,7 +871,9 @@ private extension Concert {
       createdAt: createdAt,
       updatedAt: updatedAt,
       lastActivityAt: lastActivityAt,
-      version: databaseRecord.version
+      version: databaseRecord.version,
+      photoObjectPath: databaseRecord.photoObjectPath,
+      photoVersion: databaseRecord.photoVersion
     )
   }
 }
@@ -689,7 +907,9 @@ private extension ConcertPreview {
         visibility: visibility,
         createdAt: createdAt,
         updatedAt: updatedAt,
-        lastActivityAt: lastActivityAt
+        lastActivityAt: lastActivityAt,
+        photoObjectPath: databaseRecord.photoObjectPath,
+        photoVersion: databaseRecord.photoVersion
       ),
       primaryArtistName: databaseRecord.primaryArtist
     )
@@ -804,6 +1024,28 @@ private extension ConcertComment {
   }
 }
 
+private extension ConcertPhotoReservation {
+  init(databaseRecord: ConcertPhotoReservationRecord) throws {
+    guard let expiresAt = ConcertDateCoding.dateTime(from: databaseRecord.expiresAt) else {
+      throw ConcertRepositoryFailure.invalidRecord
+    }
+    self.init(photoID: databaseRecord.id, concertID: databaseRecord.concertID,
+      objectPath: databaseRecord.objectPath, expiresAt: expiresAt)
+  }
+}
+
+private extension ConcertAlbumPhoto {
+  init(databaseRecord: ConcertAlbumPhotoRecord) throws {
+    guard let attachedAt = ConcertDateCoding.dateTime(from: databaseRecord.attachedAt) else {
+      throw ConcertRepositoryFailure.invalidRecord
+    }
+    self.init(id: databaseRecord.id, concertID: databaseRecord.concertID,
+      uploaderID: databaseRecord.uploaderID, username: databaseRecord.username,
+      displayName: databaseRecord.displayName, objectPath: databaseRecord.objectPath,
+      caption: databaseRecord.caption, version: databaseRecord.version, attachedAt: attachedAt)
+  }
+}
+
 private extension FriendActivity {
   init(databaseRecord: FriendActivityRecord) throws {
     guard
@@ -824,6 +1066,12 @@ private extension FriendActivity {
       venueName: databaseRecord.venueName,
       concertDate: databaseRecord.concertDate
     )
+    changedFields = databaseRecord.changedFields
+    setlistPreview = databaseRecord.setlistPreview
+    setlistCount = databaseRecord.setlistCount
+    photoID = databaseRecord.photoID
+    photoObjectPath = databaseRecord.photoObjectPath
+    photoVersion = databaseRecord.photoVersion
   }
 }
 

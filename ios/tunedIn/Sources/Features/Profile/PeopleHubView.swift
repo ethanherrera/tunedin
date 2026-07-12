@@ -441,7 +441,7 @@ struct PersonRow: View {
 
   var body: some View {
     HStack(spacing: 13) {
-      ProfileMonogram(profile: profile, size: 48)
+      ProfileAvatarView(profile: profile, size: 48)
       VStack(alignment: .leading, spacing: 3) {
         Text(profile.displayName)
           .font(.headline)
@@ -471,7 +471,7 @@ private struct FriendSearchResultRow: View {
 
   var body: some View {
     HStack(spacing: 12) {
-      ProfileMonogram(profile: profile, size: 52)
+      ProfileAvatarView(profile: profile, size: 52)
       VStack(alignment: .leading, spacing: 2) {
         Text(profile.username)
           .font(.headline)
@@ -496,7 +496,7 @@ private struct FriendRequestCard: View {
   var body: some View {
     TunedInGlassSection {
       HStack(spacing: 12) {
-        ProfileMonogram(profile: profile, size: 46)
+        ProfileAvatarView(profile: profile, size: 46)
         VStack(alignment: .leading, spacing: 2) {
           Text(profile.displayName)
             .font(.headline)

@@ -3,6 +3,7 @@ import SwiftUI
 struct ConcertPeopleView: View {
   let detail: ConcertDetail
   let viewerRole: ConcertViewerRole
+  let viewerID: UUID?
   let viewerUsername: String
   let socialRepository: any SocialRepository
   let concertRepository: any ConcertRepository
@@ -23,6 +24,7 @@ struct ConcertPeopleView: View {
   init(
     detail: ConcertDetail,
     viewerRole: ConcertViewerRole,
+    viewerID: UUID? = nil,
     viewerUsername: String,
     socialRepository: any SocialRepository,
     concertRepository: any ConcertRepository,
@@ -31,6 +33,7 @@ struct ConcertPeopleView: View {
   ) {
     self.detail = detail
     self.viewerRole = viewerRole
+    self.viewerID = viewerID
     self.viewerUsername = viewerUsername
     self.socialRepository = socialRepository
     self.concertRepository = concertRepository
@@ -624,7 +627,7 @@ private struct ConcertEditorPickerView: View {
 
   private func friendRow(_ friend: SocialProfile) -> some View {
     HStack(spacing: 12) {
-      ProfileMonogram(profile: friend, size: 52)
+      ProfileAvatarView(profile: friend, size: 52)
       VStack(alignment: .leading, spacing: 2) {
         Text(friend.username)
           .font(.headline)
@@ -671,8 +674,7 @@ struct ConcertCommentsView: View {
   @State private var commentPendingDeletion: ConcertComment?
 
   var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 12) {
+    VStack(alignment: .leading, spacing: 12) {
         pageHeader
 
         if isLoading {
@@ -707,13 +709,7 @@ struct ConcertCommentsView: View {
             }
           }
         }
-      }
-      .padding(.horizontal, 20)
-      .padding(.top, 10)
-      .padding(.bottom, 16)
-    }
-    .safeAreaInset(edge: .bottom, spacing: 0) {
-      composer
+        composer
     }
     .task { await loadComments() }
     .confirmationDialog(

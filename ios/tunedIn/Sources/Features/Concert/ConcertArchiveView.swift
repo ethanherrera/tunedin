@@ -99,7 +99,7 @@ struct ConcertArchiveView: View {
                 socialRepository: socialRepository
               )
             } label: {
-              ConcertArchiveRow(preview: preview)
+              ConcertArchiveRow(preview: preview, repository: concertRepository)
             }
             .buttonStyle(.plain)
             .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
@@ -223,10 +223,11 @@ struct ConcertArchiveView: View {
 
 private struct ConcertArchiveRow: View {
   let preview: ConcertPreview
+  let repository: any ConcertRepository
 
   var body: some View {
     ZStack(alignment: .bottomLeading) {
-      ConcertArtworkImage(artistName: preview.primaryArtistName)
+      ConcertPhotoView(concert: preview.concert, artistName: preview.primaryArtistName, repository: repository)
         .frame(maxWidth: .infinity)
         .frame(height: 136)
         .overlay {
@@ -288,13 +289,13 @@ private struct ConcertArchiveRow: View {
 enum ConcertDetailPage: CaseIterable, Hashable {
   case concert
   case people
-  case comments
+  case photos
 
   var title: String {
     switch self {
     case .concert: "Concert"
     case .people: "People"
-    case .comments: "Comments"
+    case .photos: "Photos"
     }
   }
 
@@ -302,7 +303,7 @@ enum ConcertDetailPage: CaseIterable, Hashable {
     switch self {
     case .concert: "music.note"
     case .people: "person.2.fill"
-    case .comments: "text.bubble.fill"
+    case .photos: "photo.on.rectangle.angled"
     }
   }
 }
@@ -343,6 +344,7 @@ struct ConcertDetailView: View {
           ConcertPeopleView(
             detail: detail,
             viewerRole: viewerRole,
+            viewerID: viewerID,
             viewerUsername: viewerUsername,
             socialRepository: socialRepository,
             concertRepository: concertRepository,
@@ -351,10 +353,11 @@ struct ConcertDetailView: View {
             },
             pageHeader: AnyView(concertHeader(detail, artworkStyle: .preview))
           )
-        case .comments:
-          ConcertCommentsView(
-            concertID: concertID,
+        case .photos:
+          ConcertAlbumView(
+            detail: detail,
             viewerID: viewerID,
+            viewerRole: viewerRole,
             concertRepository: concertRepository,
             pageHeader: AnyView(concertHeader(detail, artworkStyle: .preview))
           )
@@ -386,6 +389,9 @@ struct ConcertDetailView: View {
         ConcertEditView(
           detail: detail,
           canMakePrivate: viewerRole == .owner,
+          viewerRole: viewerRole,
+          viewerUsername: viewerUsername,
+          socialRepository: socialRepository,
           concertRepository: concertRepository,
           loadLatestDetail: {
             try await concertRepository.fetchConcertDetail(id: concertID, viewerID: viewerID)
@@ -421,9 +427,9 @@ struct ConcertDetailView: View {
     let artistName = detail.artists.first(where: \.isPrimary)?.name ?? "A saved night"
 
     return ZStack(alignment: .bottomLeading) {
-      ConcertArtworkImage(artistName: artistName)
+      ConcertPhotoView(concert: detail.concert, artistName: artistName, repository: concertRepository)
         .frame(maxWidth: .infinity)
-        .frame(height: 410)
+        .aspectRatio(CGSize(width: 3, height: 4), contentMode: .fit)
         .overlay {
           LinearGradient(
             colors: [.clear, .black.opacity(0.14), .black.opacity(0.76)],
@@ -453,7 +459,7 @@ struct ConcertDetailView: View {
     let artistName = detail.artists.first(where: \.isPrimary)?.name ?? "A saved night"
 
     return ZStack(alignment: .bottomLeading) {
-      ConcertArtworkImage(artistName: artistName)
+      ConcertPhotoView(concert: detail.concert, artistName: artistName, repository: concertRepository)
         .frame(maxWidth: .infinity)
         .frame(height: 148)
         .overlay {
@@ -569,6 +575,19 @@ struct ConcertDetailView: View {
           in: RoundedRectangle(cornerRadius: 16, style: .continuous)
         )
         .accessibilityLabel("Concert history")
+
+        VStack(alignment: .leading, spacing: 12) {
+          Text("Moments")
+            .font(.title2.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
+          ConcertCommentsView(
+            concertID: concertID,
+            viewerID: viewerID,
+            concertRepository: concertRepository,
+            pageHeader: AnyView(EmptyView())
+          )
+        }
+        .padding(.top, 4)
       }
       .frame(maxWidth: .infinity, alignment: .leading)
       .padding(.horizontal, 20)

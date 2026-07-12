@@ -79,7 +79,7 @@ struct SupabaseSocialRepository: SocialRepository {
     try await performRelationshipRPC("unblock_profile", params: ProfileIDParameter(profileID: profileID))
   }
 
-  private func performRelationshipRPC<Parameters: Encodable>(_ name: String, params: Parameters) async throws {
+  private func performRelationshipRPC(_ name: String, params: some Encodable) async throws {
     _ = try await client
       .rpc(name, params: params)
       .execute()
@@ -91,12 +91,16 @@ private struct SocialProfileRecord: Decodable {
   let username: String
   let displayName: String
   let relationship: String
+  let avatarObjectPath: String?
+  let avatarVersion: Int64
 
   enum CodingKeys: String, CodingKey {
     case id
     case username
     case displayName = "display_name"
     case relationship
+    case avatarObjectPath = "avatar_object_path"
+    case avatarVersion = "avatar_version"
   }
 }
 
@@ -106,7 +110,9 @@ private extension SocialProfile {
       id: databaseRecord.id,
       username: databaseRecord.username,
       displayName: databaseRecord.displayName,
-      relationship: RelationshipState(rawValue: databaseRecord.relationship) ?? .none
+      relationship: RelationshipState(rawValue: databaseRecord.relationship) ?? .none,
+      avatarObjectPath: databaseRecord.avatarObjectPath,
+      avatarVersion: databaseRecord.avatarVersion
     )
   }
 }

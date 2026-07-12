@@ -23,6 +23,9 @@ final class AppSession {
   let authEmailDeliveryMode: AuthEmailDeliveryMode
   let allowsLocalSeededSignIn: Bool
   private(set) var phase: AppSessionPhase = .restoring
+  var profileRepositoryForViews: any ProfileRepository {
+    profileRepository
+  }
 
   init(
     authenticationRepository: any AuthenticationRepository,
@@ -76,6 +79,23 @@ final class AppSession {
       displayName: displayName
     )
     phase = .signedIn(currentUser, profile)
+  }
+
+  func setAvatar(jpegData: Data) async throws {
+    guard let currentUser else { throw AppSessionError.missingAuthenticatedUser }
+    let profile = try await profileRepository.setAvatar(jpegData: jpegData, for: currentUser.id)
+    phase = .signedIn(currentUser, profile)
+  }
+
+  func removeAvatar() async throws {
+    guard let currentUser else { throw AppSessionError.missingAuthenticatedUser }
+    do {
+      let profile = try await profileRepository.removeAvatar(for: currentUser.id)
+      phase = .signedIn(currentUser, profile)
+    } catch let error as AvatarRemovalError {
+      phase = .signedIn(currentUser, error.profile)
+      throw error
+    }
   }
 
   func retryProfileLoad() {

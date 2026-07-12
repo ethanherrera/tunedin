@@ -74,6 +74,8 @@ struct AppSessionTests {
       id: id,
       username: completed ? "listener" : nil,
       displayName: completed ? "Listener" : nil,
+      avatarObjectPath: nil,
+      avatarVersion: 0,
       onboardingCompletedAt: completed ? Date(timeIntervalSince1970: 1) : nil,
       createdAt: Date(timeIntervalSince1970: 0),
       updatedAt: Date(timeIntervalSince1970: 1)
@@ -123,5 +125,17 @@ private struct StaticProfileRepository: ProfileRepository {
 
   func completeOnboarding(username _: String, displayName _: String) async throws -> Profile {
     profile
+  }
+
+  func setAvatar(jpegData _: Data, for _: UUID) async throws -> Profile {
+    profile
+  }
+
+  func removeAvatar(for _: UUID) async throws -> Profile {
+    profile
+  }
+
+  func avatarURL(profileID _: UUID, objectPath _: String, version _: Int64) async throws -> URL {
+    URL(string: "https://example.test/avatar.jpg")!
   }
 }

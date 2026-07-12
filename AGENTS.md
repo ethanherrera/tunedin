@@ -15,6 +15,7 @@ This repository contains the native tunedIn MVP: a SwiftUI iOS client and its Su
 ## iPhone navigation
 
 - For in-app sub-screens, use the contextual bottom liquid-glass control bar: the leftmost control returns to the previous screen and the remaining controls switch the relevant views or actions. Do not place back, close, or other in-app navigation controls in the top corners.
+- Prioritize adaptive system Liquid Glass for screen and menu traversal whenever the platform supports it, with a material fallback for older supported iOS versions. Back controls and contextual menu actions should be glass controls too; keep primary page switching in a cohesive central glass group and use a three-dot glass action for edit menus.
 - Animate contextual liquid-glass changes as one cohesive transition; selected segments should glide between positions instead of snapping or leaving an underlying control bar visible.
 
 ## Development database deployment
@@ -33,6 +34,7 @@ This repository contains the native tunedIn MVP: a SwiftUI iOS client and its Su
 ## Required verification
 
 - Run `make generate`, `make lint`, and `make test` for iOS changes.
+- After changing user interface behavior or layout, exercise the affected flow in the iPhone 13 Simulator with Computer Use and visually inspect the resulting state before handoff. A successful build alone is not sufficient UI verification.
 - For an end-to-end local iOS path, run `make local-db-reset` once for the documented real local accounts and journeys, then use `make simulator-local` for subsequent launches. The simulator command starts/reuses Local Supabase and configures the ignored Local xcconfig without resetting data; the Local-only seeded-account picker creates normal Supabase sessions, while local Inbucket remains for email-auth testing.
 - Run `supabase test db` for migrations, RLS, or RPC changes; add behavior-focused pgTAP authorization tests.
 - Keep generated Swift database DTOs committed and current after a schema change.

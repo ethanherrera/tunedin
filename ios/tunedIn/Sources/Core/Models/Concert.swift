@@ -14,6 +14,8 @@ struct Concert: Equatable, Identifiable, Sendable {
   let updatedAt: Date
   let lastActivityAt: Date
   let version: Int64
+  let photoObjectPath: String?
+  let photoVersion: Int64
 
   init(
     id: UUID,
@@ -28,7 +30,9 @@ struct Concert: Equatable, Identifiable, Sendable {
     createdAt: Date,
     updatedAt: Date,
     lastActivityAt: Date,
-    version: Int64 = 1
+    version: Int64 = 1,
+    photoObjectPath: String? = nil,
+    photoVersion: Int64 = 0
   ) {
     self.id = id
     self.ownerID = ownerID
@@ -43,6 +47,8 @@ struct Concert: Equatable, Identifiable, Sendable {
     self.updatedAt = updatedAt
     self.lastActivityAt = lastActivityAt
     self.version = version
+    self.photoObjectPath = photoObjectPath
+    self.photoVersion = photoVersion
   }
 }
 
@@ -140,6 +146,7 @@ enum ConcertEventKind: String, Codable, CaseIterable, Equatable, Sendable {
   case commentAdded = "comment_added"
   case commentUpdated = "comment_updated"
   case commentDeleted = "comment_deleted"
+  case albumPhotoAdded = "album_photo_added"
 
   var timelineTitle: String {
     switch self {
@@ -163,6 +170,8 @@ enum ConcertEventKind: String, Codable, CaseIterable, Equatable, Sendable {
       "Comment updated"
     case .commentDeleted:
       "Comment removed"
+    case .albumPhotoAdded:
+      "Photo added"
     }
   }
 }
@@ -214,6 +223,52 @@ struct ConcertCommentCursor: Equatable, Sendable {
   let commentID: UUID
 }
 
+struct ConcertAlbumPolicy: Equatable, Sendable, Decodable {
+  let policyVersion: Int
+  let concertPhotoLimit: Int
+  let contributorPhotoLimit: Int
+  let reservationLimit24Hours: Int
+  let pickerBatchLimit: Int
+  let captionCharacterLimit: Int
+  let attachedFileByteLimit: Int
+  let pendingReservationLifetimeSeconds: Int
+
+  enum CodingKeys: String, CodingKey {
+    case policyVersion = "policy_version"
+    case concertPhotoLimit = "concert_photo_limit"
+    case contributorPhotoLimit = "contributor_photo_limit"
+    case reservationLimit24Hours = "reservation_limit_24_hours"
+    case pickerBatchLimit = "picker_batch_limit"
+    case captionCharacterLimit = "caption_character_limit"
+    case attachedFileByteLimit = "attached_file_byte_limit"
+    case pendingReservationLifetimeSeconds = "pending_reservation_lifetime_seconds"
+  }
+}
+
+struct ConcertAlbumPhoto: Equatable, Identifiable, Sendable {
+  let id: UUID
+  let concertID: UUID
+  let uploaderID: UUID
+  let username: String
+  let displayName: String
+  let objectPath: String
+  let caption: String?
+  let version: Int64
+  let attachedAt: Date
+}
+
+struct ConcertAlbumPhotoCursor: Equatable, Sendable {
+  let attachedAt: Date
+  let photoID: UUID
+}
+
+struct ConcertPhotoReservation: Equatable, Sendable {
+  let photoID: UUID
+  let concertID: UUID
+  let objectPath: String
+  let expiresAt: Date
+}
+
 struct ConcertUpdateInput: Equatable, Sendable {
   let concertID: UUID
   let expectedVersion: Int64
@@ -244,6 +299,12 @@ struct FriendActivity: Equatable, Identifiable, Sendable {
   let primaryArtistName: String
   let venueName: String
   let concertDate: String
+  var changedFields: [String] = []
+  var setlistPreview: [String] = []
+  var setlistCount = 0
+  var photoID: UUID?
+  var photoObjectPath: String?
+  var photoVersion: Int64 = 0
 
   var activityTitle: String {
     switch eventKind {
@@ -259,6 +320,8 @@ struct FriendActivity: Equatable, Identifiable, Sendable {
       "refined a note"
     case .commentDeleted:
       "removed a note"
+    case .albumPhotoAdded:
+      "added a photo"
     case .collaboratorTagged, .collaboratorRemoved, .visibilityChanged, .ownershipTransferred:
       "updated a concert"
     }

@@ -6,6 +6,7 @@ final class AppContainer {
   let appSession: AppSession
   let concertRepository: any ConcertRepository
   let socialRepository: any SocialRepository
+  let profileRepository: any ProfileRepository
 
   private init(
     appSession: AppSession,
@@ -15,6 +16,7 @@ final class AppContainer {
     self.appSession = appSession
     self.concertRepository = concertRepository
     self.socialRepository = socialRepository
+    profileRepository = appSession.profileRepositoryForViews
   }
 
   init(configuration: AppConfiguration) {
@@ -34,14 +36,16 @@ final class AppContainer {
       )
     )
 
+    let profileRepository = SupabaseProfileRepository(client: client)
     appSession = AppSession(
       authenticationRepository: SupabaseAuthenticationRepository(client: client),
-      profileRepository: SupabaseProfileRepository(client: client),
+      profileRepository: profileRepository,
       authEmailDeliveryMode: configuration.authEmailDeliveryMode,
       allowsLocalSeededSignIn: configuration.usesLocalSimulatorAuthStorage
     )
     concertRepository = SupabaseConcertRepository(client: client)
     socialRepository = SupabaseSocialRepository(client: client)
+    self.profileRepository = profileRepository
   }
 
   static func live() -> AppContainer {

@@ -10,6 +10,7 @@
 - Keep Supabase DTOs and SDK details behind repository protocols. Feature views receive app-owned domain models, not raw backend shapes.
 - Use Apple frameworks and Swift Package Manager only. Do not add a third-party UI, state-management, persistence, or image-cache library without approval.
 - Keep design-system primitives in `ios/tunedIn/Sources/Core/DesignSystem`; do not scatter appearance availability checks through feature views.
+- Prefer adaptive system Liquid Glass for bottom screen traversal and contextual menus whenever available, falling back through design-system primitives on older iOS versions. Give back navigation its own glass control, group related page destinations in a central glass surface, and represent the contextual edit menu with a three-dot glass action rather than a pencil.
 
 ## Environment and verification
 
