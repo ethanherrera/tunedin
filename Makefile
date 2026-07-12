@@ -7,7 +7,7 @@ DESTINATION := platform=iOS Simulator,name=iPhone 13
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup configure local-db-start configure-local-supabase local-next-steps generate format lint build build-local test test-local check simulator-auth-link simulator-local simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error local-db-reset local-seed-verify supabase-types check-supabase-types backend-test storage-integration-test backend-verify dev-status dev-plan dev-deploy
+.PHONY: help setup configure local-db-start configure-local-supabase local-next-steps generate format lint build build-local test test-local check simulator-auth-link simulator-local simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error local-db-reset local-seed-verify supabase-types check-supabase-types backend-test storage-integration-test backend-verify dev-status dev-plan dev-deploy dev-login-link
 
 help: ## List available development commands.
 	@awk 'BEGIN {FS = ":.*##"}; /^[a-zA-Z_-]+:.*##/ { printf "%-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -110,3 +110,6 @@ dev-plan: ## Print migrations that would be applied to hosted tunedin-dev.
 dev-deploy: ## Trigger the manually approved Development migration workflow from main.
 	@gh workflow run deploy-development.yml --ref main -f confirm=deploy-development
 	@printf 'Queued the Development migration workflow. Review its GitHub Actions summary for the deployed commit and migration parity.\n'
+
+dev-login-link: ## Copy a no-email tunedin-dev login link (EMAIL=user@example.com).
+	@./scripts/generate-development-login-link.sh

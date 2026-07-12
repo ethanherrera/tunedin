@@ -118,7 +118,7 @@
     }
 
     func signOut() async throws {}
-    func handleAuthCallback(_: URL) {}
+    func handleAuthCallback(_: URL) async throws {}
   }
 
   private struct DevelopmentProfileRepository: ProfileRepository {

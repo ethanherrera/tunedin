@@ -69,6 +69,25 @@ struct AppSessionTests {
     }
   }
 
+  @MainActor
+  @Test
+  func callbackFailureIsVisibleInsteadOfSilentlyDoingNothing() async throws {
+    let userID = try #require(UUID(uuidString: "44444444-4444-4444-4444-444444444444"))
+    let session = AppSession(
+      authenticationRepository: FailingCallbackAuthenticationRepository(),
+      profileRepository: StaticProfileRepository(profile: makeProfile(id: userID, completed: false))
+    )
+
+    await settle(session)
+    session.handleAuthCallback(try #require(URL(string: "com.ethanherrera.tunedin://auth-callback")))
+
+    for _ in 0 ..< 100 where session.authCallbackError == nil {
+      try? await Task.sleep(for: .milliseconds(10))
+    }
+
+    #expect(session.authCallbackError == "The login link could not be verified.")
+  }
+
   private func makeProfile(id: UUID, completed: Bool) -> Profile {
     Profile(
       id: id,
@@ -95,6 +114,30 @@ struct AppSessionTests {
   }
 }
 
+private struct FailingCallbackAuthenticationRepository: AuthenticationRepository {
+  var authenticationStateChanges: AsyncStream<AuthenticatedUser?> {
+    AsyncStream { continuation in
+      continuation.yield(nil)
+      continuation.finish()
+    }
+  }
+
+  func sendEmailOTP(to _: String) async throws {}
+  func signInWithPassword(email _: String, password _: String) async throws {}
+  func verifyEmailOTP(email _: String, code _: String) async throws {}
+  func signOut() async throws {}
+
+  func handleAuthCallback(_: URL) async throws {
+    throw Failure.invalidLink
+  }
+
+  enum Failure: LocalizedError {
+    case invalidLink
+
+    var errorDescription: String? { "The login link could not be verified." }
+  }
+}
+
 private struct StaticAuthenticationRepository: AuthenticationRepository {
   let user: AuthenticatedUser?
 
@@ -109,7 +152,7 @@ private struct StaticAuthenticationRepository: AuthenticationRepository {
   func signInWithPassword(email _: String, password _: String) async throws {}
   func verifyEmailOTP(email _: String, code _: String) async throws {}
   func signOut() async throws {}
-  func handleAuthCallback(_: URL) {}
+  func handleAuthCallback(_: URL) async throws {}
 }
 
 private struct StaticProfileRepository: ProfileRepository {
