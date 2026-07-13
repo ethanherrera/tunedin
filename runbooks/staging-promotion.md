@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Promote one reviewed `main` commit to the isolated tunedIn Staging environment from the GitHub Actions UI. A successful promotion applies forward-only Supabase migrations, deploys tracked Edge Functions, and uploads the separately identified `tunedIn Beta` app to TestFlight.
+Promote one reviewed `main` commit to the isolated tunedIn Staging environment from the GitHub Actions UI. A successful promotion applies forward-only Supabase migrations, deploys tracked Edge Functions, and uploads the separately identified `tunedIn Staging` app to TestFlight.
 
 Staging never receives copied Development users, database content, seeds, photos, or Storage objects.
 
@@ -11,7 +11,7 @@ Staging never receives copied Development users, database content, seeds, photos
 - The selected commit is on `main`, and its pull-request iOS and Backend checks passed.
 - Apple Developer Program membership is active.
 - Apple Developer contains an explicit App ID for `com.ethanherrera.tunedin.staging`.
-- App Store Connect contains a `tunedIn Beta` iOS app using that bundle identifier.
+- App Store Connect contains a `tunedIn Staging` iOS app using that bundle identifier.
 - The App Store Connect API key can manage signing and upload builds for that app.
 - A fresh Supabase project named `tunedin-staging` exists and has not been initialized through dashboard-authored schema changes.
 - Supabase Auth permits the exact redirect `com.ethanherrera.tunedin.staging://auth-callback`.
@@ -58,7 +58,7 @@ SUPABASE_PROJECT_REF=YOUR_STAGING_PROJECT_REF make staging-plan
 
 The tracked Staging configuration template uses:
 
-- Display name: `tunedIn Beta`
+- Display name: `tunedIn Staging`
 - Bundle identifier: `com.ethanherrera.tunedin.staging`
 - Callback: `com.ethanherrera.tunedin.staging://auth-callback`
 - Build configuration: Release
@@ -89,7 +89,7 @@ The workflow performs these operations in order:
 2. Regenerate, lint, test, and build the iOS project.
 3. Validate the offline PostHog contract and print a read-only Staging drift plan.
 4. Create an ephemeral ignored Staging configuration from protected values.
-5. Archive and sign `tunedIn Beta` before changing hosted services.
+5. Archive and sign `tunedIn Staging` before changing hosted services.
 6. Apply and verify the PostHog Staging contract and upload the archive's dSYMs without source files.
 7. Print the Staging migration dry run.
 8. Apply pending migrations without seeds or reset.
@@ -100,7 +100,7 @@ The workflow performs these operations in order:
 ## Expected result and verification
 
 - GitHub records a successful deployment for the `Staging` environment and exact commit SHA.
-- The workflow summary names `tunedIn Beta`, `com.ethanherrera.tunedin.staging`, and the uploaded build number.
+- The workflow summary names `tunedIn Staging`, `com.ethanherrera.tunedin.staging`, and the uploaded build number.
 - Supabase migration history matches the repository.
 - App Store Connect finishes processing the uploaded build and makes it available to the intended internal TestFlight group.
 - A tester can install Staging beside the Development/Production app, authenticate only against `tunedin-staging`, and exercise the core journey without seeing another environment's data.

@@ -56,7 +56,7 @@ Development migration workflow. It reruns disposable schema/type/pgTAP verificat
 forward-only migrations; see the [Development Database Deployment runbook](runbooks/development-database-deployment.md).
 
 When a reviewed `main` commit is ready for integrated beta testing, dispatch **Promote Staging** from
-the GitHub Actions UI. It archives the separate `tunedIn Beta` app, promotes the isolated Staging
+the GitHub Actions UI. It archives the separate `tunedIn Staging` app, promotes the isolated Staging
 backend, and uploads the archive to TestFlight; see the [Staging Promotion runbook](runbooks/staging-promotion.md).
 
 Use focused `feature/`, `fix/`, or `chore/` branches and open pull requests into `main`. Squash merge approved changes and tag external releases as `vMAJOR.MINOR.PATCH`.
