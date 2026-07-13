@@ -596,7 +596,7 @@ struct ConcertEditView: View {
   }
 
   private func isConcertConflict(_ error: Error) -> Bool {
-    error.localizedDescription.localizedCaseInsensitiveContains("concert changed")
+    error.appFailure == .conflict
   }
 }
 

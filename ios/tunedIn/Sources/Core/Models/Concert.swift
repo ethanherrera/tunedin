@@ -59,14 +59,57 @@ enum ConcertVisibility: String, Codable, CaseIterable, Equatable, Sendable {
 }
 
 struct ConcertHistoryCursor: Equatable, Sendable {
-  let concertDate: String
+  let concertDate: String?
+  let updatedAt: Date?
+  let text: String?
   let concertID: UUID
+
+  init(preview: ConcertPreview, sort: ConcertHistorySort) {
+    concertID = preview.id
+    switch sort {
+    case .newest, .oldest:
+      concertDate = preview.concert.concertDate
+      updatedAt = nil
+      text = nil
+    case .recentlyUpdated:
+      concertDate = nil
+      updatedAt = preview.concert.updatedAt
+      text = nil
+    case .artist:
+      concertDate = nil
+      updatedAt = nil
+      text = preview.primaryArtistName.lowercased()
+    case .venue:
+      concertDate = nil
+      updatedAt = nil
+      text = preview.concert.venueName.lowercased()
+    }
+  }
 }
 
 struct ConcertHistoryQuery: Equatable, Sendable {
   var searchText = ""
   var year: Int?
   var visibility: ConcertVisibility?
+  var sort: ConcertHistorySort = .newest
+}
+
+enum ConcertHistorySort: String, CaseIterable, Equatable, Sendable {
+  case newest
+  case oldest
+  case recentlyUpdated = "recently_updated"
+  case artist
+  case venue
+
+  var displayTitle: String {
+    switch self {
+    case .newest: "Newest"
+    case .oldest: "Oldest"
+    case .recentlyUpdated: "Recently updated"
+    case .artist: "Artist"
+    case .venue: "Venue"
+    }
+  }
 }
 
 struct ConcertPreview: Equatable, Identifiable, Sendable {

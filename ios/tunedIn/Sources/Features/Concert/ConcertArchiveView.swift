@@ -34,24 +34,52 @@ struct ConcertArchiveView: View {
         Spacer()
 
         Menu {
-          Button("All saved shows") {
-            setVisibilityFilter(nil)
-          }
-          if isOwner {
-            Button("Private") {
-              setVisibilityFilter(.private)
+          Menu("Visibility") {
+            Button("All visibility") {
+              setVisibilityFilter(nil)
+            }
+            if isOwner {
+              Button("Private") {
+                setVisibilityFilter(.private)
+              }
+            }
+            Button("Collaborators") {
+              setVisibilityFilter(.collaborators)
+            }
+            Button("With friends") {
+              setVisibilityFilter(.friends)
             }
           }
-          Button("Collaborators") {
-            setVisibilityFilter(.collaborators)
+
+          Menu("Year") {
+            Button("All years") {
+              setYearFilter(nil)
+            }
+            ForEach(yearOptions, id: \.self) { year in
+              Button(String(year)) {
+                setYearFilter(year)
+              }
+            }
           }
-          Button("With friends") {
-            setVisibilityFilter(.friends)
+
+          Section("Sort") {
+            ForEach(ConcertHistorySort.allCases, id: \.self) { sort in
+              Button {
+                setSort(sort)
+              } label: {
+                if query.sort == sort {
+                  Label(sort.displayTitle, systemImage: "checkmark")
+                } else {
+                  Text(sort.displayTitle)
+                }
+              }
+            }
           }
         } label: {
           HStack(spacing: 5) {
             Image(systemName: "line.3.horizontal.decrease.circle")
-            Text(filterLabel)
+            Text(archiveMenuLabel)
+              .lineLimit(1)
           }
           .font(.caption.weight(.bold))
           .foregroundStyle(TunedInDesign.primaryText)
@@ -113,7 +141,7 @@ struct ConcertArchiveView: View {
                 if isLoadingMore {
                   ProgressView()
                 }
-                Text(isLoadingMore ? "Finding earlier nights…" : "Show earlier nights")
+                Text(isLoadingMore ? "Loading more concerts…" : "Show more concerts")
               }
               .font(.subheadline.weight(.bold))
               .foregroundStyle(TunedInDesign.primaryText)
@@ -139,17 +167,22 @@ struct ConcertArchiveView: View {
     }
   }
 
-  private var filterLabel: String {
-    switch query.visibility {
-    case nil:
-      "All"
-    case .private:
-      "Private"
-    case .collaborators:
-      "Collaborators"
-    case .friends:
-      "Friends"
+  private var archiveMenuLabel: String {
+    let selections = [
+      query.year.map(String.init),
+      query.visibility?.archiveTitle,
+      query.sort == .newest ? nil : query.sort.displayTitle
+    ].compactMap(\.self)
+
+    if selections.count == 1 {
+      return selections[0]
     }
+    return selections.isEmpty ? "All" : "\(selections.count) selected"
+  }
+
+  private var yearOptions: [Int] {
+    let currentYear = Calendar.current.component(.year, from: .now)
+    return Array((1950 ... currentYear + 1).reversed())
   }
 
   private var archiveEmptyState: some View {
@@ -175,24 +208,40 @@ struct ConcertArchiveView: View {
     Task { await reload() }
   }
 
+  private func setYearFilter(_ year: Int?) {
+    query.year = year
+    Task { await reload() }
+  }
+
+  private func setSort(_ sort: ConcertHistorySort) {
+    query.sort = sort
+    Task { await reload() }
+  }
+
   private func reload() async {
     guard !isLoading else { return }
     isLoading = true
     errorMessage = nil
 
-    do {
-      let loaded = try await concertRepository.profileConcertHistory(
-        profileID: profileID,
-        query: query,
-        cursor: nil
-      )
-      concerts = loaded
-      canLoadMore = loaded.count == 30
-    } catch {
-      concerts = []
-      canLoadMore = false
-      errorMessage = error.localizedDescription
-    }
+    var requestedQuery: ConcertHistoryQuery
+    repeat {
+      requestedQuery = query
+      do {
+        let loaded = try await concertRepository.profileConcertHistory(
+          profileID: profileID,
+          query: requestedQuery,
+          cursor: nil
+        )
+        guard requestedQuery == query else { continue }
+        concerts = loaded
+        canLoadMore = loaded.count == 30
+      } catch {
+        guard requestedQuery == query else { continue }
+        concerts = []
+        canLoadMore = false
+        errorMessage = error.localizedDescription
+      }
+    } while requestedQuery != query
 
     isLoading = false
   }
@@ -205,10 +254,7 @@ struct ConcertArchiveView: View {
       let loaded = try await concertRepository.profileConcertHistory(
         profileID: profileID,
         query: query,
-        cursor: ConcertHistoryCursor(
-          concertDate: lastConcert.concert.concertDate,
-          concertID: lastConcert.id
-        )
+        cursor: ConcertHistoryCursor(preview: lastConcert, sort: query.sort)
       )
       concerts.append(contentsOf: loaded)
       canLoadMore = loaded.count == 30
@@ -217,6 +263,16 @@ struct ConcertArchiveView: View {
     }
 
     isLoadingMore = false
+  }
+}
+
+private extension ConcertVisibility {
+  var archiveTitle: String {
+    switch self {
+    case .private: "Private"
+    case .collaborators: "Collaborators"
+    case .friends: "Friends"
+    }
   }
 }
 
@@ -366,6 +422,10 @@ struct ConcertDetailView: View {
           Label("This concert isn’t available", systemImage: "lock.trianglebadge.exclamationmark")
         } description: {
           Text(errorMessage)
+        } actions: {
+          Button("Try again") {
+            Task { await loadDetail() }
+          }
         }
       } else {
         ScrollView {
@@ -632,6 +692,7 @@ struct ConcertDetailView: View {
   }
 
   private func loadDetail() async {
+    errorMessage = nil
     do {
       detail = try await concertRepository.fetchConcertDetail(id: concertID, viewerID: viewerID)
     } catch {

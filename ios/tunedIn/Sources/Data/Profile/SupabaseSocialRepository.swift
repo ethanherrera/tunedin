@@ -5,35 +5,43 @@ struct SupabaseSocialRepository: SocialRepository {
   let client: SupabaseClient
 
   func searchProfiles(usernamePrefix: String) async throws -> [SocialProfile] {
-    let response: PostgrestResponse<[SocialProfileRecord]> = try await client
-      .rpc("search_profiles", params: UsernamePrefixParameter(usernamePrefix: usernamePrefix))
-      .execute()
+    try await withAppFailure {
+      let response: PostgrestResponse<[SocialProfileRecord]> = try await client
+        .rpc("search_profiles", params: UsernamePrefixParameter(usernamePrefix: usernamePrefix))
+        .execute()
 
-    return response.value.map(SocialProfile.init(databaseRecord:))
+      return response.value.map(SocialProfile.init(databaseRecord:))
+    }
   }
 
   func profile(username: String) async throws -> SocialProfile? {
-    let response: PostgrestResponse<[SocialProfileRecord]> = try await client
-      .rpc("profile_by_username", params: UsernameParameter(username: username))
-      .execute()
+    try await withAppFailure {
+      let response: PostgrestResponse<[SocialProfileRecord]> = try await client
+        .rpc("profile_by_username", params: UsernameParameter(username: username))
+        .execute()
 
-    return response.value.first.map(SocialProfile.init(databaseRecord:))
+      return response.value.first.map(SocialProfile.init(databaseRecord:))
+    }
   }
 
   func friends(username: String) async throws -> [SocialProfile] {
-    let response: PostgrestResponse<[SocialProfileRecord]> = try await client
-      .rpc("list_profile_friends", params: UsernameParameter(username: username))
-      .execute()
+    try await withAppFailure {
+      let response: PostgrestResponse<[SocialProfileRecord]> = try await client
+        .rpc("list_profile_friends", params: UsernameParameter(username: username))
+        .execute()
 
-    return response.value.map(SocialProfile.init(databaseRecord:))
+      return response.value.map(SocialProfile.init(databaseRecord:))
+    }
   }
 
   func incomingFriendRequests() async throws -> [SocialProfile] {
-    let response: PostgrestResponse<[SocialProfileRecord]> = try await client
-      .rpc("list_incoming_friend_requests")
-      .execute()
+    try await withAppFailure {
+      let response: PostgrestResponse<[SocialProfileRecord]> = try await client
+        .rpc("list_incoming_friend_requests")
+        .execute()
 
-    return response.value.map(SocialProfile.init(databaseRecord:))
+      return response.value.map(SocialProfile.init(databaseRecord:))
+    }
   }
 
   func sendFriendRequest(to profileID: UUID) async throws {
@@ -80,9 +88,11 @@ struct SupabaseSocialRepository: SocialRepository {
   }
 
   private func performRelationshipRPC(_ name: String, params: some Encodable) async throws {
-    _ = try await client
-      .rpc(name, params: params)
-      .execute()
+    try await withAppFailure {
+      _ = try await client
+        .rpc(name, params: params)
+        .execute()
+    }
   }
 }
 

@@ -488,18 +488,11 @@
         }
         return ConcertPreview(concert: detail.concert, primaryArtistName: artist)
       }
-      .sorted {
-        if $0.concert.concertDate == $1.concert.concertDate {
-          return $0.id.uuidString > $1.id.uuidString
-        }
-        return $0.concert.concertDate > $1.concert.concertDate
-      }
+      .sorted(by: query.sort.comparator)
 
       guard let cursor else { return Array(previews.prefix(30)) }
-      let remaining = previews.drop(while: {
-        $0.concert.concertDate > cursor.concertDate
-          || ($0.concert.concertDate == cursor.concertDate && $0.id.uuidString >= cursor.concertID.uuidString)
-      })
+      guard let cursorIndex = previews.firstIndex(where: { $0.id == cursor.concertID }) else { return [] }
+      let remaining = previews.suffix(from: previews.index(after: cursorIndex))
       return Array(remaining.prefix(30))
     }
 
@@ -751,6 +744,41 @@
   private extension Array {
     subscript(safe index: Index) -> Element? {
       indices.contains(index) ? self[index] : nil
+    }
+  }
+
+  private extension ConcertHistorySort {
+    var comparator: (ConcertPreview, ConcertPreview) -> Bool {
+      switch self {
+      case .newest:
+        { lhs, rhs in
+          lhs.concert.concertDate == rhs.concert.concertDate
+            ? lhs.id.uuidString > rhs.id.uuidString
+            : lhs.concert.concertDate > rhs.concert.concertDate
+        }
+      case .oldest:
+        { lhs, rhs in
+          lhs.concert.concertDate == rhs.concert.concertDate
+            ? lhs.id.uuidString < rhs.id.uuidString
+            : lhs.concert.concertDate < rhs.concert.concertDate
+        }
+      case .recentlyUpdated:
+        { lhs, rhs in
+          lhs.concert.updatedAt == rhs.concert.updatedAt
+            ? lhs.id.uuidString > rhs.id.uuidString
+            : lhs.concert.updatedAt > rhs.concert.updatedAt
+        }
+      case .artist:
+        { lhs, rhs in
+          let comparison = lhs.primaryArtistName.localizedCaseInsensitiveCompare(rhs.primaryArtistName)
+          return comparison == .orderedSame ? lhs.id.uuidString < rhs.id.uuidString : comparison == .orderedAscending
+        }
+      case .venue:
+        { lhs, rhs in
+          let comparison = lhs.concert.venueName.localizedCaseInsensitiveCompare(rhs.concert.venueName)
+          return comparison == .orderedSame ? lhs.id.uuidString < rhs.id.uuidString : comparison == .orderedAscending
+        }
+      }
     }
   }
   // swiftlint:enable type_body_length

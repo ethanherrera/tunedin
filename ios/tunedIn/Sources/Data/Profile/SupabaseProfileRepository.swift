@@ -6,52 +6,60 @@ struct SupabaseProfileRepository: ProfileRepository {
   private let avatarURLs = AvatarURLCache()
 
   func fetchProfile(for userID: UUID) async throws -> Profile {
-    let response: PostgrestResponse<Profile> = try await client
-      .from("profiles")
-      .select()
-      .eq("id", value: userID.uuidString)
-      .single()
-      .execute()
+    try await withAppFailure {
+      let response: PostgrestResponse<Profile> = try await client
+        .from("profiles")
+        .select()
+        .eq("id", value: userID.uuidString)
+        .single()
+        .execute()
 
-    return response.value
+      return response.value
+    }
   }
 
   func isUsernameAvailable(_ username: String) async throws -> Bool {
-    let response: PostgrestResponse<Bool> = try await client
-      .rpc("is_username_available", params: UsernameParameter(username: username))
-      .execute()
+    try await withAppFailure {
+      let response: PostgrestResponse<Bool> = try await client
+        .rpc("is_username_available", params: UsernameParameter(username: username))
+        .execute()
 
-    return response.value
+      return response.value
+    }
   }
 
   func completeOnboarding(username: String, displayName: String) async throws -> Profile {
-    let response: PostgrestResponse<Profile> = try await client
-      .rpc(
-        "complete_onboarding",
-        params: CompleteOnboardingParameters(username: username, displayName: displayName)
-      )
-      .single()
-      .execute()
+    try await withAppFailure {
+      let response: PostgrestResponse<Profile> = try await client
+        .rpc(
+          "complete_onboarding",
+          params: CompleteOnboardingParameters(username: username, displayName: displayName)
+        )
+        .single()
+        .execute()
 
-    return response.value
+      return response.value
+    }
   }
 
   func setAvatar(jpegData: Data, for userID: UUID) async throws -> Profile {
-    let path = avatarPath(for: userID)
-    try await client.storage.from("images").upload(
-      path,
-      data: jpegData,
-      options: FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: true)
-    )
+    try await withAppFailure {
+      let path = avatarPath(for: userID)
+      try await client.storage.from("images").upload(
+        path,
+        data: jpegData,
+        options: FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: true)
+      )
 
-    do {
-      let response: PostgrestResponse<Profile> = try await client
-        .rpc("set_profile_avatar").single().execute()
-      await avatarURLs.remove(profileID: userID)
-      return response.value
-    } catch {
-      _ = try? await client.storage.from("images").remove(paths: [path])
-      throw error
+      do {
+        let response: PostgrestResponse<Profile> = try await client
+          .rpc("set_profile_avatar").single().execute()
+        await avatarURLs.remove(profileID: userID)
+        return response.value
+      } catch {
+        _ = try? await client.storage.from("images").remove(paths: [path])
+        throw error
+      }
     }
   }
 
@@ -70,16 +78,18 @@ struct SupabaseProfileRepository: ProfileRepository {
   }
 
   func avatarURL(profileID: UUID, objectPath: String, version: Int64) async throws -> URL {
-    if let cached = await avatarURLs.value(profileID: profileID, version: version) {
-      return cached
+    try await withAppFailure {
+      if let cached = await avatarURLs.value(profileID: profileID, version: version) {
+        return cached
+      }
+      let url = try await client.storage.from("images").createSignedURL(
+        path: objectPath,
+        expiresIn: 3600,
+        cacheNonce: String(version)
+      )
+      await avatarURLs.insert(url, profileID: profileID, version: version)
+      return url
     }
-    let url = try await client.storage.from("images").createSignedURL(
-      path: objectPath,
-      expiresIn: 3600,
-      cacheNonce: String(version)
-    )
-    await avatarURLs.insert(url, profileID: profileID, version: version)
-    return url
   }
 
   private func avatarPath(for userID: UUID) -> String {

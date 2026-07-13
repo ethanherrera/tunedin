@@ -18,6 +18,7 @@
 		2577832D8CB24FADB94E3250 /* ConcertRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C87D147D8C4F0FABCE333EE /* ConcertRepository.swift */; };
 		29178E4550968F8687FE86CA /* DevelopmentConcertRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D20A416A01449F03EA5661F /* DevelopmentConcertRepositoryTests.swift */; };
 		2AEC9C708B7ADD5C38F331BE /* SupabaseAuthenticationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D967C5B386F95DD48B19CAE9 /* SupabaseAuthenticationRepository.swift */; };
+		305EB7B1166D9EC2981A9292 /* AppFailureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1243DF949645D1AB5318AC3A /* AppFailureTests.swift */; };
 		31D622AFEF6EE9C7391285DE /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FF7F1D63EE17CDDD562417 /* OnboardingView.swift */; };
 		3DDFF6632A0FF59AA5074712 /* ConcertArchiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A439D31D760416F79E073FAB /* ConcertArchiveView.swift */; };
 		50A81F38CF306B62FD2C87D7 /* AppSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 887C95DD1BE38E3C830C4D80 /* AppSession.swift */; };
@@ -35,6 +36,7 @@
 		83A9DCB96622FE84342F37C4 /* TunedInAppearanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93B17BB128F3EE14857B0AEB /* TunedInAppearanceTests.swift */; };
 		859F522D8C2735A0948A2B71 /* SupabaseSocialRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97612F74273AC229E9F25417 /* SupabaseSocialRepository.swift */; };
 		8A0FCDC894E557A1EFB27587 /* AvatarImageProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3531262D0A7C77D265C40BCC /* AvatarImageProcessor.swift */; };
+		8DB5FDBE3AA6727C196A4337 /* AppFailure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A61F3A9F8448FD6AAF002FA /* AppFailure.swift */; };
 		8F3C5D513BD8199AFC4896DC /* AuthenticationRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 075C8094B7B7249F8E4DF36F /* AuthenticationRepository.swift */; };
 		8FCAFFA83A941FD8C0EB2B6F /* tunedInApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8046DFD22BCA47A3E52C7793 /* tunedInApp.swift */; };
 		905E3D91E2B813DA12200AAD /* SupabaseConcertRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B89C2123769CE8C8EE2427 /* SupabaseConcertRepository.swift */; };
@@ -48,6 +50,7 @@
 		B0D627D07A1F3473D8C920C8 /* ConcertAlbumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9224775E10F128EC952F4D9 /* ConcertAlbumView.swift */; };
 		B285EF895AF1F404CC298893 /* DevelopmentScenarioTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB65B95E9AC543A960D5F27F /* DevelopmentScenarioTests.swift */; };
 		BA7A55F7A9F1B31C691FDC04 /* DevelopmentConcertRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED1E308009003391C9687626 /* DevelopmentConcertRepository.swift */; };
+		BDA4800089B8C2A1AEA9EB36 /* ConcertCommentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57A397514DA79526B0C10E77 /* ConcertCommentsView.swift */; };
 		BE7554363F72DAE88183452E /* midnight-theatre.png in Resources */ = {isa = PBXBuildFile; fileRef = 4A5DDFF994E4A5513CAD3917 /* midnight-theatre.png */; };
 		BEE8A816110FA18CB281A6D8 /* LocalSeededAccount.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7154E731D6C3141004BB4208 /* LocalSeededAccount.swift */; };
 		C019CCF65BDF8AD9A3C4C558 /* PeopleHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C162FF260B31AE1B0940D6CC /* PeopleHubView.swift */; };
@@ -80,6 +83,7 @@
 		075C8094B7B7249F8E4DF36F /* AuthenticationRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationRepository.swift; sourceTree = "<group>"; };
 		0A5695E4F2552EBE2BF611CB /* ConcertPhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertPhotoView.swift; sourceTree = "<group>"; };
 		1237B11A854A5A058C98A39C /* ProfileInputTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileInputTests.swift; sourceTree = "<group>"; };
+		1243DF949645D1AB5318AC3A /* AppFailureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFailureTests.swift; sourceTree = "<group>"; };
 		1B68A83B5FEE54C667FDD5DF /* ConcertCreationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertCreationView.swift; sourceTree = "<group>"; };
 		1FED4A315859A86F043EA6A2 /* EmailSignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailSignInView.swift; sourceTree = "<group>"; };
 		21073FA12796111F79010BBE /* ConcertInputTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertInputTests.swift; sourceTree = "<group>"; };
@@ -93,6 +97,7 @@
 		52FC5FA5CC195C96AC2F7E11 /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
 		532F8D6E5EB000F34B910F42 /* TunedInDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunedInDesignSystem.swift; sourceTree = "<group>"; };
 		5459A1928EB0514BA0734156 /* DevelopmentSocialRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentSocialRepositoryTests.swift; sourceTree = "<group>"; };
+		57A397514DA79526B0C10E77 /* ConcertCommentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertCommentsView.swift; sourceTree = "<group>"; };
 		57FDDFA7886E6E8E872E5AF9 /* AvatarImageProcessorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarImageProcessorTests.swift; sourceTree = "<group>"; };
 		59D9E25666338F3EB1CA706E /* Staging.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Staging.xcconfig; sourceTree = "<group>"; };
 		5CFC17EF319FD32E400CFE04 /* SupabaseTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseTypes.swift; sourceTree = "<group>"; };
@@ -117,6 +122,7 @@
 		9717CE9DFB9D76660ECB11B4 /* ProfileRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRepository.swift; sourceTree = "<group>"; };
 		97612F74273AC229E9F25417 /* SupabaseSocialRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseSocialRepository.swift; sourceTree = "<group>"; };
 		985739D4F2A12A277B1F5632 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
+		9A61F3A9F8448FD6AAF002FA /* AppFailure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFailure.swift; sourceTree = "<group>"; };
 		9DC82061C2F01AA6CEB2F6BC /* SocialRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialRepository.swift; sourceTree = "<group>"; };
 		A080BB9E0BAC410982A1D12C /* FeedPlaceholderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedPlaceholderView.swift; sourceTree = "<group>"; };
 		A439D31D760416F79E073FAB /* ConcertArchiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertArchiveView.swift; sourceTree = "<group>"; };
@@ -216,6 +222,7 @@
 			isa = PBXGroup;
 			children = (
 				B70F123405BE8D8AEC81A601 /* AppConfiguration.swift */,
+				9A61F3A9F8448FD6AAF002FA /* AppFailure.swift */,
 				8E5567493126633FA6F89B8A /* AppNetworkSession.swift */,
 			);
 			path = Configuration;
@@ -323,6 +330,7 @@
 				D9224775E10F128EC952F4D9 /* ConcertAlbumView.swift */,
 				A439D31D760416F79E073FAB /* ConcertArchiveView.swift */,
 				607F112255B95105F98C8662 /* ConcertCollaborationSheets.swift */,
+				57A397514DA79526B0C10E77 /* ConcertCommentsView.swift */,
 				48D5349FC56B2CBC9101478D /* ConcertCreationDraft.swift */,
 				BD75288821322770423012C4 /* ConcertCreationFormSections.swift */,
 				1B68A83B5FEE54C667FDD5DF /* ConcertCreationView.swift */,
@@ -348,6 +356,7 @@
 			isa = PBXGroup;
 			children = (
 				4B185CD800E6B9369C52FD98 /* AlbumReadinessTests.swift */,
+				1243DF949645D1AB5318AC3A /* AppFailureTests.swift */,
 				B7788CE273B97F5DF8299CB3 /* AppSessionTests.swift */,
 				57FDDFA7886E6E8E872E5AF9 /* AvatarImageProcessorTests.swift */,
 				21073FA12796111F79010BBE /* ConcertInputTests.swift */,
@@ -488,6 +497,7 @@
 				239BFE8594ABAC004DDA2D9E /* AlbumUploadBatchExecutor.swift in Sources */,
 				690FC5B8BB56B1E30AC47B72 /* AppConfiguration.swift in Sources */,
 				9B82FB9B7F094931B9622D52 /* AppContainer.swift in Sources */,
+				8DB5FDBE3AA6727C196A4337 /* AppFailure.swift in Sources */,
 				E4D4BB4077D2B6C7E74F7E08 /* AppNetworkSession.swift in Sources */,
 				50A81F38CF306B62FD2C87D7 /* AppSession.swift in Sources */,
 				8F3C5D513BD8199AFC4896DC /* AuthenticationRepository.swift in Sources */,
@@ -497,6 +507,7 @@
 				B0D627D07A1F3473D8C920C8 /* ConcertAlbumView.swift in Sources */,
 				3DDFF6632A0FF59AA5074712 /* ConcertArchiveView.swift in Sources */,
 				FA19D4BCBE81ABBD2AFC6813 /* ConcertCollaborationSheets.swift in Sources */,
+				BDA4800089B8C2A1AEA9EB36 /* ConcertCommentsView.swift in Sources */,
 				DD9DF4D5F2A6DFA4463F9723 /* ConcertCreationDraft.swift in Sources */,
 				7A9E943A4D2A0A5CD8AF0398 /* ConcertCreationFormSections.swift in Sources */,
 				ACE8334B175DF5C109B78F0C /* ConcertCreationView.swift in Sources */,
@@ -537,6 +548,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				92360D3D1229A15146C11DFE /* AlbumReadinessTests.swift in Sources */,
+				305EB7B1166D9EC2981A9292 /* AppFailureTests.swift in Sources */,
 				F4E200A9A3F2B4A822C52209 /* AppSessionTests.swift in Sources */,
 				113D27B6136FBB89C6B8D9A0 /* AvatarImageProcessorTests.swift in Sources */,
 				1793E9051F51C7519FF80E6E /* ConcertInputTests.swift in Sources */,
