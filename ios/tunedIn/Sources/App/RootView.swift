@@ -13,7 +13,11 @@ struct RootView: View {
           .frame(maxWidth: .infinity, maxHeight: .infinity)
 
       case .signedOut:
-        EmailSignInView(session: session)
+        if let configuration = session.nativeSocialAuthConfiguration {
+          NativeSocialSignInView(session: session, configuration: configuration)
+        } else {
+          EmailSignInView(session: session)
+        }
 
       case let .profileUnavailable(_, message):
         ProfileLoadFailureView(session: session, message: message)

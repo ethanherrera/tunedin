@@ -14,8 +14,9 @@ Staging never receives copied Development users, database content, seeds, photos
 - App Store Connect contains a `tunedIn Staging` iOS app using that bundle identifier.
 - The App Store Connect API key can manage signing and upload builds for that app.
 - A fresh Supabase project named `tunedin-staging` exists and has not been initialized through dashboard-authored schema changes.
-- Supabase Auth permits the exact redirect `com.ethanherrera.tunedin.staging://auth-callback`.
-- Custom SMTP is configured before inviting external testers; the built-in email allowance is not an external-beta authentication strategy.
+- The Apple App ID for `com.ethanherrera.tunedin.staging` has the **Sign in with Apple** capability enabled.
+- A Google Cloud OAuth project contains an iOS client for `com.ethanherrera.tunedin.staging` and a Web client for Supabase token verification. The consent screen requests only `openid`, email, and profile.
+- Supabase Auth is managed by the promotion workflow: Apple and Google are enabled, phone and manual identity linking remain disabled, and email sign-up is disabled after a successful TestFlight upload. No SMTP provider is required for Staging.
 - The GitHub `Staging` environment exists and contains the values below.
 
 Environment variables:
@@ -25,6 +26,9 @@ Environment variables:
 - `APPLE_DEVELOPMENT_TEAM`
 - `APP_STORE_CONNECT_KEY_ID`
 - `APP_STORE_CONNECT_ISSUER_ID`
+- `GOOGLE_IOS_CLIENT_ID`
+- `GOOGLE_SERVER_CLIENT_ID`
+- `GOOGLE_REVERSED_CLIENT_ID`
 
 Environment secrets:
 
@@ -35,6 +39,7 @@ Environment secrets:
 - `POSTHOG_PERSONAL_API_KEY`
 - `POSTHOG_CLI_API_KEY`
 - `APP_STORE_CONNECT_PRIVATE_KEY`
+- `GOOGLE_SERVER_CLIENT_SECRET`
 
 Never add a service-role key, database password, App Store Connect key, signing certificate, or provisioning profile to source control or ordinary repository variables.
 
@@ -62,6 +67,7 @@ The tracked Staging configuration template uses:
 - Bundle identifier: `com.ethanherrera.tunedin.staging`
 - Callback: `com.ethanherrera.tunedin.staging://auth-callback`
 - Build configuration: Release
+- Authentication: native Sign in with Apple and Google only; Google OAuth client IDs are injected from the protected environment and no OAuth client secret is included in the app.
 - Export compliance: the app declares that it does not use non-exempt encryption; this covers the confirmed system HTTPS-only implementation.
 
 App Store Connect contains an internal TestFlight group named `Staging` with automatic distribution
@@ -99,11 +105,13 @@ The workflow performs these operations in order:
    and release values before changing hosted services. App Store Connect cloud-signs this same archive
    during export, so the clean runner does not need a registered device or a local distribution certificate.
 6. Apply and verify the PostHog Staging contract and upload the archive's dSYMs without source files.
-7. Print the Staging migration dry run.
-8. Apply pending migrations without seeds or reset.
-9. Deploy tracked Edge Functions, if any, and verify migration parity.
-10. Cloud-sign and upload the archived build to App Store Connect/TestFlight.
-11. Record the commit, observability target, and build number in the GitHub Actions summary.
+7. Verify current Supabase Auth drift, then enable the Apple and Google providers while leaving the existing email path available until upload succeeds.
+8. Print the Staging migration dry run.
+9. Apply pending migrations without seeds or reset.
+10. Deploy tracked Edge Functions, if any, and verify migration parity.
+11. Cloud-sign and upload the archived build to App Store Connect/TestFlight.
+12. Disable email and phone sign-up, keep manual identity linking disabled, and verify the complete Staging Auth contract.
+13. Record the commit, observability target, authentication contract, and build number in the GitHub Actions summary.
 
 ## Expected result and verification
 
@@ -111,7 +119,7 @@ The workflow performs these operations in order:
 - The workflow summary names `tunedIn Staging`, `com.ethanherrera.tunedin.staging`, and the uploaded build number.
 - Supabase migration history matches the repository.
 - App Store Connect finishes processing the uploaded build and makes it available to the intended internal TestFlight group.
-- A tester can install Staging beside the Development/Production app, authenticate only against `tunedin-staging`, and exercise the core journey without seeing another environment's data.
+- A tester can install Staging beside the Development/Production app, authenticate natively with Apple or Google only against `tunedin-staging`, and exercise the core journey without seeing another environment's data.
 
 After processing, exercise sign-in, profile, friends, concert creation/editing, collaboration, conversation, album upload/caption/deletion, archive sorting, activity, sign-out, and session restoration.
 
@@ -140,6 +148,8 @@ PostHog, Supabase, or TestFlight can be changed.
 ## Recovery and rollback
 
 - If verification or archive fails, the hosted backend was not changed. Correct the failure in a PR and dispatch again after merge.
+- If provider preparation fails, email remains enabled and no app is uploaded. Correct the protected Google values or Apple/Supabase provider configuration, then rerun the promotion.
+- If TestFlight upload succeeds but Auth finalization fails, Apple and Google remain enabled and email may remain temporarily enabled at the API boundary. The Staging app still shows only the two native providers; rerun the corrected promotion to finalize and verify the contract.
 - If migration deployment fails, no app is uploaded. Never reset Staging or rewrite an applied migration; correct the problem with a new forward migration.
 - If the backend succeeds but TestFlight upload fails, Staging remains forward-migrated. Keep migrations backward-compatible with the previously installed beta, correct signing/upload configuration, and rerun the promotion.
 - Each dispatch receives a new monotonically increasing CI build number. Do not manually reuse or decrement it.
@@ -150,5 +160,6 @@ PostHog, Supabase, or TestFlight can be changed.
 - GitHub Actions and the `Staging` environment deployment history are the primary audit records.
 - App Store Connect records uploaded builds and processing status.
 - Supabase migration history and platform logs record backend changes.
+- Supabase Auth configuration history and the promotion summary record provider preparation/finalization without exposing OAuth secrets.
 - PostHog project activity and error-tracking symbols record observability changes for project `507318`.
 - Run a promotion only when a merged `main` commit is ready for integrated Staging and TestFlight testing; never on every merge.

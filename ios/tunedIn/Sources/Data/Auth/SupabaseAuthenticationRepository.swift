@@ -47,6 +47,24 @@ struct SupabaseAuthenticationRepository: AuthenticationRepository {
     }
   }
 
+  func signIn(with credentials: NativeAuthCredentials) async throws {
+    try await withAppFailure {
+      let provider: OpenIDConnectCredentials.Provider = switch credentials.provider {
+      case .apple: .apple
+      case .google: .google
+      }
+
+      _ = try await client.auth.signInWithIdToken(
+        credentials: OpenIDConnectCredentials(
+          provider: provider,
+          idToken: credentials.idToken,
+          accessToken: credentials.accessToken,
+          nonce: credentials.nonce
+        )
+      )
+    }
+  }
+
   func signOut() async throws {
     try await withAppFailure {
       try await client.auth.signOut()

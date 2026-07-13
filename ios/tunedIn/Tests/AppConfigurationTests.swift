@@ -9,7 +9,10 @@ struct AppConfigurationTests {
       "TUNEDIN_SUPABASE_URL": "https://staging-project.supabase.co",
       "TUNEDIN_SUPABASE_PUBLISHABLE_KEY": "staging-publishable-key",
       "TUNEDIN_APP_ENVIRONMENT": "Staging",
+      "TUNEDIN_AUTH_EXPERIENCE": "NativeSocial",
       "TUNEDIN_AUTH_CALLBACK_SCHEME": "com.ethanherrera.tunedin.staging",
+      "GIDClientID": "staging-ios.apps.googleusercontent.com",
+      "GIDServerClientID": "staging-server.apps.googleusercontent.com",
       "TUNEDIN_USE_LOCAL_AUTH_STORAGE": "NO",
       "TUNEDIN_POSTHOG_PROJECT_TOKEN": "phc_staging-token",
       "TUNEDIN_POSTHOG_PROJECT_ID": "507318",
@@ -22,7 +25,12 @@ struct AppConfigurationTests {
     #expect(configuration.environment == .staging)
     #expect(configuration.authCallbackURL.absoluteString == "com.ethanherrera.tunedin.staging://auth-callback")
     #expect(configuration.authSessionStorageKey == "com.ethanherrera.tunedin.staging.auth.session")
-    #expect(configuration.authEmailDeliveryMode == .oneTimeCode)
+    #expect(
+      configuration.nativeSocialAuthConfiguration == NativeSocialAuthConfiguration(
+        googleIOSClientID: "staging-ios.apps.googleusercontent.com",
+        googleServerClientID: "staging-server.apps.googleusercontent.com"
+      )
+    )
     #expect(
       try configuration.telemetry == .postHog(
         PostHogProjectConfiguration(
@@ -44,6 +52,7 @@ struct AppConfigurationTests {
           : "https://development-project.supabase.co",
         "TUNEDIN_SUPABASE_PUBLISHABLE_KEY": "development-publishable-key",
         "TUNEDIN_APP_ENVIRONMENT": "Development",
+        "TUNEDIN_AUTH_EXPERIENCE": "Email",
         "TUNEDIN_AUTH_CALLBACK_SCHEME": "com.ethanherrera.tunedin",
         "TUNEDIN_USE_LOCAL_AUTH_STORAGE": usesLocalStorage,
         "TUNEDIN_POSTHOG_PROJECT_TOKEN": "must-be-ignored",
@@ -62,7 +71,10 @@ struct AppConfigurationTests {
         "TUNEDIN_SUPABASE_URL": "https://staging-project.supabase.co",
         "TUNEDIN_SUPABASE_PUBLISHABLE_KEY": "staging-publishable-key",
         "TUNEDIN_APP_ENVIRONMENT": "Staging",
+        "TUNEDIN_AUTH_EXPERIENCE": "NativeSocial",
         "TUNEDIN_AUTH_CALLBACK_SCHEME": "com.ethanherrera.tunedin.staging",
+        "GIDClientID": "staging-ios.apps.googleusercontent.com",
+        "GIDServerClientID": "staging-server.apps.googleusercontent.com",
         "TUNEDIN_USE_LOCAL_AUTH_STORAGE": "NO",
         "TUNEDIN_POSTHOG_PROJECT_TOKEN": "phc_wrong-project",
         "TUNEDIN_POSTHOG_PROJECT_ID": "507315",
@@ -78,6 +90,7 @@ struct AppConfigurationTests {
         "TUNEDIN_SUPABASE_URL": "https://staging-project.supabase.co",
         "TUNEDIN_SUPABASE_PUBLISHABLE_KEY": "staging-publishable-key",
         "TUNEDIN_APP_ENVIRONMENT": "Staging",
+        "TUNEDIN_AUTH_EXPERIENCE": "Email",
         "TUNEDIN_AUTH_CALLBACK_SCHEME": "https://wrong.example.com/callback",
         "TUNEDIN_USE_LOCAL_AUTH_STORAGE": "NO"
       ])

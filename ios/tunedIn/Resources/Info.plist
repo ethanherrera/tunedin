@@ -30,7 +30,19 @@
 				<string>$(AUTH_CALLBACK_SCHEME)</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(GOOGLE_REVERSED_CLIENT_ID)</string>
+			</array>
+		</dict>
 	</array>
+	<key>GIDClientID</key>
+	<string>$(GOOGLE_IOS_CLIENT_ID)</string>
+	<key>GIDServerClientID</key>
+	<string>$(GOOGLE_SERVER_CLIENT_ID)</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
@@ -39,6 +51,8 @@
 	</array>
 	<key>TUNEDIN_APP_ENVIRONMENT</key>
 	<string>$(APP_ENVIRONMENT)</string>
+	<key>TUNEDIN_AUTH_EXPERIENCE</key>
+	<string>$(AUTH_EXPERIENCE)</string>
 	<key>TUNEDIN_GIT_SHA</key>
 	<string>$(TUNEDIN_GIT_SHA)</string>
 	<key>TUNEDIN_AUTH_CALLBACK_SCHEME</key>

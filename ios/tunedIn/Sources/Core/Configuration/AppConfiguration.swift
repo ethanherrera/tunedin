@@ -7,6 +7,7 @@ struct AppConfiguration: Sendable {
   let authCallbackURL: URL
   let authSessionStorageKey: String
   let authEmailDeliveryMode: AuthEmailDeliveryMode
+  let nativeSocialAuthConfiguration: NativeSocialAuthConfiguration?
   let usesLocalSimulatorAuthStorage: Bool
   let telemetry: TelemetryConfiguration
   let release: ReleaseMetadata
@@ -61,15 +62,29 @@ struct AppConfiguration: Sendable {
     }
 
     let usesLocalSimulatorAuthStorage = configuration["TUNEDIN_USE_LOCAL_AUTH_STORAGE"] as? String == "YES"
+    let isLocalSupabaseHost = ["127.0.0.1", "localhost"].contains(supabaseURL.host)
 
-    if usesLocalSimulatorAuthStorage,
-       !["127.0.0.1", "localhost"].contains(supabaseURL.host) {
+    if usesLocalSimulatorAuthStorage && !isLocalSupabaseHost {
       throw AppConfigurationError.invalid("TUNEDIN_USE_LOCAL_AUTH_STORAGE")
     }
 
     let authEmailDeliveryMode: AuthEmailDeliveryMode = environment == .development
       ? .magicLink
       : .oneTimeCode
+
+    let authExperience = configuration["TUNEDIN_AUTH_EXPERIENCE"] as? String
+    let nativeSocialAuthConfiguration: NativeSocialAuthConfiguration?
+    switch authExperience {
+    case "Email":
+      nativeSocialAuthConfiguration = nil
+    case "NativeSocial":
+      guard environment == .staging || environment == .production else {
+        throw AppConfigurationError.invalid("AUTH_EXPERIENCE")
+      }
+      nativeSocialAuthConfiguration = try NativeSocialAuthConfiguration.load(configuration: configuration)
+    default:
+      throw AppConfigurationError.invalid("AUTH_EXPERIENCE")
+    }
 
     let telemetry = try TelemetryConfiguration.load(
       configuration: configuration,
@@ -91,6 +106,7 @@ struct AppConfiguration: Sendable {
       authCallbackURL: authCallbackURL,
       authSessionStorageKey: "\(callbackScheme).auth.session",
       authEmailDeliveryMode: authEmailDeliveryMode,
+      nativeSocialAuthConfiguration: nativeSocialAuthConfiguration,
       usesLocalSimulatorAuthStorage: usesLocalSimulatorAuthStorage,
       telemetry: telemetry,
       release: release
@@ -116,6 +132,31 @@ enum AppEnvironment: String, Sendable {
 enum AuthEmailDeliveryMode: Equatable, Sendable {
   case magicLink
   case oneTimeCode
+}
+
+struct NativeSocialAuthConfiguration: Equatable, Sendable {
+  let googleIOSClientID: String
+  let googleServerClientID: String
+
+  fileprivate static func load(configuration: [String: Any]) throws -> Self {
+    guard
+      let googleIOSClientID = AppConfiguration.normalizedValue(configuration["GIDClientID"]),
+      googleIOSClientID.hasSuffix(".apps.googleusercontent.com")
+    else {
+      throw AppConfigurationError.missing("GOOGLE_IOS_CLIENT_ID")
+    }
+    guard
+      let googleServerClientID = AppConfiguration.normalizedValue(configuration["GIDServerClientID"]),
+      googleServerClientID.hasSuffix(".apps.googleusercontent.com")
+    else {
+      throw AppConfigurationError.missing("GOOGLE_SERVER_CLIENT_ID")
+    }
+
+    return Self(
+      googleIOSClientID: googleIOSClientID,
+      googleServerClientID: googleServerClientID
+    )
+  }
 }
 
 struct ReleaseMetadata: Equatable, Sendable {

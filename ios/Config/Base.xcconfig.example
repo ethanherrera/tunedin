@@ -9,3 +9,7 @@ IPHONEOS_DEPLOYMENT_TARGET = 17.0
 TUNEDIN_URL_SLASH = /
 TUNEDIN_USE_LOCAL_AUTH_STORAGE = NO
 TUNEDIN_GIT_SHA = local
+AUTH_EXPERIENCE = Email
+GOOGLE_IOS_CLIENT_ID = disabled.apps.googleusercontent.com
+GOOGLE_SERVER_CLIENT_ID = disabled.apps.googleusercontent.com
+GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.disabled

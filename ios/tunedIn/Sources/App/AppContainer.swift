@@ -53,6 +53,7 @@ final class AppContainer {
       profileRepository: profileRepository,
       feedbackRepository: feedbackRepository,
       authEmailDeliveryMode: configuration.authEmailDeliveryMode,
+      nativeSocialAuthConfiguration: configuration.nativeSocialAuthConfiguration,
       allowsLocalSeededSignIn: configuration.usesLocalSimulatorAuthStorage,
       telemetry: telemetry
     )

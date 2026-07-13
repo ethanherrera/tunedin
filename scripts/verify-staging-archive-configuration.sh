@@ -13,6 +13,9 @@ required_values=(
   SUPABASE_PUBLISHABLE_KEY
   POSTHOG_PROJECT_TOKEN
   POSTHOG_PROJECT_ID
+  GOOGLE_IOS_CLIENT_ID
+  GOOGLE_SERVER_CLIENT_ID
+  GOOGLE_REVERSED_CLIENT_ID
   GITHUB_SHA
 )
 
@@ -42,6 +45,7 @@ assert_value() {
 assert_value CFBundleDisplayName 'tunedIn Staging'
 assert_value CFBundleIdentifier 'com.ethanherrera.tunedin.staging'
 assert_value TUNEDIN_APP_ENVIRONMENT 'Staging'
+assert_value TUNEDIN_AUTH_EXPERIENCE 'NativeSocial'
 assert_value TUNEDIN_AUTH_CALLBACK_SCHEME 'com.ethanherrera.tunedin.staging'
 assert_value TUNEDIN_USE_LOCAL_AUTH_STORAGE 'NO'
 assert_value TUNEDIN_SUPABASE_URL "https://${SUPABASE_PROJECT_REF}.supabase.co"
@@ -50,5 +54,27 @@ assert_value TUNEDIN_POSTHOG_PROJECT_TOKEN "$POSTHOG_PROJECT_TOKEN"
 assert_value TUNEDIN_POSTHOG_PROJECT_ID "$POSTHOG_PROJECT_ID"
 assert_value TUNEDIN_POSTHOG_HOST 'https://us.i.posthog.com'
 assert_value TUNEDIN_GIT_SHA "$GITHUB_SHA"
+assert_value GIDClientID "$GOOGLE_IOS_CLIENT_ID"
+assert_value GIDServerClientID "$GOOGLE_SERVER_CLIENT_ID"
+
+PLIST_PATH="$info_plist" python3 <<'PY'
+import os
+import plistlib
+
+with open(os.environ["PLIST_PATH"], "rb") as source:
+    info = plistlib.load(source)
+
+schemes = {
+    scheme
+    for entry in info.get("CFBundleURLTypes", [])
+    for scheme in entry.get("CFBundleURLSchemes", [])
+}
+expected = {
+    "com.ethanherrera.tunedin.staging",
+    os.environ["GOOGLE_REVERSED_CLIENT_ID"],
+}
+if not expected.issubset(schemes):
+    raise SystemExit("Archived app is missing a required authentication callback URL scheme.")
+PY
 
 printf 'Archived Staging configuration is valid.\n'

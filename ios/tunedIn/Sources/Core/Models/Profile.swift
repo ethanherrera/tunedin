@@ -5,6 +5,18 @@ struct AuthenticatedUser: Equatable, Sendable {
   let email: String?
 }
 
+enum NativeAuthProvider: String, Equatable, Sendable {
+  case apple
+  case google
+}
+
+struct NativeAuthCredentials: Equatable, Sendable {
+  let provider: NativeAuthProvider
+  let idToken: String
+  let accessToken: String?
+  let nonce: String
+}
+
 struct Profile: Codable, Equatable, Sendable {
   let id: UUID
   let username: String?
