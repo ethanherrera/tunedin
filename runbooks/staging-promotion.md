@@ -64,6 +64,11 @@ The tracked Staging configuration template uses:
 - Build configuration: Release
 - Export compliance: the app declares that it does not use non-exempt encryption; this covers the confirmed system HTTPS-only implementation.
 
+App Store Connect contains an internal TestFlight group named `Staging` with automatic distribution
+and TestFlight feedback enabled. Keep at least one eligible App Store Connect user in that group. New
+valid builds are available to the group automatically; do not also assign individual builds to an
+all-builds internal group.
+
 For a manual local archive, add `DEVELOPMENT_TEAM = YOUR_TEAM_ID` to the ignored
 `ios/Config/Staging.xcconfig`, then run `make archive-staging`. The protected CI workflow supplies
 the team from the GitHub Staging environment instead.
@@ -90,12 +95,14 @@ The workflow performs these operations in order:
 2. Regenerate, lint, test, and build the iOS project.
 3. Validate the offline PostHog contract and print a read-only Staging drift plan.
 4. Create an ephemeral ignored Staging configuration from protected values.
-5. Archive and sign `tunedIn Staging` before changing hosted services.
+5. Create an unsigned device archive before changing hosted services. App Store Connect cloud-signs
+   this same archive during export, so the clean runner does not need a registered device or a local
+   distribution certificate.
 6. Apply and verify the PostHog Staging contract and upload the archive's dSYMs without source files.
 7. Print the Staging migration dry run.
 8. Apply pending migrations without seeds or reset.
 9. Deploy tracked Edge Functions, if any, and verify migration parity.
-10. Upload the archived build to App Store Connect/TestFlight.
+10. Cloud-sign and upload the archived build to App Store Connect/TestFlight.
 11. Record the commit, observability target, and build number in the GitHub Actions summary.
 
 ## Expected result and verification
@@ -107,6 +114,22 @@ The workflow performs these operations in order:
 - A tester can install Staging beside the Development/Production app, authenticate only against `tunedin-staging`, and exercise the core journey without seeing another environment's data.
 
 After processing, exercise sign-in, profile, friends, concert creation/editing, collaboration, conversation, album upload/caption/deletion, archive sorting, activity, sign-out, and session restoration.
+
+## First verified promotion
+
+The first complete promotion succeeded on July 13, 2026:
+
+- Source commit: `8fcdac3de59f8453e1db7a8d8fc30fca18ccf4d8`
+- GitHub Actions run: [29247271831](https://github.com/ethanherrera/tunedin/actions/runs/29247271831)
+- Supabase: migration parity and tracked Edge Function deployment succeeded for `tunedin-staging`.
+- PostHog: project `507318` matched the tracked contract, and archive dSYMs uploaded without source files.
+- TestFlight: version `0.1.0`, build `1004.1` processed as `VALID` and entered `IN_BETA_TESTING`.
+- Internal distribution: the `Staging` group has automatic all-build access and contains the Account Holder tester.
+
+The first attempts also verified the recovery boundaries: configuration and signing failures before
+archive left hosted services unchanged, while an App Store metadata rejection after backend deployment
+left the forward-only backend safe to retry. CI now validates the required `APPL` package type,
+`AppIcon` declaration, export-compliance flag, and opaque 1024-pixel icon before promotion.
 
 ## Recovery and rollback
 
