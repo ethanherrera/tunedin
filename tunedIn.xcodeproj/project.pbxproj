@@ -12,6 +12,7 @@
 		063A304A122AB3F34C63D114 /* TunedInDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 532F8D6E5EB000F34B910F42 /* TunedInDesignSystem.swift */; };
 		0686BF43E368DFAE66D3ED69 /* TelemetryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD654ACD06E9E04AD7DA86BF /* TelemetryTests.swift */; };
 		083DFB2EDCC427DB5E1FC3B2 /* TelemetrySanitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3435407F7622C2A1679CA34E /* TelemetrySanitizer.swift */; };
+		0E6D384B54ED7E72CF6AF219 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = CB89FFF236B4128126206475 /* Supabase */; };
 		1074AE742D18F1043F2EC934 /* DevelopmentSocialRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96E0DD7FF8EEA60EC2BF9AFB /* DevelopmentSocialRepository.swift */; };
 		113D27B6136FBB89C6B8D9A0 /* AvatarImageProcessorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57FDDFA7886E6E8E872E5AF9 /* AvatarImageProcessorTests.swift */; };
 		1793E9051F51C7519FF80E6E /* ConcertInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21073FA12796111F79010BBE /* ConcertInputTests.swift */; };
@@ -40,6 +41,7 @@
 		6F2919030AA61C68435BC5B8 /* Concert.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61399B814DE19CDCDA167DE0 /* Concert.swift */; };
 		719F101178208A613D6F7483 /* ConcertPhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5695E4F2552EBE2BF611CB /* ConcertPhotoView.swift */; };
 		722B683A23266AE95A60654F /* TelemetryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E103725C09E72C1E7A74466D /* TelemetryModels.swift */; };
+		727253E2D1A906BA97CFDAE5 /* NativeSocialAuthenticationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE537AE3FB6165A62FE039E0 /* NativeSocialAuthenticationTests.swift */; };
 		7A9E943A4D2A0A5CD8AF0398 /* ConcertCreationFormSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD75288821322770423012C4 /* ConcertCreationFormSections.swift */; };
 		7F900D7F871E8EB8BF235637 /* afterglow-stage.png in Resources */ = {isa = PBXBuildFile; fileRef = EA95DDDDA02A9205456F296D /* afterglow-stage.png */; };
 		83A9DCB96622FE84342F37C4 /* TunedInAppearanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93B17BB128F3EE14857B0AEB /* TunedInAppearanceTests.swift */; };
@@ -63,15 +65,16 @@
 		BE7554363F72DAE88183452E /* midnight-theatre.png in Resources */ = {isa = PBXBuildFile; fileRef = 4A5DDFF994E4A5513CAD3917 /* midnight-theatre.png */; };
 		BEE8A816110FA18CB281A6D8 /* LocalSeededAccount.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7154E731D6C3141004BB4208 /* LocalSeededAccount.swift */; };
 		C019CCF65BDF8AD9A3C4C558 /* PeopleHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C162FF260B31AE1B0940D6CC /* PeopleHubView.swift */; };
-		C6474CF32B05D94C7400CADE /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = E5690A68EF65B2159DF137FC /* PostHog */; };
+		C6474CF32B05D94C7400CADE /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = B6F2D9A4EC1EE98284A811CD /* GoogleSignIn */; };
 		C971A43D0669101756911698 /* FeedPlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A080BB9E0BAC410982A1D12C /* FeedPlaceholderView.swift */; };
 		CA3B62A0ECBE75BF5F832D04 /* ConcertAlbumImageProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEF24A80EA0C54BE0246F2EC /* ConcertAlbumImageProcessor.swift */; };
 		D6331F38545589E8EC42E675 /* ProfileInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1237B11A854A5A058C98A39C /* ProfileInputTests.swift */; };
 		DD9DF4D5F2A6DFA4463F9723 /* ConcertCreationDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48D5349FC56B2CBC9101478D /* ConcertCreationDraft.swift */; };
 		DE9D4024F47CD0B1936B8812 /* PersonProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74193CBB4CFA490AEC77ACC8 /* PersonProfileView.swift */; };
+		E3BAF02B2C8ECCF11FD56841 /* NativeSocialSignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8A60BDF539A2BF1AE10575 /* NativeSocialSignInView.swift */; };
 		E4D4BB4077D2B6C7E74F7E08 /* AppNetworkSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E5567493126633FA6F89B8A /* AppNetworkSession.swift */; };
 		E67F40E1271039F458BCBEBB /* AppConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00796CCD74299B830D1CCE46 /* AppConfigurationTests.swift */; };
-		EAA02DE65D5CEDB4A31CB674 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = CB89FFF236B4128126206475 /* Supabase */; };
+		EAA02DE65D5CEDB4A31CB674 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = E5690A68EF65B2159DF137FC /* PostHog */; };
 		EC79DB067047705BFA83DD0E /* SupabaseTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CFC17EF319FD32E400CFE04 /* SupabaseTypes.swift */; };
 		F4E200A9A3F2B4A822C52209 /* AppSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7788CE273B97F5DF8299CB3 /* AppSessionTests.swift */; };
 		F65D718B16A14EDEF2F1E39D /* DevelopmentScenario.swift in Sources */ = {isa = PBXBuildFile; fileRef = 889BD9CC3B0A992D16F66A9A /* DevelopmentScenario.swift */; };
@@ -122,6 +125,7 @@
 		5F2144AD14AFB8762C4E55F1 /* FeedbackRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackRepository.swift; sourceTree = "<group>"; };
 		607F112255B95105F98C8662 /* ConcertCollaborationSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertCollaborationSheets.swift; sourceTree = "<group>"; };
 		61399B814DE19CDCDA167DE0 /* Concert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Concert.swift; sourceTree = "<group>"; };
+		633725CD557D467B89AF6D8A /* tunedIn-Staging.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "tunedIn-Staging.entitlements"; sourceTree = "<group>"; };
 		69FF7F1D63EE17CDDD562417 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		7154E731D6C3141004BB4208 /* LocalSeededAccount.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSeededAccount.swift; sourceTree = "<group>"; };
 		74193CBB4CFA490AEC77ACC8 /* PersonProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonProfileView.swift; sourceTree = "<group>"; };
@@ -134,6 +138,7 @@
 		8BB6E4FE735BE91A1C03412D /* TunedInAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunedInAppearance.swift; sourceTree = "<group>"; };
 		8CE4DB3E207A0AC8993F44B3 /* ConcertMonogramViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertMonogramViews.swift; sourceTree = "<group>"; };
 		8D20A416A01449F03EA5661F /* DevelopmentConcertRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentConcertRepositoryTests.swift; sourceTree = "<group>"; };
+		8D8A60BDF539A2BF1AE10575 /* NativeSocialSignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSocialSignInView.swift; sourceTree = "<group>"; };
 		8E5567493126633FA6F89B8A /* AppNetworkSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNetworkSession.swift; sourceTree = "<group>"; };
 		928728B8414A847C3CE27348 /* ConcertEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertEditView.swift; sourceTree = "<group>"; };
 		93B17BB128F3EE14857B0AEB /* TunedInAppearanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunedInAppearanceTests.swift; sourceTree = "<group>"; };
@@ -167,6 +172,7 @@
 		E103725C09E72C1E7A74466D /* TelemetryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryModels.swift; sourceTree = "<group>"; };
 		EA95DDDDA02A9205456F296D /* afterglow-stage.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "afterglow-stage.png"; sourceTree = "<group>"; };
 		ED1E308009003391C9687626 /* DevelopmentConcertRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentConcertRepository.swift; sourceTree = "<group>"; };
+		EE537AE3FB6165A62FE039E0 /* NativeSocialAuthenticationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSocialAuthenticationTests.swift; sourceTree = "<group>"; };
 		EF321C880B55FB19086D20D1 /* Production.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Production.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -175,8 +181,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C6474CF32B05D94C7400CADE /* PostHog in Frameworks */,
-				EAA02DE65D5CEDB4A31CB674 /* Supabase in Frameworks */,
+				C6474CF32B05D94C7400CADE /* GoogleSignIn in Frameworks */,
+				EAA02DE65D5CEDB4A31CB674 /* PostHog in Frameworks */,
+				0E6D384B54ED7E72CF6AF219 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -331,6 +338,7 @@
 			children = (
 				1FED4A315859A86F043EA6A2 /* EmailSignInView.swift */,
 				2644431350079CF5B9312C52 /* EmailVerificationView.swift */,
+				8D8A60BDF539A2BF1AE10575 /* NativeSocialSignInView.swift */,
 				69FF7F1D63EE17CDDD562417 /* OnboardingView.swift */,
 			);
 			path = Authentication;
@@ -412,6 +420,7 @@
 				AB65B95E9AC543A960D5F27F /* DevelopmentScenarioTests.swift */,
 				5459A1928EB0514BA0734156 /* DevelopmentSocialRepositoryTests.swift */,
 				CC42DD81FFABFB4F55ECBD0E /* LocalSeededAccountTests.swift */,
+				EE537AE3FB6165A62FE039E0 /* NativeSocialAuthenticationTests.swift */,
 				1237B11A854A5A058C98A39C /* ProfileInputTests.swift */,
 				DD654ACD06E9E04AD7DA86BF /* TelemetryTests.swift */,
 				93B17BB128F3EE14857B0AEB /* TunedInAppearanceTests.swift */,
@@ -447,6 +456,7 @@
 			isa = PBXGroup;
 			children = (
 				3DE47B97A300C1CC89CD02B0 /* Assets.xcassets */,
+				633725CD557D467B89AF6D8A /* tunedIn-Staging.entitlements */,
 				4C97A9900A178845F43F836D /* Artwork */,
 			);
 			name = Resources;
@@ -488,6 +498,7 @@
 			);
 			name = tunedIn;
 			packageProductDependencies = (
+				B6F2D9A4EC1EE98284A811CD /* GoogleSignIn */,
 				E5690A68EF65B2159DF137FC /* PostHog */,
 				CB89FFF236B4128126206475 /* Supabase */,
 			);
@@ -516,6 +527,7 @@
 			mainGroup = 976091E67F8D9586344637F8;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				A929FDB00F78FF8BF3C14391 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				5BF1C72B29DF638DD6CD9263 /* XCRemoteSwiftPackageReference "posthog-ios" */,
 				AF2907167FBA725F0D32DD46 /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
@@ -579,6 +591,7 @@
 				69F0EFB8BBFFC8F44FBAAA53 /* FeedbackView.swift in Sources */,
 				BEE8A816110FA18CB281A6D8 /* LocalSeededAccount.swift in Sources */,
 				F7FDC6308F271BC12826390A /* LocalSimulatorAuthStorage.swift in Sources */,
+				E3BAF02B2C8ECCF11FD56841 /* NativeSocialSignInView.swift in Sources */,
 				31D622AFEF6EE9C7391285DE /* OnboardingView.swift in Sources */,
 				C019CCF65BDF8AD9A3C4C558 /* PeopleHubView.swift in Sources */,
 				DE9D4024F47CD0B1936B8812 /* PersonProfileView.swift in Sources */,
@@ -619,6 +632,7 @@
 				B285EF895AF1F404CC298893 /* DevelopmentScenarioTests.swift in Sources */,
 				61EA68C9D69C488AD366940C /* DevelopmentSocialRepositoryTests.swift in Sources */,
 				1B3DDAF057B8F6E131BDC885 /* LocalSeededAccountTests.swift in Sources */,
+				727253E2D1A906BA97CFDAE5 /* NativeSocialAuthenticationTests.swift in Sources */,
 				D6331F38545589E8EC42E675 /* ProfileInputTests.swift in Sources */,
 				0686BF43E368DFAE66D3ED69 /* TelemetryTests.swift in Sources */,
 				83A9DCB96622FE84342F37C4 /* TunedInAppearanceTests.swift in Sources */,
@@ -714,6 +728,7 @@
 			baseConfigurationReference = 59D9E25666338F3EB1CA706E /* Staging.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "ios/tunedIn/Resources/tunedIn-Staging.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ios/tunedIn/Resources/Info.plist;
@@ -1073,6 +1088,14 @@
 				minimumVersion = 3.64.6;
 			};
 		};
+		A929FDB00F78FF8BF3C14391 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.2.0;
+			};
+		};
 		AF2907167FBA725F0D32DD46 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/supabase/supabase-swift.git";
@@ -1084,6 +1107,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		B6F2D9A4EC1EE98284A811CD /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A929FDB00F78FF8BF3C14391 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
 		CB89FFF236B4128126206475 /* Supabase */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = AF2907167FBA725F0D32DD46 /* XCRemoteSwiftPackageReference "supabase-swift" */;

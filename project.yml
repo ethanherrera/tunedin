@@ -19,6 +19,9 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
 
 packages:
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS.git
+    from: "9.2.0"
   PostHog:
     url: https://github.com/PostHog/posthog-ios.git
     from: "3.64.6"
@@ -48,7 +51,12 @@ targets:
         INFOPLIST_FILE: ios/tunedIn/Resources/Info.plist
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
+      configs:
+        Staging:
+          CODE_SIGN_ENTITLEMENTS: ios/tunedIn/Resources/tunedIn-Staging.entitlements
     dependencies:
+      - package: GoogleSignIn
+        product: GoogleSignIn
       - package: PostHog
         product: PostHog
       - package: Supabase

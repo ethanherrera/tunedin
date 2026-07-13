@@ -8,6 +8,9 @@ export SUPABASE_PROJECT_REF="abcdefghijklmnopqrst"
 export SUPABASE_PUBLISHABLE_KEY="sb_publishable_regression_test"
 export POSTHOG_PROJECT_TOKEN="phc_regression_test"
 export POSTHOG_PROJECT_ID="507318"
+export GOOGLE_IOS_CLIENT_ID="123456-staging-ios.apps.googleusercontent.com"
+export GOOGLE_SERVER_CLIENT_ID="123456-staging-server.apps.googleusercontent.com"
+export GOOGLE_REVERSED_CLIENT_ID="com.googleusercontent.apps.123456-staging-ios"
 export TUNEDIN_GIT_SHA="0123456789abcdef0123456789abcdef01234567"
 export GITHUB_SHA="$TUNEDIN_GIT_SHA"
 
@@ -43,6 +46,23 @@ cat >"$info_plist" <<PLIST
   <string>com.ethanherrera.tunedin.staging</string>
   <key>TUNEDIN_APP_ENVIRONMENT</key>
   <string>Staging</string>
+  <key>TUNEDIN_AUTH_EXPERIENCE</key>
+  <string>NativeSocial</string>
+  <key>GIDClientID</key>
+  <string>123456-staging-ios.apps.googleusercontent.com</string>
+  <key>GIDServerClientID</key>
+  <string>123456-staging-server.apps.googleusercontent.com</string>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLSchemes</key>
+      <array><string>com.ethanherrera.tunedin.staging</string></array>
+    </dict>
+    <dict>
+      <key>CFBundleURLSchemes</key>
+      <array><string>com.googleusercontent.apps.123456-staging-ios</string></array>
+    </dict>
+  </array>
   <key>TUNEDIN_AUTH_CALLBACK_SCHEME</key>
   <string>com.ethanherrera.tunedin.staging</string>
   <key>TUNEDIN_USE_LOCAL_AUTH_STORAGE</key>

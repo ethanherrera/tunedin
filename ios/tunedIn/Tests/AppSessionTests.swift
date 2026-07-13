@@ -79,7 +79,7 @@ struct AppSessionTests {
     )
 
     await settle(session)
-    session.handleAuthCallback(try #require(URL(string: "com.ethanherrera.tunedin://auth-callback")))
+    try session.handleAuthCallback(#require(URL(string: "com.ethanherrera.tunedin://auth-callback")))
 
     for _ in 0 ..< 100 where session.authCallbackError == nil {
       try? await Task.sleep(for: .milliseconds(10))
@@ -125,6 +125,7 @@ private struct FailingCallbackAuthenticationRepository: AuthenticationRepository
   func sendEmailOTP(to _: String) async throws {}
   func signInWithPassword(email _: String, password _: String) async throws {}
   func verifyEmailOTP(email _: String, code _: String) async throws {}
+  func signIn(with _: NativeAuthCredentials) async throws {}
   func signOut() async throws {}
 
   func handleAuthCallback(_: URL) async throws {
@@ -134,7 +135,9 @@ private struct FailingCallbackAuthenticationRepository: AuthenticationRepository
   enum Failure: LocalizedError {
     case invalidLink
 
-    var errorDescription: String? { "The login link could not be verified." }
+    var errorDescription: String? {
+      "The login link could not be verified."
+    }
   }
 }
 
@@ -151,6 +154,7 @@ private struct StaticAuthenticationRepository: AuthenticationRepository {
   func sendEmailOTP(to _: String) async throws {}
   func signInWithPassword(email _: String, password _: String) async throws {}
   func verifyEmailOTP(email _: String, code _: String) async throws {}
+  func signIn(with _: NativeAuthCredentials) async throws {}
   func signOut() async throws {}
   func handleAuthCallback(_: URL) async throws {}
 }

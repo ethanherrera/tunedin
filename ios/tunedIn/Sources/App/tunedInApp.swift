@@ -1,3 +1,4 @@
+import GoogleSignIn
 import SwiftUI
 
 @main
@@ -22,7 +23,9 @@ struct TunedInApp: App {
       .tint(TunedInDesign.accent)
       .preferredColorScheme(appearance.colorScheme)
       .onOpenURL { url in
-        container.appSession.handleAuthCallback(url)
+        if !GIDSignIn.sharedInstance.handle(url) {
+          container.appSession.handleAuthCallback(url)
+        }
       }
     }
   }

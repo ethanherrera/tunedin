@@ -23,6 +23,7 @@ final class AppSession {
   private let clock = ContinuousClock()
 
   let authEmailDeliveryMode: AuthEmailDeliveryMode
+  let nativeSocialAuthConfiguration: NativeSocialAuthConfiguration?
   let allowsLocalSeededSignIn: Bool
   let telemetry: AppTelemetryClient
   private(set) var phase: AppSessionPhase = .restoring
@@ -36,6 +37,7 @@ final class AppSession {
     profileRepository: any ProfileRepository,
     feedbackRepository: any FeedbackRepository = DevelopmentFeedbackRepository(),
     authEmailDeliveryMode: AuthEmailDeliveryMode = .oneTimeCode,
+    nativeSocialAuthConfiguration: NativeSocialAuthConfiguration? = nil,
     allowsLocalSeededSignIn: Bool = false,
     telemetry: AppTelemetryClient = AppTelemetryClient(
       configuration: .recording,
@@ -51,6 +53,7 @@ final class AppSession {
     self.profileRepository = profileRepository
     self.feedbackRepository = feedbackRepository
     self.authEmailDeliveryMode = authEmailDeliveryMode
+    self.nativeSocialAuthConfiguration = nativeSocialAuthConfiguration
     self.allowsLocalSeededSignIn = allowsLocalSeededSignIn
     self.telemetry = telemetry
 
@@ -76,13 +79,23 @@ final class AppSession {
       email: localAccount.email,
       password: LocalSeededAccount.password
     )
-    captureAuthenticationSuccess(startedAt: startedAt)
+    captureAuthenticationSuccess(method: "local_seed", startedAt: startedAt)
   }
 
   func verifyEmailOTP(email: String, code: String) async throws {
     let startedAt = clock.now
     try await authenticationRepository.verifyEmailOTP(email: email, code: code)
-    captureAuthenticationSuccess(startedAt: startedAt)
+    captureAuthenticationSuccess(method: "email", startedAt: startedAt)
+  }
+
+  func signIn(with credentials: NativeAuthCredentials) async throws {
+    guard nativeSocialAuthConfiguration != nil else {
+      throw AppSessionError.nativeSocialSignInUnavailable
+    }
+
+    let startedAt = clock.now
+    try await authenticationRepository.signIn(with: credentials)
+    captureAuthenticationSuccess(method: credentials.provider.rawValue, startedAt: startedAt)
   }
 
   func checkUsernameAvailability(_ username: String) async throws -> Bool {
@@ -193,18 +206,18 @@ final class AppSession {
     Task { [weak self, authenticationRepository] in
       do {
         try await authenticationRepository.handleAuthCallback(url)
-        self?.captureAuthenticationSuccess(startedAt: startedAt)
+        self?.captureAuthenticationSuccess(method: "email", startedAt: startedAt)
       } catch {
         self?.authCallbackError = error.localizedDescription
       }
     }
   }
 
-  private func captureAuthenticationSuccess(startedAt: ContinuousClock.Instant) {
+  private func captureAuthenticationSuccess(method: String, startedAt: ContinuousClock.Instant) {
     telemetry.capture(
       .authenticationCompleted,
       properties: [
-        .method: .string("email"),
+        .method: .string(method),
         .outcome: .string(TelemetryOutcome.succeeded.rawValue),
         .durationMilliseconds: .integer(startedAt.duration(to: clock.now).millisecondsValue)
       ]
@@ -308,6 +321,7 @@ extension AppFailure {
 enum AppSessionError: LocalizedError {
   case missingAuthenticatedUser
   case localSeededSignInUnavailable
+  case nativeSocialSignInUnavailable
 
   var errorDescription: String? {
     switch self {
@@ -315,6 +329,8 @@ enum AppSessionError: LocalizedError {
       "Your sign-in session is no longer available. Please sign in again."
     case .localSeededSignInUnavailable:
       "Seeded account sign-in is available only for the disposable Local Supabase stack."
+    case .nativeSocialSignInUnavailable:
+      "Apple and Google sign-in are unavailable in this build."
     }
   }
 }

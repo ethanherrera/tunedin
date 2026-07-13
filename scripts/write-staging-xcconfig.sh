@@ -9,6 +9,9 @@ required_values=(
   SUPABASE_PUBLISHABLE_KEY
   POSTHOG_PROJECT_TOKEN
   POSTHOG_PROJECT_ID
+  GOOGLE_IOS_CLIENT_ID
+  GOOGLE_SERVER_CLIENT_ID
+  GOOGLE_REVERSED_CLIENT_ID
   TUNEDIN_GIT_SHA
 )
 
@@ -39,6 +42,18 @@ if [[ "$POSTHOG_PROJECT_ID" != "507318" ]]; then
   exit 1
 fi
 
+if [[ ! "$GOOGLE_IOS_CLIENT_ID" =~ ^[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$ ]] ||
+  [[ ! "$GOOGLE_SERVER_CLIENT_ID" =~ ^[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$ ]]; then
+  printf 'Staging Google OAuth client IDs are invalid.\n' >&2
+  exit 1
+fi
+
+google_ios_prefix="${GOOGLE_IOS_CLIENT_ID%.apps.googleusercontent.com}"
+if [[ "$GOOGLE_REVERSED_CLIENT_ID" != "com.googleusercontent.apps.${google_ios_prefix}" ]]; then
+  printf 'GOOGLE_REVERSED_CLIENT_ID does not match GOOGLE_IOS_CLIENT_ID.\n' >&2
+  exit 1
+fi
+
 if [[ ! "$TUNEDIN_GIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
   printf 'TUNEDIN_GIT_SHA must be a full lowercase Git commit SHA.\n' >&2
   exit 1
@@ -56,6 +71,10 @@ trap 'rm -f "$temporary_file"' EXIT
   printf '%s\n' 'APP_ENVIRONMENT = Staging'
   printf '%s\n' 'PRODUCT_BUNDLE_IDENTIFIER = com.ethanherrera.tunedin.staging'
   printf '%s\n' 'APP_DISPLAY_NAME = tunedIn Staging'
+  printf '%s\n' 'AUTH_EXPERIENCE = NativeSocial'
+  printf 'GOOGLE_IOS_CLIENT_ID = %s\n' "$GOOGLE_IOS_CLIENT_ID"
+  printf 'GOOGLE_SERVER_CLIENT_ID = %s\n' "$GOOGLE_SERVER_CLIENT_ID"
+  printf 'GOOGLE_REVERSED_CLIENT_ID = %s\n' "$GOOGLE_REVERSED_CLIENT_ID"
   # shellcheck disable=SC2016
   printf 'SUPABASE_URL = https:/$(TUNEDIN_URL_SLASH)%s.supabase.co\n' "$SUPABASE_PROJECT_REF"
   printf 'SUPABASE_PUBLISHABLE_KEY = %s\n' "$SUPABASE_PUBLISHABLE_KEY"

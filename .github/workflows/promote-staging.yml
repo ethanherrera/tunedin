@@ -85,6 +85,10 @@ jobs:
       APP_STORE_CONNECT_KEY_ID: ${{ vars.APP_STORE_CONNECT_KEY_ID }}
       APP_STORE_CONNECT_ISSUER_ID: ${{ vars.APP_STORE_CONNECT_ISSUER_ID }}
       APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+      GOOGLE_IOS_CLIENT_ID: ${{ vars.GOOGLE_IOS_CLIENT_ID }}
+      GOOGLE_SERVER_CLIENT_ID: ${{ vars.GOOGLE_SERVER_CLIENT_ID }}
+      GOOGLE_REVERSED_CLIENT_ID: ${{ vars.GOOGLE_REVERSED_CLIENT_ID }}
+      GOOGLE_SERVER_CLIENT_SECRET: ${{ secrets.GOOGLE_SERVER_CLIENT_SECRET }}
       TUNEDIN_PROMOTION_ENVIRONMENT: Staging
     steps:
       - name: Check out the verified main commit
@@ -117,6 +121,10 @@ jobs:
             APP_STORE_CONNECT_KEY_ID
             APP_STORE_CONNECT_ISSUER_ID
             APP_STORE_CONNECT_PRIVATE_KEY
+            GOOGLE_IOS_CLIENT_ID
+            GOOGLE_SERVER_CLIENT_ID
+            GOOGLE_REVERSED_CLIENT_ID
+            GOOGLE_SERVER_CLIENT_SECRET
           )
           for name in "${required_values[@]}"; do
             if [[ -z "${!name:-}" ]]; then
@@ -141,6 +149,9 @@ jobs:
         run: |
           make posthog-test
           make posthog-plan
+
+      - name: Plan Staging native Auth
+        run: make staging-auth-plan
 
       - name: Prepare App Store Connect authentication
         shell: bash
@@ -211,6 +222,9 @@ jobs:
           CURRENT_PROJECT_VERSION="$TUNEDIN_BUILD_NUMBER" \
             "$upload_script"
 
+      - name: Prepare native Apple and Google Auth
+        run: ./scripts/staging-auth.sh prepare
+
       - name: Show Staging backend migration plan
         run: ./scripts/staging-environment.sh plan
 
@@ -253,6 +267,11 @@ jobs:
             -authenticationKeyID "$APP_STORE_CONNECT_KEY_ID" \
             -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID"
 
+      - name: Finalize and verify native-only Staging Auth
+        run: |
+          ./scripts/staging-auth.sh finalize
+          make staging-auth-verify
+
       - name: Record Staging promotion
         shell: bash
         run: |
@@ -261,6 +280,7 @@ jobs:
             printf -- '- Commit: %c%s%c\n' 96 "$GITHUB_SHA" 96
             printf -- '- Backend: %ctunedin-staging%c migrations and tracked Edge Functions\n' 96 96
             printf -- '- Observability: PostHog Staging project %c507318%c and uploaded dSYMs\n' 96 96
+            printf -- '- Authentication: native Apple and Google; email and phone sign-up disabled\n'
             printf -- '- App: %ctunedIn Staging%c (%ccom.ethanherrera.tunedin.staging%c)\n' 96 96 96 96
             printf -- '- Version: %c%s%c\n' 96 "$TUNEDIN_MARKETING_VERSION" 96
             printf -- '- Build: %c%s%c\n' 96 "$TUNEDIN_BUILD_NUMBER" 96

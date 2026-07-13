@@ -137,6 +137,10 @@
       throw DevelopmentScenarioError.liveAuthenticationRequired
     }
 
+    func signIn(with _: NativeAuthCredentials) async throws {
+      throw DevelopmentScenarioError.liveAuthenticationRequired
+    }
+
     func signOut() async throws {}
     func handleAuthCallback(_: URL) async throws {}
   }
