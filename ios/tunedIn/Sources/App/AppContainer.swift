@@ -30,8 +30,8 @@ final class AppContainer {
       options: .init(
         auth: .init(
           storage: authStorage,
-          redirectToURL: AppConfiguration.authCallbackURL,
-          storageKey: "com.ethanherrera.tunedin.auth.session"
+          redirectToURL: configuration.authCallbackURL,
+          storageKey: configuration.authSessionStorageKey
         ),
         global: .init(session: AppNetworkSession.makeSession())
       )
@@ -39,7 +39,10 @@ final class AppContainer {
 
     let profileRepository = SupabaseProfileRepository(client: client)
     appSession = AppSession(
-      authenticationRepository: SupabaseAuthenticationRepository(client: client),
+      authenticationRepository: SupabaseAuthenticationRepository(
+        client: client,
+        authCallbackURL: configuration.authCallbackURL
+      ),
       profileRepository: profileRepository,
       authEmailDeliveryMode: configuration.authEmailDeliveryMode,
       allowsLocalSeededSignIn: configuration.usesLocalSimulatorAuthStorage

@@ -61,6 +61,7 @@
 		DD9DF4D5F2A6DFA4463F9723 /* ConcertCreationDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48D5349FC56B2CBC9101478D /* ConcertCreationDraft.swift */; };
 		DE9D4024F47CD0B1936B8812 /* PersonProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74193CBB4CFA490AEC77ACC8 /* PersonProfileView.swift */; };
 		E4D4BB4077D2B6C7E74F7E08 /* AppNetworkSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E5567493126633FA6F89B8A /* AppNetworkSession.swift */; };
+		E67F40E1271039F458BCBEBB /* AppConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00796CCD74299B830D1CCE46 /* AppConfigurationTests.swift */; };
 		EC79DB067047705BFA83DD0E /* SupabaseTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CFC17EF319FD32E400CFE04 /* SupabaseTypes.swift */; };
 		F4E200A9A3F2B4A822C52209 /* AppSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7788CE273B97F5DF8299CB3 /* AppSessionTests.swift */; };
 		F65D718B16A14EDEF2F1E39D /* DevelopmentScenario.swift in Sources */ = {isa = PBXBuildFile; fileRef = 889BD9CC3B0A992D16F66A9A /* DevelopmentScenario.swift */; };
@@ -80,6 +81,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		00796CCD74299B830D1CCE46 /* AppConfigurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfigurationTests.swift; sourceTree = "<group>"; };
 		075C8094B7B7249F8E4DF36F /* AuthenticationRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationRepository.swift; sourceTree = "<group>"; };
 		0A5695E4F2552EBE2BF611CB /* ConcertPhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertPhotoView.swift; sourceTree = "<group>"; };
 		1237B11A854A5A058C98A39C /* ProfileInputTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileInputTests.swift; sourceTree = "<group>"; };
@@ -356,6 +358,7 @@
 			isa = PBXGroup;
 			children = (
 				4B185CD800E6B9369C52FD98 /* AlbumReadinessTests.swift */,
+				00796CCD74299B830D1CCE46 /* AppConfigurationTests.swift */,
 				1243DF949645D1AB5318AC3A /* AppFailureTests.swift */,
 				B7788CE273B97F5DF8299CB3 /* AppSessionTests.swift */,
 				57FDDFA7886E6E8E872E5AF9 /* AvatarImageProcessorTests.swift */,
@@ -548,6 +551,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				92360D3D1229A15146C11DFE /* AlbumReadinessTests.swift in Sources */,
+				E67F40E1271039F458BCBEBB /* AppConfigurationTests.swift in Sources */,
 				305EB7B1166D9EC2981A9292 /* AppFailureTests.swift in Sources */,
 				F4E200A9A3F2B4A822C52209 /* AppSessionTests.swift in Sources */,
 				113D27B6136FBB89C6B8D9A0 /* AvatarImageProcessorTests.swift in Sources */,
@@ -638,7 +642,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.ethanherrera.tunedin;
 				PRODUCT_NAME = tunedIn;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -658,7 +661,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.ethanherrera.tunedin;
 				PRODUCT_NAME = tunedIn;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -799,7 +801,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.ethanherrera.tunedin;
 				PRODUCT_NAME = tunedIn;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -819,7 +820,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.ethanherrera.tunedin;
 				PRODUCT_NAME = tunedIn;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -861,17 +861,11 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
-				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"DEBUG=1",
-				);
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
@@ -879,13 +873,12 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
 			};

@@ -1,0 +1,227 @@
+name: Promote Staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type promote-staging to deploy the selected main commit to Staging.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tunedin-staging-promotion
+  cancel-in-progress: false
+
+jobs:
+  verify-backend:
+    if: github.ref == 'refs/heads/main' && inputs.confirm == 'promote-staging'
+    name: Verify backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the selected main commit
+        uses: actions/checkout@v7
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: 2.109.1
+
+      - name: Verify disposable schema, authorization, and Storage
+        run: make backend-verify
+
+  verify-ios:
+    if: github.ref == 'refs/heads/main' && inputs.confirm == 'promote-staging'
+    name: Verify iOS
+    runs-on: macos-26
+    steps:
+      - name: Check out the selected main commit
+        uses: actions/checkout@v7
+
+      - name: Install project tooling
+        run: brew install actionlint xcodegen swiftformat swiftlint
+
+      - name: Create non-secret build configuration
+        run: make configure
+
+      - name: Verify generated project is current
+        run: |
+          make generate
+          git diff --exit-code -- tunedIn.xcodeproj
+
+      - name: Lint
+        run: make lint
+
+      - name: Validate workflows
+        run: make workflow-lint
+
+      - name: Test Development configuration
+        run: make test DESTINATION='platform=iOS Simulator,name=iPhone 17'
+
+      - name: Build Staging release configuration
+        run: make build-staging DESTINATION='platform=iOS Simulator,name=iPhone 17'
+
+  promote:
+    name: Promote backend and TestFlight app
+    needs: [verify-backend, verify-ios]
+    runs-on: macos-26
+    environment:
+      name: Staging
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+      APPLE_DEVELOPMENT_TEAM: ${{ vars.APPLE_DEVELOPMENT_TEAM }}
+      APP_STORE_CONNECT_KEY_ID: ${{ vars.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ vars.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+      TUNEDIN_PROMOTION_ENVIRONMENT: Staging
+    steps:
+      - name: Check out the verified main commit
+        uses: actions/checkout@v7
+
+      - name: Install project and Supabase tooling
+        run: brew install xcodegen
+
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: 2.109.1
+
+      - name: Validate protected environment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          required_values=(
+            SUPABASE_ACCESS_TOKEN
+            SUPABASE_DB_PASSWORD
+            SUPABASE_PROJECT_REF
+            SUPABASE_PUBLISHABLE_KEY
+            APPLE_DEVELOPMENT_TEAM
+            APP_STORE_CONNECT_KEY_ID
+            APP_STORE_CONNECT_ISSUER_ID
+            APP_STORE_CONNECT_PRIVATE_KEY
+          )
+          for name in "${required_values[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              printf 'Missing required Staging environment value: %s\n' "$name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Create ephemeral Staging app configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf '%s\n' '#include "Base.xcconfig"'
+            printf '\n'
+            printf '%s\n' 'APP_ENVIRONMENT = Staging'
+            printf '%s\n' 'PRODUCT_BUNDLE_IDENTIFIER = com.ethanherrera.tunedin.staging'
+            printf '%s\n' 'APP_DISPLAY_NAME = tunedIn Beta'
+            printf 'SUPABASE_URL = https:/%c(TUNEDIN_URL_SLASH)%s.supabase.co\n' 36 "$SUPABASE_PROJECT_REF"
+            printf 'SUPABASE_PUBLISHABLE_KEY = %s\n' "$SUPABASE_PUBLISHABLE_KEY"
+            printf '%s\n' 'POSTHOG_API_KEY ='
+            printf 'POSTHOG_HOST = https:/%c(TUNEDIN_URL_SLASH)us.i.posthog.com\n' 36
+          } > ios/Config/Staging.xcconfig
+
+      - name: Prepare App Store Connect authentication
+        shell: bash
+        run: |
+          set -euo pipefail
+          key_path="$RUNNER_TEMP/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
+          printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY" > "$key_path"
+          chmod 600 "$key_path"
+          printf 'APP_STORE_CONNECT_KEY_PATH=%s\n' "$key_path" >> "$GITHUB_ENV"
+
+      - name: Generate the Xcode project
+        run: make generate
+
+      - name: Archive the Staging release before backend mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_number="$((1000 + GITHUB_RUN_NUMBER)).${GITHUB_RUN_ATTEMPT}"
+          printf 'TUNEDIN_BUILD_NUMBER=%s\n' "$build_number" >> "$GITHUB_ENV"
+          mkdir -p build
+          xcodebuild \
+            -project tunedIn.xcodeproj \
+            -scheme tunedIn-Staging \
+            -configuration Staging \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/tunedIn-Staging.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$APP_STORE_CONNECT_KEY_PATH" \
+            -authenticationKeyID "$APP_STORE_CONNECT_KEY_ID" \
+            -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_DEVELOPMENT_TEAM" \
+            CURRENT_PROJECT_VERSION="$build_number" \
+            archive
+          marketing_version="$(/usr/libexec/PlistBuddy \
+            -c 'Print :ApplicationProperties:CFBundleShortVersionString' \
+            build/tunedIn-Staging.xcarchive/Info.plist)"
+          printf 'TUNEDIN_MARKETING_VERSION=%s\n' "$marketing_version" >> "$GITHUB_ENV"
+
+      - name: Show Staging backend migration plan
+        run: ./scripts/staging-environment.sh plan
+
+      - name: Apply Staging backend and Edge Functions
+        run: ./scripts/staging-environment.sh apply
+
+      - name: Upload the archived app to TestFlight
+        shell: bash
+        run: |
+          set -euo pipefail
+          export_options="$RUNNER_TEMP/StagingExportOptions.plist"
+          cat > "$export_options" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>destination</key>
+            <string>upload</string>
+            <key>manageAppVersionAndBuildNumber</key>
+            <false/>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>teamID</key>
+            <string>${APPLE_DEVELOPMENT_TEAM}</string>
+            <key>uploadSymbols</key>
+            <true/>
+          </dict>
+          </plist>
+          PLIST
+          mkdir -p build/StagingExport
+          xcodebuild \
+            -exportArchive \
+            -archivePath build/tunedIn-Staging.xcarchive \
+            -exportPath build/StagingExport \
+            -exportOptionsPlist "$export_options" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$APP_STORE_CONNECT_KEY_PATH" \
+            -authenticationKeyID "$APP_STORE_CONNECT_KEY_ID" \
+            -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID"
+
+      - name: Record Staging promotion
+        shell: bash
+        run: |
+          {
+            printf '## tunedIn Staging promotion\n\n'
+            printf -- '- Commit: %c%s%c\n' 96 "$GITHUB_SHA" 96
+            printf -- '- Backend: %ctunedin-staging%c migrations and tracked Edge Functions\n' 96 96
+            printf -- '- App: %ctunedIn Beta%c (%ccom.ethanherrera.tunedin.staging%c)\n' 96 96 96 96
+            printf -- '- Version: %c%s%c\n' 96 "$TUNEDIN_MARKETING_VERSION" 96
+            printf -- '- Build: %c%s%c\n' 96 "$TUNEDIN_BUILD_NUMBER" 96
+            printf -- '- Data copied between environments: no\n'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove ephemeral credentials and configuration
+        if: always()
+        shell: bash
+        run: |
+          rm -f "${APP_STORE_CONNECT_KEY_PATH:-}" ios/Config/Staging.xcconfig

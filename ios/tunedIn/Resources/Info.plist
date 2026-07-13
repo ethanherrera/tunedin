@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>tunedIn</string>
+	<string>$(APP_DISPLAY_NAME)</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -18,10 +18,10 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.ethanherrera.tunedin</string>
+			<string>$(AUTH_CALLBACK_SCHEME)</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.ethanherrera.tunedin</string>
+				<string>$(AUTH_CALLBACK_SCHEME)</string>
 			</array>
 		</dict>
 	</array>
@@ -33,6 +33,8 @@
 	</array>
 	<key>TUNEDIN_APP_ENVIRONMENT</key>
 	<string>$(APP_ENVIRONMENT)</string>
+	<key>TUNEDIN_AUTH_CALLBACK_SCHEME</key>
+	<string>$(AUTH_CALLBACK_SCHEME)</string>
 	<key>TUNEDIN_USE_LOCAL_AUTH_STORAGE</key>
 	<string>$(TUNEDIN_USE_LOCAL_AUTH_STORAGE)</string>
 	<key>TUNEDIN_SUPABASE_PUBLISHABLE_KEY</key>
