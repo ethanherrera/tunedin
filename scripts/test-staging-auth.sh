@@ -59,7 +59,7 @@ cat >"$temporary_directory/state.json" <<'JSON'
   "external_email_enabled": true,
   "external_google_enabled": false,
   "external_google_client_id": "",
-  "external_google_additional_client_ids": "",
+  "external_google_additional_client_ids": null,
   "external_google_skip_nonce_check": true,
   "external_phone_enabled": false,
   "security_manual_linking_enabled": false
@@ -97,6 +97,11 @@ with open(sys.argv[1], encoding="utf-8") as source:
     state = json.load(source)
 assert state["external_apple_enabled"] is True
 assert state["external_google_enabled"] is True
+assert state["external_google_client_id"] == ",".join([
+    "123456-staging-server.apps.googleusercontent.com",
+    "123456-staging-ios.apps.googleusercontent.com",
+])
+assert state["external_google_additional_client_ids"] is None
 assert state["external_email_enabled"] is False
 assert state["external_google_skip_nonce_check"] is False
 PY
