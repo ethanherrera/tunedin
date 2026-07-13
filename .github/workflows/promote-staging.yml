@@ -181,6 +181,8 @@ jobs:
             -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID" \
             DEVELOPMENT_TEAM="$APPLE_DEVELOPMENT_TEAM" \
             CURRENT_PROJECT_VERSION="$build_number" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
             archive
           marketing_version="$(/usr/libexec/PlistBuddy \
             -c 'Print :ApplicationProperties:CFBundleShortVersionString' \
