@@ -95,9 +95,9 @@ The workflow performs these operations in order:
 2. Regenerate, lint, test, and build the iOS project.
 3. Validate the offline PostHog contract and print a read-only Staging drift plan.
 4. Create an ephemeral ignored Staging configuration from protected values.
-5. Create an unsigned device archive before changing hosted services. App Store Connect cloud-signs
-   this same archive during export, so the clean runner does not need a registered device or a local
-   distribution certificate.
+5. Create an unsigned device archive and verify its expanded Supabase, PostHog, callback, environment,
+   and release values before changing hosted services. App Store Connect cloud-signs this same archive
+   during export, so the clean runner does not need a registered device or a local distribution certificate.
 6. Apply and verify the PostHog Staging contract and upload the archive's dSYMs without source files.
 7. Print the Staging migration dry run.
 8. Apply pending migrations without seeds or reset.
@@ -130,6 +130,12 @@ The first attempts also verified the recovery boundaries: configuration and sign
 archive left hosted services unchanged, while an App Store metadata rejection after backend deployment
 left the forward-only backend safe to retry. CI now validates the required `APPL` package type,
 `AppIcon` declaration, export-compliance flag, and opaque 1024-pixel icon before promotion.
+
+Build `1004.1` exposed a launch-time configuration failure after installation: the workflow's inline
+Bash `%c` expression wrote `3(TUNEDIN_URL_SLASH)` instead of the literal xcconfig `$()` expansion,
+so the packaged Supabase and PostHog URLs were invalid. Staging configuration generation now has an
+offline regression test, and every promotion validates the expanded values in the archived app before
+PostHog, Supabase, or TestFlight can be changed.
 
 ## Recovery and rollback
 

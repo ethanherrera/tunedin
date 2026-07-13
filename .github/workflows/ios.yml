@@ -42,6 +42,9 @@ jobs:
       - name: Validate App Store metadata
         run: make distribution-metadata-verify
 
+      - name: Test Staging configuration packaging
+        run: make staging-configuration-test
+
       - name: Test the offline PostHog contract
         run: make posthog-test
 

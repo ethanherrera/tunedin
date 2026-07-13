@@ -134,19 +134,8 @@ jobs:
         run: |
           set -euo pipefail
           make configure
-          {
-            printf '%s\n' '#include "Base.xcconfig"'
-            printf '\n'
-            printf '%s\n' 'APP_ENVIRONMENT = Staging'
-            printf '%s\n' 'PRODUCT_BUNDLE_IDENTIFIER = com.ethanherrera.tunedin.staging'
-            printf '%s\n' 'APP_DISPLAY_NAME = tunedIn Staging'
-            printf 'SUPABASE_URL = https:/%c(TUNEDIN_URL_SLASH)%s.supabase.co\n' 36 "$SUPABASE_PROJECT_REF"
-            printf 'SUPABASE_PUBLISHABLE_KEY = %s\n' "$SUPABASE_PUBLISHABLE_KEY"
-            printf 'POSTHOG_PROJECT_TOKEN = %s\n' "$POSTHOG_PROJECT_TOKEN"
-            printf 'POSTHOG_PROJECT_ID = %s\n' "$POSTHOG_PROJECT_ID"
-            printf 'POSTHOG_HOST = https:/%c(TUNEDIN_URL_SLASH)us.i.posthog.com\n' 36
-            printf 'TUNEDIN_GIT_SHA = %s\n' "$GITHUB_SHA"
-          } > ios/Config/Staging.xcconfig
+          TUNEDIN_GIT_SHA="$GITHUB_SHA" \
+            ./scripts/write-staging-xcconfig.sh ios/Config/Staging.xcconfig
 
       - name: Validate and plan PostHog Staging
         run: |
@@ -191,6 +180,9 @@ jobs:
             -c 'Print :ApplicationProperties:CFBundleShortVersionString' \
             build/tunedIn-Staging.xcarchive/Info.plist)"
           printf 'TUNEDIN_MARKETING_VERSION=%s\n' "$marketing_version" >> "$GITHUB_ENV"
+
+      - name: Verify archived Staging configuration
+        run: ./scripts/verify-staging-archive-configuration.sh
 
       - name: Apply and verify the PostHog Staging contract
         env:
