@@ -130,6 +130,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          make configure
           {
             printf '%s\n' '#include "Base.xcconfig"'
             printf '\n'
