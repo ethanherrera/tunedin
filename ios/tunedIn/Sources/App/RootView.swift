@@ -6,28 +6,47 @@ struct RootView: View {
   let socialRepository: any SocialRepository
 
   var body: some View {
-    switch session.phase {
-    case .restoring, .loadingProfile:
-      ProgressView("Restoring your session…")
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    Group {
+      switch session.phase {
+      case .restoring, .loadingProfile:
+        ProgressView("Restoring your session…")
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-    case .signedOut:
-      EmailSignInView(session: session)
+      case .signedOut:
+        EmailSignInView(session: session)
 
-    case let .profileUnavailable(_, message):
-      ProfileLoadFailureView(session: session, message: message)
+      case let .profileUnavailable(_, message):
+        ProfileLoadFailureView(session: session, message: message)
 
-    case let .needsOnboarding(user):
-      OnboardingView(session: session, user: user)
+      case let .needsOnboarding(user):
+        OnboardingView(session: session, user: user)
 
-    case let .signedIn(user, profile):
-      MainTabView(
-        session: session,
-        user: user,
-        profile: profile,
-        concertRepository: concertRepository,
-        socialRepository: socialRepository
+      case let .signedIn(user, profile):
+        MainTabView(
+          session: session,
+          user: user,
+          profile: profile,
+          concertRepository: concertRepository,
+          socialRepository: socialRepository
+        )
+      }
+    }
+    .alert(
+      "Couldn’t sign in",
+      isPresented: Binding(
+        get: { session.authCallbackError != nil },
+        set: { isPresented in
+          if !isPresented {
+            session.dismissAuthCallbackError()
+          }
+        }
       )
+    ) {
+      Button("OK") {
+        session.dismissAuthCallbackError()
+      }
+    } message: {
+      Text(session.authCallbackError ?? "The login link could not be verified.")
     }
   }
 }

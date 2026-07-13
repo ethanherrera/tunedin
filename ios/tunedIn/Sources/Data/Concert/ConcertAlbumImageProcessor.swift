@@ -14,7 +14,7 @@ enum ConcertAlbumImageProcessor {
     }
   }
 
-  static func process(_ sourceData: Data, maximumEdge: CGFloat = 2_048, maximumBytes: Int = 2_097_152) async throws -> Data {
+  static func process(_ sourceData: Data, maximumEdge: CGFloat = 2048, maximumBytes: Int = 2_097_152) async throws -> Data {
     try await Task.detached(priority: .userInitiated) {
       guard let source = CGImageSourceCreateWithData(sourceData as CFData, nil) else {
         throw ProcessingError.invalidImage

@@ -33,6 +33,18 @@ make dev-plan
 
 Development temporarily uses Supabase’s default magic-link template because the free provider cannot accept a custom OTP template. Before authentication acceptance or external testing, configure custom SMTP and restore code-only six-digit OTP delivery as recorded in [the decision log](../docs/decision-log.md).
 
+### No-email device login
+
+For internal hosted-Development testing without consuming the built-in email quota, generate a real one-time Auth link from an authenticated Supabase CLI session:
+
+```sh
+make dev-login-link EMAIL=owner.device-test@example.com
+```
+
+The helper is hard-coded to `tunedin-dev`, obtains a temporary admin credential through the authenticated CLI, and copies the generated link directly to the macOS clipboard. It never prints or stores the credential or link. Paste the clipboard into Safari on the test iPhone; Supabase verifies the link, redirects to `com.ethanherrera.tunedin://auth-callback`, and opens the installed Development app with a normal hosted session. The email is an identity label and does not need to receive a message, but use an address under Ethan’s control when testing email delivery itself.
+
+Run this command only from a trusted Mac. A generated link is short-lived authentication material: never paste it into chat, logs, issues, or shell arguments. If generation fails, confirm `supabase projects list` succeeds for Ethan’s `tunedIn` organization, then retry once manually. Authentication activity is recorded in the hosted Supabase Auth logs; the helper has no database migration or hosted reset capability.
+
 ### Simulator magic-link smoke test
 
 1. Run tunedIn with the `tunedIn-Development` scheme in a booted iOS Simulator.

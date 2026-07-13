@@ -65,14 +65,13 @@ struct ConcertArchiveView: View {
       TunedInGlassSearchField(text: $query.searchText, prompt: "Search artists, venues, cities")
 
       if isLoading, concerts.isEmpty {
-        HStack {
-          ProgressView()
-          Text("Finding the good nights…")
-            .font(.subheadline)
-            .foregroundStyle(TunedInDesign.mutedText)
+        VStack(spacing: 10) {
+          ForEach(0 ..< 3, id: \.self) { _ in
+            TunedInSkeletonBlock(cornerRadius: 20)
+              .frame(height: 142)
+          }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 28)
+        .accessibilityLabel("Loading concerts")
       } else if let errorMessage {
         ContentUnavailableView {
           Label("Couldn’t load this archive", systemImage: "exclamationmark.triangle")
@@ -369,7 +368,19 @@ struct ConcertDetailView: View {
           Text(errorMessage)
         }
       } else {
-        ProgressView("Opening concert…")
+        ScrollView {
+          VStack(alignment: .leading, spacing: 18) {
+            TunedInSkeletonBlock(cornerRadius: 24)
+              .aspectRatio(CGSize(width: 3, height: 4), contentMode: .fit)
+            TunedInSkeletonBlock(cornerRadius: 7).frame(width: 150, height: 20)
+            TunedInSkeletonBlock(cornerRadius: 18).frame(height: 140)
+            TunedInSkeletonBlock(cornerRadius: 18).frame(height: 110)
+          }
+          .padding(.horizontal, 20)
+          .padding(.top, 14)
+          .padding(.bottom, 120)
+        }
+        .accessibilityLabel("Opening concert")
       }
     }
     .toolbar(.hidden, for: .navigationBar)
@@ -545,36 +556,6 @@ struct ConcertDetailView: View {
               .foregroundStyle(TunedInDesign.mutedText)
           }
         }
-
-        DisclosureGroup("History") {
-          VStack(alignment: .leading, spacing: 14) {
-            ForEach(detail.history) { event in
-              HStack(alignment: .top, spacing: 12) {
-                Circle()
-                  .fill(TunedInDesign.accent)
-                  .frame(width: 8, height: 8)
-                  .padding(.top, 5)
-                VStack(alignment: .leading, spacing: 3) {
-                  Text(event.title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(TunedInDesign.primaryText)
-                  Text(ConcertDisplay.longDateTime(event.occurredAt))
-                    .font(.caption)
-                    .foregroundStyle(TunedInDesign.mutedText)
-                }
-              }
-            }
-          }
-        }
-        .font(.headline)
-        .foregroundStyle(TunedInDesign.primaryText)
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-          TunedInDesign.raisedSurface.opacity(0.6),
-          in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-        )
-        .accessibilityLabel("Concert history")
 
         VStack(alignment: .leading, spacing: 12) {
           Text("Moments")

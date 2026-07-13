@@ -54,11 +54,20 @@ struct ConcertAlbumView: View {
         }
 
         if isLoading {
-          ProgressView("Opening album…").frame(maxWidth: .infinity).padding(.vertical, 80)
+          LazyVGrid(columns: columns, spacing: 10) {
+            ForEach(0 ..< 6, id: \.self) { _ in
+              TunedInSkeletonBlock()
+                .aspectRatio(1, contentMode: .fit)
+            }
+          }
+          .accessibilityLabel("Opening album")
         } else if photos.isEmpty {
-          ContentUnavailableView("No photos yet", systemImage: "photo.on.rectangle.angled",
-            description: Text(viewerRole.canEdit ? "Add the first photo from this night." : "The editors haven’t added photos yet."))
-            .padding(.vertical, 48)
+          ContentUnavailableView(
+            "No photos yet",
+            systemImage: "photo.on.rectangle.angled",
+            description: Text(viewerRole.canEdit ? "Add the first photo from this night." : "The editors haven’t added photos yet.")
+          )
+          .padding(.vertical, 48)
         } else {
           LazyVGrid(columns: columns, spacing: 10) {
             ForEach(photos) { photo in
@@ -81,8 +90,13 @@ struct ConcertAlbumView: View {
       Task { await upload(items.map { FailedAlbumUpload(photoID: UUID(), item: $0, reservation: nil) }) }
     }
     .fullScreenCover(isPresented: viewerPresented) {
-      ConcertAlbumViewer(photos: $photos, selectedPhotoID: $selectedPhotoID, viewerID: viewerID,
-        viewerRole: viewerRole, repository: concertRepository)
+      ConcertAlbumViewer(
+        photos: $photos,
+        selectedPhotoID: $selectedPhotoID,
+        viewerID: viewerID,
+        viewerRole: viewerRole,
+        repository: concertRepository
+      )
     }
   }
 
@@ -94,7 +108,11 @@ struct ConcertAlbumView: View {
   }
 
   private var viewerPresented: Binding<Bool> {
-    Binding(get: { selectedPhotoID != nil }, set: { if !$0 { selectedPhotoID = nil } })
+    Binding(get: { selectedPhotoID != nil }, set: {
+      if !$0 {
+        selectedPhotoID = nil
+      }
+    })
   }
 
   private func load() async {
@@ -114,8 +132,10 @@ struct ConcertAlbumView: View {
     guard let last = photos.last, !isLoadingMore else { return }
     isLoadingMore = true
     do {
-      let loaded = try await concertRepository.albumPhotos(concertID: detail.concert.id,
-        cursor: ConcertAlbumPhotoCursor(attachedAt: last.attachedAt, photoID: last.id))
+      let loaded = try await concertRepository.albumPhotos(
+        concertID: detail.concert.id,
+        cursor: ConcertAlbumPhotoCursor(attachedAt: last.attachedAt, photoID: last.id)
+      )
       photos.append(contentsOf: loaded); canLoadMore = loaded.count == 30
     } catch { errorMessage = error.localizedDescription }
     isLoadingMore = false
@@ -178,7 +198,9 @@ private struct FailedAlbumUpload: Identifiable {
   let photoID: UUID
   let item: PhotosPickerItem
   let reservation: ConcertPhotoReservation?
-  var id: UUID { photoID }
+  var id: UUID {
+    photoID
+  }
 }
 
 private enum AlbumPickerError: LocalizedError { case unreadable }
@@ -220,16 +242,19 @@ private struct AlbumPhotoImage: View {
   @State private var failed = false
   var body: some View {
     Group {
-      if let url { AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { fallback } }
-      else { fallback }
+      if let url {
+        AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { fallback }
+      } else {
+        fallback
+      }
     }.task(id: "\(photo.id)-\(photo.version)") {
       do { url = try await repository.albumPhotoURL(photoID: photo.id, objectPath: photo.objectPath, version: photo.version) }
       catch { failed = true }
     }
   }
+
   private var fallback: some View {
-    LinearGradient(colors: [TunedInDesign.ticketViolet, TunedInDesign.ticketRose], startPoint: .topLeading, endPoint: .bottomTrailing)
-      .overlay { Image(systemName: failed ? "exclamationmark.triangle" : "photo").foregroundStyle(.white.opacity(0.7)) }
+    TunedInImagePlaceholder(failed: failed)
   }
 }
 
@@ -242,7 +267,8 @@ private struct ConcertAlbumViewer: View {
   @Environment(\.dismiss) private var dismiss
   @State private var captionDraft = ""
   @State private var isEditingCaption = false
-  @State private var isShowingActions = false
+  @State private var captionError: String?
+  @State private var isSavingCaption = false
 
   var body: some View {
     ZStack(alignment: .bottom) {
@@ -254,93 +280,119 @@ private struct ConcertAlbumViewer: View {
             VStack(alignment: .leading, spacing: 5) {
               Text(photo.displayName).font(.headline)
               Text(ConcertDisplay.longDateTime(photo.attachedAt)).font(.caption).foregroundStyle(.secondary)
-              if let caption = photo.caption { Text(caption).padding(.top, 4) }
+              if let caption = photo.caption {
+                Text(caption).padding(.top, 4)
+              }
             }.foregroundStyle(.white).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 20)
             Spacer()
           }.tag(Optional(photo.id))
         }
       }.tabViewStyle(.page(indexDisplayMode: .automatic))
 
-      HStack(alignment: .bottom, spacing: 8) {
-        TunedInSubscreenBackBar(title: "Album") {
+      TunedInGlassTraversalLayout {
+        TunedInGlassIconButton(
+          systemImage: "chevron.backward",
+          accessibilityLabel: "Back to album"
+        ) {
           dismiss()
         }
-        Spacer()
+      } center: {
+        TunedInGlassBottomBar {
+          Text("Album")
+            .font(.headline.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
+            .frame(minWidth: 112, minHeight: 48)
+            .padding(.horizontal, 14)
+        }
+      } trailing: {
         if let photo = selectedPhoto, canEdit(photo) {
-          TunedInFloatingAction(
-            systemImage: "ellipsis",
-            accessibilityLabel: "Photo actions",
-            accessibilityHint: "Shows caption and deletion actions"
-          ) {
-            isShowingActions = true
-          }
-          .popover(
-            isPresented: $isShowingActions,
-            attachmentAnchor: .point(.top),
-            arrowEdge: .bottom
-          ) {
-            TunedInGlassPopover {
-              VStack(spacing: 4) {
-                if photo.uploaderID == viewerID {
-                  Button {
-                    captionDraft = photo.caption ?? ""
-                    isShowingActions = false
-                    isEditingCaption = true
-                  } label: {
-                    Label("Edit caption", systemImage: "text.quote")
-                      .foregroundStyle(TunedInDesign.primaryText)
-                      .frame(maxWidth: .infinity, alignment: .leading)
-                      .padding(.horizontal, 14)
-                      .padding(.vertical, 12)
-                  }
-                  .buttonStyle(.plain)
-                }
-
-                Button(role: .destructive) {
-                  isShowingActions = false
-                  Task { await delete(photo) }
-                } label: {
-                  Label("Delete photo", systemImage: "trash")
-                    .foregroundStyle(.red)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                }
-                .buttonStyle(.plain)
+          Menu {
+            if photo.uploaderID == viewerID {
+              Button {
+                captionDraft = photo.caption ?? ""
+                captionError = nil
+                isEditingCaption = true
+              } label: {
+                Label("Edit caption", systemImage: "text.quote")
               }
-              .frame(width: 210)
-              .padding(8)
             }
-            .presentationCompactAdaptation(.popover)
-            .presentationBackground(.clear)
+
+            Button("Delete photo", systemImage: "trash", role: .destructive) {
+              Task { await delete(photo) }
+            }
+          } label: {
+            TunedInFloatingActionLabel(systemImage: "ellipsis")
           }
+          .accessibilityLabel("Photo actions")
         }
       }
-      .padding(.horizontal, 16)
-      .padding(.bottom, 10)
+      .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+      .padding(.bottom, TunedInDesign.bottomControlInset)
     }
     .sheet(isPresented: $isEditingCaption) {
       NavigationStack {
-        TextEditor(text: $captionDraft).padding().navigationTitle("Caption")
-          .toolbar {
-            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { isEditingCaption = false } }
-            ToolbarItem(placement: .confirmationAction) { Button("Save") { Task { await saveCaption() } }.disabled(captionDraft.count > 300) }
+        VStack(alignment: .leading, spacing: 8) {
+          TextEditor(text: $captionDraft)
+            .padding(8)
+            .scrollContentBackground(.hidden)
+            .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14))
+          HStack {
+            if let captionError {
+              Text(captionError).foregroundStyle(.red)
+            }
+            Spacer()
+            Text("\(captionDraft.count)/300")
           }
+          .font(.caption)
+          .foregroundStyle(TunedInDesign.mutedText)
+        }
+        .padding()
+        .background(TunedInDesign.pageBackground)
+        .navigationTitle("Caption")
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) { Button("Cancel") { isEditingCaption = false } }
+          ToolbarItem(placement: .confirmationAction) {
+            Button(isSavingCaption ? "Saving…" : "Save") { Task { await saveCaption() } }
+              .disabled(captionDraft.count > 300 || isSavingCaption)
+          }
+        }
       }.presentationDetents([.medium])
+    }
+    .tunedInEdgeSwipeBack { dismiss() }
+  }
+
+  private var selectedPhoto: ConcertAlbumPhoto? {
+    photos.first(where: { $0.id == selectedPhotoID })
+  }
+
+  private func canEdit(_ photo: ConcertAlbumPhoto) -> Bool {
+    viewerRole == .owner || (viewerRole == .editor && photo.uploaderID == viewerID)
+  }
+
+  private func saveCaption() async {
+    guard let photo = selectedPhoto else { return }
+    isSavingCaption = true
+    defer { isSavingCaption = false }
+    do {
+      let normalized = captionDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+      let updated = try await repository.updateAlbumPhotoCaption(
+        photoID: photo.id,
+        caption: normalized.isEmpty ? nil : normalized
+      )
+      if let index = photos.firstIndex(where: { $0.id == photo.id }) {
+        photos[index] = updated
+      }
+      isEditingCaption = false
+    } catch {
+      captionError = error.localizedDescription
     }
   }
 
-  private var selectedPhoto: ConcertAlbumPhoto? { photos.first(where: { $0.id == selectedPhotoID }) }
-  private func canEdit(_ photo: ConcertAlbumPhoto) -> Bool { viewerRole == .owner || (viewerRole == .editor && photo.uploaderID == viewerID) }
-  private func saveCaption() async {
-    guard let photo = selectedPhoto else { return }
-    if let updated = try? await repository.updateAlbumPhotoCaption(photoID: photo.id, caption: captionDraft),
-      let index = photos.firstIndex(where: { $0.id == photo.id }) { photos[index] = updated }
-    isEditingCaption = false
-  }
   private func delete(_ photo: ConcertAlbumPhoto) async {
-    guard (try? await repository.deleteAlbumPhoto(photoID: photo.id)) != nil else { return }
+    guard await (try? repository.deleteAlbumPhoto(photoID: photo.id)) != nil else { return }
     photos.removeAll(where: { $0.id == photo.id }); selectedPhotoID = photos.first?.id
-    if photos.isEmpty { dismiss() }
+    if photos.isEmpty {
+      dismiss()
+    }
   }
 }

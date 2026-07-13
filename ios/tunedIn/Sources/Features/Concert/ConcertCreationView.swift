@@ -47,7 +47,7 @@ struct ConcertCreationView: View {
             .padding(.top, 14)
           }
           .navigationBarTitleDisplayMode(.inline)
-          .safeAreaInset(edge: .bottom, spacing: 0) {
+          .overlay(alignment: .bottom) {
             saveBar
           }
           .alert("Discard this concert?", isPresented: $isShowingDiscardConfirmation) {
@@ -115,10 +115,9 @@ struct ConcertCreationView: View {
       .disabled(!draft.canSave || isSaving)
       .accessibilityHint("Saves this concert privately")
     }
-    .padding(.horizontal, 20)
+    .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
     .padding(.top, 12)
-    .padding(.bottom, 8)
-    .background(TunedInDesign.pageBackground.opacity(0.96))
+    .padding(.bottom, TunedInDesign.bottomControlInset)
   }
 
   private var isShowingSaveError: Binding<Bool> {

@@ -58,10 +58,12 @@ struct ConcertPeopleView: View {
         if let errorMessage {
           ConcertPeopleErrorCard(message: errorMessage)
         }
+
+        ConcertEditingHistoryView(events: detail.history)
       }
       .padding(.horizontal, 20)
       .padding(.top, 12)
-      .padding(.bottom, 32)
+      .padding(.bottom, 128)
     }
     .task {
       await loadFriends()
@@ -144,13 +146,15 @@ struct ConcertPeopleView: View {
   @ViewBuilder
   private var addPeople: some View {
     if isLoadingFriends {
-      HStack(spacing: 10) {
-        ProgressView()
-        Text("Finding your friends…")
-          .font(.subheadline)
-          .foregroundStyle(TunedInDesign.mutedText)
+      VStack(spacing: 10) {
+        ForEach(0 ..< 3, id: \.self) { _ in
+          HStack(spacing: 12) {
+            TunedInSkeletonBlock(cornerRadius: 23).frame(width: 46, height: 46)
+            TunedInSkeletonBlock(cornerRadius: 6).frame(height: 16)
+          }
+        }
       }
-      .padding(.vertical, 8)
+      .accessibilityLabel("Loading friends")
     } else if availableFriends.isEmpty {
       TunedInFormCard {
         Text("No one else to add right now.")
@@ -354,6 +358,55 @@ struct ConcertPeopleView: View {
       }
       isWorking = false
     }
+  }
+}
+
+private struct ConcertEditingHistoryView: View {
+  let events: [ConcertTimelineEvent]
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Text("Editing history")
+        .font(.title3.weight(.bold))
+        .foregroundStyle(TunedInDesign.primaryText)
+
+      Text("Changes made by the people editing this concert.")
+        .font(.subheadline)
+        .foregroundStyle(TunedInDesign.mutedText)
+
+      if events.isEmpty {
+        Text("No edits recorded yet.")
+          .font(.subheadline)
+          .foregroundStyle(TunedInDesign.mutedText)
+      } else {
+        VStack(alignment: .leading, spacing: 14) {
+          ForEach(events) { event in
+            HStack(alignment: .top, spacing: 12) {
+              Circle()
+                .fill(TunedInDesign.accent)
+                .frame(width: 8, height: 8)
+                .padding(.top, 5)
+              VStack(alignment: .leading, spacing: 3) {
+                Text(event.title)
+                  .font(.subheadline.weight(.semibold))
+                  .foregroundStyle(TunedInDesign.primaryText)
+                Text(ConcertDisplay.longDateTime(event.occurredAt))
+                  .font(.caption)
+                  .foregroundStyle(TunedInDesign.mutedText)
+              }
+            }
+          }
+        }
+      }
+    }
+    .padding(16)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(
+      TunedInDesign.raisedSurface.opacity(0.6),
+      in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+    )
+    .accessibilityElement(children: .contain)
+    .accessibilityLabel("Editing history")
   }
 }
 
@@ -675,41 +728,50 @@ struct ConcertCommentsView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-        pageHeader
+      pageHeader
 
-        if isLoading {
-          ProgressView("Opening comments…")
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 120)
-        } else if comments.isEmpty {
-          emptyState
-        } else {
-          LazyVStack(alignment: .leading, spacing: 12) {
-            if canLoadOlder {
-              Button {
-                Task { await loadOlderComments() }
-              } label: {
-                HStack(spacing: 8) {
-                  if isLoadingOlder {
-                    ProgressView()
-                  }
-                  Text(isLoadingOlder ? "Loading earlier comments…" : "Show earlier comments")
-                }
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(TunedInDesign.primaryText)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+      if isLoading {
+        VStack(spacing: 12) {
+          ForEach(0 ..< 3, id: \.self) { _ in
+            HStack(alignment: .top, spacing: 11) {
+              TunedInSkeletonBlock(cornerRadius: 20).frame(width: 40, height: 40)
+              VStack(alignment: .leading, spacing: 8) {
+                TunedInSkeletonBlock(cornerRadius: 5).frame(width: 124, height: 14)
+                TunedInSkeletonBlock(cornerRadius: 9).frame(height: 48)
               }
-              .buttonStyle(.plain)
-              .disabled(isLoadingOlder)
-            }
-            ForEach(comments.sorted(by: { $0.createdAt < $1.createdAt })) { comment in
-              commentCard(comment)
             }
           }
         }
-        composer
+        .accessibilityLabel("Opening comments")
+      } else if comments.isEmpty {
+        emptyState
+      } else {
+        LazyVStack(alignment: .leading, spacing: 12) {
+          if canLoadOlder {
+            Button {
+              Task { await loadOlderComments() }
+            } label: {
+              HStack(spacing: 8) {
+                if isLoadingOlder {
+                  ProgressView()
+                }
+                Text(isLoadingOlder ? "Loading earlier comments…" : "Show earlier comments")
+              }
+              .font(.subheadline.weight(.bold))
+              .foregroundStyle(TunedInDesign.primaryText)
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 12)
+              .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(isLoadingOlder)
+          }
+          ForEach(comments.sorted(by: { $0.createdAt < $1.createdAt })) { comment in
+            commentCard(comment)
+          }
+        }
+      }
+      composer
     }
     .task { await loadComments() }
     .confirmationDialog(
@@ -767,7 +829,6 @@ struct ConcertCommentsView: View {
     .padding(.horizontal, 16)
     .padding(.top, 10)
     .padding(.bottom, 8)
-    .background(TunedInDesign.pageBackground.opacity(0.98))
   }
 
   private func commentCard(_ comment: ConcertComment) -> some View {
@@ -929,30 +990,5 @@ struct ConcertCommentsView: View {
         errorMessage = error.localizedDescription
       }
     }
-  }
-}
-
-private struct CollaboratorMonogram: View {
-  let member: ConcertCollaborator
-  let size: CGFloat
-
-  var body: some View {
-    Text(String(member.displayName.prefix(1)).uppercased())
-      .font(.system(size: size * 0.38, weight: .black, design: .rounded))
-      .foregroundStyle(TunedInDesign.actionForeground)
-      .frame(width: size, height: size)
-      .background(TunedInDesign.accentTint, in: Circle())
-  }
-}
-
-private struct CommentMonogram: View {
-  let comment: ConcertComment
-
-  var body: some View {
-    Text(String(comment.displayName.prefix(1)).uppercased())
-      .font(.caption.weight(.black))
-      .foregroundStyle(TunedInDesign.actionForeground)
-      .frame(width: 32, height: 32)
-      .background(TunedInDesign.accentTint, in: Circle())
   }
 }

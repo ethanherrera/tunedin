@@ -16,6 +16,8 @@ enum TunedInDesign {
   static let ticketViolet = adaptive(light: 0xFC552B, dark: 0xE03317)
   static let ticketRose = adaptive(light: 0xB52E46, dark: 0x701626)
   static let cornerRadius: CGFloat = 18
+  static let bottomControlInset: CGFloat = 44
+  static let bottomControlHorizontalInset: CGFloat = 16
 
   private static func adaptive(light: Int, dark: Int) -> Color {
     Color(
@@ -73,9 +75,9 @@ struct TunedInFloatingActionLabel: View {
 
   var body: some View {
     Image(systemName: systemImage)
-      .font(.system(size: 20, weight: .bold))
+      .font(.system(size: 22, weight: .bold))
       .foregroundStyle(TunedInDesign.actionForeground)
-      .frame(width: 56, height: 56)
+      .frame(width: 60, height: 60)
       .contentShape(Circle())
       .modifier(TunedInLiquidGlassActionSurface())
   }
@@ -95,9 +97,9 @@ struct TunedInGlassIconButton: View {
   var body: some View {
     Button(action: action) {
       Image(systemName: systemImage)
-        .font(.subheadline.weight(.bold))
+        .font(.body.weight(.bold))
         .foregroundStyle(TunedInDesign.primaryText)
-        .frame(width: 46, height: 46)
+        .frame(width: 60, height: 60)
         .contentShape(Circle())
         .modifier(TunedInLiquidGlassIconSurface(style: style))
     }
@@ -107,21 +109,28 @@ struct TunedInGlassIconButton: View {
 }
 
 struct TunedInGlassTraversalLayout<Leading: View, Center: View, Trailing: View>: View {
+  var sideReservation: CGFloat = 74
+  var height: CGFloat = 60
   @ViewBuilder let leading: Leading
   @ViewBuilder let center: Center
   @ViewBuilder let trailing: Trailing
 
   var body: some View {
-    ZStack(alignment: .bottom) {
-      center
+    GeometryReader { proxy in
+      ZStack(alignment: .bottom) {
+        center
+          .frame(maxWidth: max(0, proxy.size.width - (sideReservation * 2)))
 
-      HStack(alignment: .bottom, spacing: 8) {
-        leading
-        Spacer(minLength: 8)
-        trailing
+        HStack(alignment: .bottom, spacing: 12) {
+          leading
+          Spacer(minLength: 12)
+          trailing
+        }
       }
     }
+    .frame(height: height)
     .frame(maxWidth: .infinity)
+    .dynamicTypeSize(DynamicTypeSize.xSmall ... DynamicTypeSize.xxxLarge)
   }
 }
 
@@ -241,7 +250,7 @@ struct TunedInGlassBottomBar<Content: View>: View {
 
   var body: some View {
     content
-      .padding(5)
+      .padding(6)
       .modifier(TunedInLiquidGlassBottomBarSurface())
   }
 }
@@ -259,12 +268,76 @@ struct TunedInSubscreenBackBar: View {
           .font(.subheadline.weight(.bold))
           .foregroundStyle(TunedInDesign.primaryText)
           .lineLimit(1)
-          .frame(minWidth: 104, minHeight: 46, alignment: .center)
+          .frame(minWidth: 112, minHeight: 48, alignment: .center)
           .padding(.horizontal, 14)
       }
     } trailing: {
       EmptyView()
     }
+  }
+}
+
+struct TunedInSkeletonBlock: View {
+  var cornerRadius: CGFloat = 16
+
+  @State private var isHighlighted = false
+
+  var body: some View {
+    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+      .fill(TunedInDesign.accentTint.opacity(isHighlighted ? 0.9 : 0.5))
+      .overlay {
+        LinearGradient(
+          colors: [.clear, TunedInDesign.accent.opacity(0.14), .clear],
+          startPoint: .leading,
+          endPoint: .trailing
+        )
+        .offset(x: isHighlighted ? 180 : -180)
+        .clipped()
+      }
+      .onAppear {
+        withAnimation(.easeInOut(duration: 1.05).repeatForever(autoreverses: true)) {
+          isHighlighted = true
+        }
+      }
+      .accessibilityHidden(true)
+  }
+}
+
+struct TunedInImagePlaceholder: View {
+  var failed = false
+
+  var body: some View {
+    ZStack {
+      TunedInSkeletonBlock(cornerRadius: 0)
+      Image(systemName: failed ? "exclamationmark.triangle.fill" : "photo.on.rectangle.angled")
+        .font(.title2.weight(.semibold))
+        .foregroundStyle(TunedInDesign.accent.opacity(0.75))
+    }
+  }
+}
+
+private struct TunedInEdgeSwipeBackModifier: ViewModifier {
+  let isEnabled: Bool
+  let action: () -> Void
+
+  func body(content: Content) -> some View {
+    content.simultaneousGesture(
+      DragGesture(minimumDistance: 18, coordinateSpace: .global)
+        .onEnded { value in
+          guard isEnabled,
+                value.startLocation.x <= 28,
+                value.translation.width >= 72,
+                abs(value.translation.height) < abs(value.translation.width) * 0.7
+          else { return }
+          action()
+        }
+    )
+  }
+}
+
+extension View {
+  func tunedInEdgeSwipeBack(isEnabled: Bool = true, action: @escaping () -> Void) -> some View {
+    modifier(TunedInEdgeSwipeBackModifier(isEnabled: isEnabled, action: action))
   }
 }
 
@@ -362,7 +435,7 @@ private struct TunedInLiquidGlassSearchSurface: ViewModifier {
         .overlay {
           Capsule()
             .strokeBorder(TunedInDesign.cardBorder.opacity(0.85))
-      }
+        }
     }
   }
 

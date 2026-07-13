@@ -44,8 +44,17 @@ struct SupabaseAuthenticationRepository: AuthenticationRepository {
     try await client.auth.signOut()
   }
 
-  func handleAuthCallback(_ url: URL) {
-    client.handle(url)
+  func handleAuthCallback(_ url: URL) async throws {
+    let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+    let tokenHash = components?.queryItems?.first(where: { $0.name == "token_hash" })?.value
+    let type = components?.queryItems?.first(where: { $0.name == "type" })?.value
+
+    if let tokenHash, type == "magiclink" {
+      _ = try await client.auth.verifyOTP(tokenHash: tokenHash, type: .magiclink)
+      return
+    }
+
+    _ = try await client.auth.session(from: url)
   }
 
   private static func authenticatedUser(from session: Session) -> AuthenticatedUser {

@@ -23,6 +23,7 @@ final class AppSession {
   let authEmailDeliveryMode: AuthEmailDeliveryMode
   let allowsLocalSeededSignIn: Bool
   private(set) var phase: AppSessionPhase = .restoring
+  private(set) var authCallbackError: String?
   var profileRepositoryForViews: any ProfileRepository {
     profileRepository
   }
@@ -115,7 +116,18 @@ final class AppSession {
   }
 
   func handleAuthCallback(_ url: URL) {
-    authenticationRepository.handleAuthCallback(url)
+    authCallbackError = nil
+    Task { [weak self, authenticationRepository] in
+      do {
+        try await authenticationRepository.handleAuthCallback(url)
+      } catch {
+        self?.authCallbackError = error.localizedDescription
+      }
+    }
+  }
+
+  func dismissAuthCallbackError() {
+    authCallbackError = nil
   }
 
   private func receiveAuthenticationChange(_ user: AuthenticatedUser?) {

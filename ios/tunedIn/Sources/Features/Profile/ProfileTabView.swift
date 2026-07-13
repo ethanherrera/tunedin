@@ -25,45 +25,53 @@ struct MainTabView: View {
   @StateObject private var concertFloatingControls = ConcertFloatingControls()
 
   var body: some View {
-    selectedContent
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .environmentObject(concertFloatingControls)
-      .padding(.bottom, 80)
-      .overlay(alignment: .bottom) {
+    GeometryReader { _ in
+      ZStack(alignment: .bottom) {
+        selectedContent
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .environmentObject(concertFloatingControls)
+
         bottomControls
-          .padding(.horizontal, 16)
+          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
           .padding(.top, 8)
-          .padding(.bottom, 8)
+          .padding(.bottom, TunedInDesign.bottomControlInset)
       }
-      .fullScreenCover(
-        isPresented: $isPresentingConcertCreation,
-        onDismiss: { archiveRefreshToken += 1 },
-        content: { ConcertCreationView(concertRepository: concertRepository) }
-      )
-      .fullScreenCover(item: $presentedSearchedProfile) { searchedProfile in
-        NavigationStack {
-          PersonProfileView(
-            profile: searchedProfile,
-            currentUserID: profile.id,
-            currentUsername: profile.username ?? "",
-            socialRepository: socialRepository,
-            concertRepository: concertRepository,
-            onDismiss: { presentedSearchedProfile = nil }
-          )
-        }
-        .environmentObject(concertFloatingControls)
+    }
+    .tunedInEdgeSwipeBack(
+      isEnabled: concertFloatingControls.navigationContext != .none
+        && !concertFloatingControls.isInteractionLocked
+    ) {
+      concertFloatingControls.back(or: { activateTab(.profile) })
+    }
+    .fullScreenCover(
+      isPresented: $isPresentingConcertCreation,
+      onDismiss: { archiveRefreshToken += 1 },
+      content: { ConcertCreationView(concertRepository: concertRepository) }
+    )
+    .fullScreenCover(item: $presentedSearchedProfile) { searchedProfile in
+      NavigationStack {
+        PersonProfileView(
+          profile: searchedProfile,
+          currentUserID: profile.id,
+          currentUsername: profile.username ?? "",
+          socialRepository: socialRepository,
+          concertRepository: concertRepository,
+          onDismiss: { presentedSearchedProfile = nil }
+        )
       }
-      .onChange(of: isPresentingPeopleSearch) { _, isPresented in
-        guard !isPresented, let pendingSearchedProfile else { return }
-        self.pendingSearchedProfile = nil
-        presentedSearchedProfile = pendingSearchedProfile
+      .environmentObject(concertFloatingControls)
+    }
+    .onChange(of: isPresentingPeopleSearch) { _, isPresented in
+      guard !isPresented, let pendingSearchedProfile else { return }
+      self.pendingSearchedProfile = nil
+      presentedSearchedProfile = pendingSearchedProfile
+    }
+    .onChange(of: concertFloatingControls.isShowingEditMenu) { _, isShowingEditMenu in
+      if !isShowingEditMenu {
+        isPresentingConcertEditMenu = false
       }
-      .onChange(of: concertFloatingControls.isShowingEditMenu) { _, isShowingEditMenu in
-        if !isShowingEditMenu {
-          isPresentingConcertEditMenu = false
-        }
-      }
-      .tint(TunedInDesign.accent)
+    }
+    .tint(TunedInDesign.accent)
   }
 
   private var bottomControls: some View {
@@ -80,7 +88,7 @@ struct MainTabView: View {
         subscreenBottomBar(title: title)
           .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
       case .none:
-        TunedInGlassTraversalLayout {
+        TunedInGlassTraversalLayout(height: 128) {
           EmptyView()
         } center: {
           TunedInGlassBottomBar {
@@ -90,44 +98,44 @@ struct MainTabView: View {
             }
           }
         } trailing: {
-          HStack(alignment: .bottom, spacing: 8) {
-          TunedInGlassIconButton(
-            systemImage: "magnifyingglass",
-            accessibilityLabel: "Search people",
-            style: .accent
-          ) {
-            isPresentingPeopleSearch = true
-          }
-          .popover(
-            isPresented: $isPresentingPeopleSearch,
-            attachmentAnchor: .point(.top),
-            arrowEdge: .bottom
-          ) {
-            NavigationStack {
-              FriendSearchView(
-                currentUserID: profile.id,
-                currentUsername: profile.username ?? "",
-                socialRepository: socialRepository,
-                concertRepository: concertRepository,
-                presentation: .popover,
-                onSelectProfile: { searchedProfile in
-                  pendingSearchedProfile = searchedProfile
-                  isPresentingPeopleSearch = false
-                }
-              )
+          VStack(alignment: .trailing, spacing: 8) {
+            TunedInGlassIconButton(
+              systemImage: "magnifyingglass",
+              accessibilityLabel: "Search people",
+              style: .accent
+            ) {
+              isPresentingPeopleSearch = true
             }
-            .frame(width: 330, height: 260)
-            .presentationCompactAdaptation(.popover)
-            .presentationBackground(.clear)
-          }
+            .popover(
+              isPresented: $isPresentingPeopleSearch,
+              attachmentAnchor: .point(.top),
+              arrowEdge: .bottom
+            ) {
+              NavigationStack {
+                FriendSearchView(
+                  currentUserID: profile.id,
+                  currentUsername: profile.username ?? "",
+                  socialRepository: socialRepository,
+                  concertRepository: concertRepository,
+                  presentation: .popover,
+                  onSelectProfile: { searchedProfile in
+                    pendingSearchedProfile = searchedProfile
+                    isPresentingPeopleSearch = false
+                  }
+                )
+              }
+              .frame(width: 330, height: 260)
+              .presentationCompactAdaptation(.popover)
+              .presentationBackground(.clear)
+            }
 
-          TunedInGlassIconButton(
-            systemImage: "plus",
-            accessibilityLabel: "Log concert",
-            style: .accent
-          ) {
-            isPresentingConcertCreation = true
-          }
+            TunedInGlassIconButton(
+              systemImage: "plus",
+              accessibilityLabel: "Log concert",
+              style: .accent
+            ) {
+              isPresentingConcertCreation = true
+            }
           }
         }
         .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
@@ -196,8 +204,8 @@ struct MainTabView: View {
     } center: {
       TunedInGlassBottomBar {
         HStack(spacing: 2) {
-        tabButton(.feed, title: "Feed", icon: "music.note.house")
-        tabButton(.profile, title: "Profile", icon: "person.crop.circle")
+          tabButton(.feed, title: "Feed", icon: "music.note.house")
+          tabButton(.profile, title: "Profile", icon: "person.crop.circle")
         }
       }
     } trailing: {
@@ -213,7 +221,8 @@ struct MainTabView: View {
         .font(.caption2.weight(.bold))
     }
     .foregroundStyle(isSelected ? TunedInDesign.actionForeground : TunedInDesign.primaryText)
-    .frame(width: 68, height: 46)
+    .frame(minWidth: 58, minHeight: 48)
+    .padding(.horizontal, 3)
     .background(isSelected ? TunedInDesign.accent : .clear, in: Capsule())
   }
 }
@@ -364,8 +373,8 @@ private struct ConcertContextBottomBar: View {
               .foregroundStyle(
                 controls.selectedPage == page ? TunedInDesign.actionForeground : TunedInDesign.primaryText
               )
-              .frame(maxWidth: .infinity)
-              .frame(height: 46)
+              .frame(minWidth: 0, maxWidth: .infinity)
+              .frame(height: 48)
               .background {
                 if controls.selectedPage == page {
                   Capsule()
@@ -380,7 +389,7 @@ private struct ConcertContextBottomBar: View {
           }
         }
       }
-      .frame(width: 238)
+      .frame(maxWidth: 252)
     } trailing: {
       if controls.isShowingEditMenu {
         if controls.selectedPage == .photos {
