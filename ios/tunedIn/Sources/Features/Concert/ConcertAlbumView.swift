@@ -20,6 +20,7 @@ struct ConcertAlbumView: View {
   @State private var uploadTotal = 0
   @State private var canLoadMore = false
   @State private var policy: ConcertAlbumPolicy?
+  @State private var loadErrorMessage: String?
   @State private var errorMessage: String?
 
   private let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
@@ -61,6 +62,17 @@ struct ConcertAlbumView: View {
             }
           }
           .accessibilityLabel("Opening album")
+        } else if let loadErrorMessage, photos.isEmpty {
+          ContentUnavailableView {
+            Label("Couldn’t open this album", systemImage: "exclamationmark.triangle")
+          } description: {
+            Text(loadErrorMessage)
+          } actions: {
+            Button("Try again") {
+              Task { await retryLoad() }
+            }
+          }
+          .padding(.vertical, 32)
         } else if photos.isEmpty {
           ContentUnavailableView(
             "No photos yet",
@@ -116,6 +128,7 @@ struct ConcertAlbumView: View {
   }
 
   private func load() async {
+    loadErrorMessage = nil
     do {
       async let loadedPolicy = concertRepository.albumPolicy()
       async let loadedPhotos = concertRepository.albumPhotos(concertID: detail.concert.id, cursor: nil)
@@ -124,8 +137,13 @@ struct ConcertAlbumView: View {
         concertFloatingControls.setAlbumPolicy(policy)
       }
       canLoadMore = photos.count == 30
-    } catch { errorMessage = error.localizedDescription }
+    } catch { loadErrorMessage = error.localizedDescription }
     isLoading = false
+  }
+
+  private func retryLoad() async {
+    isLoading = true
+    await load()
   }
 
   private func loadMore() async {
@@ -179,9 +197,12 @@ struct ConcertAlbumView: View {
     photos.insert(contentsOf: result.successes.reversed(), at: 0)
     failedUploads = result.failures.map(\.item)
     if let failure = result.failures.first {
-      if failure.error.localizedDescription.localizedCaseInsensitiveContains("timed out") {
+      switch failure.error.appFailure {
+      case .offline:
+        errorMessage = "You’re offline. Successful photos are already in the album."
+      case .retryable:
         errorMessage = "The server did not respond in time. Successful photos are already in the album."
-      } else {
+      default:
         errorMessage = "Some photos could not be added. Successful photos are already in the album."
       }
     }

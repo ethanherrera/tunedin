@@ -105,5 +105,52 @@
       )
       #expect(finalDetail.collaborators.isEmpty)
     }
+
+    @Test
+    func archiveAppliesYearAndEverySupportedSort() async throws {
+      let repository = DevelopmentConcertRepository()
+
+      let newest = try await repository.profileConcertHistory(
+        profileID: DevelopmentSocialFixture.currentUserID,
+        query: ConcertHistoryQuery(sort: .newest),
+        cursor: nil
+      )
+      #expect(newest.map(\.primaryArtistName) == ["Mitski", "Vampire Weekend"])
+
+      let oldest = try await repository.profileConcertHistory(
+        profileID: DevelopmentSocialFixture.currentUserID,
+        query: ConcertHistoryQuery(sort: .oldest),
+        cursor: nil
+      )
+      #expect(oldest.map(\.primaryArtistName) == ["Vampire Weekend", "Mitski"])
+
+      let recentlyUpdated = try await repository.profileConcertHistory(
+        profileID: DevelopmentSocialFixture.currentUserID,
+        query: ConcertHistoryQuery(sort: .recentlyUpdated),
+        cursor: nil
+      )
+      #expect(recentlyUpdated.map(\.primaryArtistName) == ["Mitski", "Vampire Weekend"])
+
+      let artist = try await repository.profileConcertHistory(
+        profileID: DevelopmentSocialFixture.currentUserID,
+        query: ConcertHistoryQuery(sort: .artist),
+        cursor: nil
+      )
+      #expect(artist.map(\.primaryArtistName) == ["Mitski", "Vampire Weekend"])
+
+      let venue = try await repository.profileConcertHistory(
+        profileID: DevelopmentSocialFixture.currentUserID,
+        query: ConcertHistoryQuery(sort: .venue),
+        cursor: nil
+      )
+      #expect(venue.map(\.concert.venueName) == ["The Greek Theatre", "The Masonic"])
+
+      let year = try await repository.profileConcertHistory(
+        profileID: DevelopmentSocialFixture.currentUserID,
+        query: ConcertHistoryQuery(year: 2024),
+        cursor: nil
+      )
+      #expect(year.isEmpty)
+    }
   }
 #endif
