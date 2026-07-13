@@ -2,7 +2,7 @@
 
 APP_ENVIRONMENT = Staging
 PRODUCT_BUNDLE_IDENTIFIER = com.ethanherrera.tunedin.staging
-APP_DISPLAY_NAME = tunedIn Beta
+APP_DISPLAY_NAME = tunedIn Staging
 // Set DEVELOPMENT_TEAM in the ignored local file for a manual Xcode archive.
 SUPABASE_URL = https:/$(TUNEDIN_URL_SLASH)YOUR_STAGING_PROJECT_REF.supabase.co
 SUPABASE_PUBLISHABLE_KEY = REPLACE_WITH_STAGING_PUBLISHABLE_KEY
