@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-required_tools=(git gh supabase xcodebuild xcodegen swiftformat swiftlint deno docker)
+required_tools=(git gh actionlint supabase xcodebuild xcodegen swiftformat swiftlint deno docker)
 missing_tools=()
 
 for tool in "${required_tools[@]}"; do

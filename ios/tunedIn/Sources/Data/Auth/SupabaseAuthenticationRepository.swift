@@ -3,6 +3,7 @@ import Supabase
 
 struct SupabaseAuthenticationRepository: AuthenticationRepository {
   let client: SupabaseClient
+  let authCallbackURL: URL
 
   var authenticationStateChanges: AsyncStream<AuthenticatedUser?> {
     AsyncStream { continuation in
@@ -29,7 +30,7 @@ struct SupabaseAuthenticationRepository: AuthenticationRepository {
     try await withAppFailure {
       try await client.auth.signInWithOTP(
         email: email,
-        redirectTo: AppConfiguration.authCallbackURL
+        redirectTo: authCallbackURL
       )
     }
   }

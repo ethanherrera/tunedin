@@ -25,6 +25,13 @@ This repository contains the native tunedIn MVP: a SwiftUI iOS client and its Su
 - The deployment path applies forward-only database migrations only. Never reset hosted Development, include local seed data, or push Supabase configuration/Edge Functions through this path.
 - Treat `supabase/seeds/development.sql` as the deterministic, usable local journey catalog. When a local-testable user journey, relationship state, collaboration state, or concert lifecycle changes, update the seed and `make local-seed-verify` in the same change so a reset still covers the real valid state rather than a frozen UI fixture.
 
+## Staging promotion
+
+- Staging is a separate install named `tunedIn Beta` with bundle identifier `com.ethanherrera.tunedin.staging` and a separate hosted Supabase project. Never reuse Development or Production identity, sessions, users, data, or Storage objects.
+- Promote Staging only through the manually dispatched `Promote Staging` workflow from `main`. The workflow must verify the selected commit, archive before backend mutation, apply forward-only migrations/functions, then upload that archive to TestFlight.
+- Keep Staging credentials in the protected GitHub `Staging` environment. A workflow without the required environment values must fail before archive or deployment.
+- Treat a partially completed promotion as retryable and forward-only: never reset Staging or rewrite an applied migration. Follow `runbooks/staging-promotion.md`.
+
 ## Configuration and secrets
 
 - Copy `ios/Config/*.xcconfig.example` to ignored `.xcconfig` files for local configuration.

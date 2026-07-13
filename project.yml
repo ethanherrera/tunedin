@@ -9,7 +9,7 @@ options:
 configs:
   Local: debug
   Development: debug
-  Staging: debug
+  Staging: release
   Production: release
 
 settings:
@@ -40,7 +40,6 @@ targets:
       Production: ios/Config/Production.xcconfig
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.ethanherrera.tunedin
         PRODUCT_NAME: tunedIn
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: ios/tunedIn/Resources/Info.plist

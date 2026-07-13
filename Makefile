@@ -7,7 +7,7 @@ DESTINATION := platform=iOS Simulator,name=iPhone 13
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup configure local-db-start configure-local-supabase local-next-steps generate format lint build build-local test test-local check simulator-auth-link simulator-local simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error local-db-reset local-seed-verify supabase-types check-supabase-types backend-test storage-integration-test backend-verify dev-status dev-plan dev-deploy dev-login-link
+.PHONY: help setup configure local-db-start configure-local-supabase local-next-steps generate format lint workflow-lint build build-local build-staging archive-staging test test-local check simulator-auth-link simulator-local simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error local-db-reset local-seed-verify supabase-types check-supabase-types backend-test storage-integration-test backend-verify dev-status dev-plan dev-deploy dev-login-link staging-status staging-plan staging-promote
 
 help: ## List available development commands.
 	@awk 'BEGIN {FS = ":.*##"}; /^[a-zA-Z_-]+:.*##/ { printf "%-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -34,11 +34,22 @@ format: ## Format Swift source on the current branch.
 lint: ## Check Swift style without changing files.
 	@swiftlint lint --config .swiftlint.yml
 
+workflow-lint: ## Validate GitHub Actions workflow syntax and expressions.
+	@actionlint
+
 build: generate ## Build the Development scheme for the iPhone 13 Simulator.
 	@xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' CODE_SIGNING_ALLOWED=NO build
 
 build-local: generate ## Build the Local Supabase scheme for the iPhone 13 Simulator.
 	@xcodebuild -project $(PROJECT) -scheme $(LOCAL_SCHEME) -destination '$(DESTINATION)' CODE_SIGNING_ALLOWED=NO build
+
+build-staging: generate ## Build the Staging scheme for the iPhone 13 Simulator without signing.
+	@xcodebuild -project $(PROJECT) -scheme tunedIn-Staging -destination '$(DESTINATION)' CODE_SIGNING_ALLOWED=NO build
+
+archive-staging: generate ## Create a signed local Staging archive for manual Xcode validation.
+	@mkdir -p build
+	@xcodebuild -project $(PROJECT) -scheme tunedIn-Staging -configuration Staging \
+		-destination 'generic/platform=iOS' -archivePath build/tunedIn-Staging.xcarchive archive
 
 test: generate ## Run the Swift Testing suite on the iPhone 13 Simulator.
 	@xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' CODE_SIGNING_ALLOWED=NO test
@@ -46,7 +57,7 @@ test: generate ## Run the Swift Testing suite on the iPhone 13 Simulator.
 test-local: generate ## Run the Swift Testing suite with Local Supabase configuration.
 	@xcodebuild -project $(PROJECT) -scheme $(LOCAL_SCHEME) -destination '$(DESTINATION)' CODE_SIGNING_ALLOWED=NO test
 
-check: generate lint test ## Run generation, linting, and logic tests.
+check: generate lint workflow-lint test ## Run generation, linting, workflow validation, and logic tests.
 
 simulator-auth-link: ## Open a copied Supabase sign-in link in the booted Simulator.
 	@./scripts/open-simulator-auth-link.sh
@@ -113,3 +124,13 @@ dev-deploy: ## Trigger the manually approved Development migration workflow from
 
 dev-login-link: ## Copy a no-email tunedin-dev login link (EMAIL=user@example.com).
 	@./scripts/generate-development-login-link.sh
+
+staging-status: ## Show remote migration parity for tunedin-staging (SUPABASE_PROJECT_REF required).
+	@./scripts/staging-environment.sh status
+
+staging-plan: ## Print migrations that would be applied to tunedin-staging.
+	@./scripts/staging-environment.sh plan
+
+staging-promote: ## Trigger the protected Staging backend and TestFlight promotion from main.
+	@gh workflow run promote-staging.yml --ref main -f confirm=promote-staging
+	@printf 'Queued the Staging promotion. Follow its GitHub Actions deployment summary in the UI.\n'

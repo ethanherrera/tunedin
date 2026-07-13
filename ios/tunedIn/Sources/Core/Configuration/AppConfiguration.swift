@@ -4,15 +4,18 @@ struct AppConfiguration: Sendable {
   let supabaseURL: URL
   let supabasePublishableKey: String
   let environment: AppEnvironment
+  let authCallbackURL: URL
+  let authSessionStorageKey: String
   let authEmailDeliveryMode: AuthEmailDeliveryMode
   let usesLocalSimulatorAuthStorage: Bool
 
-  static let authCallbackURL = URL(string: "com.ethanherrera.tunedin://auth-callback")!
-
   static func load(bundle: Bundle? = nil) throws -> Self {
     let configurationBundle = bundle ?? Bundle(for: TunedInBundleMarker.self)
+    return try load(configuration: configurationBundle.infoDictionary ?? [:])
+  }
 
-    guard let rawURLString = configurationBundle.object(forInfoDictionaryKey: "TUNEDIN_SUPABASE_URL") as? String else {
+  static func load(configuration: [String: Any]) throws -> Self {
+    guard let rawURLString = configuration["TUNEDIN_SUPABASE_URL"] as? String else {
       throw AppConfigurationError.missing("SUPABASE_URL")
     }
 
@@ -29,9 +32,7 @@ struct AppConfiguration: Sendable {
     }
 
     guard
-      let supabasePublishableKey = configurationBundle.object(
-        forInfoDictionaryKey: "TUNEDIN_SUPABASE_PUBLISHABLE_KEY"
-      ) as? String,
+      let supabasePublishableKey = configuration["TUNEDIN_SUPABASE_PUBLISHABLE_KEY"] as? String,
       !supabasePublishableKey.isEmpty,
       !supabasePublishableKey.hasPrefix("$(")
     else {
@@ -39,9 +40,7 @@ struct AppConfiguration: Sendable {
     }
 
     guard
-      let appEnvironment = configurationBundle.object(
-        forInfoDictionaryKey: "TUNEDIN_APP_ENVIRONMENT"
-      ) as? String
+      let appEnvironment = configuration["TUNEDIN_APP_ENVIRONMENT"] as? String
     else {
       throw AppConfigurationError.missing("APP_ENVIRONMENT")
     }
@@ -51,9 +50,15 @@ struct AppConfiguration: Sendable {
       throw AppConfigurationError.invalid("APP_ENVIRONMENT")
     }
 
-    let usesLocalSimulatorAuthStorage = configurationBundle.object(
-      forInfoDictionaryKey: "TUNEDIN_USE_LOCAL_AUTH_STORAGE"
-    ) as? String == "YES"
+    guard
+      let callbackScheme = configuration["TUNEDIN_AUTH_CALLBACK_SCHEME"] as? String,
+      callbackScheme.range(of: #"^[A-Za-z][A-Za-z0-9+.-]*$"#, options: .regularExpression) != nil,
+      let authCallbackURL = URL(string: "\(callbackScheme)://auth-callback")
+    else {
+      throw AppConfigurationError.invalid("AUTH_CALLBACK_SCHEME")
+    }
+
+    let usesLocalSimulatorAuthStorage = configuration["TUNEDIN_USE_LOCAL_AUTH_STORAGE"] as? String == "YES"
 
     if usesLocalSimulatorAuthStorage,
        !["127.0.0.1", "localhost"].contains(supabaseURL.host)
@@ -69,6 +74,8 @@ struct AppConfiguration: Sendable {
       supabaseURL: supabaseURL,
       supabasePublishableKey: supabasePublishableKey,
       environment: environment,
+      authCallbackURL: authCallbackURL,
+      authSessionStorageKey: "\(callbackScheme).auth.session",
       authEmailDeliveryMode: authEmailDeliveryMode,
       usesLocalSimulatorAuthStorage: usesLocalSimulatorAuthStorage
     )
