@@ -68,6 +68,7 @@ The tracked Staging configuration template uses:
 - Callback: `com.ethanherrera.tunedin.staging://auth-callback`
 - Build configuration: Release
 - Authentication: native Sign in with Apple and Google only; Google OAuth client IDs are injected from the protected environment and no OAuth client secret is included in the app.
+- Supabase Auth stores the Google Web and iOS client IDs as one comma-separated `external_google_client_id` value; the promotion verifier checks that canonical Management API representation.
 - Export compliance: the app declares that it does not use non-exempt encryption; this covers the confirmed system HTTPS-only implementation.
 
 App Store Connect contains an internal TestFlight group named `Staging` with automatic distribution
@@ -144,6 +145,13 @@ Bash `%c` expression wrote `3(TUNEDIN_URL_SLASH)` instead of the literal xcconfi
 so the packaged Supabase and PostHog URLs were invalid. Staging configuration generation now has an
 offline regression test, and every promotion validates the expanded values in the archived app before
 PostHog, Supabase, or TestFlight can be changed.
+
+The first native-auth promotion showed that Supabase canonicalizes the Google Web and iOS client IDs
+into one comma-separated `external_google_client_id` response value rather than returning the iOS ID
+through `external_google_additional_client_ids`. The provider update succeeded, but the old verifier
+rejected that valid response before migrations or TestFlight upload. The tracked payload, verifier, and
+offline regression test now use the canonical representation, making the partially applied preparation
+safe to retry.
 
 ## Recovery and rollback
 
