@@ -1,0 +1,185 @@
+{
+  "schema_version": 1,
+  "environment": "Staging",
+  "project": {
+    "id": 507318,
+    "name": "tunedIn Staging",
+    "api_host": "https://us.posthog.com",
+    "ingestion_host": "https://us.i.posthog.com"
+  },
+  "privacy_settings": {
+    "anonymize_ips": true,
+    "autocapture_opt_out": true,
+    "autocapture_exceptions_opt_in": false,
+    "autocapture_web_vitals_opt_in": false,
+    "capture_console_log_opt_in": false,
+    "session_recording_opt_in": false,
+    "inject_web_apps": false,
+    "heatmaps_opt_in": false
+  },
+  "sdk_policy": {
+    "application_lifecycle_events": false,
+    "automatic_screen_views": false,
+    "element_interactions": false,
+    "session_replay": false,
+    "surveys": false,
+    "feature_flags": false,
+    "exception_autocapture": true,
+    "person_profiles": "identified_only",
+    "user_content_allowed": false
+  },
+  "contract": {
+    "common_properties": [
+      "environment",
+      "release_version",
+      "build_number",
+      "git_sha",
+      "os_major",
+      "device_class"
+    ],
+    "event_properties": {
+      "app_became_usable": ["duration_ms", "destination"],
+      "authentication_completed": ["method", "duration_ms", "first_session", "outcome"],
+      "profile_setup_completed": ["duration_ms"],
+      "friend_request_sent": ["duration_ms"],
+      "friend_request_accepted": ["duration_ms"],
+      "collaborator_added": ["duration_ms"],
+      "concert_created": ["duration_ms"],
+      "concert_updated": ["duration_ms", "change_kind"],
+      "comment_created": ["duration_ms"],
+      "photo_upload_completed": [
+        "duration_ms",
+        "attempted_count",
+        "succeeded_count",
+        "partial_success",
+        "retry_used",
+        "outcome",
+        "failure_category"
+      ],
+      "ownership_transferred": ["duration_ms"],
+      "feedback_submitted": ["duration_ms", "category", "outcome", "failure_category"],
+      "screen_load_completed": ["screen", "duration_ms", "outcome", "failure_category", "retryable"],
+      "core_operation_completed": [
+        "operation",
+        "duration_ms",
+        "outcome",
+        "failure_category",
+        "retryable",
+        "status_class"
+      ]
+    },
+    "log_messages": [
+      "profile_load_failed",
+      "concert_load_failed",
+      "album_load_failed",
+      "mutation_failed",
+      "feedback_submission_failed"
+    ],
+    "operations": [
+      "authenticate",
+      "load_profile",
+      "create_concert",
+      "update_concert",
+      "send_friend_request",
+      "accept_friend_request",
+      "add_collaborator",
+      "create_comment",
+      "upload_photos",
+      "transfer_ownership",
+      "submit_feedback"
+    ],
+    "screens": ["feed", "concert_detail", "archive", "album", "friends", "profile"]
+  },
+  "managed_dashboard": {
+    "name": "tunedIn Staging · MVP health",
+    "description": "Managed by observability/posthog/staging.json. Core beta journeys only; no user-created content.",
+    "pinned": true,
+    "tags": ["managed", "staging", "mvp"],
+    "insights": [
+      {
+        "name": "Activation journey",
+        "description": "Authentication through profile setup and first saved concert over 30 days.",
+        "query": {
+          "kind": "InsightVizNode",
+          "source": {
+            "kind": "FunnelsQuery",
+            "series": [
+              {"kind": "EventsNode", "event": "authentication_completed", "name": "Authentication completed"},
+              {"kind": "EventsNode", "event": "profile_setup_completed", "name": "Profile setup completed"},
+              {"kind": "EventsNode", "event": "concert_created", "name": "Concert created"}
+            ],
+            "dateRange": {"date_from": "-30d"},
+            "funnelsFilter": {"funnelOrderType": "ordered", "funnelVizType": "steps"}
+          }
+        }
+      },
+      {
+        "name": "Core collaboration outcomes",
+        "description": "Successful social and concert collaboration outcomes over 30 days.",
+        "query": {
+          "kind": "InsightVizNode",
+          "source": {
+            "kind": "TrendsQuery",
+            "series": [
+              {"kind": "EventsNode", "event": "friend_request_accepted", "name": "Friend request accepted", "math": "total"},
+              {"kind": "EventsNode", "event": "collaborator_added", "name": "Collaborator added", "math": "total"},
+              {"kind": "EventsNode", "event": "comment_created", "name": "Comment created", "math": "total"},
+              {"kind": "EventsNode", "event": "photo_upload_completed", "name": "Photo upload completed", "math": "total"}
+            ],
+            "dateRange": {"date_from": "-30d"},
+            "trendsFilter": {"display": "ActionsLineGraph"}
+          }
+        }
+      },
+      {
+        "name": "Blocking operation failures",
+        "description": "User-blocking operation failures by stable failure category; expected validation and offline prompts are excluded by the client.",
+        "query": {
+          "kind": "InsightVizNode",
+          "source": {
+            "kind": "TrendsQuery",
+            "series": [
+              {
+                "kind": "EventsNode",
+                "event": "core_operation_completed",
+                "name": "Failed core operations",
+                "math": "total",
+                "properties": [
+                  {"key": "outcome", "value": ["failed"], "operator": "exact", "type": "event"}
+                ]
+              }
+            ],
+            "breakdownFilter": {"breakdown": "failure_category", "breakdown_type": "event"},
+            "dateRange": {"date_from": "-30d"},
+            "trendsFilter": {"display": "ActionsBarValue"}
+          }
+        }
+      },
+      {
+        "name": "Core screen load latency",
+        "description": "Average load duration for explicitly instrumented core screens over 30 days.",
+        "query": {
+          "kind": "InsightVizNode",
+          "source": {
+            "kind": "TrendsQuery",
+            "series": [
+              {
+                "kind": "EventsNode",
+                "event": "screen_load_completed",
+                "name": "Average load duration",
+                "math": "avg",
+                "math_property": "duration_ms",
+                "properties": [
+                  {"key": "outcome", "value": ["succeeded"], "operator": "exact", "type": "event"}
+                ]
+              }
+            ],
+            "breakdownFilter": {"breakdown": "screen", "breakdown_type": "event"},
+            "dateRange": {"date_from": "-30d"},
+            "trendsFilter": {"display": "ActionsLineGraph"}
+          }
+        }
+      }
+    ]
+  }
+}

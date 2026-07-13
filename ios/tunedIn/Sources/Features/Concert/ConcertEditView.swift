@@ -40,6 +40,7 @@ struct ConcertEditView: View {
   let onSaved: (Concert) -> Void
 
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.telemetry) private var telemetry
   @State private var draft: ConcertDraft
   @State private var visibility: ConcertVisibility
   @State private var expectedVersion: Int64
@@ -562,12 +563,29 @@ struct ConcertEditView: View {
       visibility: visibility
     ) else { return }
     isSaving = true
+    let startedAt = ContinuousClock.now
     Task {
       do {
         let updated = try await concertRepository.updateConcert(input)
+        telemetry?.capture(
+          .concertUpdated,
+          properties: [
+            .changeKind: .string(changeKindForTelemetry.rawValue),
+            .durationMilliseconds: .integer(startedAt.duration(to: .now).editTelemetryMilliseconds)
+          ]
+        )
         onSaved(updated)
         dismiss()
       } catch {
+        let failure = AppFailure(error)
+        if failure.shouldReportToTelemetry {
+          telemetry?.captureOperation(
+            .updateConcert,
+            outcome: .failed,
+            duration: startedAt.duration(to: .now),
+            failure: failure
+          )
+        }
         if isConcertConflict(error) {
           conflictMessage = error.localizedDescription
         } else {
@@ -575,6 +593,14 @@ struct ConcertEditView: View {
         }
       }
       isSaving = false
+    }
+  }
+
+  private var changeKindForTelemetry: TelemetryChangeKind {
+    switch page {
+    case .night: .details
+    case .songs: .setlist
+    case .sharing: .sharing
     }
   }
 
@@ -597,6 +623,13 @@ struct ConcertEditView: View {
 
   private func isConcertConflict(_ error: Error) -> Bool {
     error.appFailure == .conflict
+  }
+}
+
+private extension Duration {
+  var editTelemetryMilliseconds: Int {
+    let components = self.components
+    return Int(components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000)
   }
 }
 

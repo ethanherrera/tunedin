@@ -5,6 +5,7 @@ struct ConcertCreationView: View {
   let concertRepository: any ConcertRepository
 
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.telemetry) private var telemetry
 
   @State var draft = ConcertDraft()
   @State private var isSaving = false
@@ -323,6 +324,7 @@ struct ConcertCreationView: View {
 
     guard let input = draft.creationInput else { return }
     isSaving = true
+    let startedAt = ContinuousClock.now
 
     Task {
       do {
@@ -332,12 +334,32 @@ struct ConcertCreationView: View {
         }
         savedPrimaryArtistName = input.artists.first(where: \.isPrimary)?.name ?? input.artists[0].name
         savedConcert = concert
+        telemetry?.capture(
+          .concertCreated,
+          properties: [.durationMilliseconds: .integer(startedAt.duration(to: .now).creationTelemetryMilliseconds)]
+        )
         isSaving = false
       } catch {
+        let failure = AppFailure(error)
+        if failure.shouldReportToTelemetry {
+          telemetry?.captureOperation(
+            .createConcert,
+            outcome: .failed,
+            duration: startedAt.duration(to: .now),
+            failure: failure
+          )
+        }
         isSaving = false
         saveError = error.localizedDescription
       }
     }
+  }
+}
+
+private extension Duration {
+  var creationTelemetryMilliseconds: Int {
+    let components = self.components
+    return Int(components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000)
   }
 }
 

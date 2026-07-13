@@ -21,6 +21,7 @@ Staging never receives copied Development users, database content, seeds, photos
 Environment variables:
 
 - `SUPABASE_PROJECT_REF`
+- `POSTHOG_PROJECT_ID` (must be `507318`)
 - `APPLE_DEVELOPMENT_TEAM`
 - `APP_STORE_CONNECT_KEY_ID`
 - `APP_STORE_CONNECT_ISSUER_ID`
@@ -30,6 +31,9 @@ Environment secrets:
 - `SUPABASE_ACCESS_TOKEN`
 - `SUPABASE_DB_PASSWORD`
 - `SUPABASE_PUBLISHABLE_KEY`
+- `POSTHOG_PROJECT_TOKEN`
+- `POSTHOG_PERSONAL_API_KEY`
+- `POSTHOG_CLI_API_KEY`
 - `APP_STORE_CONNECT_PRIVATE_KEY`
 
 Never add a service-role key, database password, App Store Connect key, signing certificate, or provisioning profile to source control or ordinary repository variables.
@@ -83,14 +87,15 @@ The workflow performs these operations in order:
 
 1. Rebuild and verify the disposable backend.
 2. Regenerate, lint, test, and build the iOS project.
-3. Create an ephemeral ignored Staging configuration from protected values.
-4. Archive and sign `tunedIn Beta` before changing the hosted backend.
-5. Print the Staging migration dry run.
-6. Apply pending migrations without seeds or reset.
-7. Deploy tracked Edge Functions, if any.
-8. Verify migration parity.
-9. Upload the archived build to App Store Connect/TestFlight.
-10. Record the commit and build number in the GitHub Actions summary.
+3. Validate the offline PostHog contract and print a read-only Staging drift plan.
+4. Create an ephemeral ignored Staging configuration from protected values.
+5. Archive and sign `tunedIn Beta` before changing hosted services.
+6. Apply and verify the PostHog Staging contract and upload the archive's dSYMs without source files.
+7. Print the Staging migration dry run.
+8. Apply pending migrations without seeds or reset.
+9. Deploy tracked Edge Functions, if any, and verify migration parity.
+10. Upload the archived build to App Store Connect/TestFlight.
+11. Record the commit, observability target, and build number in the GitHub Actions summary.
 
 ## Expected result and verification
 
@@ -115,4 +120,5 @@ After processing, exercise sign-in, profile, friends, concert creation/editing, 
 - GitHub Actions and the `Staging` environment deployment history are the primary audit records.
 - App Store Connect records uploaded builds and processing status.
 - Supabase migration history and platform logs record backend changes.
+- PostHog project activity and error-tracking symbols record observability changes for project `507318`.
 - Run a promotion only when a merged `main` commit is ready for integrated Staging and TestFlight testing; never on every merge.

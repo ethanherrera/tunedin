@@ -22,3 +22,5 @@ supabase/.branches/
 supabase/.env
 .idea/
 .vscode/
+__pycache__/
+*.pyc

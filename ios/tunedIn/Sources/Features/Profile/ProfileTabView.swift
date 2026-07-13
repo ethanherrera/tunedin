@@ -72,6 +72,9 @@ struct MainTabView: View {
       }
     }
     .tint(TunedInDesign.accent)
+    .task {
+      session.telemetry.captureAppBecameUsable(destination: "main_tabs")
+    }
   }
 
   private var bottomControls: some View {
@@ -629,6 +632,8 @@ struct SettingsView: View {
   @State private var isChangingPhoto = false
   @State private var photoError: String?
   @State private var isConfirmingRemoval = false
+  @State private var isShowingFeedback = false
+  @State private var feedbackConfirmation: String?
 
   var body: some View {
     ZStack {
@@ -639,6 +644,8 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 24) {
           profilePhotoSection
           AppearancePicker()
+          TelemetrySettingsSection(telemetry: session.telemetry)
+          feedbackSection
           accountSection
         }
         .padding(20)
@@ -665,6 +672,19 @@ struct SettingsView: View {
       Button("Remove", role: .destructive) { Task { await removePhoto() } }
     } message: {
       Text("Your profile will return to its monogram.")
+    }
+    .alert("Feedback sent", isPresented: Binding(
+      get: { feedbackConfirmation != nil },
+      set: { if !$0 { feedbackConfirmation = nil } }
+    )) {
+      Button("Done", role: .cancel) {}
+    } message: {
+      Text(feedbackConfirmation ?? "Thank you for helping make tunedIn better.")
+    }
+    .sheet(isPresented: $isShowingFeedback) {
+      FeedbackView(session: session) {
+        feedbackConfirmation = "Thank you for helping make tunedIn better."
+      }
     }
   }
 
@@ -752,6 +772,21 @@ struct SettingsView: View {
         Task {
           await session.signOut()
         }
+      }
+      .font(.subheadline.weight(.semibold))
+    }
+  }
+
+  private var feedbackSection: some View {
+    TunedInFormCard {
+      Text("Help improve tunedIn")
+        .font(.headline)
+        .foregroundStyle(TunedInDesign.primaryText)
+      Text("Report a problem or share an idea directly with the team.")
+        .font(.subheadline)
+        .foregroundStyle(TunedInDesign.mutedText)
+      Button("Send feedback") {
+        isShowingFeedback = true
       }
       .font(.subheadline.weight(.semibold))
     }

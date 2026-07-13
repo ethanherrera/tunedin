@@ -19,6 +19,9 @@ settings:
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
 
 packages:
+  PostHog:
+    url: https://github.com/PostHog/posthog-ios.git
+    from: "3.64.6"
   Supabase:
     url: https://github.com/supabase/supabase-swift.git
     from: "2.0.0"
@@ -46,6 +49,8 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTS_MACCATALYST: NO
     dependencies:
+      - package: PostHog
+        product: PostHog
       - package: Supabase
         product: Supabase
 

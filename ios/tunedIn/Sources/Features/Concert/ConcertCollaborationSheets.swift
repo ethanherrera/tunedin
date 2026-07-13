@@ -10,6 +10,8 @@ struct ConcertPeopleView: View {
   let onChanged: () -> Void
   let pageHeader: AnyView
 
+  @Environment(\.telemetry) private var telemetry
+
   @State private var friends: [SocialProfile] = []
   @State private var visibility: ConcertVisibility
   @State private var isLoadingFriends = true
@@ -338,12 +340,20 @@ struct ConcertPeopleView: View {
   }
 
   private func transfer(to member: ConcertCollaborator) {
+    let startedAt = ContinuousClock.now
     perform {
-      try await concertRepository.transferOwnership(
+      let concert = try await concertRepository.transferOwnership(
         concertID: detail.concert.id,
         newOwnerID: member.id,
         expectedVersion: detail.concert.version
       )
+      await MainActor.run {
+        telemetry?.capture(
+          .ownershipTransferred,
+          properties: [.durationMilliseconds: .integer(startedAt.duration(to: .now).peopleTelemetryMilliseconds)]
+        )
+      }
+      return concert
     }
   }
 
@@ -358,6 +368,13 @@ struct ConcertPeopleView: View {
       }
       isWorking = false
     }
+  }
+}
+
+private extension Duration {
+  var peopleTelemetryMilliseconds: Int {
+    let components = self.components
+    return Int(components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000)
   }
 }
 

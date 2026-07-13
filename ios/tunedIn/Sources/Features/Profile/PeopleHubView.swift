@@ -20,6 +20,7 @@ struct FriendsListView: View {
   @State private var selectedSection: Section = .friends
   @State private var floatingControlOwner = UUID()
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.telemetry) private var telemetry
   @EnvironmentObject private var floatingControls: ConcertFloatingControls
 
   init(
@@ -129,6 +130,7 @@ struct FriendsListView: View {
     .navigationBarTitleDisplayMode(.inline)
     .navigationBarBackButtonHidden()
     .task {
+      model.telemetry = telemetry
       if isOwnList {
         await model.refresh()
       } else {
@@ -233,6 +235,7 @@ struct FriendSearchView: View {
   @State private var model: PeopleHubModel
   @State private var floatingControlOwner = UUID()
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.telemetry) private var telemetry
   @EnvironmentObject private var floatingControls: ConcertFloatingControls
 
   init(
@@ -277,6 +280,7 @@ struct FriendSearchView: View {
     .navigationTitle(presentation == .page ? "Search" : "")
     .navigationBarTitleDisplayMode(.inline)
     .navigationBarBackButtonHidden(presentation == .page)
+    .task { model.telemetry = telemetry }
     .onChange(of: model.query) { _, query in
       Task {
         try? await Task.sleep(for: .milliseconds(220))
@@ -377,6 +381,7 @@ struct FriendRequestsView: View {
   let currentUsername: String
 
   @State private var model: PeopleHubModel
+  @Environment(\.telemetry) private var telemetry
 
   init(
     socialRepository: any SocialRepository,
@@ -429,7 +434,10 @@ struct FriendRequestsView: View {
       }
     }
     .navigationBarTitleDisplayMode(.inline)
-    .task { await model.refresh() }
+    .task {
+      model.telemetry = telemetry
+      await model.refresh()
+    }
   }
 }
 
@@ -443,6 +451,7 @@ final class PeopleHubModel {
   private(set) var isSearching = false
   private(set) var isLoading = false
   private(set) var errorMessage: String?
+  var telemetry: AppTelemetryClient?
 
   private let repository: any SocialRepository
   private let currentUsername: String
@@ -496,14 +505,50 @@ final class PeopleHubModel {
   }
 
   func perform(_ action: PersonAction, for profile: SocialProfile) async {
+    let startedAt = ContinuousClock.now
     do {
       try await action.perform(on: repository, profileID: profile.id)
+      switch action {
+      case .send:
+        telemetry?.capture(
+          .friendRequestSent,
+          properties: [.durationMilliseconds: .integer(startedAt.duration(to: .now).socialTelemetryMilliseconds)]
+        )
+      case .accept:
+        telemetry?.capture(
+          .friendRequestAccepted,
+          properties: [.durationMilliseconds: .integer(startedAt.duration(to: .now).socialTelemetryMilliseconds)]
+        )
+      case .decline, .withdraw, .removeFriend, .block, .unblock:
+        break
+      }
       await refresh()
       await search()
       errorMessage = nil
     } catch {
+      let failure = AppFailure(error)
+      let operation: TelemetryOperation? = switch action {
+      case .send: .sendFriendRequest
+      case .accept: .acceptFriendRequest
+      case .decline, .withdraw, .removeFriend, .block, .unblock: nil
+      }
+      if failure.shouldReportToTelemetry, let operation {
+        telemetry?.captureOperation(
+          operation,
+          outcome: .failed,
+          duration: startedAt.duration(to: .now),
+          failure: failure
+        )
+      }
       errorMessage = error.localizedDescription
     }
+  }
+}
+
+private extension Duration {
+  var socialTelemetryMilliseconds: Int {
+    let components = self.components
+    return Int(components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000)
   }
 }
 

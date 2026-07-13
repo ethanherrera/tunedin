@@ -7,6 +7,8 @@ struct FriendsActivityFeedView: View {
   let concertRepository: any ConcertRepository
   let socialRepository: any SocialRepository
 
+  @Environment(\.telemetry) private var telemetry
+
   @State private var model: FriendsActivityFeedModel
 
   init(
@@ -76,7 +78,18 @@ struct FriendsActivityFeedView: View {
     }
     .toolbar(.hidden, for: .navigationBar)
     .task {
+      let startedAt = ContinuousClock.now
       await model.loadInitial()
+      let failure = model.errorMessage == nil ? nil : AppFailure.unexpected
+      telemetry?.capture(
+        .screenLoadCompleted,
+        properties: [
+          .screen: .string(TelemetryScreen.feed.rawValue),
+          .outcome: .string(failure == nil ? TelemetryOutcome.succeeded.rawValue : TelemetryOutcome.failed.rawValue),
+          .durationMilliseconds: .integer(startedAt.duration(to: .now).telemetryMilliseconds),
+          .failureCategory: failure.map { .string(TelemetryFailureCategory($0).rawValue) } ?? .string("none")
+        ]
+      )
     }
     .task {
       for await _ in concertRepository.observeFriendsActivity() {
@@ -219,6 +232,13 @@ struct FriendsActivityFeedView: View {
       }
       Spacer()
     }
+  }
+}
+
+private extension Duration {
+  var telemetryMilliseconds: Int {
+    let components = self.components
+    return Int(components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000)
   }
 }
 

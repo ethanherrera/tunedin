@@ -25,6 +25,11 @@ public enum PublicSchema {
     case collaborators = "collaborators"
     case friends = "friends"
   }
+  public enum ProductFeedbackCategory: String, Codable, Hashable, Sendable {
+    case bug = "bug"
+    case idea = "idea"
+    case other = "other"
+  }
   public enum RelationshipStatus: String, Codable, Hashable, Sendable {
     case pending = "pending"
     case accepted = "accepted"
@@ -509,6 +514,84 @@ public enum PublicSchema {
       case latestActivityAt = "latest_activity_at"
       case recipientId = "recipient_id"
       case summaryDueAt = "summary_due_at"
+    }
+  }
+  public struct ProductFeedbackSelect: Codable, Hashable, Sendable {
+    public let appEnvironment: String
+    public let buildNumber: String
+    public let category: ProductFeedbackCategory
+    public let createdAt: String
+    public let expiresAt: String
+    public let gitSha: String
+    public let id: UUID
+    public let message: String
+    public let originatingScreen: String
+    public let releaseVersion: String
+    public let submitterId: UUID
+    public enum CodingKeys: String, CodingKey {
+      case appEnvironment = "app_environment"
+      case buildNumber = "build_number"
+      case category = "category"
+      case createdAt = "created_at"
+      case expiresAt = "expires_at"
+      case gitSha = "git_sha"
+      case id = "id"
+      case message = "message"
+      case originatingScreen = "originating_screen"
+      case releaseVersion = "release_version"
+      case submitterId = "submitter_id"
+    }
+  }
+  public struct ProductFeedbackInsert: Codable, Hashable, Sendable {
+    public let appEnvironment: String
+    public let buildNumber: String
+    public let category: ProductFeedbackCategory
+    public let createdAt: String?
+    public let expiresAt: String?
+    public let gitSha: String
+    public let id: UUID?
+    public let message: String
+    public let originatingScreen: String
+    public let releaseVersion: String
+    public let submitterId: UUID
+    public enum CodingKeys: String, CodingKey {
+      case appEnvironment = "app_environment"
+      case buildNumber = "build_number"
+      case category = "category"
+      case createdAt = "created_at"
+      case expiresAt = "expires_at"
+      case gitSha = "git_sha"
+      case id = "id"
+      case message = "message"
+      case originatingScreen = "originating_screen"
+      case releaseVersion = "release_version"
+      case submitterId = "submitter_id"
+    }
+  }
+  public struct ProductFeedbackUpdate: Codable, Hashable, Sendable {
+    public let appEnvironment: String?
+    public let buildNumber: String?
+    public let category: ProductFeedbackCategory?
+    public let createdAt: String?
+    public let expiresAt: String?
+    public let gitSha: String?
+    public let id: UUID?
+    public let message: String?
+    public let originatingScreen: String?
+    public let releaseVersion: String?
+    public let submitterId: UUID?
+    public enum CodingKeys: String, CodingKey {
+      case appEnvironment = "app_environment"
+      case buildNumber = "build_number"
+      case category = "category"
+      case createdAt = "created_at"
+      case expiresAt = "expires_at"
+      case gitSha = "git_sha"
+      case id = "id"
+      case message = "message"
+      case originatingScreen = "originating_screen"
+      case releaseVersion = "release_version"
+      case submitterId = "submitter_id"
     }
   }
   public struct ProfilesSelect: Codable, Hashable, Sendable {

@@ -6,6 +6,8 @@ struct ConcertCommentsView: View {
   let concertRepository: any ConcertRepository
   let pageHeader: AnyView
 
+  @Environment(\.telemetry) private var telemetry
+
   @State private var comments: [ConcertComment] = []
   @State private var draft = ""
   @State private var editingCommentID: UUID?
@@ -261,13 +263,27 @@ struct ConcertCommentsView: View {
     let text = ConcertInput.normalizedText(draft)
     guard !text.isEmpty else { return }
     isSending = true
+    let startedAt = ContinuousClock.now
     Task {
       do {
         let comment = try await concertRepository.createComment(concertID: concertID, body: text)
         comments.append(comment)
         draft = ""
         errorMessage = nil
+        telemetry?.capture(
+          .commentCreated,
+          properties: [.durationMilliseconds: .integer(startedAt.duration(to: .now).commentTelemetryMilliseconds)]
+        )
       } catch {
+        let failure = AppFailure(error)
+        if failure.shouldReportToTelemetry {
+          telemetry?.captureOperation(
+            .createComment,
+            outcome: .failed,
+            duration: startedAt.duration(to: .now),
+            failure: failure
+          )
+        }
         errorMessage = error.localizedDescription
       }
       isSending = false
@@ -311,5 +327,12 @@ struct ConcertCommentsView: View {
         errorMessage = error.localizedDescription
       }
     }
+  }
+}
+
+private extension Duration {
+  var commentTelemetryMilliseconds: Int {
+    let components = self.components
+    return Int(components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000)
   }
 }

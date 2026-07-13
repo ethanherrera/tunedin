@@ -7,6 +7,7 @@ final class AppContainer {
   let concertRepository: any ConcertRepository
   let socialRepository: any SocialRepository
   let profileRepository: any ProfileRepository
+  let telemetry: AppTelemetryClient
 
   private init(
     appSession: AppSession,
@@ -16,10 +17,15 @@ final class AppContainer {
     self.appSession = appSession
     self.concertRepository = concertRepository
     self.socialRepository = socialRepository
+    telemetry = appSession.telemetry
     profileRepository = appSession.profileRepositoryForViews
   }
 
   init(configuration: AppConfiguration) {
+    let telemetry = AppTelemetryClient(
+      configuration: configuration.telemetry,
+      release: configuration.release
+    )
     let authStorage: any AuthLocalStorage = configuration.usesLocalSimulatorAuthStorage
       ? LocalSimulatorAuthStorage()
       : AuthClient.Configuration.defaultLocalStorage
@@ -38,18 +44,22 @@ final class AppContainer {
     )
 
     let profileRepository = SupabaseProfileRepository(client: client)
+    let feedbackRepository = SupabaseFeedbackRepository(client: client, release: configuration.release)
     appSession = AppSession(
       authenticationRepository: SupabaseAuthenticationRepository(
         client: client,
         authCallbackURL: configuration.authCallbackURL
       ),
       profileRepository: profileRepository,
+      feedbackRepository: feedbackRepository,
       authEmailDeliveryMode: configuration.authEmailDeliveryMode,
-      allowsLocalSeededSignIn: configuration.usesLocalSimulatorAuthStorage
+      allowsLocalSeededSignIn: configuration.usesLocalSimulatorAuthStorage,
+      telemetry: telemetry
     )
     concertRepository = SupabaseConcertRepository(client: client)
     socialRepository = SupabaseSocialRepository(client: client)
     self.profileRepository = profileRepository
+    self.telemetry = telemetry
   }
 
   static func live() -> AppContainer {
@@ -61,7 +71,11 @@ final class AppContainer {
           if let scenario = DevelopmentScenario.requested(), scenario != .live {
             return AppContainer(
               appSession: scenario.makeAppSession(
-                authEmailDeliveryMode: configuration.authEmailDeliveryMode
+                authEmailDeliveryMode: configuration.authEmailDeliveryMode,
+                telemetry: AppTelemetryClient(
+                  configuration: .recording,
+                  release: configuration.release
+                )
               ),
               concertRepository: DevelopmentConcertRepository(),
               socialRepository: DevelopmentSocialRepository()
