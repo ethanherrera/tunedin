@@ -62,6 +62,7 @@ The tracked Staging configuration template uses:
 - Bundle identifier: `com.ethanherrera.tunedin.staging`
 - Callback: `com.ethanherrera.tunedin.staging://auth-callback`
 - Build configuration: Release
+- Export compliance: the app declares that it does not use non-exempt encryption; this covers the confirmed system HTTPS-only implementation.
 
 For a manual local archive, add `DEVELOPMENT_TEAM = YOUR_TEAM_ID` to the ignored
 `ios/Config/Staging.xcconfig`, then run `make archive-staging`. The protected CI workflow supplies
