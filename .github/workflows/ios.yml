@@ -39,6 +39,9 @@ jobs:
       - name: Validate workflows
         run: make workflow-lint
 
+      - name: Validate App Store metadata
+        run: make distribution-metadata-verify
+
       - name: Test the offline PostHog contract
         run: make posthog-test
 

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		01FA7370211F6DC056721116 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3DE47B97A300C1CC89CD02B0 /* Assets.xcassets */; };
 		02A3DF2E2A93DF3BF391C823 /* TunedInAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BB6E4FE735BE91A1C03412D /* TunedInAppearance.swift */; };
 		063A304A122AB3F34C63D114 /* TunedInDesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 532F8D6E5EB000F34B910F42 /* TunedInDesignSystem.swift */; };
 		0686BF43E368DFAE66D3ED69 /* TelemetryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD654ACD06E9E04AD7DA86BF /* TelemetryTests.swift */; };
@@ -105,6 +106,7 @@
 		3435407F7622C2A1679CA34E /* TelemetrySanitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetrySanitizer.swift; sourceTree = "<group>"; };
 		3531262D0A7C77D265C40BCC /* AvatarImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarImageProcessor.swift; sourceTree = "<group>"; };
 		36855C0A3DE0CB302D9FE025 /* AlbumUploadBatchExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumUploadBatchExecutor.swift; sourceTree = "<group>"; };
+		3DE47B97A300C1CC89CD02B0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		48D5349FC56B2CBC9101478D /* ConcertCreationDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertCreationDraft.swift; sourceTree = "<group>"; };
 		4A5DDFF994E4A5513CAD3917 /* midnight-theatre.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "midnight-theatre.png"; sourceTree = "<group>"; };
 		4B185CD800E6B9369C52FD98 /* AlbumReadinessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumReadinessTests.swift; sourceTree = "<group>"; };
@@ -444,6 +446,7 @@
 		E3DF27120E15C153F943FD3D /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				3DE47B97A300C1CC89CD02B0 /* Assets.xcassets */,
 				4C97A9900A178845F43F836D /* Artwork */,
 			);
 			name = Resources;
@@ -532,6 +535,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				01FA7370211F6DC056721116 /* Assets.xcassets in Resources */,
 				7F900D7F871E8EB8BF235637 /* afterglow-stage.png in Resources */,
 				BE7554363F72DAE88183452E /* midnight-theatre.png in Resources */,
 			);
