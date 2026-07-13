@@ -377,6 +377,7 @@ struct ConcertDetailView: View {
   let socialRepository: any SocialRepository
 
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.telemetry) private var telemetry
   @EnvironmentObject private var concertFloatingControls: ConcertFloatingControls
   @State private var detail: ConcertDetail?
   @State private var errorMessage: String?
@@ -692,11 +693,33 @@ struct ConcertDetailView: View {
   }
 
   private func loadDetail() async {
+    let startedAt = ContinuousClock.now
     errorMessage = nil
     do {
       detail = try await concertRepository.fetchConcertDetail(id: concertID, viewerID: viewerID)
+      telemetry?.capture(
+        .screenLoadCompleted,
+        properties: [
+          .screen: .string(TelemetryScreen.concertDetail.rawValue),
+          .outcome: .string(TelemetryOutcome.succeeded.rawValue),
+          .durationMilliseconds: .integer(startedAt.duration(to: .now).concertTelemetryMilliseconds)
+        ]
+      )
     } catch {
       errorMessage = error.localizedDescription
+      let failure = AppFailure(error)
+      if failure.shouldReportToTelemetry {
+        telemetry?.capture(
+          .screenLoadCompleted,
+          properties: [
+            .screen: .string(TelemetryScreen.concertDetail.rawValue),
+            .outcome: .string(TelemetryOutcome.failed.rawValue),
+            .durationMilliseconds: .integer(startedAt.duration(to: .now).concertTelemetryMilliseconds),
+            .failureCategory: .string(TelemetryFailureCategory(failure).rawValue),
+            .retryable: .boolean(failure.allowsRetry)
+          ]
+        )
+      }
     }
   }
 
@@ -721,6 +744,13 @@ struct ConcertDetailView: View {
     let editorCount = detail.collaborators.filter { !$0.isOwner }.count
     let people = editorCount == 1 ? "1 collaborator will" : "\(editorCount) collaborators will"
     return "Its setlist, comments, and history will disappear permanently. \(people) lose access."
+  }
+}
+
+private extension Duration {
+  var concertTelemetryMilliseconds: Int {
+    let components = self.components
+    return Int(components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000)
   }
 }
 

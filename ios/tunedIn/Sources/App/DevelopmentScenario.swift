@@ -22,7 +22,10 @@
     }
 
     @MainActor
-    func makeAppSession(authEmailDeliveryMode: AuthEmailDeliveryMode) -> AppSession {
+    func makeAppSession(
+      authEmailDeliveryMode: AuthEmailDeliveryMode,
+      telemetry: AppTelemetryClient? = nil
+    ) -> AppSession {
       let fixture = DevelopmentFixture()
 
       switch self {
@@ -33,30 +36,47 @@
         return AppSession(
           authenticationRepository: DevelopmentAuthenticationRepository(user: nil),
           profileRepository: DevelopmentProfileRepository(result: .profile(fixture.incompleteProfile)),
-          authEmailDeliveryMode: authEmailDeliveryMode
+          authEmailDeliveryMode: authEmailDeliveryMode,
+          telemetry: telemetry ?? Self.makeTelemetry()
         )
 
       case .onboarding:
         return AppSession(
           authenticationRepository: DevelopmentAuthenticationRepository(user: fixture.user),
           profileRepository: DevelopmentProfileRepository(result: .profile(fixture.incompleteProfile)),
-          authEmailDeliveryMode: authEmailDeliveryMode
+          authEmailDeliveryMode: authEmailDeliveryMode,
+          telemetry: telemetry ?? Self.makeTelemetry()
         )
 
       case .profile:
         return AppSession(
           authenticationRepository: DevelopmentAuthenticationRepository(user: fixture.user),
           profileRepository: DevelopmentProfileRepository(result: .profile(fixture.completedProfile)),
-          authEmailDeliveryMode: authEmailDeliveryMode
+          authEmailDeliveryMode: authEmailDeliveryMode,
+          telemetry: telemetry ?? Self.makeTelemetry()
         )
 
       case .profileError:
         return AppSession(
           authenticationRepository: DevelopmentAuthenticationRepository(user: fixture.user),
           profileRepository: DevelopmentProfileRepository(result: .failure),
-          authEmailDeliveryMode: authEmailDeliveryMode
+          authEmailDeliveryMode: authEmailDeliveryMode,
+          telemetry: telemetry ?? Self.makeTelemetry()
         )
       }
+    }
+
+    @MainActor
+    private static func makeTelemetry() -> AppTelemetryClient {
+      AppTelemetryClient(
+        configuration: .recording,
+        release: ReleaseMetadata(
+          version: "development-scenario",
+          build: "local",
+          gitSHA: "local",
+          environment: .development
+        )
+      )
     }
   }
 

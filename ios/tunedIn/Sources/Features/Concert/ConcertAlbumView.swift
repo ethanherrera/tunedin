@@ -9,6 +9,7 @@ struct ConcertAlbumView: View {
   let pageHeader: AnyView
 
   @EnvironmentObject private var concertFloatingControls: ConcertFloatingControls
+  @Environment(\.telemetry) private var telemetry
 
   @State private var photos: [ConcertAlbumPhoto] = []
   @State private var failedUploads: [FailedAlbumUpload] = []
@@ -160,6 +161,8 @@ struct ConcertAlbumView: View {
   }
 
   private func upload(_ uploads: [FailedAlbumUpload]) async {
+    let startedAt = ContinuousClock.now
+    let isRetry = uploads.contains { $0.reservation != nil }
     isUploading = true
     concertFloatingControls.setInteractionLocked(true)
     defer {
@@ -196,6 +199,24 @@ struct ConcertAlbumView: View {
     }
     photos.insert(contentsOf: result.successes.reversed(), at: 0)
     failedUploads = result.failures.map(\.item)
+    telemetry?.capture(
+      .photoUploadCompleted,
+      properties: [
+        .attemptedCount: .integer(uploads.count),
+        .succeededCount: .integer(result.successes.count),
+        .partialSuccess: .boolean(!result.successes.isEmpty && !result.failures.isEmpty),
+        .retryUsed: .boolean(isRetry),
+        .outcome: .string(
+          result.failures.isEmpty
+            ? TelemetryOutcome.succeeded.rawValue
+            : (result.successes.isEmpty ? TelemetryOutcome.failed.rawValue : TelemetryOutcome.partial.rawValue)
+        ),
+        .durationMilliseconds: .integer(startedAt.duration(to: .now).albumTelemetryMilliseconds),
+        .failureCategory: result.failures.first.map {
+          .string(TelemetryFailureCategory($0.error.appFailure).rawValue)
+        } ?? .string("none")
+      ]
+    )
     if let failure = result.failures.first {
       switch failure.error.appFailure {
       case .offline:
@@ -212,6 +233,13 @@ struct ConcertAlbumView: View {
   private func retryFailures() async {
     let failures = failedUploads; failedUploads = []
     await upload(failures)
+  }
+}
+
+private extension Duration {
+  var albumTelemetryMilliseconds: Int {
+    let components = self.components
+    return Int(components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000)
   }
 }
 

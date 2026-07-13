@@ -8,6 +8,8 @@ struct AppConfiguration: Sendable {
   let authSessionStorageKey: String
   let authEmailDeliveryMode: AuthEmailDeliveryMode
   let usesLocalSimulatorAuthStorage: Bool
+  let telemetry: TelemetryConfiguration
+  let release: ReleaseMetadata
 
   static func load(bundle: Bundle? = nil) throws -> Self {
     let configurationBundle = bundle ?? Bundle(for: TunedInBundleMarker.self)
@@ -61,14 +63,26 @@ struct AppConfiguration: Sendable {
     let usesLocalSimulatorAuthStorage = configuration["TUNEDIN_USE_LOCAL_AUTH_STORAGE"] as? String == "YES"
 
     if usesLocalSimulatorAuthStorage,
-       !["127.0.0.1", "localhost"].contains(supabaseURL.host)
-    {
+       !["127.0.0.1", "localhost"].contains(supabaseURL.host) {
       throw AppConfigurationError.invalid("TUNEDIN_USE_LOCAL_AUTH_STORAGE")
     }
 
     let authEmailDeliveryMode: AuthEmailDeliveryMode = environment == .development
       ? .magicLink
       : .oneTimeCode
+
+    let telemetry = try TelemetryConfiguration.load(
+      configuration: configuration,
+      environment: environment,
+      usesLocalSimulatorAuthStorage: usesLocalSimulatorAuthStorage
+    )
+
+    let release = ReleaseMetadata(
+      version: normalizedValue(configuration["CFBundleShortVersionString"]) ?? "unknown",
+      build: normalizedValue(configuration["CFBundleVersion"]) ?? "unknown",
+      gitSHA: normalizedValue(configuration["TUNEDIN_GIT_SHA"]) ?? "unknown",
+      environment: environment
+    )
 
     return Self(
       supabaseURL: supabaseURL,
@@ -77,8 +91,19 @@ struct AppConfiguration: Sendable {
       authCallbackURL: authCallbackURL,
       authSessionStorageKey: "\(callbackScheme).auth.session",
       authEmailDeliveryMode: authEmailDeliveryMode,
-      usesLocalSimulatorAuthStorage: usesLocalSimulatorAuthStorage
+      usesLocalSimulatorAuthStorage: usesLocalSimulatorAuthStorage,
+      telemetry: telemetry,
+      release: release
     )
+  }
+
+  fileprivate static func normalizedValue(_ value: Any?) -> String? {
+    guard let string = value as? String else { return nil }
+    let normalized = string.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !normalized.isEmpty, !normalized.hasPrefix("$("), !normalized.hasPrefix("REPLACE_WITH_") else {
+      return nil
+    }
+    return normalized
   }
 }
 
@@ -91,6 +116,72 @@ enum AppEnvironment: String, Sendable {
 enum AuthEmailDeliveryMode: Equatable, Sendable {
   case magicLink
   case oneTimeCode
+}
+
+struct ReleaseMetadata: Equatable, Sendable {
+  let version: String
+  let build: String
+  let gitSHA: String
+  let environment: AppEnvironment
+}
+
+enum TelemetryConfiguration: Equatable, Sendable {
+  case recording
+  case disabled
+  case postHog(PostHogProjectConfiguration)
+
+  fileprivate static func load(
+    configuration: [String: Any],
+    environment: AppEnvironment,
+    usesLocalSimulatorAuthStorage: Bool
+  ) throws -> Self {
+    if usesLocalSimulatorAuthStorage || environment == .development {
+      return .recording
+    }
+
+    let projectToken = AppConfiguration.normalizedValue(configuration["TUNEDIN_POSTHOG_PROJECT_TOKEN"])
+    let projectID = AppConfiguration.normalizedValue(configuration["TUNEDIN_POSTHOG_PROJECT_ID"])
+    let hostValue = AppConfiguration.normalizedValue(configuration["TUNEDIN_POSTHOG_HOST"])
+
+    if environment == .production, projectToken == nil, projectID == nil, hostValue == nil {
+      return .disabled
+    }
+
+    guard let projectToken else {
+      throw AppConfigurationError.missing("POSTHOG_PROJECT_TOKEN")
+    }
+    guard let projectID else {
+      throw AppConfigurationError.missing("POSTHOG_PROJECT_ID")
+    }
+    guard
+      let hostValue,
+      let host = URL(string: hostValue),
+      host.scheme == "https",
+      host.host == "us.i.posthog.com"
+    else {
+      throw AppConfigurationError.invalid("POSTHOG_HOST")
+    }
+
+    if environment == .staging, projectID != PostHogProjectConfiguration.stagingProjectID {
+      throw AppConfigurationError.invalid("POSTHOG_PROJECT_ID")
+    }
+
+    return .postHog(
+      PostHogProjectConfiguration(
+        projectToken: projectToken,
+        projectID: projectID,
+        host: host
+      )
+    )
+  }
+}
+
+struct PostHogProjectConfiguration: Equatable, Sendable {
+  static let stagingProjectID = "507318"
+
+  let projectToken: String
+  let projectID: String
+  let host: URL
 }
 
 private final class TunedInBundleMarker {}

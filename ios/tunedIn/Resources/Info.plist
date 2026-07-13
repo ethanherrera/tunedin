@@ -33,6 +33,8 @@
 	</array>
 	<key>TUNEDIN_APP_ENVIRONMENT</key>
 	<string>$(APP_ENVIRONMENT)</string>
+	<key>TUNEDIN_GIT_SHA</key>
+	<string>$(TUNEDIN_GIT_SHA)</string>
 	<key>TUNEDIN_AUTH_CALLBACK_SCHEME</key>
 	<string>$(AUTH_CALLBACK_SCHEME)</string>
 	<key>TUNEDIN_USE_LOCAL_AUTH_STORAGE</key>
@@ -41,5 +43,11 @@
 	<string>$(SUPABASE_PUBLISHABLE_KEY)</string>
 	<key>TUNEDIN_SUPABASE_URL</key>
 	<string>$(SUPABASE_URL)</string>
+	<key>TUNEDIN_POSTHOG_HOST</key>
+	<string>$(POSTHOG_HOST)</string>
+	<key>TUNEDIN_POSTHOG_PROJECT_ID</key>
+	<string>$(POSTHOG_PROJECT_ID)</string>
+	<key>TUNEDIN_POSTHOG_PROJECT_TOKEN</key>
+	<string>$(POSTHOG_PROJECT_TOKEN)</string>
 </dict>
 </plist>
