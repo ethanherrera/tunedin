@@ -39,6 +39,7 @@
 		8FCAFFA83A941FD8C0EB2B6F /* tunedInApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8046DFD22BCA47A3E52C7793 /* tunedInApp.swift */; };
 		905E3D91E2B813DA12200AAD /* SupabaseConcertRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B89C2123769CE8C8EE2427 /* SupabaseConcertRepository.swift */; };
 		92360D3D1229A15146C11DFE /* AlbumReadinessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B185CD800E6B9369C52FD98 /* AlbumReadinessTests.swift */; };
+		995AACDF119F6E2E3067FC3D /* ConcertMonogramViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CE4DB3E207A0AC8993F44B3 /* ConcertMonogramViews.swift */; };
 		9B82FB9B7F094931B9622D52 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52FC5FA5CC195C96AC2F7E11 /* AppContainer.swift */; };
 		A111EE6F1E729528DDD55F8D /* ProfileAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B583B6D8C84821B5F36ABC1A /* ProfileAvatarView.swift */; };
 		A555A5875A5637540E1BC35E /* SupabaseProfileRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = C659A65B20724EDB509145AB /* SupabaseProfileRepository.swift */; };
@@ -107,6 +108,7 @@
 		887C95DD1BE38E3C830C4D80 /* AppSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSession.swift; sourceTree = "<group>"; };
 		889BD9CC3B0A992D16F66A9A /* DevelopmentScenario.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentScenario.swift; sourceTree = "<group>"; };
 		8BB6E4FE735BE91A1C03412D /* TunedInAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunedInAppearance.swift; sourceTree = "<group>"; };
+		8CE4DB3E207A0AC8993F44B3 /* ConcertMonogramViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertMonogramViews.swift; sourceTree = "<group>"; };
 		8D20A416A01449F03EA5661F /* DevelopmentConcertRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentConcertRepositoryTests.swift; sourceTree = "<group>"; };
 		8E5567493126633FA6F89B8A /* AppNetworkSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNetworkSession.swift; sourceTree = "<group>"; };
 		928728B8414A847C3CE27348 /* ConcertEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertEditView.swift; sourceTree = "<group>"; };
@@ -325,6 +327,7 @@
 				BD75288821322770423012C4 /* ConcertCreationFormSections.swift */,
 				1B68A83B5FEE54C667FDD5DF /* ConcertCreationView.swift */,
 				928728B8414A847C3CE27348 /* ConcertEditView.swift */,
+				8CE4DB3E207A0AC8993F44B3 /* ConcertMonogramViews.swift */,
 				0A5695E4F2552EBE2BF611CB /* ConcertPhotoView.swift */,
 			);
 			path = Concert;
@@ -498,6 +501,7 @@
 				7A9E943A4D2A0A5CD8AF0398 /* ConcertCreationFormSections.swift in Sources */,
 				ACE8334B175DF5C109B78F0C /* ConcertCreationView.swift in Sources */,
 				FFE550293F65A397E74C7215 /* ConcertEditView.swift in Sources */,
+				995AACDF119F6E2E3067FC3D /* ConcertMonogramViews.swift in Sources */,
 				719F101178208A613D6F7483 /* ConcertPhotoView.swift in Sources */,
 				2577832D8CB24FADB94E3250 /* ConcertRepository.swift in Sources */,
 				BA7A55F7A9F1B31C691FDC04 /* DevelopmentConcertRepository.swift in Sources */,
