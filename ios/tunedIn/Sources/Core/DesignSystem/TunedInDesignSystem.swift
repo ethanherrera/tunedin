@@ -110,6 +110,7 @@ struct TunedInGlassIconButton: View {
 
 struct TunedInGlassTraversalLayout<Leading: View, Center: View, Trailing: View>: View {
   var sideReservation: CGFloat = 74
+  var height: CGFloat = 60
   @ViewBuilder let leading: Leading
   @ViewBuilder let center: Center
   @ViewBuilder let trailing: Trailing
@@ -127,7 +128,7 @@ struct TunedInGlassTraversalLayout<Leading: View, Center: View, Trailing: View>:
         }
       }
     }
-    .frame(height: 60)
+    .frame(height: height)
     .frame(maxWidth: .infinity)
     .dynamicTypeSize(DynamicTypeSize.xSmall ... DynamicTypeSize.xxxLarge)
   }
