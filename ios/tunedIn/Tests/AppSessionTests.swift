@@ -69,11 +69,32 @@ struct AppSessionTests {
     }
   }
 
+  @MainActor
+  @Test
+  func callbackFailureIsVisibleInsteadOfSilentlyDoingNothing() async throws {
+    let userID = try #require(UUID(uuidString: "44444444-4444-4444-4444-444444444444"))
+    let session = AppSession(
+      authenticationRepository: FailingCallbackAuthenticationRepository(),
+      profileRepository: StaticProfileRepository(profile: makeProfile(id: userID, completed: false))
+    )
+
+    await settle(session)
+    session.handleAuthCallback(try #require(URL(string: "com.ethanherrera.tunedin://auth-callback")))
+
+    for _ in 0 ..< 100 where session.authCallbackError == nil {
+      try? await Task.sleep(for: .milliseconds(10))
+    }
+
+    #expect(session.authCallbackError == "The login link could not be verified.")
+  }
+
   private func makeProfile(id: UUID, completed: Bool) -> Profile {
     Profile(
       id: id,
       username: completed ? "listener" : nil,
       displayName: completed ? "Listener" : nil,
+      avatarObjectPath: nil,
+      avatarVersion: 0,
       onboardingCompletedAt: completed ? Date(timeIntervalSince1970: 1) : nil,
       createdAt: Date(timeIntervalSince1970: 0),
       updatedAt: Date(timeIntervalSince1970: 1)
@@ -82,14 +103,38 @@ struct AppSessionTests {
 
   @MainActor
   private func settle(_ session: AppSession) async {
-    for _ in 0 ..< 20 {
+    for _ in 0 ..< 100 {
       switch session.phase {
       case .restoring, .loadingProfile:
-        await Task.yield()
+        try? await Task.sleep(for: .milliseconds(10))
       default:
         return
       }
     }
+  }
+}
+
+private struct FailingCallbackAuthenticationRepository: AuthenticationRepository {
+  var authenticationStateChanges: AsyncStream<AuthenticatedUser?> {
+    AsyncStream { continuation in
+      continuation.yield(nil)
+      continuation.finish()
+    }
+  }
+
+  func sendEmailOTP(to _: String) async throws {}
+  func signInWithPassword(email _: String, password _: String) async throws {}
+  func verifyEmailOTP(email _: String, code _: String) async throws {}
+  func signOut() async throws {}
+
+  func handleAuthCallback(_: URL) async throws {
+    throw Failure.invalidLink
+  }
+
+  enum Failure: LocalizedError {
+    case invalidLink
+
+    var errorDescription: String? { "The login link could not be verified." }
   }
 }
 
@@ -104,9 +149,10 @@ private struct StaticAuthenticationRepository: AuthenticationRepository {
   }
 
   func sendEmailOTP(to _: String) async throws {}
+  func signInWithPassword(email _: String, password _: String) async throws {}
   func verifyEmailOTP(email _: String, code _: String) async throws {}
   func signOut() async throws {}
-  func handleAuthCallback(_: URL) {}
+  func handleAuthCallback(_: URL) async throws {}
 }
 
 private struct StaticProfileRepository: ProfileRepository {
@@ -122,5 +168,17 @@ private struct StaticProfileRepository: ProfileRepository {
 
   func completeOnboarding(username _: String, displayName _: String) async throws -> Profile {
     profile
+  }
+
+  func setAvatar(jpegData _: Data, for _: UUID) async throws -> Profile {
+    profile
+  }
+
+  func removeAvatar(for _: UUID) async throws -> Profile {
+    profile
+  }
+
+  func avatarURL(profileID _: UUID, objectPath _: String, version _: Int64) async throws -> URL {
+    URL(string: "https://example.test/avatar.jpg")!
   }
 }

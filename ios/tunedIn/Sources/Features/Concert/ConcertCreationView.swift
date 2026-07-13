@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 
 struct ConcertCreationView: View {
@@ -12,6 +13,9 @@ struct ConcertCreationView: View {
   @State private var saveError: String?
   @State private var savedConcert: Concert?
   @State private var savedPrimaryArtistName = ""
+  @State private var selectedPhoto: PhotosPickerItem?
+  @State private var concertPhotoData: Data?
+  @State private var isProcessingPhoto = false
 
   var body: some View {
     Group {
@@ -19,6 +23,7 @@ struct ConcertCreationView: View {
         ConcertSavedView(
           concert: savedConcert,
           primaryArtistName: savedPrimaryArtistName,
+          concertRepository: concertRepository,
           onDone: { dismiss() }
         )
         .transition(.opacity)
@@ -28,26 +33,22 @@ struct ConcertCreationView: View {
             TunedInDesign.pageBackground
               .ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 0) {
-              captureHeader
-              quickCaptureCard
-                .padding(.top, 24)
-              detailsPrompt
-                .padding(.top, 16)
-              Spacer(minLength: 0)
+            ScrollView {
+              VStack(alignment: .leading, spacing: 0) {
+                captureHeader
+                quickCaptureCard
+                  .padding(.top, 18)
+                detailsPrompt
+                  .padding(.top, 16)
+              }
+              .padding(.bottom, 18)
             }
             .padding(.horizontal, 20)
             .padding(.top, 14)
           }
           .navigationBarTitleDisplayMode(.inline)
-          .safeAreaInset(edge: .bottom, spacing: 0) {
+          .overlay(alignment: .bottom) {
             saveBar
-          }
-          .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-              Button("Cancel", action: requestDismissal)
-                .disabled(isSaving)
-            }
           }
           .alert("Discard this concert?", isPresented: $isShowingDiscardConfirmation) {
             Button("Keep Editing", role: .cancel) {}
@@ -65,6 +66,10 @@ struct ConcertCreationView: View {
           .sheet(isPresented: $isShowingDetails) {
             ConcertCreationDetailsView(draft: $draft)
           }
+          .onChange(of: selectedPhoto) { _, item in
+            guard let item else { return }
+            Task { await processPhoto(item) }
+          }
         }
       }
     }
@@ -72,7 +77,16 @@ struct ConcertCreationView: View {
   }
 
   private var saveBar: some View {
-    VStack {
+    HStack(spacing: 10) {
+      TunedInFloatingAction(
+        systemImage: "chevron.backward",
+        accessibilityLabel: "Cancel concert",
+        accessibilityHint: "Discards this concert if you confirm"
+      ) {
+        requestDismissal()
+      }
+      .disabled(isSaving)
+
       Button(action: save) {
         HStack(spacing: 8) {
           if isSaving {
@@ -101,10 +115,9 @@ struct ConcertCreationView: View {
       .disabled(!draft.canSave || isSaving)
       .accessibilityHint("Saves this concert privately")
     }
-    .padding(.horizontal, 20)
+    .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
     .padding(.top, 12)
-    .padding(.bottom, 8)
-    .background(TunedInDesign.pageBackground.opacity(0.96))
+    .padding(.bottom, TunedInDesign.bottomControlInset)
   }
 
   private var isShowingSaveError: Binding<Bool> {
@@ -129,77 +142,113 @@ struct ConcertCreationView: View {
         TunedInPrivacyBadge()
       }
 
-      Text("Keep the night.")
+      Text("Log a concert")
         .font(.system(size: 36, weight: .bold, design: .serif))
         .foregroundStyle(TunedInDesign.primaryText)
-      Text("Three things are enough. You can make it yours later.")
+      Text("Artist, venue, date.")
         .font(.subheadline)
         .foregroundStyle(TunedInDesign.mutedText)
     }
   }
 
   private var quickCaptureCard: some View {
-    TunedInTicketCard {
-      Text("YOUR PRIVATE NOTE")
-        .font(.caption.weight(.bold))
-        .foregroundStyle(.white.opacity(0.82))
-
-      VStack(alignment: .leading, spacing: 5) {
-        Text("Who did you see?")
-          .font(.subheadline.weight(.medium))
-          .foregroundStyle(.white)
-        TextField(
-          "",
-          text: artistNameBinding(for: draft.artists[0].id),
-          prompt: Text("Artist").foregroundStyle(.white.opacity(0.54))
-        )
-        .font(.title2.weight(.bold))
-        .foregroundStyle(.white)
-        .tint(.white)
-        .textInputAutocapitalization(.words)
-        .submitLabel(.next)
-        .accessibilityLabel("Primary artist")
-        if draft.hasAttemptedSave, !ConcertInput.isValidRequiredText(draft.artists[0].name, maximumLength: 160) {
-          captureValidationLabel("Enter the artist you saw.")
+    VStack(alignment: .leading, spacing: 16) {
+      VStack(spacing: 10) {
+        PhotosPicker(selection: $selectedPhoto, matching: .images) {
+          ZStack(alignment: .bottomTrailing) {
+            Group {
+              if let concertPhotoData, let image = UIImage(data: concertPhotoData) {
+                Image(uiImage: image).resizable().scaledToFill()
+              } else {
+                ConcertArtworkImage(artistName: draft.artists[0].name)
+              }
+            }
+            .frame(maxWidth: .infinity)
+            .aspectRatio(CGSize(width: 3, height: 4), contentMode: .fit)
+            .clipped()
+            Label(concertPhotoData == nil ? "Add main photo" : "Change photo", systemImage: "photo")
+              .font(.caption.weight(.bold)).padding(10)
+              .foregroundStyle(.white).background(.black.opacity(0.62), in: Capsule()).padding(10)
+          }
+          .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .disabled(isProcessingPhoto)
+        if isProcessingPhoto {
+          ProgressView("Optimizing photo…")
         }
       }
 
-      Divider().overlay(.white.opacity(0.24))
+      TunedInTicketCard {
+        Text("PRIVATE CONCERT")
+          .font(.caption.weight(.bold))
+          .foregroundStyle(.white.opacity(0.82))
 
-      VStack(alignment: .leading, spacing: 5) {
-        Text("Where was it?")
-          .font(.subheadline.weight(.medium))
+        VStack(alignment: .leading, spacing: 5) {
+          Text("Who did you see?")
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(.white)
+          TextField(
+            "",
+            text: artistNameBinding(for: draft.artists[0].id),
+            prompt: Text("Artist").foregroundStyle(.white.opacity(0.54))
+          )
+          .font(.title2.weight(.bold))
           .foregroundStyle(.white)
-        TextField(
-          "",
-          text: $draft.venueName,
-          prompt: Text("Venue").foregroundStyle(.white.opacity(0.54))
-        )
-        .font(.title3.weight(.semibold))
-        .foregroundStyle(.white)
-        .tint(.white)
-        .textContentType(.location)
-        .textInputAutocapitalization(.words)
-        .submitLabel(.done)
-        .accessibilityLabel("Venue")
-        if draft.hasAttemptedSave, !ConcertInput.isValidRequiredText(draft.venueName, maximumLength: 160) {
-          captureValidationLabel("Enter the venue.")
-        }
-      }
-
-      Divider().overlay(.white.opacity(0.24))
-
-      HStack {
-        Label("When", systemImage: "calendar")
-          .font(.subheadline.weight(.medium))
-          .foregroundStyle(.white)
-        Spacer()
-        DatePicker("Concert date", selection: $draft.concertDate, displayedComponents: .date)
-          .datePickerStyle(.compact)
-          .labelsHidden()
           .tint(.white)
+          .textInputAutocapitalization(.words)
+          .submitLabel(.next)
+          .accessibilityLabel("Primary artist")
+          if draft.hasAttemptedSave, !ConcertInput.isValidRequiredText(draft.artists[0].name, maximumLength: 160) {
+            captureValidationLabel("Enter the artist you saw.")
+          }
+        }
+
+        Divider().overlay(.white.opacity(0.24))
+
+        VStack(alignment: .leading, spacing: 5) {
+          Text("Where was it?")
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(.white)
+          TextField(
+            "",
+            text: $draft.venueName,
+            prompt: Text("Venue").foregroundStyle(.white.opacity(0.54))
+          )
+          .font(.title3.weight(.semibold))
+          .foregroundStyle(.white)
+          .tint(.white)
+          .textContentType(.location)
+          .textInputAutocapitalization(.words)
+          .submitLabel(.done)
+          .accessibilityLabel("Venue")
+          if draft.hasAttemptedSave, !ConcertInput.isValidRequiredText(draft.venueName, maximumLength: 160) {
+            captureValidationLabel("Enter the venue.")
+          }
+        }
+
+        Divider().overlay(.white.opacity(0.24))
+
+        HStack {
+          Label("When", systemImage: "calendar")
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(.white)
+          Spacer()
+          DatePicker("Concert date", selection: $draft.concertDate, displayedComponents: .date)
+            .datePickerStyle(.compact)
+            .labelsHidden()
+            .tint(.white)
+        }
       }
     }
+  }
+
+  private func processPhoto(_ item: PhotosPickerItem) async {
+    isProcessingPhoto = true
+    defer { isProcessingPhoto = false }
+    do {
+      guard let data = try await item.loadTransferable(type: Data.self) else { return }
+      concertPhotoData = try await AvatarImageProcessor.processConcertPhoto(data)
+    } catch { saveError = error.localizedDescription }
   }
 
   private var detailsPrompt: some View {
@@ -213,7 +262,7 @@ struct ConcertCreationView: View {
           .frame(width: 43, height: 43)
           .background(TunedInDesign.accent, in: Circle())
         VStack(alignment: .leading, spacing: 2) {
-          Text("Make it yours")
+          Text("More details")
             .font(.headline)
             .foregroundStyle(TunedInDesign.primaryText)
           Text(detailsSummary)
@@ -240,9 +289,9 @@ struct ConcertCreationView: View {
   private var detailsSummary: String {
     let additions = (draft.artists.count - 1) + draft.setlist.count
     if additions == 0, draft.city.isEmpty, draft.tour.isEmpty, !draft.hasStartTime {
-      return "Lineup, songs, time, and little details"
+      return "Lineup, setlist, time, and more"
     }
-    return "\(additions) detail\(additions == 1 ? "" : "s") held for this night"
+    return "\(additions) added detail\(additions == 1 ? "" : "s")"
   }
 
   private func captureValidationLabel(_ message: String) -> some View {
@@ -277,7 +326,10 @@ struct ConcertCreationView: View {
 
     Task {
       do {
-        let concert = try await concertRepository.createPrivateConcert(input)
+        var concert = try await concertRepository.createPrivateConcert(input)
+        if let concertPhotoData {
+          concert = try await concertRepository.setConcertPhoto(concertPhotoData, concertID: concert.id)
+        }
         savedPrimaryArtistName = input.artists.first(where: \.isPrimary)?.name ?? input.artists[0].name
         savedConcert = concert
         isSaving = false
@@ -292,6 +344,7 @@ struct ConcertCreationView: View {
 private struct ConcertSavedView: View {
   let concert: Concert
   let primaryArtistName: String
+  let concertRepository: any ConcertRepository
   let onDone: () -> Void
 
   var body: some View {
@@ -299,34 +352,44 @@ private struct ConcertSavedView: View {
       TunedInDesign.pageBackground
         .ignoresSafeArea()
 
-      VStack(alignment: .leading, spacing: 24) {
-        Spacer()
-
+      VStack(alignment: .leading, spacing: 14) {
         Text("tunedIn")
-          .font(.subheadline.weight(.black))
+          .font(.caption.weight(.black))
           .foregroundStyle(TunedInDesign.accent)
+          .textCase(.uppercase)
 
-        Text("Kept.")
-          .font(.system(size: 46, weight: .bold, design: .serif))
+        Text("Saved")
+          .font(.system(size: 44, weight: .bold, design: .serif))
           .foregroundStyle(TunedInDesign.primaryText)
 
-        Text("One more night, safely yours.")
-          .font(.title3)
-          .foregroundStyle(TunedInDesign.mutedText)
+        ZStack(alignment: .bottomLeading) {
+          ConcertPhotoView(concert: concert, artistName: primaryArtistName, repository: concertRepository)
+            .frame(maxWidth: .infinity)
+            .aspectRatio(CGSize(width: 3, height: 4), contentMode: .fit)
+            .overlay {
+              LinearGradient(
+                colors: [.clear, .black.opacity(0.1), .black.opacity(0.82)],
+                startPoint: .top,
+                endPoint: .bottom
+              )
+            }
 
-        TunedInTicketCard {
-          Label("PRIVATE ENTRY SAVED", systemImage: "checkmark.circle.fill")
-            .font(.caption.weight(.bold))
-            .foregroundStyle(.white.opacity(0.84))
-
-          Text(primaryArtistName)
-            .font(.title.weight(.bold))
-            .foregroundStyle(.white)
-
-          Text("\(concert.venueName)  •  \(formattedConcertDate)")
-            .font(.subheadline)
-            .foregroundStyle(.white.opacity(0.86))
+          VStack(alignment: .leading, spacing: 5) {
+            Label("Private concert", systemImage: "checkmark.circle.fill")
+              .font(.caption.weight(.bold))
+              .foregroundStyle(.white.opacity(0.86))
+            Text(primaryArtistName)
+              .font(.system(size: 32, weight: .bold, design: .serif))
+              .foregroundStyle(.white)
+              .lineLimit(2)
+            Text("\(concert.venueName) · \(formattedConcertDate)")
+              .font(.subheadline.weight(.semibold))
+              .foregroundStyle(.white.opacity(0.9))
+              .lineLimit(1)
+          }
+          .padding(18)
         }
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
 
         Spacer()
 
@@ -337,7 +400,9 @@ private struct ConcertSavedView: View {
           .padding(.vertical, 16)
           .background(TunedInDesign.accent, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
       }
-      .padding(24)
+      .padding(.horizontal, 20)
+      .padding(.top, 18)
+      .padding(.bottom, 8)
     }
   }
 

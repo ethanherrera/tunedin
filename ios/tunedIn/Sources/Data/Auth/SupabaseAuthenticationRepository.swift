@@ -3,6 +3,7 @@ import Supabase
 
 struct SupabaseAuthenticationRepository: AuthenticationRepository {
   let client: SupabaseClient
+  let authCallbackURL: URL
 
   var authenticationStateChanges: AsyncStream<AuthenticatedUser?> {
     AsyncStream { continuation in
@@ -26,22 +27,47 @@ struct SupabaseAuthenticationRepository: AuthenticationRepository {
   }
 
   func sendEmailOTP(to email: String) async throws {
-    try await client.auth.signInWithOTP(
-      email: email,
-      redirectTo: AppConfiguration.authCallbackURL
-    )
+    try await withAppFailure {
+      try await client.auth.signInWithOTP(
+        email: email,
+        redirectTo: authCallbackURL
+      )
+    }
+  }
+
+  func signInWithPassword(email: String, password: String) async throws {
+    try await withAppFailure {
+      _ = try await client.auth.signIn(email: email, password: password)
+    }
   }
 
   func verifyEmailOTP(email: String, code: String) async throws {
-    _ = try await client.auth.verifyOTP(email: email, token: code, type: .magiclink)
+    try await withAppFailure {
+      _ = try await client.auth.verifyOTP(email: email, token: code, type: .magiclink)
+    }
   }
 
   func signOut() async throws {
-    try await client.auth.signOut()
+    try await withAppFailure {
+      try await client.auth.signOut()
+    }
   }
 
-  func handleAuthCallback(_ url: URL) {
-    client.handle(url)
+  func handleAuthCallback(_ url: URL) async throws {
+    do {
+      let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+      let tokenHash = components?.queryItems?.first(where: { $0.name == "token_hash" })?.value
+      let type = components?.queryItems?.first(where: { $0.name == "type" })?.value
+
+      if let tokenHash, type == "magiclink" {
+        _ = try await client.auth.verifyOTP(tokenHash: tokenHash, type: .magiclink)
+        return
+      }
+
+      _ = try await client.auth.session(from: url)
+    } catch {
+      throw AppFailure(error)
+    }
   }
 
   private static func authenticatedUser(from session: Session) -> AuthenticatedUser {

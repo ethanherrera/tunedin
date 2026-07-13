@@ -4,10 +4,10 @@ import SwiftUI
 @MainActor
 struct TunedInApp: App {
   @State private var container = AppContainer.live()
-  @AppStorage(TunedInAppearance.storageKey) private var appearanceRawValue = TunedInAppearance.light.rawValue
+  @AppStorage(TunedInAppearance.storageKey) private var appearanceRawValue = TunedInAppearance.defaultAppearance.rawValue
 
   private var appearance: TunedInAppearance {
-    TunedInAppearance(rawValue: appearanceRawValue) ?? .system
+    TunedInAppearance(rawValue: appearanceRawValue) ?? TunedInAppearance.defaultAppearance
   }
 
   var body: some Scene {
@@ -17,6 +17,7 @@ struct TunedInApp: App {
         concertRepository: container.concertRepository,
         socialRepository: container.socialRepository
       )
+      .environment(\.profileRepository, container.profileRepository)
       .tint(TunedInDesign.accent)
       .preferredColorScheme(appearance.colorScheme)
       .onOpenURL { url in

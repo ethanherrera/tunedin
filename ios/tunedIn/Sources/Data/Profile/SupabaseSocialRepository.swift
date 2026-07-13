@@ -5,35 +5,43 @@ struct SupabaseSocialRepository: SocialRepository {
   let client: SupabaseClient
 
   func searchProfiles(usernamePrefix: String) async throws -> [SocialProfile] {
-    let response: PostgrestResponse<[SocialProfileRecord]> = try await client
-      .rpc("search_profiles", params: UsernamePrefixParameter(usernamePrefix: usernamePrefix))
-      .execute()
+    try await withAppFailure {
+      let response: PostgrestResponse<[SocialProfileRecord]> = try await client
+        .rpc("search_profiles", params: UsernamePrefixParameter(usernamePrefix: usernamePrefix))
+        .execute()
 
-    return response.value.map(SocialProfile.init(databaseRecord:))
+      return response.value.map(SocialProfile.init(databaseRecord:))
+    }
   }
 
   func profile(username: String) async throws -> SocialProfile? {
-    let response: PostgrestResponse<[SocialProfileRecord]> = try await client
-      .rpc("profile_by_username", params: UsernameParameter(username: username))
-      .execute()
+    try await withAppFailure {
+      let response: PostgrestResponse<[SocialProfileRecord]> = try await client
+        .rpc("profile_by_username", params: UsernameParameter(username: username))
+        .execute()
 
-    return response.value.first.map(SocialProfile.init(databaseRecord:))
+      return response.value.first.map(SocialProfile.init(databaseRecord:))
+    }
   }
 
   func friends(username: String) async throws -> [SocialProfile] {
-    let response: PostgrestResponse<[SocialProfileRecord]> = try await client
-      .rpc("list_profile_friends", params: UsernameParameter(username: username))
-      .execute()
+    try await withAppFailure {
+      let response: PostgrestResponse<[SocialProfileRecord]> = try await client
+        .rpc("list_profile_friends", params: UsernameParameter(username: username))
+        .execute()
 
-    return response.value.map(SocialProfile.init(databaseRecord:))
+      return response.value.map(SocialProfile.init(databaseRecord:))
+    }
   }
 
   func incomingFriendRequests() async throws -> [SocialProfile] {
-    let response: PostgrestResponse<[SocialProfileRecord]> = try await client
-      .rpc("list_incoming_friend_requests")
-      .execute()
+    try await withAppFailure {
+      let response: PostgrestResponse<[SocialProfileRecord]> = try await client
+        .rpc("list_incoming_friend_requests")
+        .execute()
 
-    return response.value.map(SocialProfile.init(databaseRecord:))
+      return response.value.map(SocialProfile.init(databaseRecord:))
+    }
   }
 
   func sendFriendRequest(to profileID: UUID) async throws {
@@ -79,10 +87,12 @@ struct SupabaseSocialRepository: SocialRepository {
     try await performRelationshipRPC("unblock_profile", params: ProfileIDParameter(profileID: profileID))
   }
 
-  private func performRelationshipRPC<Parameters: Encodable>(_ name: String, params: Parameters) async throws {
-    _ = try await client
-      .rpc(name, params: params)
-      .execute()
+  private func performRelationshipRPC(_ name: String, params: some Encodable) async throws {
+    try await withAppFailure {
+      _ = try await client
+        .rpc(name, params: params)
+        .execute()
+    }
   }
 }
 
@@ -91,12 +101,16 @@ private struct SocialProfileRecord: Decodable {
   let username: String
   let displayName: String
   let relationship: String
+  let avatarObjectPath: String?
+  let avatarVersion: Int64
 
   enum CodingKeys: String, CodingKey {
     case id
     case username
     case displayName = "display_name"
     case relationship
+    case avatarObjectPath = "avatar_object_path"
+    case avatarVersion = "avatar_version"
   }
 }
 
@@ -106,7 +120,9 @@ private extension SocialProfile {
       id: databaseRecord.id,
       username: databaseRecord.username,
       displayName: databaseRecord.displayName,
-      relationship: RelationshipState(rawValue: databaseRecord.relationship) ?? .none
+      relationship: RelationshipState(rawValue: databaseRecord.relationship) ?? .none,
+      avatarObjectPath: databaseRecord.avatarObjectPath,
+      avatarVersion: databaseRecord.avatarVersion
     )
   }
 }

@@ -30,13 +30,18 @@ struct FriendsActivityFeedView: View {
         .ignoresSafeArea()
 
       if model.isLoading, model.activities.isEmpty {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 14) {
           feedHeader
-          Spacer()
-          ProgressView("Finding the good noise…")
-            .foregroundStyle(TunedInDesign.mutedText)
-            .frame(maxWidth: .infinity)
-          Spacer()
+          ForEach(0 ..< 4, id: \.self) { _ in
+            HStack(alignment: .top, spacing: 11) {
+              TunedInSkeletonBlock(cornerRadius: 21).frame(width: 42, height: 42)
+              VStack(alignment: .leading, spacing: 9) {
+                TunedInSkeletonBlock(cornerRadius: 5).frame(height: 16)
+                TunedInSkeletonBlock(cornerRadius: 12).frame(height: 86)
+              }
+            }
+            .padding(15)
+          }
         }
         .padding(.horizontal, 20)
         .padding(.top, 18)
@@ -64,6 +69,9 @@ struct FriendsActivityFeedView: View {
           .padding(.top, 18)
           .padding(.bottom, 112)
         }
+        .refreshable {
+          await model.refreshVisibleSlice()
+        }
       }
     }
     .toolbar(.hidden, for: .navigationBar)
@@ -78,54 +86,54 @@ struct FriendsActivityFeedView: View {
   }
 
   private var feedHeader: some View {
-    HStack(alignment: .lastTextBaseline) {
-      VStack(alignment: .leading, spacing: 4) {
-        Text("tunedIn")
-          .font(.caption.weight(.black))
-          .foregroundStyle(TunedInDesign.accent)
-          .textCase(.uppercase)
-        Text("From your people")
-          .font(.system(size: 31, weight: .bold, design: .serif))
-          .foregroundStyle(TunedInDesign.primaryText)
-      }
-
-      Spacer()
-
-      Button {
-        Task { await model.refreshVisibleSlice() }
-      } label: {
-        Image(systemName: "arrow.clockwise")
-          .font(.subheadline.weight(.bold))
-          .foregroundStyle(TunedInDesign.primaryText)
-          .frame(width: 42, height: 42)
-          .background(TunedInDesign.raisedSurface, in: Circle())
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel("Refresh activity")
+    VStack(alignment: .leading, spacing: 4) {
+      Text("tunedIn")
+        .font(.caption.weight(.black))
+        .foregroundStyle(TunedInDesign.accent)
+        .textCase(.uppercase)
+      Text("Activity")
+        .font(.system(size: 31, weight: .bold, design: .serif))
+        .foregroundStyle(TunedInDesign.primaryText)
     }
     .padding(.bottom, 18)
   }
 
   private func activityStream(model: FriendsActivityFeedModel) -> some View {
     VStack(alignment: .leading, spacing: 12) {
-      Text(model.activities.count == 1 ? "One thing worth knowing" : "What’s landing lately")
+      Text(model.activities.count == 1 ? "One moment from your circle" : "From your circle")
         .font(.subheadline.weight(.semibold))
         .foregroundStyle(TunedInDesign.mutedText)
 
-      LazyVStack(spacing: 16) {
-        ForEach(Array(model.activities.enumerated()), id: \.element.id) { index, activity in
-          NavigationLink {
-            ConcertDetailView(
-              concertID: activity.concertID,
-              viewerID: viewerID,
-              viewerUsername: viewerUsername,
-              concertRepository: concertRepository,
-              socialRepository: socialRepository
-            )
-          } label: {
-            ActivityMomentCard(activity: activity, isFeatured: index == 0)
+      LazyVStack(alignment: .leading, spacing: 18) {
+        ForEach(activityGroups) { group in
+          VStack(alignment: .leading, spacing: 9) {
+            Text(group.title.uppercased())
+              .font(.caption2.weight(.black))
+              .tracking(0.8)
+              .foregroundStyle(TunedInDesign.mutedText)
+              .padding(.horizontal, 4)
+
+            ForEach(group.activities) { activity in
+              NavigationLink {
+                ConcertDetailView(
+                  concertID: activity.concertID,
+                  viewerID: viewerID,
+                  viewerUsername: viewerUsername,
+                  concertRepository: concertRepository,
+                  socialRepository: socialRepository
+                )
+              } label: {
+                ActivityMomentCard(
+                  activity: activity,
+                  repository: concertRepository,
+                  socialRepository: socialRepository
+                )
+              }
+              .buttonStyle(.plain)
+              .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+              .accessibilityLabel(activity.accessibilitySummary)
+            }
           }
-          .buttonStyle(.plain)
         }
       }
 
@@ -160,24 +168,41 @@ struct FriendsActivityFeedView: View {
     }
   }
 
+  private var activityGroups: [ActivityDayGroup] {
+    let calendar = Calendar.current
+    let grouped = Dictionary(grouping: model.activities) { activity in
+      calendar.startOfDay(for: activity.occurredAt)
+    }
+    return grouped.keys.sorted(by: >).map { day in
+      ActivityDayGroup(
+        day: day,
+        title: activityDayTitle(day, calendar: calendar),
+        activities: grouped[day, default: []]
+      )
+    }
+  }
+
+  private func activityDayTitle(_ day: Date, calendar: Calendar) -> String {
+    if calendar.isDateInToday(day) {
+      return "Today"
+    }
+    if calendar.isDateInYesterday(day) {
+      return "Yesterday"
+    }
+    return day.formatted(.dateTime.month(.wide).day())
+  }
+
   private var emptyState: some View {
-    VStack(alignment: .leading, spacing: 22) {
+    VStack(spacing: 16) {
       Spacer()
-      TunedInTicketCard {
-        Label("THE ROOM IS QUIET", systemImage: "waveform")
-          .font(.caption.weight(.bold))
-          .foregroundStyle(.white.opacity(0.82))
-        Text("No new nights\nfrom your circle.")
-          .font(.system(size: 29, weight: .bold, design: .serif))
-          .foregroundStyle(.white)
-        Text("When your friends share a moment, it will feel at home here.")
-          .font(.subheadline)
-          .foregroundStyle(.white.opacity(0.86))
+      ContentUnavailableView {
+        Label("No activity yet", systemImage: "person.2")
+      } description: {
+        Text("Friends’ concerts will appear here.")
       }
-      Text("Keep your own nights close. The orange plus is always there when something stays with you.")
+      Text("Use the plus button to log a concert.")
         .font(.subheadline)
         .foregroundStyle(TunedInDesign.mutedText)
-        .padding(.horizontal, 4)
       Spacer()
     }
   }
@@ -199,61 +224,292 @@ struct FriendsActivityFeedView: View {
 
 private struct ActivityMomentCard: View {
   let activity: FriendActivity
-  let isFeatured: Bool
+  let repository: any ConcertRepository
+  let socialRepository: any SocialRepository
 
   var body: some View {
-    ZStack(alignment: .bottomLeading) {
-      ConcertArtworkImage(artistName: activity.primaryArtistName)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .overlay {
-          LinearGradient(
-            colors: [.clear, .black.opacity(0.18), .black.opacity(0.82)],
-            startPoint: .top,
-            endPoint: .bottom
-          )
-        }
+    VStack(alignment: .leading, spacing: 13) {
+      HStack(alignment: .top, spacing: 11) {
+        FeedActorAvatar(activity: activity, socialRepository: socialRepository)
 
-      VStack(alignment: .leading, spacing: 10) {
-        HStack(spacing: 7) {
-          Text(activity.actorDisplayName)
-            .font(.subheadline.weight(.bold))
-          Text(activity.activityTitle)
-            .font(.subheadline)
-            .foregroundStyle(.white.opacity(0.82))
-          Spacer()
-          Text(ConcertDisplay.relativeDate(activity.occurredAt))
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.white.opacity(0.72))
-        }
+        (Text(activity.actorDisplayName).fontWeight(.bold)
+          + Text(" \(activity.feedActionTitle.lowercased())"))
+          .font(.body)
+          .foregroundStyle(TunedInDesign.primaryText)
+          .fixedSize(horizontal: false, vertical: true)
 
-        VStack(alignment: .leading, spacing: 3) {
-          Text(activity.primaryArtistName)
-            .font(.system(size: 35, weight: .bold, design: .serif))
-            .foregroundStyle(.white)
-            .lineLimit(2)
-          Text(activity.venueName)
-            .font(.headline)
-            .foregroundStyle(.white.opacity(0.92))
-        }
+        Spacer()
 
-        Label("Open the night", systemImage: "arrow.up.right")
-          .font(.caption.weight(.bold))
-          .foregroundStyle(.white)
-          .padding(.horizontal, 11)
-          .padding(.vertical, 8)
-          .background(.white.opacity(0.18), in: Capsule())
+        Text(ConcertDisplay.relativeDate(activity.occurredAt))
+          .font(.caption.weight(.semibold))
+          .foregroundStyle(TunedInDesign.mutedText)
       }
-      .padding(22)
+
+      eventDetail
     }
-    .frame(maxWidth: .infinity)
-    .frame(height: isFeatured ? 430 : 300)
-    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+    .padding(15)
+    .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     .overlay {
-      RoundedRectangle(cornerRadius: 28, style: .continuous)
-        .strokeBorder(.white.opacity(0.22))
+      RoundedRectangle(cornerRadius: 20, style: .continuous)
+        .strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
     }
-    .shadow(color: TunedInDesign.accent.opacity(0.18), radius: 24, y: 12)
+    .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
+    .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     .accessibilityElement(children: .combine)
+  }
+
+  @ViewBuilder
+  private var eventDetail: some View {
+    switch activity.eventKind {
+    case .albumPhotoAdded:
+      VStack(alignment: .leading, spacing: 9) {
+        eventBadge
+        if let photoID = activity.photoID, let objectPath = activity.photoObjectPath {
+          ActivityPhotoPreview(
+            activity: activity,
+            photoID: photoID,
+            objectPath: objectPath,
+            repository: repository
+          )
+          .frame(height: 176)
+          .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+        }
+        Text(activity.primaryArtistName)
+          .font(.headline)
+          .foregroundStyle(TunedInDesign.primaryText)
+      }
+
+    case .setlistUpdated:
+      setlistDetail
+
+    case .concertUpdated where activity.changedFields.contains("setlist"):
+      setlistDetail
+
+    case .concertUpdated, .visibilityChanged:
+      VStack(alignment: .leading, spacing: 9) {
+        eventBadge
+        Text(activity.primaryArtistName)
+          .font(.headline)
+          .foregroundStyle(TunedInDesign.primaryText)
+        if activity.changedFields.isEmpty {
+          Text("Concert details changed")
+            .font(.subheadline)
+            .foregroundStyle(TunedInDesign.mutedText)
+        } else {
+          Text(activity.changedFields.map(\.feedFieldTitle).joined(separator: " · "))
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(TunedInDesign.mutedText)
+        }
+      }
+
+    case .commentAdded, .commentUpdated, .commentDeleted:
+      HStack(spacing: 12) {
+        Image(systemName: "text.bubble.fill")
+          .font(.title2)
+          .foregroundStyle(TunedInDesign.accent)
+          .frame(width: 48, height: 48)
+          .background(TunedInDesign.accentTint.opacity(0.72), in: Circle())
+        VStack(alignment: .leading, spacing: 3) {
+          eventBadge
+          Text(activity.primaryArtistName)
+            .font(.headline)
+            .foregroundStyle(TunedInDesign.primaryText)
+        }
+      }
+
+    default:
+      HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 7) {
+          eventBadge
+          Text(activity.primaryArtistName)
+            .font(.system(size: 19, weight: .bold, design: .serif))
+            .foregroundStyle(TunedInDesign.primaryText)
+          Label(activity.venueName, systemImage: "mappin.and.ellipse")
+            .font(.caption)
+            .foregroundStyle(TunedInDesign.mutedText)
+          Text(ConcertDisplay.longDate(from: activity.concertDate))
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(TunedInDesign.mutedText)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        ConcertArtworkImage(artistName: activity.primaryArtistName)
+          .frame(width: 78, height: 78)
+          .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+      }
+    }
+  }
+
+  private var setlistDetail: some View {
+    VStack(alignment: .leading, spacing: 9) {
+      eventBadge
+      Text(activity.primaryArtistName)
+        .font(.headline)
+        .foregroundStyle(TunedInDesign.primaryText)
+      ForEach(Array(activity.setlistPreview.prefix(3).enumerated()), id: \.offset) { index, song in
+        HStack(spacing: 9) {
+          Text("\(index + 1)")
+            .font(.caption.weight(.black))
+            .foregroundStyle(TunedInDesign.accent)
+            .frame(width: 17, alignment: .leading)
+          Text(song)
+            .font(.subheadline)
+            .foregroundStyle(TunedInDesign.primaryText)
+            .lineLimit(1)
+        }
+      }
+      if activity.setlistCount > activity.setlistPreview.count {
+        Text("+ \(activity.setlistCount - activity.setlistPreview.count) more songs")
+          .font(.caption.weight(.semibold))
+          .foregroundStyle(TunedInDesign.mutedText)
+      }
+    }
+  }
+
+  private var eventBadge: some View {
+    Label(activity.eventLabel, systemImage: activity.eventIcon)
+      .font(.caption2.weight(.black))
+      .foregroundStyle(TunedInDesign.accent)
+  }
+}
+
+private struct ActivityPhotoPreview: View {
+  let activity: FriendActivity
+  let photoID: UUID
+  let objectPath: String
+  let repository: any ConcertRepository
+  @State private var url: URL?
+
+  var body: some View {
+    Group {
+      if let url {
+        AsyncImage(url: url) { image in
+          image.resizable().scaledToFill()
+        } placeholder: {
+          TunedInImagePlaceholder()
+        }
+      } else {
+        TunedInImagePlaceholder()
+      }
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .clipped()
+    .task(id: "\(activity.id)-\(activity.photoVersion)") {
+      url = try? await repository.albumPhotoURL(
+        photoID: photoID,
+        objectPath: objectPath,
+        version: activity.photoVersion
+      )
+    }
+  }
+}
+
+private struct FeedActorAvatar: View {
+  let activity: FriendActivity
+  let socialRepository: any SocialRepository
+
+  @State private var profile: SocialProfile?
+  @State private var didFail = false
+
+  var body: some View {
+    Group {
+      if let profile {
+        ProfileAvatarView(profile: profile, size: 42)
+      } else if didFail {
+        Text(String(activity.actorDisplayName.prefix(1)).uppercased())
+          .font(.subheadline.weight(.black))
+          .foregroundStyle(TunedInDesign.actionForeground)
+          .frame(width: 42, height: 42)
+          .background(TunedInDesign.accentTint, in: Circle())
+      } else {
+        TunedInSkeletonBlock(cornerRadius: 21)
+          .frame(width: 42, height: 42)
+      }
+    }
+    .task(id: activity.actorID) {
+      do {
+        profile = try await socialRepository.profile(username: activity.actorUsername)
+        didFail = profile == nil
+      } catch {
+        didFail = true
+      }
+    }
+  }
+}
+
+private struct ActivityDayGroup: Identifiable {
+  let day: Date
+  let title: String
+  let activities: [FriendActivity]
+  var id: Date {
+    day
+  }
+}
+
+private extension FriendActivity {
+  var feedActionTitle: String {
+    switch eventKind {
+    case .concertCreated: "Saved a new concert"
+    case .concertUpdated where changedFields.contains("setlist"): "Updated the setlist"
+    case .concertUpdated: "Updated concert details"
+    case .setlistUpdated: "Updated the setlist"
+    case .commentAdded: "Added a moment"
+    case .commentUpdated: "Edited a moment"
+    case .commentDeleted: "Removed a moment"
+    case .albumPhotoAdded: "Added a photo"
+    case .collaboratorTagged: "Added an editor"
+    case .collaboratorRemoved: "Removed an editor"
+    case .visibilityChanged: "Changed who can see a concert"
+    case .ownershipTransferred: "Transferred a concert"
+    }
+  }
+
+  var eventLabel: String {
+    switch eventKind {
+    case .concertCreated: "NEW CONCERT"
+    case .concertUpdated where changedFields.contains("setlist"): "SETLIST"
+    case .concertUpdated: "CONCERT UPDATE"
+    case .setlistUpdated: "SETLIST"
+    case .commentAdded, .commentUpdated, .commentDeleted: "MOMENT"
+    case .albumPhotoAdded: "PHOTO"
+    case .collaboratorTagged, .collaboratorRemoved: "PEOPLE"
+    case .visibilityChanged: "SHARING"
+    case .ownershipTransferred: "OWNERSHIP"
+    }
+  }
+
+  var eventIcon: String {
+    switch eventKind {
+    case .concertCreated: "music.note"
+    case .concertUpdated where changedFields.contains("setlist"): "list.number"
+    case .concertUpdated: "pencil"
+    case .setlistUpdated: "list.number"
+    case .commentAdded, .commentUpdated, .commentDeleted: "text.bubble"
+    case .albumPhotoAdded: "photo"
+    case .collaboratorTagged, .collaboratorRemoved: "person.2"
+    case .visibilityChanged: "eye"
+    case .ownershipTransferred: "person.crop.circle.badge.checkmark"
+    }
+  }
+
+  var accessibilitySummary: String {
+    "\(actorDisplayName) \(feedActionTitle.lowercased()) for \(primaryArtistName) at \(venueName)"
+  }
+}
+
+private extension String {
+  var feedFieldTitle: String {
+    switch self {
+    case "artists": "Lineup"
+    case "venue_name": "Venue"
+    case "concert_date": "Date"
+    case "city": "City"
+    case "tour": "Tour"
+    case "starts_at", "venue_time_zone": "Time"
+    case "setlist": "Setlist"
+    case "visibility": "Sharing"
+    default: replacingOccurrences(of: "_", with: " ").capitalized
+    }
   }
 }
 

@@ -9,9 +9,31 @@ struct Profile: Codable, Equatable, Sendable {
   let id: UUID
   let username: String?
   let displayName: String?
+  let avatarObjectPath: String?
+  let avatarVersion: Int64
   let onboardingCompletedAt: Date?
   let createdAt: Date
   let updatedAt: Date
+
+  init(
+    id: UUID,
+    username: String?,
+    displayName: String?,
+    avatarObjectPath: String? = nil,
+    avatarVersion: Int64 = 0,
+    onboardingCompletedAt: Date?,
+    createdAt: Date,
+    updatedAt: Date
+  ) {
+    self.id = id
+    self.username = username
+    self.displayName = displayName
+    self.avatarObjectPath = avatarObjectPath
+    self.avatarVersion = avatarVersion
+    self.onboardingCompletedAt = onboardingCompletedAt
+    self.createdAt = createdAt
+    self.updatedAt = updatedAt
+  }
 
   var hasCompletedOnboarding: Bool {
     onboardingCompletedAt != nil && username != nil && displayName != nil
@@ -21,6 +43,8 @@ struct Profile: Codable, Equatable, Sendable {
     case id
     case username
     case displayName = "display_name"
+    case avatarObjectPath = "avatar_object_path"
+    case avatarVersion = "avatar_version"
     case onboardingCompletedAt = "onboarding_completed_at"
     case createdAt = "created_at"
     case updatedAt = "updated_at"
@@ -46,6 +70,24 @@ struct SocialProfile: Identifiable, Codable, Equatable, Sendable {
   let username: String
   let displayName: String
   let relationship: RelationshipState
+  let avatarObjectPath: String?
+  let avatarVersion: Int64
+
+  init(
+    id: UUID,
+    username: String,
+    displayName: String,
+    relationship: RelationshipState,
+    avatarObjectPath: String? = nil,
+    avatarVersion: Int64 = 0
+  ) {
+    self.id = id
+    self.username = username
+    self.displayName = displayName
+    self.relationship = relationship
+    self.avatarObjectPath = avatarObjectPath
+    self.avatarVersion = avatarVersion
+  }
 }
 
 enum ProfileInput {

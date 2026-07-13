@@ -10,26 +10,40 @@ Operate the shared hosted `tunedin-dev` project used by local iOS Development bu
 - The database password in the macOS Keychain item `tunedin/supabase/dev/database`; never print or commit it.
 - A reviewed feature branch for configuration, migration, RLS, RPC, or Edge Function changes.
 
-## Commands
+## Database migrations
+
+Use the dedicated [Development Database Deployment](./development-database-deployment.md) runbook for hosted schema changes. Do not run `supabase db push` directly against `tunedin-dev`; use the manually dispatched workflow after the reviewed migration reaches `main`.
+
+The following commands are read-only preflight checks:
 
 ```sh
 cd ~/tunedin
-supabase link --project-ref dmrlpyxhqhunfndihvai \
-  --password "$(security find-generic-password -a "$USER" -s 'tunedin/supabase/dev/database' -w)"
-supabase config push --project-ref dmrlpyxhqhunfndihvai
-supabase db push
+make dev-status
+make dev-plan
 ```
 
 ## Expected result and verification
 
-- The CLI reports the linked `tunedin-dev` project and configuration update.
+- The CLI reports migration parity or the exact pending migration list for `tunedin-dev`.
 - `supabase projects list` lists `tunedin-dev` as `ACTIVE_HEALTHY` in `us-west-1`.
 - `make supabase-types` is run against the migrated disposable local schema and its generated Swift DTO change is committed after every public-schema change. Set `SUPABASE_PROJECT_REF` only when an explicit hosted-schema comparison is needed.
-- Before deploying a migration or RLS/RPC change, run `supabase test db` against the disposable local stack.
+- Before deploying a migration or RLS/RPC change, run `make backend-verify` against the disposable local stack. The deploy workflow repeats this check.
 
 ## Email delivery constraint
 
 Development temporarily uses Supabase’s default magic-link template because the free provider cannot accept a custom OTP template. Before authentication acceptance or external testing, configure custom SMTP, restore code-only six-digit OTP delivery, verify the sending domain, and exercise the full iOS code-entry flow. Do not ship the magic-link fallback to beta.
+
+### No-email device login
+
+For internal hosted-Development testing without consuming the built-in email quota, generate a real one-time Auth link from an authenticated Supabase CLI session:
+
+```sh
+make dev-login-link EMAIL=owner.device-test@example.com
+```
+
+The helper is hard-coded to `tunedin-dev`, obtains a temporary admin credential through the authenticated CLI, and copies the generated link directly to the macOS clipboard. It never prints or stores the credential or link. Paste the clipboard into Safari on the test iPhone; Supabase verifies the link, redirects to `com.ethanherrera.tunedin://auth-callback`, and opens the installed Development app with a normal hosted session. The email is an identity label and does not need to receive a message, but use an address under Ethan’s control when testing email delivery itself.
+
+Run this command only from a trusted Mac. A generated link is short-lived authentication material: never paste it into chat, logs, issues, or shell arguments. If generation fails, confirm `supabase projects list` succeeds for Ethan’s `tunedIn` organization, then retry once manually. Authentication activity is recorded in the hosted Supabase Auth logs; the helper has no database migration or hosted reset capability.
 
 ### Simulator magic-link smoke test
 

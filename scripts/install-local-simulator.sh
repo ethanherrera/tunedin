@@ -3,8 +3,18 @@ set -euo pipefail
 
 project="tunedIn.xcodeproj"
 scheme="tunedIn-Local"
-destination="platform=iOS Simulator,name=iPhone 13"
 bundle_identifier="com.ethanherrera.tunedin"
+
+device_identifier="$(xcrun simctl list devices available | awk -F '[()]' '
+  /^[[:space:]]*iPhone 13 \(/ { print $2; exit }
+')"
+
+if [[ -z "${device_identifier}" ]]; then
+  printf 'Could not find an available iPhone 13 Simulator runtime. Install one in Xcode, then rerun make simulator-local.\n' >&2
+  exit 1
+fi
+
+destination="platform=iOS Simulator,id=${device_identifier}"
 
 if [[ ! -f ios/Config/Local.xcconfig ]]; then
   printf 'Missing Local Xcode configuration. Run make configure-local-supabase first.\n' >&2
@@ -16,10 +26,8 @@ if grep -q 'REPLACE_WITH_LOCAL_PUBLISHABLE_KEY' ios/Config/Local.xcconfig; then
   exit 1
 fi
 
-if ! xcrun simctl bootstatus booted -b >/dev/null 2>&1; then
-  printf 'Boot an iPhone 13 Simulator in Xcode or Simulator, then rerun make simulator-local.\n' >&2
-  exit 1
-fi
+xcrun simctl boot "${device_identifier}" >/dev/null 2>&1 || true
+xcrun simctl bootstatus "${device_identifier}" -b >/dev/null
 
 settings="$(xcodebuild -project "${project}" -scheme "${scheme}" -destination "${destination}" -showBuildSettings)"
 target_build_dir="$(awk -F ' = ' '/^[[:space:]]*TARGET_BUILD_DIR = / { print $2; exit }' <<<"${settings}")"
@@ -31,7 +39,7 @@ if [[ -z "${target_build_dir}" || -z "${wrapper_name}" || ! -d "${app_path}" ]];
   exit 1
 fi
 
-xcrun simctl install booted "${app_path}"
-xcrun simctl launch --terminate-running-process booted "${bundle_identifier}" >/dev/null
+xcrun simctl install "${device_identifier}" "${app_path}"
+xcrun simctl launch --terminate-running-process "${device_identifier}" "${bundle_identifier}" >/dev/null
 
-printf 'Installed and launched tunedIn with the Local Supabase configuration.\n'
+printf 'Installed and launched tunedIn with the Local Supabase configuration on iPhone 13.\n'

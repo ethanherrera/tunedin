@@ -21,16 +21,23 @@ final class AppSession {
   private var profileLoadGeneration = 0
 
   let authEmailDeliveryMode: AuthEmailDeliveryMode
+  let allowsLocalSeededSignIn: Bool
   private(set) var phase: AppSessionPhase = .restoring
+  private(set) var authCallbackError: String?
+  var profileRepositoryForViews: any ProfileRepository {
+    profileRepository
+  }
 
   init(
     authenticationRepository: any AuthenticationRepository,
     profileRepository: any ProfileRepository,
-    authEmailDeliveryMode: AuthEmailDeliveryMode = .oneTimeCode
+    authEmailDeliveryMode: AuthEmailDeliveryMode = .oneTimeCode,
+    allowsLocalSeededSignIn: Bool = false
   ) {
     self.authenticationRepository = authenticationRepository
     self.profileRepository = profileRepository
     self.authEmailDeliveryMode = authEmailDeliveryMode
+    self.allowsLocalSeededSignIn = allowsLocalSeededSignIn
 
     authStateTask = Task { [weak self, authenticationRepository] in
       for await user in authenticationRepository.authenticationStateChanges {
@@ -42,6 +49,17 @@ final class AppSession {
 
   func sendEmailOTP(to email: String) async throws {
     try await authenticationRepository.sendEmailOTP(to: email)
+  }
+
+  func signIn(to localAccount: LocalSeededAccount) async throws {
+    guard allowsLocalSeededSignIn else {
+      throw AppSessionError.localSeededSignInUnavailable
+    }
+
+    try await authenticationRepository.signInWithPassword(
+      email: localAccount.email,
+      password: LocalSeededAccount.password
+    )
   }
 
   func verifyEmailOTP(email: String, code: String) async throws {
@@ -64,6 +82,23 @@ final class AppSession {
     phase = .signedIn(currentUser, profile)
   }
 
+  func setAvatar(jpegData: Data) async throws {
+    guard let currentUser else { throw AppSessionError.missingAuthenticatedUser }
+    let profile = try await profileRepository.setAvatar(jpegData: jpegData, for: currentUser.id)
+    phase = .signedIn(currentUser, profile)
+  }
+
+  func removeAvatar() async throws {
+    guard let currentUser else { throw AppSessionError.missingAuthenticatedUser }
+    do {
+      let profile = try await profileRepository.removeAvatar(for: currentUser.id)
+      phase = .signedIn(currentUser, profile)
+    } catch let error as AvatarRemovalError {
+      phase = .signedIn(currentUser, error.profile)
+      throw error
+    }
+  }
+
   func retryProfileLoad() {
     guard let currentUser else { return }
     loadProfile(for: currentUser)
@@ -81,7 +116,18 @@ final class AppSession {
   }
 
   func handleAuthCallback(_ url: URL) {
-    authenticationRepository.handleAuthCallback(url)
+    authCallbackError = nil
+    Task { [weak self, authenticationRepository] in
+      do {
+        try await authenticationRepository.handleAuthCallback(url)
+      } catch {
+        self?.authCallbackError = error.localizedDescription
+      }
+    }
+  }
+
+  func dismissAuthCallbackError() {
+    authCallbackError = nil
   }
 
   private func receiveAuthenticationChange(_ user: AuthenticatedUser?) {
@@ -132,11 +178,14 @@ final class AppSession {
 
 enum AppSessionError: LocalizedError {
   case missingAuthenticatedUser
+  case localSeededSignInUnavailable
 
   var errorDescription: String? {
     switch self {
     case .missingAuthenticatedUser:
       "Your sign-in session is no longer available. Please sign in again."
+    case .localSeededSignInUnavailable:
+      "Seeded account sign-in is available only for the disposable Local Supabase stack."
     }
   }
 }

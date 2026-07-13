@@ -48,14 +48,19 @@ struct ConcertCreationDetailsView: View {
         }
       }
       .toolbar {
-        ToolbarItem(placement: .topBarLeading) {
-          Button("Done") { dismiss() }
-        }
         ToolbarItem(placement: .principal) {
-          Text("Make it yours")
+          Text("Concert details")
             .font(.headline)
             .foregroundStyle(TunedInDesign.primaryText)
         }
+      }
+      .overlay(alignment: .bottom) {
+        TunedInSubscreenBackBar(title: "Concert details") {
+          dismiss()
+        }
+        .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+        .padding(.top, 8)
+        .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
     .tint(TunedInDesign.accent)
@@ -139,8 +144,8 @@ struct ConcertCreationDetailsView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 18) {
         pageHeading(
-          title: "Let the night breathe.",
-          subtitle: "These details are optional—keep only the ones you’ll be glad to remember."
+          title: "More details",
+          subtitle: "Optional."
         )
 
         TunedInFormCard {
@@ -181,15 +186,13 @@ struct ConcertCreationDetailsView: View {
   private var setlistPage: some View {
     VStack(alignment: .leading, spacing: 16) {
       pageHeading(
-        title: "The songs that stayed.",
-        subtitle: "Put them in the order you remember. Skip this if the feeling is enough."
+        title: "Setlist",
+        subtitle: "Add songs in the order you remember."
       )
 
       List {
         ForEach(draft.setlist) { item in
-          HStack(spacing: 11) {
-            Image(systemName: "line.3.horizontal")
-              .foregroundStyle(TunedInDesign.mutedText)
+          HStack {
             TextField("Song title", text: setlistBinding(for: item.id))
               .textInputAutocapitalization(.words)
           }
@@ -217,6 +220,7 @@ struct ConcertCreationDetailsView: View {
       .listStyle(.insetGrouped)
       .scrollContentBackground(.hidden)
       .background(TunedInDesign.pageBackground)
+      .environment(\.editMode, .constant(.active))
     }
   }
 

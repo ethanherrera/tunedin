@@ -6,6 +6,7 @@ final class AppContainer {
   let appSession: AppSession
   let concertRepository: any ConcertRepository
   let socialRepository: any SocialRepository
+  let profileRepository: any ProfileRepository
 
   private init(
     appSession: AppSession,
@@ -15,6 +16,7 @@ final class AppContainer {
     self.appSession = appSession
     self.concertRepository = concertRepository
     self.socialRepository = socialRepository
+    profileRepository = appSession.profileRepositoryForViews
   }
 
   init(configuration: AppConfiguration) {
@@ -28,19 +30,26 @@ final class AppContainer {
       options: .init(
         auth: .init(
           storage: authStorage,
-          redirectToURL: AppConfiguration.authCallbackURL,
-          storageKey: "com.ethanherrera.tunedin.auth.session"
-        )
+          redirectToURL: configuration.authCallbackURL,
+          storageKey: configuration.authSessionStorageKey
+        ),
+        global: .init(session: AppNetworkSession.makeSession())
       )
     )
 
+    let profileRepository = SupabaseProfileRepository(client: client)
     appSession = AppSession(
-      authenticationRepository: SupabaseAuthenticationRepository(client: client),
-      profileRepository: SupabaseProfileRepository(client: client),
-      authEmailDeliveryMode: configuration.authEmailDeliveryMode
+      authenticationRepository: SupabaseAuthenticationRepository(
+        client: client,
+        authCallbackURL: configuration.authCallbackURL
+      ),
+      profileRepository: profileRepository,
+      authEmailDeliveryMode: configuration.authEmailDeliveryMode,
+      allowsLocalSeededSignIn: configuration.usesLocalSimulatorAuthStorage
     )
     concertRepository = SupabaseConcertRepository(client: client)
     socialRepository = SupabaseSocialRepository(client: client)
+    self.profileRepository = profileRepository
   }
 
   static func live() -> AppContainer {

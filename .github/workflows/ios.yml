@@ -23,7 +23,7 @@ jobs:
           xcodebuild -showsdks
 
       - name: Install project tooling
-        run: brew install xcodegen swiftformat swiftlint
+        run: brew install actionlint xcodegen swiftformat swiftlint
 
       - name: Create non-secret CI configuration
         run: make configure
@@ -35,6 +35,9 @@ jobs:
 
       - name: Lint
         run: make lint
+
+      - name: Validate workflows
+        run: make workflow-lint
 
       - name: Build and test
         run: make test DESTINATION='platform=iOS Simulator,name=iPhone 17'

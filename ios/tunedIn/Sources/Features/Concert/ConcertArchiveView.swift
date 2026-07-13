@@ -23,10 +23,10 @@ struct ConcertArchiveView: View {
     VStack(alignment: .leading, spacing: 14) {
       HStack(alignment: .firstTextBaseline) {
         VStack(alignment: .leading, spacing: 3) {
-          Text("Archive")
+          Text(isOwner ? "Kept" : "Concerts")
             .font(.title2.weight(.bold))
             .foregroundStyle(TunedInDesign.primaryText)
-          Text(isOwner ? "Every show you kept." : "The shows they chose to share.")
+          Text(isOwner ? "Your saved concerts" : "Shared concerts")
             .font(.subheadline)
             .foregroundStyle(TunedInDesign.mutedText)
         }
@@ -34,21 +34,52 @@ struct ConcertArchiveView: View {
         Spacer()
 
         Menu {
-          Button("All saved shows") {
-            setVisibilityFilter(nil)
-          }
-          if isOwner {
-            Button("Private") {
-              setVisibilityFilter(.private)
+          Menu("Visibility") {
+            Button("All visibility") {
+              setVisibilityFilter(nil)
+            }
+            if isOwner {
+              Button("Private") {
+                setVisibilityFilter(.private)
+              }
+            }
+            Button("Collaborators") {
+              setVisibilityFilter(.collaborators)
+            }
+            Button("With friends") {
+              setVisibilityFilter(.friends)
             }
           }
-          Button("With friends") {
-            setVisibilityFilter(.friends)
+
+          Menu("Year") {
+            Button("All years") {
+              setYearFilter(nil)
+            }
+            ForEach(yearOptions, id: \.self) { year in
+              Button(String(year)) {
+                setYearFilter(year)
+              }
+            }
+          }
+
+          Section("Sort") {
+            ForEach(ConcertHistorySort.allCases, id: \.self) { sort in
+              Button {
+                setSort(sort)
+              } label: {
+                if query.sort == sort {
+                  Label(sort.displayTitle, systemImage: "checkmark")
+                } else {
+                  Text(sort.displayTitle)
+                }
+              }
+            }
           }
         } label: {
           HStack(spacing: 5) {
             Image(systemName: "line.3.horizontal.decrease.circle")
-            Text(filterLabel)
+            Text(archiveMenuLabel)
+              .lineLimit(1)
           }
           .font(.caption.weight(.bold))
           .foregroundStyle(TunedInDesign.primaryText)
@@ -62,14 +93,13 @@ struct ConcertArchiveView: View {
       TunedInGlassSearchField(text: $query.searchText, prompt: "Search artists, venues, cities")
 
       if isLoading, concerts.isEmpty {
-        HStack {
-          ProgressView()
-          Text("Finding the good nights…")
-            .font(.subheadline)
-            .foregroundStyle(TunedInDesign.mutedText)
+        VStack(spacing: 10) {
+          ForEach(0 ..< 3, id: \.self) { _ in
+            TunedInSkeletonBlock(cornerRadius: 20)
+              .frame(height: 142)
+          }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 28)
+        .accessibilityLabel("Loading concerts")
       } else if let errorMessage {
         ContentUnavailableView {
           Label("Couldn’t load this archive", systemImage: "exclamationmark.triangle")
@@ -96,9 +126,11 @@ struct ConcertArchiveView: View {
                 socialRepository: socialRepository
               )
             } label: {
-              ConcertArchiveRow(preview: preview)
+              ConcertArchiveRow(preview: preview, repository: concertRepository)
             }
             .buttonStyle(.plain)
+            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .accessibilityLabel("Open \(preview.primaryArtistName)")
           }
 
           if canLoadMore {
@@ -109,7 +141,7 @@ struct ConcertArchiveView: View {
                 if isLoadingMore {
                   ProgressView()
                 }
-                Text(isLoadingMore ? "Finding earlier nights…" : "Show earlier nights")
+                Text(isLoadingMore ? "Loading more concerts…" : "Show more concerts")
               }
               .font(.subheadline.weight(.bold))
               .foregroundStyle(TunedInDesign.primaryText)
@@ -135,17 +167,22 @@ struct ConcertArchiveView: View {
     }
   }
 
-  private var filterLabel: String {
-    switch query.visibility {
-    case nil:
-      "All"
-    case .private:
-      "Private"
-    case .collaborators:
-      "Collaborators"
-    case .friends:
-      "Friends"
+  private var archiveMenuLabel: String {
+    let selections = [
+      query.year.map(String.init),
+      query.visibility?.archiveTitle,
+      query.sort == .newest ? nil : query.sort.displayTitle
+    ].compactMap(\.self)
+
+    if selections.count == 1 {
+      return selections[0]
     }
+    return selections.isEmpty ? "All" : "\(selections.count) selected"
+  }
+
+  private var yearOptions: [Int] {
+    let currentYear = Calendar.current.component(.year, from: .now)
+    return Array((1950 ... currentYear + 1).reversed())
   }
 
   private var archiveEmptyState: some View {
@@ -153,13 +190,13 @@ struct ConcertArchiveView: View {
       Image(systemName: "music.quarternote.3")
         .font(.title2)
         .foregroundStyle(TunedInDesign.accent)
-      Text(query.searchText.isEmpty ? "Nothing saved here yet." : "No shows match that search.")
+      Text(query.searchText.isEmpty ? "No concerts yet." : "No concerts match that search.")
         .font(.headline)
         .foregroundStyle(TunedInDesign.primaryText)
       Text(
         query.searchText.isEmpty
-          ? "The best nights tend to start with a small note."
-          : "Try an artist, a room, or a city instead."
+          ? "Use the plus button to log one."
+          : "Try an artist, venue, or city."
       )
       .font(.subheadline)
       .foregroundStyle(TunedInDesign.mutedText)
@@ -171,24 +208,40 @@ struct ConcertArchiveView: View {
     Task { await reload() }
   }
 
+  private func setYearFilter(_ year: Int?) {
+    query.year = year
+    Task { await reload() }
+  }
+
+  private func setSort(_ sort: ConcertHistorySort) {
+    query.sort = sort
+    Task { await reload() }
+  }
+
   private func reload() async {
     guard !isLoading else { return }
     isLoading = true
     errorMessage = nil
 
-    do {
-      let loaded = try await concertRepository.profileConcertHistory(
-        profileID: profileID,
-        query: query,
-        cursor: nil
-      )
-      concerts = loaded
-      canLoadMore = loaded.count == 30
-    } catch {
-      concerts = []
-      canLoadMore = false
-      errorMessage = error.localizedDescription
-    }
+    var requestedQuery: ConcertHistoryQuery
+    repeat {
+      requestedQuery = query
+      do {
+        let loaded = try await concertRepository.profileConcertHistory(
+          profileID: profileID,
+          query: requestedQuery,
+          cursor: nil
+        )
+        guard requestedQuery == query else { continue }
+        concerts = loaded
+        canLoadMore = loaded.count == 30
+      } catch {
+        guard requestedQuery == query else { continue }
+        concerts = []
+        canLoadMore = false
+        errorMessage = error.localizedDescription
+      }
+    } while requestedQuery != query
 
     isLoading = false
   }
@@ -201,10 +254,7 @@ struct ConcertArchiveView: View {
       let loaded = try await concertRepository.profileConcertHistory(
         profileID: profileID,
         query: query,
-        cursor: ConcertHistoryCursor(
-          concertDate: lastConcert.concert.concertDate,
-          concertID: lastConcert.id
-        )
+        cursor: ConcertHistoryCursor(preview: lastConcert, sort: query.sort)
       )
       concerts.append(contentsOf: loaded)
       canLoadMore = loaded.count == 30
@@ -216,54 +266,59 @@ struct ConcertArchiveView: View {
   }
 }
 
+private extension ConcertVisibility {
+  var archiveTitle: String {
+    switch self {
+    case .private: "Private"
+    case .collaborators: "Collaborators"
+    case .friends: "Friends"
+    }
+  }
+}
+
 private struct ConcertArchiveRow: View {
   let preview: ConcertPreview
-
-  private var dateLabel: String {
-    let concertDate = preview.concert.concertDate
-    return "\(ConcertDisplay.month(from: concertDate)) \(ConcertDisplay.day(from: concertDate))"
-  }
+  let repository: any ConcertRepository
 
   var body: some View {
-    HStack(spacing: 14) {
-      ZStack(alignment: .bottomLeading) {
-        ConcertArtworkImage(artistName: preview.primaryArtistName)
-          .frame(width: 70, height: 76)
-
-        Text(dateLabel)
-          .font(.caption2.weight(.black))
-          .foregroundStyle(.white)
-          .padding(.horizontal, 7)
-          .padding(.vertical, 5)
-          .background(.black.opacity(0.45), in: Capsule())
-          .padding(6)
-      }
-      .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+    ZStack(alignment: .bottomLeading) {
+      ConcertPhotoView(concert: preview.concert, artistName: preview.primaryArtistName, repository: repository)
+        .frame(maxWidth: .infinity)
+        .frame(height: 136)
+        .overlay {
+          LinearGradient(
+            colors: [.clear, .black.opacity(0.14), .black.opacity(0.78)],
+            startPoint: .top,
+            endPoint: .bottom
+          )
+        }
 
       VStack(alignment: .leading, spacing: 4) {
+        Text(ConcertDisplay.longDate(from: preview.concert.concertDate).uppercased())
+          .font(.caption.weight(.bold))
+          .foregroundStyle(.white.opacity(0.8))
         Text(preview.primaryArtistName)
-          .font(.headline)
-          .foregroundStyle(TunedInDesign.primaryText)
+          .font(.system(size: 24, weight: .bold, design: .serif))
+          .foregroundStyle(.white)
           .lineLimit(1)
         Text([preview.concert.venueName, preview.concert.city].compactMap(\.self).joined(separator: " · "))
-          .font(.subheadline)
-          .foregroundStyle(TunedInDesign.mutedText)
+          .font(.subheadline.weight(.medium))
+          .foregroundStyle(.white.opacity(0.9))
           .lineLimit(1)
       }
-
-      Spacer(minLength: 0)
+      .padding(15)
 
       visibilityMark
-      Image(systemName: "chevron.right")
-        .font(.caption.weight(.bold))
-        .foregroundStyle(TunedInDesign.mutedText)
+        .padding(14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
     }
-    .padding(14)
-    .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     .overlay {
-      RoundedRectangle(cornerRadius: 16, style: .continuous)
-        .strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
+      RoundedRectangle(cornerRadius: 20, style: .continuous)
+        .strokeBorder(.white.opacity(0.18))
     }
+    .frame(maxWidth: .infinity)
+    .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     .accessibilityElement(children: .combine)
   }
 
@@ -286,7 +341,35 @@ private struct ConcertArchiveRow: View {
   }
 }
 
+enum ConcertDetailPage: CaseIterable, Hashable {
+  case concert
+  case people
+  case photos
+
+  var title: String {
+    switch self {
+    case .concert: "Concert"
+    case .people: "People"
+    case .photos: "Photos"
+    }
+  }
+
+  var icon: String {
+    switch self {
+    case .concert: "music.note"
+    case .people: "person.2.fill"
+    case .photos: "photo.on.rectangle.angled"
+    }
+  }
+}
+
+// swiftlint:disable:next type_body_length
 struct ConcertDetailView: View {
+  private enum ArtworkStyle: Equatable {
+    case full
+    case preview
+  }
+
   let concertID: UUID
   let viewerID: UUID
   let viewerUsername: String
@@ -294,11 +377,11 @@ struct ConcertDetailView: View {
   let socialRepository: any SocialRepository
 
   @Environment(\.dismiss) private var dismiss
+  @EnvironmentObject private var concertFloatingControls: ConcertFloatingControls
   @State private var detail: ConcertDetail?
   @State private var errorMessage: String?
   @State private var isShowingEditor = false
-  @State private var isShowingPeople = false
-  @State private var isShowingComments = false
+  @State private var selectedPage: ConcertDetailPage = .concert
   @State private var isShowingDeleteConfirmation = false
   @State private var isShowingFinalDeleteConfirmation = false
   @State private var isDeleting = false
@@ -309,126 +392,61 @@ struct ConcertDetailView: View {
         .ignoresSafeArea()
 
       if let detail {
-        ScrollView {
-          VStack(alignment: .leading, spacing: 22) {
-            concertHero(detail)
-            momentActions(for: detail)
-
-            if let tour = detail.concert.tour {
-              Label(tour, systemImage: "sparkles")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(TunedInDesign.accent)
-                .padding(.horizontal, 4)
-            }
-
-            if detail.artists.count > 1 {
-              detailSection(title: "Lineup") {
-                ForEach(detail.artists) { artist in
-                  HStack {
-                    Text(artist.isPrimary ? "Headliner" : "With")
-                      .font(.caption.weight(.bold))
-                      .foregroundStyle(artist.isPrimary ? TunedInDesign.accent : TunedInDesign.mutedText)
-                      .frame(width: 66, alignment: .leading)
-                    Text(artist.name)
-                      .font(.body.weight(.semibold))
-                      .foregroundStyle(TunedInDesign.primaryText)
-                  }
-                }
-              }
-            }
-
-            detailSection(title: "Setlist", subtitle: "The songs that stayed.") {
-              if detail.setlist.isEmpty {
-                Text("No setlist saved for this night yet.")
-                  .font(.subheadline)
-                  .foregroundStyle(TunedInDesign.mutedText)
-              } else {
-                ForEach(detail.setlist) { entry in
-                  HStack(alignment: .top, spacing: 12) {
-                    Text("\(entry.position)")
-                      .font(.caption.weight(.bold))
-                      .foregroundStyle(TunedInDesign.accent)
-                      .frame(width: 22, alignment: .leading)
-                    Text(entry.title)
-                      .foregroundStyle(TunedInDesign.primaryText)
-                  }
-                }
-              }
-            }
-
-            detailSection(title: "The room") {
-              Label(detail.concert.venueName, systemImage: "mappin.and.ellipse")
-                .font(.headline)
-                .foregroundStyle(TunedInDesign.primaryText)
-              if let city = detail.concert.city {
-                Text(city)
-                  .font(.subheadline)
-                  .foregroundStyle(TunedInDesign.mutedText)
-              }
-            }
-
-            DisclosureGroup("History") {
-              VStack(alignment: .leading, spacing: 14) {
-                ForEach(detail.history) { event in
-                  HStack(alignment: .top, spacing: 12) {
-                    Circle()
-                      .fill(TunedInDesign.accent)
-                      .frame(width: 8, height: 8)
-                      .padding(.top, 5)
-                    VStack(alignment: .leading, spacing: 3) {
-                      Text(event.title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(TunedInDesign.primaryText)
-                      Text(ConcertDisplay.longDateTime(event.occurredAt))
-                        .font(.caption)
-                        .foregroundStyle(TunedInDesign.mutedText)
-                    }
-                  }
-                }
-              }
-            }
-            .font(.headline)
-            .foregroundStyle(TunedInDesign.primaryText)
-            .padding(16)
-            .background(
-              TunedInDesign.raisedSurface.opacity(0.6),
-              in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-            )
-            .accessibilityLabel("Concert history")
-          }
-          .padding(.horizontal, 20)
-          .padding(.top, 18)
-          .padding(.bottom, 36)
+        switch selectedPage {
+        case .concert:
+          concertContent(detail)
+        case .people:
+          ConcertPeopleView(
+            detail: detail,
+            viewerRole: viewerRole,
+            viewerID: viewerID,
+            viewerUsername: viewerUsername,
+            socialRepository: socialRepository,
+            concertRepository: concertRepository,
+            onChanged: {
+              Task { await loadDetail() }
+            },
+            pageHeader: AnyView(concertHeader(detail, artworkStyle: .preview))
+          )
+        case .photos:
+          ConcertAlbumView(
+            detail: detail,
+            viewerID: viewerID,
+            viewerRole: viewerRole,
+            concertRepository: concertRepository,
+            pageHeader: AnyView(concertHeader(detail, artworkStyle: .preview))
+          )
         }
       } else if let errorMessage {
         ContentUnavailableView {
           Label("This concert isn’t available", systemImage: "lock.trianglebadge.exclamationmark")
         } description: {
           Text(errorMessage)
+        } actions: {
+          Button("Try again") {
+            Task { await loadDetail() }
+          }
         }
       } else {
-        ProgressView("Opening concert…")
-      }
-    }
-    .navigationBarTitleDisplayMode(.inline)
-    .toolbar {
-      if viewerRole.canTransferOrDelete {
-        ToolbarItem(placement: .topBarTrailing) {
-          Menu {
-            Button(role: .destructive) {
-              isShowingDeleteConfirmation = true
-            } label: {
-              Label("Delete concert", systemImage: "trash")
-            }
-          } label: {
-            Image(systemName: "ellipsis.circle")
-              .font(.title3)
-              .foregroundStyle(TunedInDesign.primaryText)
+        ScrollView {
+          VStack(alignment: .leading, spacing: 18) {
+            TunedInSkeletonBlock(cornerRadius: 24)
+              .aspectRatio(CGSize(width: 3, height: 4), contentMode: .fit)
+            TunedInSkeletonBlock(cornerRadius: 7).frame(width: 150, height: 20)
+            TunedInSkeletonBlock(cornerRadius: 18).frame(height: 140)
+            TunedInSkeletonBlock(cornerRadius: 18).frame(height: 110)
           }
-          .accessibilityLabel("Concert options")
+          .padding(.horizontal, 20)
+          .padding(.top, 14)
+          .padding(.bottom, 120)
         }
+        .accessibilityLabel("Opening concert")
       }
     }
+    .toolbar(.hidden, for: .navigationBar)
+    .onAppear { configureFloatingControls() }
+    .onChange(of: viewerRole) { _, _ in configureFloatingControls() }
+    .onDisappear { concertFloatingControls.reset() }
     .task(id: concertID) {
       await loadDetail()
     }
@@ -439,30 +457,21 @@ struct ConcertDetailView: View {
     }
     .sheet(isPresented: $isShowingEditor) {
       if let detail {
-        ConcertEditView(detail: detail, concertRepository: concertRepository) { _ in
-          Task { await loadDetail() }
-        }
-      }
-    }
-    .sheet(isPresented: $isShowingPeople) {
-      if let detail {
-        ConcertPeopleSheet(
+        ConcertEditView(
           detail: detail,
+          canMakePrivate: viewerRole == .owner,
           viewerRole: viewerRole,
           viewerUsername: viewerUsername,
           socialRepository: socialRepository,
-          concertRepository: concertRepository
-        ) {
-          Task { await loadDetail() }
-        }
+          concertRepository: concertRepository,
+          loadLatestDetail: {
+            try await concertRepository.fetchConcertDetail(id: concertID, viewerID: viewerID)
+          },
+          onSaved: { _ in
+            Task { await loadDetail() }
+          }
+        )
       }
-    }
-    .sheet(isPresented: $isShowingComments) {
-      ConcertCommentsSheet(
-        concertID: concertID,
-        viewerID: viewerID,
-        concertRepository: concertRepository
-      )
     }
     .confirmationDialog(
       "Delete this concert?",
@@ -473,7 +482,7 @@ struct ConcertDetailView: View {
         isShowingFinalDeleteConfirmation = true
       }
     } message: {
-      Text("Its setlist, notes, and history will disappear for everyone who can see it.")
+      Text(deleteImpactMessage)
     }
     .alert("Delete it permanently?", isPresented: $isShowingFinalDeleteConfirmation) {
       Button("Delete concert", role: .destructive) {
@@ -489,9 +498,9 @@ struct ConcertDetailView: View {
     let artistName = detail.artists.first(where: \.isPrimary)?.name ?? "A saved night"
 
     return ZStack(alignment: .bottomLeading) {
-      ConcertArtworkImage(artistName: artistName)
+      ConcertPhotoView(concert: detail.concert, artistName: artistName, repository: concertRepository)
         .frame(maxWidth: .infinity)
-        .frame(height: 410)
+        .aspectRatio(CGSize(width: 3, height: 4), contentMode: .fit)
         .overlay {
           LinearGradient(
             colors: [.clear, .black.opacity(0.14), .black.opacity(0.76)],
@@ -517,39 +526,124 @@ struct ConcertDetailView: View {
     .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
   }
 
-  private func momentActions(for detail: ConcertDetail) -> some View {
-    HStack(spacing: 10) {
-      if viewerRole.canEdit {
-        momentAction("Shape", icon: "slider.horizontal.3") {
-          isShowingEditor = true
-        }
-      }
+  private func concertPreview(_ detail: ConcertDetail) -> some View {
+    let artistName = detail.artists.first(where: \.isPrimary)?.name ?? "A saved night"
 
-      if viewerRole.canManagePeople {
-        momentAction(
-          detail.collaborators.isEmpty ? "People" : "People \(detail.collaborators.count)",
-          icon: "person.2.fill"
-        ) {
-          isShowingPeople = true
+    return ZStack(alignment: .bottomLeading) {
+      ConcertPhotoView(concert: detail.concert, artistName: artistName, repository: concertRepository)
+        .frame(maxWidth: .infinity)
+        .frame(height: 148)
+        .overlay {
+          LinearGradient(
+            colors: [.clear, .black.opacity(0.72)],
+            startPoint: .top,
+            endPoint: .bottom
+          )
         }
-      }
 
-      momentAction("Notes", icon: "text.bubble.fill") {
-        isShowingComments = true
+      VStack(alignment: .leading, spacing: 3) {
+        Text(ConcertDisplay.longDate(from: detail.concert.concertDate).uppercased())
+          .font(.caption2.weight(.bold))
+          .foregroundStyle(.white.opacity(0.84))
+        Text(artistName)
+          .font(.title2.weight(.bold))
+          .foregroundStyle(.white)
+          .lineLimit(1)
+        Text(detail.concert.venueName)
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(.white.opacity(0.92))
+          .lineLimit(1)
       }
+      .padding(16)
+    }
+    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+  }
+
+  private func concertContent(_ detail: ConcertDetail) -> some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 18) {
+        concertHeader(detail, artworkStyle: .full)
+
+        if let tour = detail.concert.tour {
+          Label(tour, systemImage: "sparkles")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(TunedInDesign.accent)
+            .padding(.horizontal, 4)
+        }
+
+        if detail.artists.count > 1 {
+          detailSection(title: "Lineup") {
+            ForEach(detail.artists) { artist in
+              HStack {
+                Text(artist.isPrimary ? "Headliner" : "With")
+                  .font(.caption.weight(.bold))
+                  .foregroundStyle(artist.isPrimary ? TunedInDesign.accent : TunedInDesign.mutedText)
+                  .frame(width: 66, alignment: .leading)
+                Text(artist.name)
+                  .font(.body.weight(.semibold))
+                  .foregroundStyle(TunedInDesign.primaryText)
+              }
+            }
+          }
+        }
+
+        detailSection(title: "Setlist") {
+          if detail.setlist.isEmpty {
+            Text("No setlist saved for this night yet.")
+              .font(.subheadline)
+              .foregroundStyle(TunedInDesign.mutedText)
+          } else {
+            ForEach(detail.setlist) { entry in
+              HStack(alignment: .top, spacing: 12) {
+                Text("\(entry.position)")
+                  .font(.caption.weight(.bold))
+                  .foregroundStyle(TunedInDesign.accent)
+                  .frame(width: 22, alignment: .leading)
+                Text(entry.title)
+                  .foregroundStyle(TunedInDesign.primaryText)
+              }
+            }
+          }
+        }
+
+        detailSection(title: "Venue") {
+          Label(detail.concert.venueName, systemImage: "mappin.and.ellipse")
+            .font(.headline)
+            .foregroundStyle(TunedInDesign.primaryText)
+          if let city = detail.concert.city {
+            Text(city)
+              .font(.subheadline)
+              .foregroundStyle(TunedInDesign.mutedText)
+          }
+        }
+
+        VStack(alignment: .leading, spacing: 12) {
+          Text("Moments")
+            .font(.title2.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
+          ConcertCommentsView(
+            concertID: concertID,
+            viewerID: viewerID,
+            concertRepository: concertRepository,
+            pageHeader: AnyView(EmptyView())
+          )
+        }
+        .padding(.top, 4)
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(.horizontal, 20)
+      .padding(.top, 10)
+      .padding(.bottom, 36)
     }
   }
 
-  private func momentAction(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
-    Button(action: action) {
-      Label(title, systemImage: icon)
-        .font(.subheadline.weight(.bold))
-        .foregroundStyle(TunedInDesign.primaryText)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 13)
-        .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+  @ViewBuilder
+  private func concertHeader(_ detail: ConcertDetail, artworkStyle: ArtworkStyle) -> some View {
+    if artworkStyle == .full {
+      concertHero(detail)
+    } else {
+      concertPreview(detail)
     }
-    .buttonStyle(.plain)
   }
 
   private var viewerRole: ConcertViewerRole {
@@ -561,6 +655,19 @@ struct ConcertDetailView: View {
       return .editor
     }
     return .viewer
+  }
+
+  private func configureFloatingControls() {
+    concertFloatingControls.configure(
+      selectedPage: selectedPage,
+      back: {
+        concertFloatingControls.reset()
+        dismiss()
+      },
+      selectPage: { page in selectedPage = page },
+      edit: viewerRole.canEdit ? { isShowingEditor = true } : nil,
+      delete: viewerRole.canTransferOrDelete ? { isShowingDeleteConfirmation = true } : nil
+    )
   }
 
   private func detailSection(
@@ -581,9 +688,11 @@ struct ConcertDetailView: View {
         content()
       }
     }
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 
   private func loadDetail() async {
+    errorMessage = nil
     do {
       detail = try await concertRepository.fetchConcertDetail(id: concertID, viewerID: viewerID)
     } catch {
@@ -602,6 +711,16 @@ struct ConcertDetailView: View {
       }
       isDeleting = false
     }
+  }
+
+  private var deleteImpactMessage: String {
+    guard let detail else {
+      return "Its setlist, comments, and history will disappear permanently."
+    }
+
+    let editorCount = detail.collaborators.filter { !$0.isOwner }.count
+    let people = editorCount == 1 ? "1 collaborator will" : "\(editorCount) collaborators will"
+    return "Its setlist, comments, and history will disappear permanently. \(people) lose access."
   }
 }
 
