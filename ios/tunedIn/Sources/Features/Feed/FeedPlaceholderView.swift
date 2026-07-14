@@ -52,6 +52,7 @@ struct FriendsActivityFeedView: View {
         ScrollView {
           VStack(alignment: .leading, spacing: 0) {
             feedHeader
+            remoteChangesButton
             failureState(message: errorMessage)
           }
           .frame(minHeight: 540, alignment: .top)
@@ -66,6 +67,7 @@ struct FriendsActivityFeedView: View {
         ScrollView {
           VStack(alignment: .leading, spacing: 0) {
             feedHeader
+            remoteChangesButton
             if let errorMessage = model.errorMessage {
               Label(errorMessage, systemImage: "exclamationmark.triangle")
                 .font(.caption)
@@ -105,8 +107,18 @@ struct FriendsActivityFeedView: View {
     }
     .task {
       for await _ in concertRepository.observeFriendsActivity() {
-        await model.refreshVisibleSlice()
+        model.markRemoteChangesAvailable()
       }
+    }
+  }
+
+  @ViewBuilder
+  private var remoteChangesButton: some View {
+    if model.hasRemoteChanges {
+      FeedRemoteChangesButton {
+        Task { await model.refreshVisibleSlice() }
+      }
+      .padding(.bottom, 14)
     }
   }
 
@@ -244,6 +256,33 @@ struct FriendsActivityFeedView: View {
       }
       Spacer()
     }
+  }
+}
+
+private struct FeedRemoteChangesButton: View {
+  let action: () -> Void
+
+  var body: some View {
+    Button(action: action) {
+      HStack(spacing: 9) {
+        Image(systemName: "arrow.down.circle.fill")
+        Text("New activity")
+          .fontWeight(.bold)
+        Spacer()
+        Text("Refresh")
+          .font(.caption.weight(.semibold))
+      }
+      .font(.subheadline)
+      .foregroundStyle(TunedInDesign.primaryText)
+      .padding(.horizontal, 14)
+      .padding(.vertical, 11)
+      .background(
+        TunedInDesign.accentTint,
+        in: RoundedRectangle(cornerRadius: 15, style: .continuous)
+      )
+    }
+    .buttonStyle(.plain)
+    .accessibilityHint("Loads the latest activity from the server")
   }
 }
 
@@ -553,6 +592,7 @@ private final class FriendsActivityFeedModel {
   var isLoading = false
   var isLoadingMore = false
   var canLoadMore = false
+  var hasRemoteChanges = false
   var errorMessage: String?
 
   init(repository: any ConcertRepository) {
@@ -574,13 +614,18 @@ private final class FriendsActivityFeedModel {
 
   func refreshVisibleSlice() async {
     do {
-      let refreshed = try await repository.friendsActivity(cursor: nil)
+      let refreshed = try await repository.friendsActivity(cursor: nil, policy: .refresh)
       activities = refreshed
       canLoadMore = refreshed.count == 30
+      hasRemoteChanges = false
       errorMessage = nil
     } catch {
       errorMessage = error.localizedDescription
     }
+  }
+
+  func markRemoteChangesAvailable() {
+    hasRemoteChanges = true
   }
 
   func loadMore() async {

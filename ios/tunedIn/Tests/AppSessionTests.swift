@@ -146,6 +146,35 @@ struct AppSessionTests {
     #expect(visibleProfile == profile)
   }
 
+  @MainActor
+  @Test
+  func repeatedAuthenticationEventForTheSameUserDoesNotReloadProfile() async throws {
+    let user = try AuthenticatedUser(
+      id: #require(UUID(uuidString: "77777777-7777-7777-7777-777777777777")),
+      email: "before-refresh@example.test"
+    )
+    let refreshedUser = AuthenticatedUser(
+      id: user.id,
+      email: "after-refresh@example.test"
+    )
+    let repository = CountingProfileRepository(
+      profile: makeProfile(id: user.id, completed: true)
+    )
+    let session = AppSession(
+      authenticationRepository: RepeatedAuthenticationRepository(users: [user, refreshedUser]),
+      profileRepository: repository
+    )
+
+    await settle(session)
+
+    guard case let .signedIn(visibleUser, _) = session.phase else {
+      Issue.record("Expected the repeated auth event to retain the signed-in session")
+      return
+    }
+    #expect(visibleUser == refreshedUser)
+    #expect(await repository.fetchCount == 1)
+  }
+
   private func makeProfile(id: UUID, completed: Bool) -> Profile {
     Profile(
       id: id,
@@ -205,6 +234,26 @@ private struct StaticAuthenticationRepository: AuthenticationRepository {
   var authenticationStateChanges: AsyncStream<AuthenticatedUser?> {
     AsyncStream { continuation in
       continuation.yield(user)
+      continuation.finish()
+    }
+  }
+
+  func sendEmailOTP(to _: String) async throws {}
+  func signInWithPassword(email _: String, password _: String) async throws {}
+  func verifyEmailOTP(email _: String, code _: String) async throws {}
+  func signIn(with _: NativeAuthCredentials) async throws {}
+  func signOut() async throws {}
+  func handleAuthCallback(_: URL) async throws {}
+}
+
+private struct RepeatedAuthenticationRepository: AuthenticationRepository {
+  let users: [AuthenticatedUser]
+
+  var authenticationStateChanges: AsyncStream<AuthenticatedUser?> {
+    AsyncStream { continuation in
+      for user in users {
+        continuation.yield(user)
+      }
       continuation.finish()
     }
   }
@@ -280,6 +329,40 @@ private actor RefreshProfileRepository: ProfileRepository {
 
   func removeAvatar(for _: UUID) async throws -> Profile {
     initial
+  }
+
+  func avatarURL(profileID _: UUID, objectPath _: String, version _: Int64) async throws -> URL {
+    URL(string: "https://example.test/avatar.jpg")!
+  }
+}
+
+private actor CountingProfileRepository: ProfileRepository {
+  let profile: Profile
+  private(set) var fetchCount = 0
+
+  init(profile: Profile) {
+    self.profile = profile
+  }
+
+  func fetchProfile(for _: UUID) async throws -> Profile {
+    fetchCount += 1
+    return profile
+  }
+
+  func isUsernameAvailable(_: String) async throws -> Bool {
+    true
+  }
+
+  func completeOnboarding(username _: String, displayName _: String) async throws -> Profile {
+    profile
+  }
+
+  func setAvatar(jpegData _: Data, for _: UUID) async throws -> Profile {
+    profile
+  }
+
+  func removeAvatar(for _: UUID) async throws -> Profile {
+    profile
   }
 
   func avatarURL(profileID _: UUID, objectPath _: String, version _: Int64) async throws -> URL {

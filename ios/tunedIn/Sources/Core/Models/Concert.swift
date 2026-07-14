@@ -331,7 +331,7 @@ struct FriendsActivityCursor: Equatable, Sendable {
   let eventID: UUID
 }
 
-struct FriendActivity: Equatable, Identifiable, Sendable {
+struct FriendActivity: Codable, Equatable, Identifiable, Sendable {
   let id: UUID
   let concertID: UUID
   let actorID: UUID
