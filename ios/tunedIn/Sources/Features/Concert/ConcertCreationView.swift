@@ -48,7 +48,7 @@ struct ConcertCreationView: View {
             .padding(.top, 14)
           }
           .navigationBarTitleDisplayMode(.inline)
-          .overlay(alignment: .bottom) {
+          .safeAreaInset(edge: .bottom, spacing: 0) {
             saveBar
           }
           .alert("Discard this concert?", isPresented: $isShowingDiscardConfirmation) {

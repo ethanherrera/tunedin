@@ -97,7 +97,9 @@ struct ConcertAlbumView: View {
           }
         }
       }
-      .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 132)
+      .padding(.horizontal, 20)
+      .padding(.top, 12)
+      .padding(.bottom, TunedInDesign.scrollContentBottomInset)
     }
     .refreshable {
       await onRefresh()
@@ -354,7 +356,7 @@ private struct ConcertAlbumViewer: View {
   @State private var isSavingCaption = false
 
   var body: some View {
-    ZStack(alignment: .bottom) {
+    ZStack {
       Color.black.ignoresSafeArea()
       TabView(selection: $selectedPhotoID) {
         ForEach(photos) { photo in
@@ -371,7 +373,8 @@ private struct ConcertAlbumViewer: View {
           }.tag(Optional(photo.id))
         }
       }.tabViewStyle(.page(indexDisplayMode: .automatic))
-
+    }
+    .safeAreaInset(edge: .bottom, spacing: 0) {
       TunedInGlassTraversalLayout {
         TunedInGlassIconButton(
           systemImage: "chevron.backward",
