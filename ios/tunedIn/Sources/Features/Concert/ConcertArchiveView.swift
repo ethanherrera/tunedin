@@ -496,7 +496,7 @@ struct ConcertDetailView: View {
           }
           .padding(.horizontal, 20)
           .padding(.top, 14)
-          .padding(.bottom, 120)
+          .padding(.bottom, TunedInDesign.scrollContentBottomInset)
         }
         .accessibilityLabel("Opening concert")
       }

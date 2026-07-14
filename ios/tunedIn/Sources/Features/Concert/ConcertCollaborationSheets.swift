@@ -68,7 +68,7 @@ struct ConcertPeopleView: View {
       }
       .padding(.horizontal, 20)
       .padding(.top, 12)
-      .padding(.bottom, 128)
+      .padding(.bottom, TunedInDesign.scrollContentBottomInset)
     }
     .refreshable {
       await onRefresh()
