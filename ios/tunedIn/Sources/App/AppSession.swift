@@ -200,6 +200,16 @@ final class AppSession {
     loadProfile(for: currentUser)
   }
 
+  func refreshProfile() async throws {
+    guard let user = currentUser else {
+      throw AppSessionError.missingAuthenticatedUser
+    }
+
+    let profile = try await profileRepository.fetchProfile(for: user.id)
+    guard currentUser == user else { return }
+    phase = profile.hasCompletedOnboarding ? .signedIn(user, profile) : .needsOnboarding(user)
+  }
+
   func signOut() async {
     do {
       try await authenticationRepository.signOut()

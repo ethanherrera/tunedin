@@ -16,6 +16,7 @@ struct PersonProfileView: View {
   @State private var isPerformingAction = false
   @State private var errorMessage: String?
   @State private var isShowingRemoveConfirmation = false
+  @State private var archiveModel: ConcertArchiveModel
 
   init(
     profile: SocialProfile,
@@ -31,6 +32,9 @@ struct PersonProfileView: View {
     self.concertRepository = concertRepository
     self.onDismiss = onDismiss
     _profile = State(initialValue: profile)
+    _archiveModel = State(
+      initialValue: ConcertArchiveModel(profileID: profile.id, concertRepository: concertRepository)
+    )
   }
 
   var body: some View {
@@ -71,6 +75,7 @@ struct PersonProfileView: View {
               isOwner: isCurrentUser,
               concertRepository: concertRepository,
               socialRepository: socialRepository,
+              model: archiveModel,
               refreshToken: 0
             )
           } else {
@@ -80,6 +85,9 @@ struct PersonProfileView: View {
         .padding(.horizontal, 20)
         .padding(.top, 20)
         .padding(.bottom, 32)
+      }
+      .refreshable {
+        await refreshServerContent()
       }
     }
     .navigationTitle("Profile")
@@ -361,6 +369,22 @@ struct PersonProfileView: View {
       friendCount = try await socialRepository.friends(username: profile.username).count
     } catch {
       errorMessage = error.localizedDescription
+    }
+  }
+
+  private func refreshServerContent() async {
+    do {
+      if let refreshedProfile = try await socialRepository.profile(username: profile.username) {
+        profile = refreshedProfile
+      }
+      errorMessage = nil
+    } catch {
+      errorMessage = error.localizedDescription
+    }
+
+    await loadFriendCount()
+    if isCurrentUser || profile.relationship.canViewFriendContent {
+      await archiveModel.reload()
     }
   }
 }
