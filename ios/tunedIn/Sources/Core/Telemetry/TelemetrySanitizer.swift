@@ -12,7 +12,15 @@ enum TelemetrySanitizer {
 
   private static let eventProperties: [TelemetryEvent: Set<TelemetryProperty>] = [
     .appBecameUsable: [.durationMilliseconds, .destination],
-    .authenticationCompleted: [.method, .durationMilliseconds, .firstSession, .outcome],
+    .authenticationCompleted: [
+      .method,
+      .durationMilliseconds,
+      .firstSession,
+      .outcome,
+      .failureCategory,
+      .retryable,
+      .statusClass
+    ],
     .profileSetupCompleted: [.durationMilliseconds],
     .friendRequestSent: [.durationMilliseconds],
     .friendRequestAccepted: [.durationMilliseconds],
@@ -44,6 +52,7 @@ enum TelemetrySanitizer {
 
   private static let logProperties: Set<TelemetryProperty> = commonProperties.union([
     .operation,
+    .method,
     .failureCategory,
     .retryable,
     .statusClass

@@ -60,9 +60,20 @@ assert_value GIDServerClientID "$GOOGLE_SERVER_CLIENT_ID"
 PLIST_PATH="$info_plist" python3 <<'PY'
 import os
 import plistlib
+import subprocess
 
 with open(os.environ["PLIST_PATH"], "rb") as source:
     info = plistlib.load(source)
+
+app_path = os.path.dirname(os.environ["PLIST_PATH"])
+result = subprocess.run(
+    ["codesign", "-d", "--entitlements", ":-", app_path],
+    check=True,
+    capture_output=True,
+)
+entitlements = plistlib.loads(result.stdout)
+if entitlements.get("com.apple.developer.applesignin") != ["Default"]:
+    raise SystemExit("Archived app is missing the Sign in with Apple entitlement.")
 
 schemes = {
     scheme

@@ -39,7 +39,15 @@
     ],
     "event_properties": {
       "app_became_usable": ["duration_ms", "destination"],
-      "authentication_completed": ["method", "duration_ms", "first_session", "outcome"],
+      "authentication_completed": [
+        "method",
+        "duration_ms",
+        "first_session",
+        "outcome",
+        "failure_category",
+        "retryable",
+        "status_class"
+      ],
       "profile_setup_completed": ["duration_ms"],
       "friend_request_sent": ["duration_ms"],
       "friend_request_accepted": ["duration_ms"],
@@ -73,7 +81,8 @@
       "concert_load_failed",
       "album_load_failed",
       "mutation_failed",
-      "feedback_submission_failed"
+      "feedback_submission_failed",
+      "native_authentication_failed"
     ],
     "operations": [
       "authenticate",

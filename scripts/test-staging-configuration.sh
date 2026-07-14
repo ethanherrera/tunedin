@@ -34,16 +34,22 @@ if grep -Fq '3(TUNEDIN_URL_SLASH)' "$generated_config"; then
   exit 1
 fi
 
-info_plist="$temporary_directory/Info.plist"
+app_path="$temporary_directory/tunedIn.app"
+mkdir -p "$app_path"
+info_plist="$app_path/Info.plist"
 cat >"$info_plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <key>CFBundleExecutable</key>
+  <string>tunedIn</string>
   <key>CFBundleDisplayName</key>
   <string>tunedIn Staging</string>
   <key>CFBundleIdentifier</key>
   <string>com.ethanherrera.tunedin.staging</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
   <key>TUNEDIN_APP_ENVIRONMENT</key>
   <string>Staging</string>
   <key>TUNEDIN_AUTH_EXPERIENCE</key>
@@ -83,8 +89,27 @@ cat >"$info_plist" <<PLIST
 </plist>
 PLIST
 
+cp /usr/bin/true "$app_path/tunedIn"
+codesign \
+  --force \
+  --sign - \
+  --entitlements ios/tunedIn/Resources/tunedIn-Staging.entitlements \
+  --generate-entitlement-der \
+  "$app_path"
 ./scripts/verify-staging-archive-configuration.sh "$info_plist" >/dev/null
 
+codesign --force --sign - "$app_path"
+if ./scripts/verify-staging-archive-configuration.sh "$info_plist" >/dev/null 2>&1; then
+  printf 'Archive verification accepted an app without Sign in with Apple.\n' >&2
+  exit 1
+fi
+
+codesign \
+  --force \
+  --sign - \
+  --entitlements ios/tunedIn/Resources/tunedIn-Staging.entitlements \
+  --generate-entitlement-der \
+  "$app_path"
 plutil -replace TUNEDIN_SUPABASE_URL -string 'https:/3(TUNEDIN_URL_SLASH)abcdefghijklmnopqrst.supabase.co' "$info_plist"
 if ./scripts/verify-staging-archive-configuration.sh "$info_plist" >/dev/null 2>&1; then
   printf 'Archive verification accepted the malformed Staging Supabase URL.\n' >&2

@@ -20,6 +20,7 @@ Never commit these keys or place them in ordinary repository variables. Never gr
 ## Contract and permitted data
 
 - Explicit allow-listed journey outcomes, screen-load outcomes, operation outcomes, bounded durations, fixed error categories, release/build/Git SHA, broad OS major, broad device class, and opaque authenticated UUID identity.
+- Native Apple/Google failures emit only the provider, fixed failure category, retryability, and a bounded SDK/status class; identity tokens, provider payloads, email, and Apple/Google profile data are never recorded.
 - Automatic crash capture is enabled for Staging, with sanitized stack context and no exception breadcrumbs.
 - User-created content, feedback text, names, usernames, email addresses, filenames, photo metadata, contact details, raw URLs, query strings, and request/response bodies are prohibited.
 - Autocapture, lifecycle capture, automatic screen/tap/scroll capture, session replay, surveys, heatmaps, web vitals, console capture, and feature flags are disabled.

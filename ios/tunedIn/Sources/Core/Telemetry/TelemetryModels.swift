@@ -76,6 +76,7 @@ enum TelemetryLogMessage: String, CaseIterable, Sendable {
   case albumLoadFailed = "album_load_failed"
   case mutationFailed = "mutation_failed"
   case feedbackSubmissionFailed = "feedback_submission_failed"
+  case nativeAuthenticationFailed = "native_authentication_failed"
 }
 
 enum TelemetryOperation: String, CaseIterable, Sendable {

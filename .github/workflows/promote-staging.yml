@@ -187,6 +187,14 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             archive
+          archived_app='build/tunedIn-Staging.xcarchive/Products/Applications/tunedIn.app'
+          codesign \
+            --force \
+            --deep \
+            --sign - \
+            --entitlements ios/tunedIn/Resources/tunedIn-Staging.entitlements \
+            --generate-entitlement-der \
+            "$archived_app"
           marketing_version="$(/usr/libexec/PlistBuddy \
             -c 'Print :ApplicationProperties:CFBundleShortVersionString' \
             build/tunedIn-Staging.xcarchive/Info.plist)"
