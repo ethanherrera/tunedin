@@ -3,13 +3,13 @@ import Foundation
 import SwiftData
 
 actor AppDataCache {
-  private let environment: AppEnvironment
-  private let store: SwiftDataSnapshotStore
-  private let clock: any AppCacheClock
-  private var viewerID: UUID?
+  let environment: AppEnvironment
+  let store: SwiftDataSnapshotStore
+  let clock: any AppCacheClock
+  var viewerID: UUID?
   private var generation = 0
-  private var memory: [String: AppCacheMemorySnapshot] = [:]
-  private var resourceNamesByStorageKey: [String: String] = [:]
+  var memory: [String: AppCacheMemorySnapshot] = [:]
+  var resourceNamesByStorageKey: [String: String] = [:]
   private var revisions: [String: Int] = [:]
   private var inFlight: [String: AppCacheInFlightRequest] = [:]
 
@@ -353,14 +353,14 @@ extension AppDataCache {
     max(0, clock.now.timeIntervalSince(fetchedAt)) <= freshness.maximumStale
   }
 
-  private func dropSnapshot(for storageKey: String) async {
+  func dropSnapshot(for storageKey: String) async {
     advanceRevision(for: storageKey)
     memory[storageKey] = nil
     resourceNamesByStorageKey[storageKey] = nil
     try? await store.remove(storageKey: storageKey)
   }
 
-  private func advanceRevision(for storageKey: String) {
+  func advanceRevision(for storageKey: String) {
     revisions[storageKey, default: 0] += 1
     inFlight[storageKey]?.task.cancel()
     inFlight[storageKey] = nil
@@ -374,7 +374,7 @@ extension AppDataCache {
     inFlight[storageKey] = nil
   }
 
-  private func storageKey(resource: AppCacheResource, viewerID: UUID) -> String {
+  func storageKey(resource: AppCacheResource, viewerID: UUID) -> String {
     let components = [
       environment.rawValue,
       viewerID.uuidString.lowercased(),
@@ -386,11 +386,11 @@ extension AppDataCache {
     return digest.map { String(format: "%02x", $0) }.joined()
   }
 
-  private nonisolated static func encode(_ value: some Encodable) throws -> Data {
+  nonisolated static func encode(_ value: some Encodable) throws -> Data {
     try JSONEncoder().encode(value)
   }
 
-  private nonisolated static func decode<Value: Decodable>(
+  nonisolated static func decode<Value: Decodable>(
     _ type: Value.Type,
     from payload: Data
   ) throws -> Value {

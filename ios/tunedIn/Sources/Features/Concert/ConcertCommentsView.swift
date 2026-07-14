@@ -32,7 +32,7 @@ struct ConcertCommentsView: View {
       }
       composer
     }
-    .task { await model.loadComments() }
+    .task { await model.loadComments(policy: .automatic) }
     .confirmationDialog(
       "Delete this comment?",
       isPresented: isShowingDeleteConfirmation,
@@ -268,7 +268,10 @@ struct ConcertCommentsView: View {
   private func delete(_ comment: ConcertComment) {
     Task {
       do {
-        try await concertRepository.deleteComment(commentID: comment.id)
+        try await concertRepository.deleteComment(
+          commentID: comment.id,
+          concertID: comment.concertID
+        )
         guard let index = model.comments.firstIndex(where: { $0.id == comment.id }) else { return }
         model.comments[index] = ConcertComment(
           id: comment.id,
@@ -306,13 +309,22 @@ final class ConcertCommentsModel {
     self.concertRepository = concertRepository
   }
 
-  func loadComments() async {
+  func loadComments(policy: CacheReadPolicy = .automatic) async {
     loadErrorMessage = nil
     do {
-      let loaded = try await concertRepository.comments(concertID: concertID, cursor: nil)
+      let loaded = try await concertRepository.comments(
+        concertID: concertID,
+        cursor: nil,
+        policy: policy
+      )
       comments = loaded
       canLoadOlder = loaded.count == 30
     } catch {
+      let failure = AppFailure(error)
+      if failure == .permissionDenied || failure == .unavailable {
+        comments = []
+        canLoadOlder = false
+      }
       loadErrorMessage = error.localizedDescription
     }
     isLoading = false
@@ -320,7 +332,7 @@ final class ConcertCommentsModel {
 
   func retryLoadComments() async {
     isLoading = true
-    await loadComments()
+    await loadComments(policy: .refresh)
   }
 
   func loadOlderComments() async {
@@ -330,9 +342,11 @@ final class ConcertCommentsModel {
     do {
       let loaded = try await concertRepository.comments(
         concertID: concertID,
-        cursor: ConcertCommentCursor(createdAt: oldestComment.createdAt, commentID: oldestComment.id)
+        cursor: ConcertCommentCursor(createdAt: oldestComment.createdAt, commentID: oldestComment.id),
+        policy: .networkOnly
       )
-      comments.append(contentsOf: loaded)
+      let existingIDs = Set(comments.map(\.id))
+      comments.append(contentsOf: loaded.filter { !existingIDs.contains($0.id) })
       canLoadOlder = loaded.count == 30
       loadErrorMessage = nil
     } catch {

@@ -1,6 +1,6 @@
 import Foundation
 
-struct Concert: Equatable, Identifiable, Sendable {
+struct Concert: Codable, Equatable, Identifiable, Sendable {
   let id: UUID
   let ownerID: UUID
   let venueName: String
@@ -112,7 +112,7 @@ enum ConcertHistorySort: String, CaseIterable, Equatable, Sendable {
   }
 }
 
-struct ConcertPreview: Equatable, Identifiable, Sendable {
+struct ConcertPreview: Codable, Equatable, Identifiable, Sendable {
   let concert: Concert
   let primaryArtistName: String
 
@@ -121,20 +121,20 @@ struct ConcertPreview: Equatable, Identifiable, Sendable {
   }
 }
 
-struct ConcertArtist: Equatable, Identifiable, Sendable {
+struct ConcertArtist: Codable, Equatable, Identifiable, Sendable {
   let id: UUID
   let name: String
   let lineupPosition: Int
   let isPrimary: Bool
 }
 
-struct SetlistEntry: Equatable, Identifiable, Sendable {
+struct SetlistEntry: Codable, Equatable, Identifiable, Sendable {
   let id: UUID
   let position: Int
   let title: String
 }
 
-struct ConcertTimelineEvent: Equatable, Identifiable, Sendable {
+struct ConcertTimelineEvent: Codable, Equatable, Identifiable, Sendable {
   let id: UUID
   let actorID: UUID
   let occurredAt: Date
@@ -156,7 +156,7 @@ struct ConcertTimelineEvent: Equatable, Identifiable, Sendable {
   }
 }
 
-struct ConcertDetail: Equatable, Sendable {
+struct ConcertDetail: Codable, Equatable, Sendable {
   let concert: Concert
   let artists: [ConcertArtist]
   let setlist: [SetlistEntry]
@@ -219,7 +219,7 @@ enum ConcertEventKind: String, Codable, CaseIterable, Equatable, Sendable {
   }
 }
 
-struct ConcertCollaborator: Equatable, Identifiable, Sendable {
+struct ConcertCollaborator: Codable, Equatable, Identifiable, Sendable {
   let id: UUID
   let username: String
   let displayName: String
@@ -245,7 +245,7 @@ enum ConcertViewerRole: Equatable, Sendable {
   }
 }
 
-struct ConcertComment: Equatable, Identifiable, Sendable {
+struct ConcertComment: Codable, Equatable, Identifiable, Sendable {
   let id: UUID
   let concertID: UUID
   let authorID: UUID
@@ -266,7 +266,7 @@ struct ConcertCommentCursor: Equatable, Sendable {
   let commentID: UUID
 }
 
-struct ConcertAlbumPolicy: Equatable, Sendable, Decodable {
+struct ConcertAlbumPolicy: Codable, Equatable, Sendable {
   let policyVersion: Int
   let concertPhotoLimit: Int
   let contributorPhotoLimit: Int
@@ -288,7 +288,7 @@ struct ConcertAlbumPolicy: Equatable, Sendable, Decodable {
   }
 }
 
-struct ConcertAlbumPhoto: Equatable, Identifiable, Sendable {
+struct ConcertAlbumPhoto: Codable, Equatable, Identifiable, Sendable {
   let id: UUID
   let concertID: UUID
   let uploaderID: UUID

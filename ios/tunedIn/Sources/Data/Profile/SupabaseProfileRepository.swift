@@ -135,22 +135,6 @@ actor AvatarURLCache {
   }
 }
 
-actor AlbumPolicyCache {
-  private var entry: (policy: ConcertAlbumPolicy, expiresAt: Date)?
-
-  func value(now: Date = .now) -> ConcertAlbumPolicy? {
-    guard let entry, entry.expiresAt > now else {
-      entry = nil
-      return nil
-    }
-    return entry.policy
-  }
-
-  func insert(_ policy: ConcertAlbumPolicy, now: Date = .now) {
-    entry = (policy, now.addingTimeInterval(55 * 60))
-  }
-}
-
 private struct UsernameParameter: Encodable {
   let username: String
 

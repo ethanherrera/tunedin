@@ -400,7 +400,7 @@ struct PersonProfileView: View {
   private func refreshServerContent() async {
     await loadSocialContent(policy: .refresh)
     if isCurrentUser || profile.relationship.canViewFriendContent {
-      await archiveModel.reload()
+      await archiveModel.reload(policy: .refresh)
     }
   }
 }
