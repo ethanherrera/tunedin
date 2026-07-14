@@ -74,6 +74,11 @@ assert len(base64.urlsafe_b64decode(signature + "=" * (-len(signature) % 4))) ==
 PY
 
 if [[ "$url" == *"/v1/bundleIds?"* ]]; then
+  if [[ "${FAKE_STATUS:-200}" != "200" ]]; then
+    cp "$FAKE_ERROR_STATE" "$output_path"
+    printf '%s' "$FAKE_STATUS"
+    exit 0
+  fi
   cp "$FAKE_BUNDLE_STATE" "$output_path"
 elif [[ "$url" == *"/bundleIdCapabilities?"* ]]; then
   cp "$FAKE_CAPABILITY_STATE" "$output_path"
@@ -136,6 +141,10 @@ printf '{"data":[]}' >"$temporary_directory/capabilities.json"
 export PATH="$temporary_directory/bin:$PATH"
 export FAKE_BUNDLE_STATE="$temporary_directory/bundle.json"
 export FAKE_CAPABILITY_STATE="$temporary_directory/capabilities.json"
+cat >"$temporary_directory/error.json" <<'JSON'
+{"errors":[{"status":"400","code":"PARAMETER_ERROR.INVALID","title":"Request parameter is invalid","detail":"filter[identifier] is invalid"}]}
+JSON
+export FAKE_ERROR_STATE="$temporary_directory/error.json"
 export APP_STORE_CONNECT_KEY_ID="ABCDEFGHIJ"
 export APP_STORE_CONNECT_ISSUER_ID="12345678-1234-1234-1234-123456789abc"
 export APP_STORE_CONNECT_KEY_PATH="$temporary_directory/AuthKey_ABCDEFGHIJ.p8"
@@ -155,6 +164,15 @@ export GITHUB_REF="refs/heads/main"
 export TUNEDIN_PROMOTION_ENVIRONMENT="Staging"
 ./scripts/staging-apple-sign-in.sh apply >/dev/null
 ./scripts/staging-apple-sign-in.sh verify >/dev/null
+
+if FAKE_STATUS=400 ./scripts/staging-apple-sign-in.sh plan >"$temporary_directory/error-output" 2>&1; then
+  printf 'Apple API error handling accepted an HTTP 400 response.\n' >&2
+  exit 1
+fi
+if ! grep -Eq 'PARAMETER_ERROR.INVALID.*filter\[identifier\] is invalid' "$temporary_directory/error-output"; then
+  printf 'Apple API error handling did not report the structured API error.\n' >&2
+  exit 1
+fi
 
 python3 - "$FAKE_CAPABILITY_STATE" <<'PY'
 import json
