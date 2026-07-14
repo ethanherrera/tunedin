@@ -14,7 +14,7 @@ struct NativeAuthCredentials: Equatable, Sendable {
   let provider: NativeAuthProvider
   let idToken: String
   let accessToken: String?
-  let nonce: String
+  let nonce: String?
 }
 
 struct Profile: Codable, Equatable, Sendable {
