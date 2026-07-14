@@ -18,6 +18,7 @@ enum TunedInDesign {
   static let cornerRadius: CGFloat = 18
   static let bottomControlInset: CGFloat = 44
   static let bottomControlHorizontalInset: CGFloat = 16
+  static let scrollContentBottomInset: CGFloat = 24
 
   private static func adaptive(light: Int, dark: Int) -> Color {
     Color(

@@ -95,7 +95,7 @@ struct ConcertEditView: View {
           .tabViewStyle(.page(indexDisplayMode: .never))
         }
       }
-      .overlay(alignment: .bottom) {
+      .safeAreaInset(edge: .bottom, spacing: 0) {
         saveBar
       }
       .toolbar {
@@ -222,7 +222,7 @@ struct ConcertEditView: View {
         }
       }
       .padding(.horizontal, 20)
-      .padding(.bottom, 104)
+      .padding(.bottom, TunedInDesign.scrollContentBottomInset)
     }
   }
 
@@ -337,7 +337,6 @@ struct ConcertEditView: View {
       onChanged: { Task { await refreshSharingDetail() } },
       pageHeader: AnyView(EmptyView())
     )
-    .padding(.bottom, 76)
   }
 
   private func refreshSharingDetail() async {

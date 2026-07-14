@@ -54,7 +54,7 @@ struct ConcertCreationDetailsView: View {
             .foregroundStyle(TunedInDesign.primaryText)
         }
       }
-      .overlay(alignment: .bottom) {
+      .safeAreaInset(edge: .bottom, spacing: 0) {
         TunedInSubscreenBackBar(title: "Concert details") {
           dismiss()
         }

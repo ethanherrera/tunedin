@@ -26,16 +26,15 @@ struct MainTabView: View {
 
   var body: some View {
     GeometryReader { _ in
-      ZStack(alignment: .bottom) {
-        selectedContent
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .environmentObject(concertFloatingControls)
-
-        bottomControls
-          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
-          .padding(.top, 8)
-          .padding(.bottom, TunedInDesign.bottomControlInset)
-      }
+      selectedContent
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .environmentObject(concertFloatingControls)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+          bottomControls
+            .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+            .padding(.top, 8)
+            .padding(.bottom, TunedInDesign.bottomControlInset)
+        }
     }
     .tunedInEdgeSwipeBack(
       isEnabled: concertFloatingControls.navigationContext != .none
@@ -518,7 +517,7 @@ struct ProfileTabView: View {
           }
           .padding(.horizontal, 20)
           .padding(.top, 18)
-          .padding(.bottom, 112)
+          .padding(.bottom, TunedInDesign.scrollContentBottomInset)
         }
         .refreshable {
           await refreshServerContent()

@@ -47,7 +47,7 @@ struct FriendsActivityFeedView: View {
         }
         .padding(.horizontal, 20)
         .padding(.top, 18)
-        .padding(.bottom, 100)
+        .padding(.bottom, TunedInDesign.scrollContentBottomInset)
       } else if let errorMessage = model.errorMessage, model.activities.isEmpty {
         ScrollView {
           VStack(alignment: .leading, spacing: 0) {
@@ -58,7 +58,7 @@ struct FriendsActivityFeedView: View {
           .frame(minHeight: 540, alignment: .top)
           .padding(.horizontal, 20)
           .padding(.top, 18)
-          .padding(.bottom, 100)
+          .padding(.bottom, TunedInDesign.scrollContentBottomInset)
         }
         .refreshable {
           await model.refreshVisibleSlice()
@@ -83,7 +83,7 @@ struct FriendsActivityFeedView: View {
           }
           .padding(.horizontal, 20)
           .padding(.top, 18)
-          .padding(.bottom, 112)
+          .padding(.bottom, TunedInDesign.scrollContentBottomInset)
         }
         .refreshable {
           await model.refreshVisibleSlice()
