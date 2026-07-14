@@ -446,9 +446,10 @@ struct ConcertEditView: View {
                     .matchedGeometryEffect(id: "edit-page", in: editSelectionNamespace)
                 }
               }
-              .contentShape(Capsule())
+              .contentShape(.interaction, Capsule())
             }
             .buttonStyle(.plain)
+            .contentShape(.interaction, Capsule())
             .accessibilityLabel("Show \(item.title.lowercased())")
           }
         }

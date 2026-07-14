@@ -78,46 +78,30 @@ struct ConcertCreationView: View {
   }
 
   private var saveBar: some View {
-    HStack(spacing: 10) {
-      TunedInFloatingAction(
+    TunedInGlassTraversalLayout {
+      TunedInGlassIconButton(
         systemImage: "chevron.backward",
-        accessibilityLabel: "Cancel concert",
-        accessibilityHint: "Discards this concert if you confirm"
+        accessibilityLabel: "Cancel concert"
       ) {
         requestDismissal()
       }
       .disabled(isSaving)
-
-      Button(action: save) {
-        HStack(spacing: 8) {
-          if isSaving {
-            ProgressView()
-              .tint(TunedInDesign.actionForeground)
-          } else {
-            Image(systemName: "lock.fill")
-          }
-
-          Text(draft.canSave ? "Save privately" : "Add artist and venue")
-            .font(.headline)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-      }
-      .buttonStyle(.plain)
-      .foregroundStyle(draft.canSave && !isSaving ? TunedInDesign.actionForeground : TunedInDesign.mutedText)
-      .background(
-        draft.canSave && !isSaving ? TunedInDesign.accent : TunedInDesign.raisedSurface,
-        in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+    } center: {
+      EmptyView()
+    } trailing: {
+      TunedInFloatingAction(
+        systemImage: isSaving ? "ellipsis" : "checkmark",
+        accessibilityLabel: isSaving ? "Saving concert" : "Save concert privately",
+        accessibilityHint: draft.canSave
+          ? "Saves this concert privately"
+          : "Enter an artist and venue to save this concert",
+        action: save
       )
-      .overlay {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
-          .strokeBorder(.white.opacity(draft.canSave && !isSaving ? 0 : 0.08))
-      }
       .disabled(!draft.canSave || isSaving)
-      .accessibilityHint("Saves this concert privately")
+      .opacity(draft.canSave && !isSaving ? 1 : 0.45)
     }
     .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
-    .padding(.top, 12)
+    .padding(.top, 8)
     .padding(.bottom, TunedInDesign.bottomControlInset)
   }
 
