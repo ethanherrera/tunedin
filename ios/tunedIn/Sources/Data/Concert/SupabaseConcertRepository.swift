@@ -6,7 +6,6 @@ import Supabase
 struct SupabaseConcertRepository: ConcertRepository {
   let client: SupabaseClient
   private let photoURLs = AvatarURLCache()
-  private let albumPolicies = AlbumPolicyCache()
 
   func createPrivateConcert(_ input: ConcertCreationInput) async throws -> Concert {
     do {
@@ -76,12 +75,8 @@ struct SupabaseConcertRepository: ConcertRepository {
 
   func albumPolicy() async throws -> ConcertAlbumPolicy {
     try await withAppFailure {
-      if let cached = await albumPolicies.value() {
-        return cached
-      }
       let response: PostgrestResponse<ConcertAlbumPolicy> = try await client
         .rpc("concert_album_policy").single().execute()
-      await albumPolicies.insert(response.value)
       return response.value
     }
   }

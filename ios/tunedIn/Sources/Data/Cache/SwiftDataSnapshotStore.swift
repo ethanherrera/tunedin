@@ -84,6 +84,29 @@ actor SwiftDataSnapshotStore {
     try modelContext.save()
   }
 
+  func invalidate(
+    environment: AppEnvironment,
+    viewerID: UUID,
+    resourcesNamed resourceNames: Set<String>,
+    at date: Date
+  ) throws -> [String] {
+    let environmentValue = environment.rawValue
+    let descriptor = FetchDescriptor<CachedServerSnapshot>(
+      predicate: #Predicate { snapshot in
+        snapshot.environment == environmentValue && snapshot.viewerID == viewerID
+      }
+    )
+    let snapshots = try modelContext.fetch(descriptor).filter { snapshot in
+      resourceNames.contains(snapshot.resource)
+    }
+    for snapshot in snapshots {
+      snapshot.invalidatedAt = date
+      snapshot.lastAccessedAt = date
+    }
+    try modelContext.save()
+    return snapshots.map(\.storageKey)
+  }
+
   func remove(storageKey: String) throws {
     guard let snapshot = try model(for: storageKey) else { return }
     modelContext.delete(snapshot)

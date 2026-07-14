@@ -633,9 +633,11 @@ private final class FriendsActivityFeedModel {
     isLoadingMore = true
     do {
       let older = try await repository.friendsActivity(
-        cursor: FriendsActivityCursor(occurredAt: lastActivity.occurredAt, eventID: lastActivity.id)
+        cursor: FriendsActivityCursor(occurredAt: lastActivity.occurredAt, eventID: lastActivity.id),
+        policy: .networkOnly
       )
-      activities.append(contentsOf: older)
+      let existingIDs = Set(activities.map(\.id))
+      activities.append(contentsOf: older.filter { !existingIDs.contains($0.id) })
       canLoadMore = older.count == 30
       errorMessage = nil
     } catch {

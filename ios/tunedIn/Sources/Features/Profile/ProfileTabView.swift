@@ -580,7 +580,7 @@ struct ProfileTabView: View {
 
   private func refreshServerContent() async {
     await loadFriendCount(policy: .refresh)
-    await archiveModel.reload()
+    await archiveModel.reload(policy: .refresh)
     try? await session.refreshProfile()
   }
 }

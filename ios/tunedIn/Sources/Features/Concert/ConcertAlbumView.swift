@@ -7,6 +7,7 @@ struct ConcertAlbumView: View {
   let viewerRole: ConcertViewerRole
   let concertRepository: any ConcertRepository
   let pageHeader: AnyView
+  let refreshToken: Int
   let onRefresh: () async -> Void
 
   @EnvironmentObject private var concertFloatingControls: ConcertFloatingControls
@@ -100,9 +101,9 @@ struct ConcertAlbumView: View {
     }
     .refreshable {
       await onRefresh()
-      await load()
+      await load(policy: .refresh)
     }
-    .task { await load() }
+    .task(id: refreshToken) { await load(policy: .automatic) }
     .onChange(of: concertFloatingControls.pendingPhotoSelections) { _, items in
       guard !items.isEmpty else { return }
       Task { await upload(items.map { FailedAlbumUpload(photoID: UUID(), item: $0, reservation: nil) }) }
@@ -133,24 +134,34 @@ struct ConcertAlbumView: View {
     })
   }
 
-  private func load() async {
+  private func load(policy readPolicy: CacheReadPolicy) async {
     loadErrorMessage = nil
     do {
-      async let loadedPolicy = concertRepository.albumPolicy()
-      async let loadedPhotos = concertRepository.albumPhotos(concertID: detail.concert.id, cursor: nil)
+      async let loadedPolicy = concertRepository.albumPolicy(policy: readPolicy)
+      async let loadedPhotos = concertRepository.albumPhotos(
+        concertID: detail.concert.id,
+        cursor: nil,
+        policy: readPolicy
+      )
       (policy, photos) = try await (loadedPolicy, loadedPhotos)
       if let policy {
         concertFloatingControls.setAlbumPolicy(policy)
       }
       canLoadMore = photos.count == 30
       errorMessage = nil
-    } catch { loadErrorMessage = error.localizedDescription }
+    } catch {
+      let failure = AppFailure(error)
+      if failure == .permissionDenied || failure == .unavailable {
+        photos = []
+      }
+      loadErrorMessage = error.localizedDescription
+    }
     isLoading = false
   }
 
   private func retryLoad() async {
     isLoading = true
-    await load()
+    await load(policy: .refresh)
   }
 
   private func loadMore() async {
@@ -159,9 +170,12 @@ struct ConcertAlbumView: View {
     do {
       let loaded = try await concertRepository.albumPhotos(
         concertID: detail.concert.id,
-        cursor: ConcertAlbumPhotoCursor(attachedAt: last.attachedAt, photoID: last.id)
+        cursor: ConcertAlbumPhotoCursor(attachedAt: last.attachedAt, photoID: last.id),
+        policy: .networkOnly
       )
-      photos.append(contentsOf: loaded); canLoadMore = loaded.count == 30
+      let existingIDs = Set(photos.map(\.id))
+      photos.append(contentsOf: loaded.filter { !existingIDs.contains($0.id) })
+      canLoadMore = loaded.count == 30
     } catch { errorMessage = error.localizedDescription }
     isLoadingMore = false
   }
@@ -444,7 +458,10 @@ private struct ConcertAlbumViewer: View {
   }
 
   private func delete(_ photo: ConcertAlbumPhoto) async {
-    guard await (try? repository.deleteAlbumPhoto(photoID: photo.id)) != nil else { return }
+    guard await (try? repository.deleteAlbumPhoto(
+      photoID: photo.id,
+      concertID: photo.concertID
+    )) != nil else { return }
     photos.removeAll(where: { $0.id == photo.id }); selectedPhotoID = photos.first?.id
     if photos.isEmpty {
       dismiss()

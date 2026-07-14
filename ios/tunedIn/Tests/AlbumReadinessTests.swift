@@ -13,27 +13,6 @@ struct AlbumReadinessTests {
     #expect(configuration.waitsForConnectivity == false)
   }
 
-  @Test
-  func albumPolicyCacheExpiresAndCanBeRefreshed() async {
-    let cache = AlbumPolicyCache()
-    let policy = ConcertAlbumPolicy(
-      policyVersion: 1,
-      concertPhotoLimit: 100,
-      contributorPhotoLimit: 30,
-      reservationLimit24Hours: 10,
-      pickerBatchLimit: 10,
-      captionCharacterLimit: 300,
-      attachedFileByteLimit: 2_097_152,
-      pendingReservationLifetimeSeconds: 3_600
-    )
-    let now = Date(timeIntervalSince1970: 1_000)
-
-    await cache.insert(policy, now: now)
-
-    #expect(await cache.value(now: now.addingTimeInterval(54 * 60)) == policy)
-    #expect(await cache.value(now: now.addingTimeInterval(56 * 60)) == nil)
-  }
-
   @MainActor
   @Test
   func pickerLimitComesFromAlbumPolicy() {
