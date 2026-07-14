@@ -12,9 +12,9 @@ Staging never receives copied Development users, database content, seeds, photos
 - Apple Developer Program membership is active.
 - Apple Developer contains an explicit App ID for `com.ethanherrera.tunedin.staging`.
 - App Store Connect contains a `tunedIn Staging` iOS app using that bundle identifier.
-- The App Store Connect API key can manage signing and upload builds for that app.
+- The App Store Connect API key has an Admin role so it can manage the Staging Bundle ID capability,
+  create distribution signing assets, and upload builds for that app.
 - A fresh Supabase project named `tunedin-staging` exists and has not been initialized through dashboard-authored schema changes.
-- The Apple App ID for `com.ethanherrera.tunedin.staging` has the **Sign in with Apple** capability enabled.
 - A Google Cloud OAuth project contains an iOS client for `com.ethanherrera.tunedin.staging` and a Web client for Supabase token verification. The consent screen requests only `openid`, email, and profile.
 - Supabase Auth is managed by the promotion workflow: Apple and Google are enabled, phone and manual identity linking remain disabled, and email sign-up is disabled after a successful TestFlight upload. No SMTP provider is required for Staging.
 - The GitHub `Staging` environment exists and contains the values below.
@@ -102,18 +102,26 @@ The workflow performs these operations in order:
 2. Regenerate, lint, test, and build the iOS project.
 3. Validate the offline PostHog contract and print a read-only Staging drift plan.
 4. Create an ephemeral ignored Staging configuration from protected values.
-5. Create an unsigned device archive and verify its expanded Supabase, PostHog, callback, environment,
+5. Read the exact `com.ethanherrera.tunedin.staging` Bundle ID from App Store Connect and plan drift from
+   the required primary-App-ID Sign in with Apple configuration.
+6. Create an unsigned device archive and verify its expanded Supabase, PostHog, callback, environment,
    release values, and Sign in with Apple entitlement before changing hosted services. The runner applies
    an ad-hoc signature so the entitlement survives into the archive; App Store Connect replaces that
    signature during export, so the clean runner still needs no registered device or distribution certificate.
-6. Apply and verify the PostHog Staging contract and upload the archive's dSYMs without source files.
-7. Verify current Supabase Auth drift, then enable the Apple and Google providers while leaving the existing email path available until upload succeeds.
-8. Print the Staging migration dry run.
-9. Apply pending migrations without seeds or reset.
-10. Deploy tracked Edge Functions, if any, and verify migration parity.
-11. Cloud-sign and upload the archived build to App Store Connect/TestFlight.
-12. Disable email and phone sign-up, keep manual identity linking disabled, and verify the complete Staging Auth contract.
-13. Record the commit, observability target, authentication contract, and build number in the GitHub Actions summary.
+7. Enable or repair Sign in with Apple on that Bundle ID through the App Store Connect API and verify it is
+   configured as a primary App ID (`APPLE_ID_AUTH_APP_CONSENT` / `PRIMARY_APP_CONSENT`).
+8. Cloud-sign the archive, then inspect the exact IPA and embedded App Store distribution profile. Both must
+   contain the default Sign in with Apple entitlement, the protected Apple team and Staging application ID,
+   TestFlight beta reporting, no debugger access, and a valid non-device distribution profile. A bad IPA is
+   rejected before upload or backend mutation.
+9. Apply and verify the PostHog Staging contract and upload the archive's dSYMs without source files.
+10. Verify current Supabase Auth drift, then enable the Apple and Google providers while leaving the existing email path available until upload succeeds.
+11. Print the Staging migration dry run.
+12. Apply pending migrations without seeds or reset.
+13. Deploy tracked Edge Functions, if any, and verify migration parity.
+14. Upload the already verified IPA to App Store Connect/TestFlight with Apple's `altool` and the protected API key.
+15. Disable email and phone sign-up, keep manual identity linking disabled, and verify the complete Staging Auth contract.
+16. Record the commit, observability target, authentication contract, and build number in the GitHub Actions summary.
 
 ## Expected result and verification
 
@@ -162,9 +170,19 @@ signs the archived app with the tracked entitlement before cloud export, and arc
 before hosted mutation unless `com.apple.developer.applesignin` is present. A local export through
 Apple's automatic distribution signing confirmed the final IPA retains the entitlement.
 
+Build `1009.1` advanced to Apple's native account-creation sheet but ended with **Sign Up Not Completed**
+before a credential reached the app or Supabase ([issue #28](https://github.com/ethanherrera/tunedin/issues/28)).
+That proved the Swift token exchange was not the failing boundary, but the promotion still had two blind
+spots: the workflow trusted a one-time dashboard statement about the App ID's primary-consent configuration,
+and it did not inspect the distribution profile in the exact uploaded IPA. The workflow now reconciles and
+verifies the primary App ID contract through Apple's API, exports the signed IPA before backend mutation,
+and checks both its code-signing entitlement and embedded distribution profile before uploading that same file.
+
 ## Recovery and rollback
 
-- If verification or archive fails, the hosted backend was not changed. Correct the failure in a PR and dispatch again after merge.
+- If verification, archive, Apple capability reconciliation, or signed-IPA export fails, the hosted backend
+  was not changed. The Apple App ID may have been safely advanced to the tracked primary-App-ID contract;
+  correct the failure in a PR and dispatch again after merge.
 - If provider preparation fails, email remains enabled and no app is uploaded. Correct the protected Google values or Apple/Supabase provider configuration, then rerun the promotion.
 - If TestFlight upload succeeds but Auth finalization fails, Apple and Google remain enabled and email may remain temporarily enabled at the API boundary. The Staging app still shows only the two native providers; rerun the corrected promotion to finalize and verify the contract.
 - If migration deployment fails, no app is uploaded. Never reset Staging or rewrite an applied migration; correct the problem with a new forward migration.
@@ -176,6 +194,7 @@ Apple's automatic distribution signing confirmed the final IPA retains the entit
 
 - GitHub Actions and the `Staging` environment deployment history are the primary audit records.
 - App Store Connect records uploaded builds and processing status.
+- App Store Connect Bundle ID capability history and workflow logs record the verified primary-App-ID contract.
 - Supabase migration history and platform logs record backend changes.
 - Supabase Auth configuration history and the promotion summary record provider preparation/finalization without exposing OAuth secrets.
 - PostHog project activity and error-tracking symbols record observability changes for project `507318`.

@@ -60,6 +60,9 @@ jobs:
       - name: Validate App Store metadata
         run: make distribution-metadata-verify
 
+      - name: Test Staging authentication and signing controls
+        run: make staging-auth-test staging-apple-sign-in-test staging-ipa-signing-test
+
       - name: Test Development configuration
         run: make test DESTINATION='platform=iOS Simulator,name=iPhone 17'
 
@@ -157,10 +160,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          key_path="$RUNNER_TEMP/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
+          key_directory="$HOME/.appstoreconnect/private_keys"
+          mkdir -p "$key_directory"
+          chmod 700 "$key_directory"
+          key_path="$key_directory/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8"
           printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY" > "$key_path"
           chmod 600 "$key_path"
           printf 'APP_STORE_CONNECT_KEY_PATH=%s\n' "$key_path" >> "$GITHUB_ENV"
+
+      - name: Plan Staging Apple Sign In App ID
+        run: make staging-apple-sign-in-plan
 
       - name: Generate the Xcode project
         run: make generate
@@ -203,6 +212,46 @@ jobs:
       - name: Verify archived Staging configuration
         run: ./scripts/verify-staging-archive-configuration.sh
 
+      - name: Reconcile and verify Staging Apple Sign In App ID
+        run: ./scripts/staging-apple-sign-in.sh apply
+
+      - name: Export and verify the signed Staging IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          export_options="$RUNNER_TEMP/StagingExportOptions.plist"
+          cat > "$export_options" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>destination</key>
+            <string>export</string>
+            <key>manageAppVersionAndBuildNumber</key>
+            <false/>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>teamID</key>
+            <string>${APPLE_DEVELOPMENT_TEAM}</string>
+            <key>uploadSymbols</key>
+            <true/>
+          </dict>
+          </plist>
+          PLIST
+          mkdir -p build/StagingExport
+          xcodebuild \
+            -exportArchive \
+            -archivePath build/tunedIn-Staging.xcarchive \
+            -exportPath build/StagingExport \
+            -exportOptionsPlist "$export_options" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$APP_STORE_CONNECT_KEY_PATH" \
+            -authenticationKeyID "$APP_STORE_CONNECT_KEY_ID" \
+            -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID"
+          ./scripts/verify-staging-ipa-signing.sh build/StagingExport/tunedIn.ipa
+
       - name: Apply and verify the PostHog Staging contract
         env:
           POSTHOG_CONFIRM_APPLY: staging-507318
@@ -239,41 +288,14 @@ jobs:
       - name: Apply Staging backend and Edge Functions
         run: ./scripts/staging-environment.sh apply
 
-      - name: Upload the archived app to TestFlight
+      - name: Upload the verified Staging IPA to TestFlight
         shell: bash
         run: |
           set -euo pipefail
-          export_options="$RUNNER_TEMP/StagingExportOptions.plist"
-          cat > "$export_options" <<PLIST
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>destination</key>
-            <string>upload</string>
-            <key>manageAppVersionAndBuildNumber</key>
-            <false/>
-            <key>method</key>
-            <string>app-store-connect</string>
-            <key>signingStyle</key>
-            <string>automatic</string>
-            <key>teamID</key>
-            <string>${APPLE_DEVELOPMENT_TEAM}</string>
-            <key>uploadSymbols</key>
-            <true/>
-          </dict>
-          </plist>
-          PLIST
-          mkdir -p build/StagingExport
-          xcodebuild \
-            -exportArchive \
-            -archivePath build/tunedIn-Staging.xcarchive \
-            -exportPath build/StagingExport \
-            -exportOptionsPlist "$export_options" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$APP_STORE_CONNECT_KEY_PATH" \
-            -authenticationKeyID "$APP_STORE_CONNECT_KEY_ID" \
-            -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID"
+          xcrun altool \
+            --upload-package build/StagingExport/tunedIn.ipa \
+            --api-key "$APP_STORE_CONNECT_KEY_ID" \
+            --api-issuer "$APP_STORE_CONNECT_ISSUER_ID"
 
       - name: Finalize and verify native-only Staging Auth
         run: |
@@ -289,6 +311,7 @@ jobs:
             printf -- '- Backend: %ctunedin-staging%c migrations and tracked Edge Functions\n' 96 96
             printf -- '- Observability: PostHog Staging project %c507318%c and uploaded dSYMs\n' 96 96
             printf -- '- Authentication: native Apple and Google; email and phone sign-up disabled\n'
+            printf -- '- Apple Sign In: primary App ID and signed distribution profile verified\n'
             printf -- '- App: %ctunedIn Staging%c (%ccom.ethanherrera.tunedin.staging%c)\n' 96 96 96 96
             printf -- '- Version: %c%s%c\n' 96 "$TUNEDIN_MARKETING_VERSION" 96
             printf -- '- Build: %c%s%c\n' 96 "$TUNEDIN_BUILD_NUMBER" 96

@@ -45,6 +45,9 @@ jobs:
       - name: Test Staging configuration packaging
         run: make staging-configuration-test
 
+      - name: Test Staging authentication and signing controls
+        run: make staging-auth-test staging-apple-sign-in-test staging-ipa-signing-test
+
       - name: Test the offline PostHog contract
         run: make posthog-test
 
