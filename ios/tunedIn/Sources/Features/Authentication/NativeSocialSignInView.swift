@@ -213,47 +213,88 @@ enum NativeAuthNonce {
 @MainActor
 private enum GoogleNativeSignIn {
   static func credentials(configuration: NativeSocialAuthConfiguration) async throws -> NativeAuthCredentials {
-    guard let presentingViewController = presentingViewController() else {
-      throw NativeSocialSignInError.missingPresentationContext
-    }
-
-    let rawNonce = try NativeAuthNonce.random()
     let google = GIDSignIn.sharedInstance
     google.configuration = GIDConfiguration(
       clientID: configuration.googleIOSClientID,
       serverClientID: configuration.googleServerClientID
     )
-    google.signOut()
+
+    if google.hasPreviousSignIn() {
+      do {
+        if let restoredCredentials = try await restoredCredentials(using: google) {
+          return restoredCredentials
+        }
+      } catch {
+        // A stale or unreadable SDK session should not block a fresh interactive sign-in.
+      }
+      google.signOut()
+    }
+
+    guard let presentingViewController = presentingViewController() else {
+      throw NativeSocialSignInError.missingPresentationContext
+    }
 
     return try await withCheckedThrowingContinuation { continuation in
       google.signIn(
         withPresenting: presentingViewController,
         hint: nil,
-        additionalScopes: nil,
-        nonce: NativeAuthNonce.hashed(rawNonce)
+        additionalScopes: nil
       ) { result, error in
         if let error {
           continuation.resume(throwing: error)
           return
         }
-        guard
-          let user = result?.user,
-          let idToken = user.idToken?.tokenString
-        else {
+        guard let user = result?.user else {
           continuation.resume(throwing: NativeSocialSignInError.missingGoogleCredential)
           return
         }
 
-        continuation.resume(
-          returning: NativeAuthCredentials(
-            provider: .google,
-            idToken: idToken,
-            accessToken: user.accessToken.tokenString,
-            nonce: rawNonce
-          )
-        )
+        do {
+          continuation.resume(returning: try credentials(for: user))
+        } catch {
+          continuation.resume(throwing: error)
+        }
       }
     }
+  }
+
+  private static func restoredCredentials(using google: GIDSignIn) async throws -> NativeAuthCredentials? {
+    try await withCheckedThrowingContinuation { continuation in
+      google.restorePreviousSignIn { user, error in
+        if let error {
+          continuation.resume(throwing: error)
+          return
+        }
+        guard let user else {
+          continuation.resume(throwing: NativeSocialSignInError.missingGoogleCredential)
+          return
+        }
+
+        do {
+          let credentials = try credentials(for: user)
+          guard RestoredGoogleIDTokenPolicy.canReuse(credentials.idToken) else {
+            continuation.resume(returning: nil)
+            return
+          }
+          continuation.resume(returning: credentials)
+        } catch {
+          continuation.resume(throwing: error)
+        }
+      }
+    }
+  }
+
+  nonisolated private static func credentials(for user: GIDGoogleUser) throws -> NativeAuthCredentials {
+    guard let idToken = user.idToken?.tokenString else {
+      throw NativeSocialSignInError.missingGoogleCredential
+    }
+
+    return NativeAuthCredentials(
+      provider: .google,
+      idToken: idToken,
+      accessToken: user.accessToken.tokenString,
+      nonce: nil
+    )
   }
 
   private static func presentingViewController() -> UIViewController? {
@@ -268,6 +309,28 @@ private enum GoogleNativeSignIn {
       presenter = presented
     }
     return presenter
+  }
+}
+
+enum RestoredGoogleIDTokenPolicy {
+  static func canReuse(_ idToken: String) -> Bool {
+    let segments = idToken.split(separator: ".", omittingEmptySubsequences: false)
+    guard segments.count == 3 else { return false }
+
+    var payload = String(segments[1])
+      .replacingOccurrences(of: "-", with: "+")
+      .replacingOccurrences(of: "_", with: "/")
+    let paddingCount = (4 - payload.count % 4) % 4
+    payload.append(String(repeating: "=", count: paddingCount))
+
+    guard
+      let data = Data(base64Encoded: payload),
+      let claims = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    else {
+      return false
+    }
+
+    return !claims.keys.contains("nonce")
   }
 }
 
