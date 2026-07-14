@@ -439,9 +439,12 @@ private struct ConcertAlbumViewer: View {
               .disabled(captionDraft.count > 300 || isSavingCaption)
           }
         }
-      }.presentationDetents([.medium])
+      }
+      .presentationDetents([.medium])
+      .tunedInKeyboardManaged()
     }
     .tunedInEdgeSwipeBack { dismiss() }
+    .tunedInKeyboardManaged()
   }
 
   private var selectedPhoto: ConcertAlbumPhoto? {
