@@ -224,7 +224,7 @@ PY
 load_capabilities() {
   local bundle_id="$1"
   request GET \
-    "$app_store_connect_api/v1/bundleIds/$bundle_id/bundleIdCapabilities?limit=200" \
+    "$app_store_connect_api/v1/bundleIds/$bundle_id/bundleIdCapabilities" \
     "$capabilities_path"
 }
 

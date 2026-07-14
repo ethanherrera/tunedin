@@ -80,7 +80,11 @@ if [[ "$url" == *"/v1/bundleIds?"* ]]; then
     exit 0
   fi
   cp "$FAKE_BUNDLE_STATE" "$output_path"
-elif [[ "$url" == *"/bundleIdCapabilities?"* ]]; then
+elif [[ "$method" == "GET" && "$url" == *"/bundleIdCapabilities"* ]]; then
+  if [[ "$url" == *"?limit="* ]]; then
+    printf 'Bundle ID capability requests must not send an unsupported limit parameter.\n' >&2
+    exit 1
+  fi
   cp "$FAKE_CAPABILITY_STATE" "$output_path"
 elif [[ "$method" == "POST" || "$method" == "PATCH" ]]; then
   METHOD="$method" PAYLOAD_PATH="$payload_path" STATE_PATH="$FAKE_CAPABILITY_STATE" \
