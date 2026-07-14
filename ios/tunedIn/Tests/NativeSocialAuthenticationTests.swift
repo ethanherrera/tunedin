@@ -19,6 +19,31 @@ struct NativeSocialAuthenticationTests {
     )
   }
 
+  @Test
+  func restoredGoogleTokenWithoutNonceCanBeReused() throws {
+    let token = try googleIDToken(payload: ["sub": "google-user", "aud": "server-client"])
+
+    #expect(RestoredGoogleIDTokenPolicy.canReuse(token))
+  }
+
+  @Test
+  func restoredLegacyGoogleTokenWithNonceRequiresInteractiveMigration() throws {
+    let token = try googleIDToken(
+      payload: [
+        "sub": "google-user",
+        "aud": "server-client",
+        "nonce": "hashed-legacy-nonce"
+      ]
+    )
+
+    #expect(!RestoredGoogleIDTokenPolicy.canReuse(token))
+  }
+
+  @Test
+  func malformedRestoredGoogleTokenRequiresInteractiveMigration() {
+    #expect(!RestoredGoogleIDTokenPolicy.canReuse("not-a-google-id-token"))
+  }
+
   @MainActor
   @Test
   func sessionRecordsTheNativeProviderAfterSuccessfulExchange() async throws {
@@ -47,7 +72,7 @@ struct NativeSocialAuthenticationTests {
         provider: .google,
         idToken: "id-token",
         accessToken: "access-token",
-        nonce: "nonce"
+        nonce: nil
       )
     )
 
@@ -93,6 +118,15 @@ struct NativeSocialAuthenticationTests {
     let log = telemetry.recentRecords.first { $0.name == TelemetryLogMessage.nativeAuthenticationFailed.rawValue }
     #expect(log?.properties[.operation] == .string("authenticate"))
     #expect(log?.properties[.method] == .string("apple"))
+  }
+
+  private func googleIDToken(payload: [String: String]) throws -> String {
+    let data = try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
+    let encodedPayload = data.base64EncodedString()
+      .replacingOccurrences(of: "+", with: "-")
+      .replacingOccurrences(of: "/", with: "_")
+      .replacingOccurrences(of: "=", with: "")
+    return "header.\(encodedPayload).signature"
   }
 }
 
