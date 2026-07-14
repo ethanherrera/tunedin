@@ -21,7 +21,7 @@ final class AppContainer {
     profileRepository = appSession.profileRepositoryForViews
   }
 
-  init(configuration: AppConfiguration) {
+  init(configuration: AppConfiguration) throws {
     let telemetry = AppTelemetryClient(
       configuration: configuration.telemetry,
       release: configuration.release
@@ -43,7 +43,11 @@ final class AppContainer {
       )
     )
 
-    let profileRepository = SupabaseProfileRepository(client: client)
+    let dataCache = try AppDataCache.live(environment: configuration.environment)
+    let profileRepository = CachingProfileRepository(
+      remote: SupabaseProfileRepository(client: client),
+      cache: dataCache
+    )
     let feedbackRepository = SupabaseFeedbackRepository(client: client, release: configuration.release)
     appSession = AppSession(
       authenticationRepository: SupabaseAuthenticationRepository(
@@ -51,13 +55,17 @@ final class AppContainer {
         authCallbackURL: configuration.authCallbackURL
       ),
       profileRepository: profileRepository,
+      dataCache: dataCache,
       feedbackRepository: feedbackRepository,
       authEmailDeliveryMode: configuration.authEmailDeliveryMode,
       nativeSocialAuthConfiguration: configuration.nativeSocialAuthConfiguration,
       allowsLocalSeededSignIn: configuration.usesLocalSimulatorAuthStorage,
       telemetry: telemetry
     )
-    concertRepository = SupabaseConcertRepository(client: client)
+    concertRepository = CachingConcertRepository(
+      remote: SupabaseConcertRepository(client: client),
+      cache: dataCache
+    )
     socialRepository = SupabaseSocialRepository(client: client)
     self.profileRepository = profileRepository
     self.telemetry = telemetry
@@ -85,7 +93,7 @@ final class AppContainer {
         }
       #endif
 
-      return AppContainer(configuration: configuration)
+      return try AppContainer(configuration: configuration)
     } catch {
       fatalError(error.localizedDescription)
     }

@@ -15,6 +15,7 @@ enum AppSessionPhase {
 final class AppSession {
   private let authenticationRepository: any AuthenticationRepository
   private let profileRepository: any ProfileRepository
+  private let dataCache: AppDataCache?
   private let feedbackRepository: any FeedbackRepository
   private var authStateTask: Task<Void, Never>?
   private var profileLoadTask: Task<Void, Never>?
@@ -35,6 +36,7 @@ final class AppSession {
   init(
     authenticationRepository: any AuthenticationRepository,
     profileRepository: any ProfileRepository,
+    dataCache: AppDataCache? = nil,
     feedbackRepository: any FeedbackRepository = DevelopmentFeedbackRepository(),
     authEmailDeliveryMode: AuthEmailDeliveryMode = .oneTimeCode,
     nativeSocialAuthConfiguration: NativeSocialAuthConfiguration? = nil,
@@ -51,6 +53,7 @@ final class AppSession {
   ) {
     self.authenticationRepository = authenticationRepository
     self.profileRepository = profileRepository
+    self.dataCache = dataCache
     self.feedbackRepository = feedbackRepository
     self.authEmailDeliveryMode = authEmailDeliveryMode
     self.nativeSocialAuthConfiguration = nativeSocialAuthConfiguration
@@ -60,7 +63,7 @@ final class AppSession {
     authStateTask = Task { [weak self, authenticationRepository] in
       for await user in authenticationRepository.authenticationStateChanges {
         guard !Task.isCancelled else { return }
-        self?.receiveAuthenticationChange(user)
+        await self?.receiveAuthenticationChange(user)
       }
     }
   }
@@ -197,7 +200,7 @@ final class AppSession {
 
   func retryProfileLoad() {
     guard let currentUser else { return }
-    loadProfile(for: currentUser)
+    loadProfile(for: currentUser, policy: .refresh)
   }
 
   func refreshProfile() async throws {
@@ -205,15 +208,15 @@ final class AppSession {
       throw AppSessionError.missingAuthenticatedUser
     }
 
-    let profile = try await profileRepository.fetchProfile(for: user.id)
-    guard currentUser == user else { return }
-    phase = profile.hasCompletedOnboarding ? .signedIn(user, profile) : .needsOnboarding(user)
+    let profile = try await profileRepository.fetchProfile(for: user.id, policy: .refresh)
+    guard let currentUser, currentUser.id == user.id else { return }
+    phase = profile.hasCompletedOnboarding ? .signedIn(currentUser, profile) : .needsOnboarding(currentUser)
   }
 
   func signOut() async {
     do {
       try await authenticationRepository.signOut()
-      receiveAuthenticationChange(nil)
+      await receiveAuthenticationChange(nil)
     } catch {
       if currentUser == nil {
         phase = .signedOut
@@ -249,10 +252,18 @@ final class AppSession {
     authCallbackError = nil
   }
 
-  private func receiveAuthenticationChange(_ user: AuthenticatedUser?) {
+  private func receiveAuthenticationChange(_ user: AuthenticatedUser?) async {
+    let previousUserID = currentUser?.id
+    if let user, previousUserID == user.id {
+      currentUser = user
+      phase = phase.replacingAuthenticatedUser(with: user)
+      return
+    }
+
     profileLoadTask?.cancel()
     profileLoadGeneration += 1
     currentUser = user
+    await dataCache?.transition(to: user?.id)
 
     guard let user else {
       telemetry.reset()
@@ -264,7 +275,7 @@ final class AppSession {
     loadProfile(for: user)
   }
 
-  private func loadProfile(for user: AuthenticatedUser) {
+  private func loadProfile(for user: AuthenticatedUser, policy: CacheReadPolicy = .automatic) {
     profileLoadTask?.cancel()
     profileLoadGeneration += 1
     let generation = profileLoadGeneration
@@ -273,7 +284,7 @@ final class AppSession {
 
     profileLoadTask = Task { [weak self, profileRepository] in
       do {
-        let profile = try await profileRepository.fetchProfile(for: user.id)
+        let profile = try await profileRepository.fetchProfile(for: user.id, policy: policy)
         guard !Task.isCancelled else { return }
         self?.telemetry.captureOperation(
           .loadProfile,
@@ -307,17 +318,13 @@ final class AppSession {
   }
 
   private func apply(profile: Profile, for user: AuthenticatedUser, generation: Int) {
-    guard generation == profileLoadGeneration, currentUser == user else { return }
-    phase = profile.hasCompletedOnboarding ? .signedIn(user, profile) : .needsOnboarding(user)
+    guard generation == profileLoadGeneration, let currentUser, currentUser.id == user.id else { return }
+    phase = profile.hasCompletedOnboarding ? .signedIn(currentUser, profile) : .needsOnboarding(currentUser)
   }
 
-  private func showProfileLoadFailure(
-    for user: AuthenticatedUser,
-    generation: Int,
-    error: Error
-  ) {
-    guard generation == profileLoadGeneration, currentUser == user else { return }
-    phase = .profileUnavailable(user, error.localizedDescription)
+  private func showProfileLoadFailure(for user: AuthenticatedUser, generation: Int, error: Error) {
+    guard generation == profileLoadGeneration, let currentUser, currentUser.id == user.id else { return }
+    phase = .profileUnavailable(currentUser, error.localizedDescription)
   }
 }
 

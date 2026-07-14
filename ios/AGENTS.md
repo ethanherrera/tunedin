@@ -12,6 +12,7 @@
 - Keep design-system primitives in `ios/tunedIn/Sources/Core/DesignSystem`; do not scatter appearance availability checks through feature views.
 - Prefer adaptive system Liquid Glass for bottom screen traversal and contextual menus whenever available, falling back through design-system primitives on older iOS versions. Give back navigation its own glass control, group related page destinations in a central glass surface, and represent the contextual edit menu with a three-dot glass action rather than a pencil.
 - Give scrollable server-backed read surfaces pull-to-refresh with `.refreshable`. Await every visible repository reload before ending the spinner, preserve already loaded content when a refresh fails, and keep forms, local-only settings, and mutation-only sheets exempt when refreshing could disrupt edits or misrepresent static data.
+- Route cacheable server reads through the app-owned repository decorators and shared `AppDataCache`; do not add view-owned persistence or one-off feature caches. Normal navigation is cache-first, explicit refresh bypasses cached snapshots, later pagination and conflict-sensitive reads stay authoritative, Realtime marks affected data stale instead of forcing full refetches, and successful mutations patch or invalidate every dependent key.
 
 ## Environment and verification
 
