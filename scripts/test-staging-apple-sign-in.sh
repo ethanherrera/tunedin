@@ -96,7 +96,7 @@ payload = json.load(open(os.environ["PAYLOAD_PATH"], encoding="utf-8"))["data"]
 settings = payload["attributes"]["settings"]
 assert settings == [{
     "key": "APPLE_ID_AUTH_APP_CONSENT",
-    "options": [{"key": "PRIMARY_APP_CONSENT", "enabled": True}],
+    "options": [{"key": "PRIMARY_APP_CONSENT"}],
 }]
 if os.environ["METHOD"] == "POST":
     assert payload["attributes"]["capabilityType"] == "APPLE_ID_AUTH"
@@ -112,7 +112,7 @@ state = {
             "capabilityType": "APPLE_ID_AUTH",
             "settings": [{
                 "key": "APPLE_ID_AUTH_APP_CONSENT",
-                "options": [{"key": "PRIMARY_APP_CONSENT", "enabled": True}],
+                "options": [{"key": "PRIMARY_APP_CONSENT", "enabled": False}],
             }],
         },
     }]
@@ -184,7 +184,7 @@ import sys
 
 state = json.load(open(sys.argv[1], encoding="utf-8"))
 option = state["data"][0]["attributes"]["settings"][0]["options"][0]
-assert option == {"key": "PRIMARY_APP_CONSENT", "enabled": True}
+assert option == {"key": "PRIMARY_APP_CONSENT", "enabled": False}
 PY
 
 python3 - "$FAKE_CAPABILITY_STATE" <<'PY'
