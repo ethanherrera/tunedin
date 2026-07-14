@@ -36,17 +36,3 @@ struct AvatarImageProcessorTests {
     #expect(result.count <= 3_145_728)
   }
 }
-
-struct AvatarURLCacheTests {
-  @Test
-  func versionsInvalidateCachedURLs() async throws {
-    let cache = AvatarURLCache()
-    let profileID = UUID()
-    let url = try #require(URL(string: "https://example.test/avatar.jpg?v=1"))
-    let now = Date(timeIntervalSince1970: 1000)
-    await cache.insert(url, profileID: profileID, version: 1, now: now)
-
-    #expect(await cache.value(profileID: profileID, version: 1, now: now) == url)
-    #expect(await cache.value(profileID: profileID, version: 2, now: now) == nil)
-  }
-}

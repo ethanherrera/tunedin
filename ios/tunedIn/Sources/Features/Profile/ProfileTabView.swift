@@ -472,6 +472,26 @@ struct ProfileTabView: View {
   let socialRepository: any SocialRepository
   let archiveRefreshToken: Int
   @State private var friendCount = 0
+  @State private var archiveModel: ConcertArchiveModel
+
+  init(
+    session: AppSession,
+    user: AuthenticatedUser,
+    profile: Profile,
+    concertRepository: any ConcertRepository,
+    socialRepository: any SocialRepository,
+    archiveRefreshToken: Int
+  ) {
+    self.session = session
+    self.user = user
+    self.profile = profile
+    self.concertRepository = concertRepository
+    self.socialRepository = socialRepository
+    self.archiveRefreshToken = archiveRefreshToken
+    _archiveModel = State(
+      initialValue: ConcertArchiveModel(profileID: profile.id, concertRepository: concertRepository)
+    )
+  }
 
   var body: some View {
     NavigationStack {
@@ -490,6 +510,7 @@ struct ProfileTabView: View {
               isOwner: true,
               concertRepository: concertRepository,
               socialRepository: socialRepository,
+              model: archiveModel,
               refreshToken: archiveRefreshToken
             )
           }
@@ -497,11 +518,14 @@ struct ProfileTabView: View {
           .padding(.top, 18)
           .padding(.bottom, 112)
         }
+        .refreshable {
+          await refreshServerContent()
+        }
       }
       .toolbar(.hidden, for: .navigationBar)
     }
     .task(id: profile.username) {
-      await loadFriendCount()
+      await loadFriendCount(policy: .automatic)
     }
   }
 
@@ -544,11 +568,20 @@ struct ProfileTabView: View {
     }
   }
 
-  private func loadFriendCount() async {
+  private func loadFriendCount(policy: CacheReadPolicy) async {
     guard let username = profile.username, !username.isEmpty else { return }
     do {
-      friendCount = try await socialRepository.friends(username: username).count
+      friendCount = try await socialRepository.friends(
+        username: username,
+        policy: policy
+      ).count
     } catch {}
+  }
+
+  private func refreshServerContent() async {
+    await loadFriendCount(policy: .refresh)
+    await archiveModel.reload(policy: .refresh)
+    try? await session.refreshProfile()
   }
 }
 
@@ -650,6 +683,9 @@ struct SettingsView: View {
         }
         .padding(20)
         .padding(.bottom, 32)
+      }
+      .refreshable {
+        try? await session.refreshProfile()
       }
     }
     .navigationTitle("Settings")

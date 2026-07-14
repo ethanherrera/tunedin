@@ -8,6 +8,7 @@ final class AppContainer {
   let socialRepository: any SocialRepository
   let profileRepository: any ProfileRepository
   let telemetry: AppTelemetryClient
+  let imageLoader: AppMediaCache
 
   private init(
     appSession: AppSession,
@@ -19,18 +20,60 @@ final class AppContainer {
     self.socialRepository = socialRepository
     telemetry = appSession.telemetry
     profileRepository = appSession.profileRepositoryForViews
+    imageLoader = .ephemeral()
   }
 
-  init(configuration: AppConfiguration) {
+  init(configuration: AppConfiguration) throws {
     let telemetry = AppTelemetryClient(
       configuration: configuration.telemetry,
       release: configuration.release
     )
+    let client = Self.makeSupabaseClient(configuration: configuration)
+    let caches = try Self.makeCaches(environment: configuration.environment)
+    let mediaCache = caches.media
+    let dataCache = caches.data
+    let profileRepository = CachingProfileRepository(
+      remote: SupabaseProfileRepository(
+        client: client,
+        signedURLs: mediaCache.signedURLs
+      ),
+      cache: dataCache
+    )
+    let feedbackRepository = SupabaseFeedbackRepository(client: client, release: configuration.release)
+    appSession = AppSession(
+      authenticationRepository: SupabaseAuthenticationRepository(
+        client: client,
+        authCallbackURL: configuration.authCallbackURL
+      ),
+      profileRepository: profileRepository,
+      dataCache: dataCache,
+      feedbackRepository: feedbackRepository,
+      authEmailDeliveryMode: configuration.authEmailDeliveryMode,
+      nativeSocialAuthConfiguration: configuration.nativeSocialAuthConfiguration,
+      allowsLocalSeededSignIn: configuration.usesLocalSimulatorAuthStorage,
+      telemetry: telemetry
+    )
+    concertRepository = CachingConcertRepository(
+      remote: SupabaseConcertRepository(
+        client: client,
+        signedURLs: mediaCache.signedURLs
+      ),
+      cache: dataCache
+    )
+    socialRepository = CachingSocialRepository(
+      remote: SupabaseSocialRepository(client: client),
+      cache: dataCache
+    )
+    self.profileRepository = profileRepository
+    self.telemetry = telemetry
+    imageLoader = mediaCache
+  }
+
+  private static func makeSupabaseClient(configuration: AppConfiguration) -> SupabaseClient {
     let authStorage: any AuthLocalStorage = configuration.usesLocalSimulatorAuthStorage
       ? LocalSimulatorAuthStorage()
       : AuthClient.Configuration.defaultLocalStorage
-
-    let client = SupabaseClient(
+    return SupabaseClient(
       supabaseURL: configuration.supabaseURL,
       supabaseKey: configuration.supabasePublishableKey,
       options: .init(
@@ -42,25 +85,22 @@ final class AppContainer {
         global: .init(session: AppNetworkSession.makeSession())
       )
     )
+  }
 
-    let profileRepository = SupabaseProfileRepository(client: client)
-    let feedbackRepository = SupabaseFeedbackRepository(client: client, release: configuration.release)
-    appSession = AppSession(
-      authenticationRepository: SupabaseAuthenticationRepository(
-        client: client,
-        authCallbackURL: configuration.authCallbackURL
-      ),
-      profileRepository: profileRepository,
-      feedbackRepository: feedbackRepository,
-      authEmailDeliveryMode: configuration.authEmailDeliveryMode,
-      nativeSocialAuthConfiguration: configuration.nativeSocialAuthConfiguration,
-      allowsLocalSeededSignIn: configuration.usesLocalSimulatorAuthStorage,
-      telemetry: telemetry
+  private static func makeCaches(
+    environment: AppEnvironment
+  ) throws -> (data: AppDataCache, media: AppMediaCache) {
+    let diagnostics = AppCacheDiagnostics()
+    let mediaCache = try AppMediaCache.live(
+      environment: environment,
+      diagnostics: diagnostics
     )
-    concertRepository = SupabaseConcertRepository(client: client)
-    socialRepository = SupabaseSocialRepository(client: client)
-    self.profileRepository = profileRepository
-    self.telemetry = telemetry
+    let dataCache = try AppDataCache.live(
+      environment: environment,
+      diagnostics: diagnostics,
+      mediaCache: mediaCache
+    )
+    return (dataCache, mediaCache)
   }
 
   static func live() -> AppContainer {
@@ -85,7 +125,7 @@ final class AppContainer {
         }
       #endif
 
-      return AppContainer(configuration: configuration)
+      return try AppContainer(configuration: configuration)
     } catch {
       fatalError(error.localizedDescription)
     }

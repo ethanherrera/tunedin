@@ -5,8 +5,15 @@ import Supabase
 
 struct SupabaseConcertRepository: ConcertRepository {
   let client: SupabaseClient
-  private let photoURLs = AvatarURLCache()
-  private let albumPolicies = AlbumPolicyCache()
+  let signedURLs: SignedURLCache
+
+  init(
+    client: SupabaseClient,
+    signedURLs: SignedURLCache = SignedURLCache()
+  ) {
+    self.client = client
+    self.signedURLs = signedURLs
+  }
 
   func createPrivateConcert(_ input: ConcertCreationInput) async throws -> Concert {
     do {
@@ -41,7 +48,7 @@ struct SupabaseConcertRepository: ConcertRepository {
       )
       let response: PostgrestResponse<PublicSchema.ConcertsSelect> = try await client
         .rpc("set_concert_photo", params: ConcertIDParameters(concertID: concertID)).single().execute()
-      await photoURLs.remove(profileID: concertID)
+      await signedURLs.remove(kind: .concertPhoto, id: concertID)
       return try Concert(databaseRecord: response.value)
     } catch {
       _ = try? await client.storage.from("images").remove(paths: [path])
@@ -55,7 +62,7 @@ struct SupabaseConcertRepository: ConcertRepository {
         .rpc("remove_concert_photo", params: ConcertIDParameters(concertID: concertID)).execute()
       let path = response.value ?? "concerts/\(concertID.uuidString.lowercased())/main.jpg"
       _ = try await client.storage.from("images").remove(paths: [path])
-      await photoURLs.remove(profileID: concertID)
+      await signedURLs.remove(kind: .concertPhoto, id: concertID)
       let userID = try await client.auth.session.user.id
       return try await fetchConcertDetail(id: concertID, viewerID: userID).concert
     }
@@ -63,25 +70,20 @@ struct SupabaseConcertRepository: ConcertRepository {
 
   func concertPhotoURL(concertID: UUID, objectPath: String, version: Int64) async throws -> URL {
     try await withAppFailure {
-      if let url = await photoURLs.value(profileID: concertID, version: version) {
-        return url
+      try await signedURLs.value(for: .concertPhoto(concertID: concertID, version: version)) {
+        try await client.storage.from("images").createSignedURL(
+          path: objectPath,
+          expiresIn: 3600,
+          cacheNonce: String(version)
+        )
       }
-      let url = try await client.storage.from("images").createSignedURL(
-        path: objectPath, expiresIn: 3600, cacheNonce: String(version)
-      )
-      await photoURLs.insert(url, profileID: concertID, version: version)
-      return url
     }
   }
 
   func albumPolicy() async throws -> ConcertAlbumPolicy {
     try await withAppFailure {
-      if let cached = await albumPolicies.value() {
-        return cached
-      }
       let response: PostgrestResponse<ConcertAlbumPolicy> = try await client
         .rpc("concert_album_policy").single().execute()
-      await albumPolicies.insert(response.value)
       return response.value
     }
   }
@@ -129,14 +131,13 @@ struct SupabaseConcertRepository: ConcertRepository {
 
   func albumPhotoURL(photoID: UUID, objectPath: String, version: Int64) async throws -> URL {
     try await withAppFailure {
-      if let url = await photoURLs.value(profileID: photoID, version: version) {
-        return url
+      try await signedURLs.value(for: .albumPhoto(photoID: photoID, version: version)) {
+        try await client.storage.from("images").createSignedURL(
+          path: objectPath,
+          expiresIn: 3600,
+          cacheNonce: String(version)
+        )
       }
-      let url = try await client.storage.from("images").createSignedURL(
-        path: objectPath, expiresIn: 3600, cacheNonce: String(version)
-      )
-      await photoURLs.insert(url, profileID: photoID, version: version)
-      return url
     }
   }
 
@@ -171,7 +172,7 @@ struct SupabaseConcertRepository: ConcertRepository {
       _ = try await client.storage.from("images").remove(paths: [prepared.value])
       let _: PostgrestResponse<Void> = try await client
         .rpc("finalize_concert_photo_deletion", params: PhotoIDParameters(photoID: photoID)).execute()
-      await photoURLs.remove(profileID: photoID)
+      await signedURLs.remove(kind: .albumPhoto, id: photoID)
     }
   }
 
