@@ -66,7 +66,10 @@ final class AppContainer {
       remote: SupabaseConcertRepository(client: client),
       cache: dataCache
     )
-    socialRepository = SupabaseSocialRepository(client: client)
+    socialRepository = CachingSocialRepository(
+      remote: SupabaseSocialRepository(client: client),
+      cache: dataCache
+    )
     self.profileRepository = profileRepository
     self.telemetry = telemetry
   }

@@ -141,9 +141,9 @@ struct FriendsListView: View {
     .task {
       model.telemetry = telemetry
       if isOwnList {
-        await model.refresh()
+        await model.load()
       } else {
-        await model.refreshFriends()
+        await model.loadFriends()
       }
     }
     .onAppear {
@@ -290,12 +290,13 @@ struct FriendSearchView: View {
     .navigationBarTitleDisplayMode(.inline)
     .navigationBarBackButtonHidden(presentation == .page)
     .task { model.telemetry = telemetry }
-    .onChange(of: model.query) { _, query in
-      Task {
-        try? await Task.sleep(for: .milliseconds(220))
-        guard query == model.query else { return }
-        await model.search()
+    .task(id: model.query) {
+      do {
+        try await Task.sleep(for: .milliseconds(220))
+      } catch {
+        return
       }
+      await model.search()
     }
     .onAppear {
       guard presentation == .page else { return }
@@ -381,7 +382,7 @@ struct FriendSearchView: View {
       .padding(.bottom, 32)
     }
     .refreshable {
-      await model.search()
+      await model.refreshSearch()
     }
   }
 
@@ -463,7 +464,7 @@ struct FriendRequestsView: View {
     .navigationBarTitleDisplayMode(.inline)
     .task {
       model.telemetry = telemetry
-      await model.refresh()
+      await model.load()
     }
   }
 }
@@ -488,23 +489,39 @@ final class PeopleHubModel {
     self.currentUsername = currentUsername
   }
 
+  func loadFriends() async {
+    await loadFriends(policy: .automatic)
+  }
+
   func refreshFriends() async {
+    await loadFriends(policy: .refresh)
+  }
+
+  private func loadFriends(policy: CacheReadPolicy) async {
     isLoading = true
     defer { isLoading = false }
     do {
-      friends = try await repository.friends(username: currentUsername)
+      friends = try await repository.friends(username: currentUsername, policy: policy)
       errorMessage = nil
     } catch {
       errorMessage = error.localizedDescription
     }
   }
 
+  func load() async {
+    await load(policy: .automatic)
+  }
+
   func refresh() async {
+    await load(policy: .refresh)
+  }
+
+  private func load(policy: CacheReadPolicy) async {
     isLoading = true
     defer { isLoading = false }
     do {
-      async let friendValues = repository.friends(username: currentUsername)
-      async let incomingValues = repository.incomingFriendRequests()
+      async let friendValues = repository.friends(username: currentUsername, policy: policy)
+      async let incomingValues = repository.incomingFriendRequests(policy: policy)
       let (loadedFriends, loadedIncoming) = try await (friendValues, incomingValues)
       friends = loadedFriends
       incomingRequests = loadedIncoming
@@ -515,20 +532,43 @@ final class PeopleHubModel {
   }
 
   func search() async {
-    guard !query.isEmpty else {
+    await search(policy: .automatic)
+  }
+
+  func refreshSearch() async {
+    await search(policy: .refresh)
+  }
+
+  private func search(policy: CacheReadPolicy) async {
+    let requestedQuery = ProfileInput.normalizedUsername(query)
+    guard !requestedQuery.isEmpty else {
+      isSearching = false
       searchResults = []
       errorMessage = nil
       return
     }
 
     isSearching = true
+    defer {
+      if ProfileInput.normalizedUsername(query) == requestedQuery {
+        isSearching = false
+      }
+    }
     do {
-      searchResults = try await repository.searchProfiles(usernamePrefix: query)
+      let results = try await repository.searchProfiles(
+        usernamePrefix: requestedQuery,
+        policy: policy
+      )
+      try Task.checkCancellation()
+      guard ProfileInput.normalizedUsername(query) == requestedQuery else { return }
+      searchResults = results
       errorMessage = nil
+    } catch is CancellationError {
+      return
     } catch {
+      guard ProfileInput.normalizedUsername(query) == requestedQuery else { return }
       errorMessage = error.localizedDescription
     }
-    isSearching = false
   }
 
   func perform(_ action: PersonAction, for profile: SocialProfile) async {
@@ -550,7 +590,7 @@ final class PeopleHubModel {
         break
       }
       await refresh()
-      await search()
+      await refreshSearch()
       errorMessage = nil
     } catch {
       let failure = AppFailure(error)

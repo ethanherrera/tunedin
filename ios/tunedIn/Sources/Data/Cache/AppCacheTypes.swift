@@ -18,6 +18,10 @@ struct AppCacheFreshness: Equatable, Sendable {
     freshFor: 15 * 60,
     maximumStale: 24 * 60 * 60
   )
+  static let socialRelationship = Self(
+    freshFor: 5 * 60,
+    maximumStale: 24 * 60 * 60
+  )
 }
 
 enum AppCacheEntryState: Equatable, Sendable {
@@ -40,12 +44,47 @@ struct AppCacheResource: Hashable, Sendable {
   }
 }
 
+struct AppCacheScope: Hashable, Sendable {
+  let environment: String
+  let viewerID: UUID
+  let generation: Int
+}
+
 enum AppCacheResources {
+  static let profileName = "profile"
+  static let friendsActivityName = "friends-activity"
+  static let socialProfileName = "social-profile"
+  static let socialFriendsName = "social-friends"
+  static let incomingFriendRequestsName = "incoming-friend-requests"
+
   static func profile(userID: UUID) -> AppCacheResource {
-    AppCacheResource(name: "profile", variant: userID.uuidString.lowercased())
+    AppCacheResource(name: profileName, variant: userID.uuidString.lowercased())
   }
 
-  static let friendsActivity = AppCacheResource(name: "friends-activity", variant: "first-page")
+  static let friendsActivity = AppCacheResource(name: friendsActivityName, variant: "first-page")
+
+  static func socialProfile(username: String) -> AppCacheResource {
+    AppCacheResource(name: socialProfileName, variant: normalizedUsername(username))
+  }
+
+  static func socialFriends(username: String) -> AppCacheResource {
+    AppCacheResource(name: socialFriendsName, variant: normalizedUsername(username))
+  }
+
+  static let incomingFriendRequests = AppCacheResource(
+    name: incomingFriendRequestsName,
+    variant: "first-page"
+  )
+
+  static let socialRelationshipNames: Set<String> = [
+    socialProfileName,
+    socialFriendsName,
+    incomingFriendRequestsName
+  ]
+
+  private static func normalizedUsername(_ value: String) -> String {
+    value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+  }
 }
 
 protocol AppCacheClock: Sendable {

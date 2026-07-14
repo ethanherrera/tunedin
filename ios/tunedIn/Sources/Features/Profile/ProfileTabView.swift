@@ -525,7 +525,7 @@ struct ProfileTabView: View {
       .toolbar(.hidden, for: .navigationBar)
     }
     .task(id: profile.username) {
-      await loadFriendCount()
+      await loadFriendCount(policy: .automatic)
     }
   }
 
@@ -568,15 +568,18 @@ struct ProfileTabView: View {
     }
   }
 
-  private func loadFriendCount() async {
+  private func loadFriendCount(policy: CacheReadPolicy) async {
     guard let username = profile.username, !username.isEmpty else { return }
     do {
-      friendCount = try await socialRepository.friends(username: username).count
+      friendCount = try await socialRepository.friends(
+        username: username,
+        policy: policy
+      ).count
     } catch {}
   }
 
   private func refreshServerContent() async {
-    await loadFriendCount()
+    await loadFriendCount(policy: .refresh)
     await archiveModel.reload()
     try? await session.refreshProfile()
   }

@@ -9,6 +9,7 @@ actor AppDataCache {
   private var viewerID: UUID?
   private var generation = 0
   private var memory: [String: AppCacheMemorySnapshot] = [:]
+  private var resourceNamesByStorageKey: [String: String] = [:]
   private var revisions: [String: Int] = [:]
   private var inFlight: [String: AppCacheInFlightRequest] = [:]
 
@@ -24,20 +25,6 @@ actor AppDataCache {
 }
 
 extension AppDataCache {
-  static func live(
-    environment: AppEnvironment,
-    clock: any AppCacheClock = SystemAppCacheClock()
-  ) throws -> AppDataCache {
-    try make(environment: environment, isStoredInMemoryOnly: false, clock: clock)
-  }
-
-  static func inMemory(
-    environment: AppEnvironment = .development,
-    clock: any AppCacheClock = SystemAppCacheClock()
-  ) throws -> AppDataCache {
-    try make(environment: environment, isStoredInMemoryOnly: true, clock: clock)
-  }
-
   func transition(to newViewerID: UUID?) async {
     guard viewerID != newViewerID else { return }
 
@@ -45,6 +32,7 @@ extension AppDataCache {
     viewerID = nil
     generation += 1
     memory.removeAll()
+    resourceNamesByStorageKey.removeAll()
     revisions.removeAll()
     let tasks = inFlight.values.map(\.task)
     inFlight.removeAll()
@@ -70,6 +58,7 @@ extension AppDataCache {
     }
 
     let storageKey = storageKey(resource: resource, viewerID: viewerID)
+    resourceNamesByStorageKey[storageKey] = resource.name
     if let cached: Value = await cachedValue(
       for: storageKey,
       freshness: freshness,
@@ -124,6 +113,7 @@ extension AppDataCache {
         fetchedAt: fetchedAt,
         invalidatedAt: nil
       )
+      resourceNamesByStorageKey[storageKey] = resource.name
       try? await store.save(
         CachedSnapshotWrite(
           value: snapshot,
@@ -164,6 +154,15 @@ extension AppDataCache {
 }
 
 extension AppDataCache {
+  func currentScope() -> AppCacheScope? {
+    guard let viewerID else { return nil }
+    return AppCacheScope(
+      environment: environment.rawValue,
+      viewerID: viewerID,
+      generation: generation
+    )
+  }
+
   func store(
     _ value: some Codable & Sendable,
     for resource: AppCacheResource
@@ -184,6 +183,7 @@ extension AppDataCache {
       fetchedAt: date,
       invalidatedAt: nil
     )
+    resourceNamesByStorageKey[storageKey] = resource.name
     try await store.save(
       CachedSnapshotWrite(
         value: snapshot,
@@ -217,7 +217,33 @@ extension AppDataCache {
     let key = storageKey(resource: resource, viewerID: viewerID)
     advanceRevision(for: key)
     memory[key] = nil
+    resourceNamesByStorageKey[key] = nil
     try? await store.remove(storageKey: key)
+  }
+
+  func remove(resourcesNamed resourceNames: Set<String>) async {
+    guard let viewerID, !resourceNames.isEmpty else { return }
+
+    let memoryKeys = resourceNamesByStorageKey.compactMap { key, name in
+      resourceNames.contains(name) ? key : nil
+    }
+    for key in memoryKeys {
+      advanceRevision(for: key)
+      memory[key] = nil
+      resourceNamesByStorageKey[key] = nil
+    }
+
+    let storedKeys = (try? await store.remove(
+      environment: environment,
+      viewerID: viewerID,
+      resourcesNamed: resourceNames
+    )) ?? []
+
+    for key in storedKeys where !memoryKeys.contains(key) {
+      advanceRevision(for: key)
+      memory[key] = nil
+      resourceNamesByStorageKey[key] = nil
+    }
   }
 
   func state(
@@ -239,6 +265,7 @@ extension AppDataCache {
 
   func clearMemory() {
     memory.removeAll()
+    resourceNamesByStorageKey.removeAll()
   }
 
   #if DEBUG
@@ -268,34 +295,6 @@ extension AppDataCache {
       )
     }
   #endif
-
-  private static func make(
-    environment: AppEnvironment,
-    isStoredInMemoryOnly: Bool,
-    clock: any AppCacheClock
-  ) throws -> AppDataCache {
-    if !isStoredInMemoryOnly {
-      _ = try FileManager.default.url(
-        for: .applicationSupportDirectory,
-        in: .userDomainMask,
-        appropriateFor: nil,
-        create: true
-      )
-    }
-    let schema = Schema([CachedServerSnapshot.self])
-    let configuration = ModelConfiguration(
-      "ServerSnapshots",
-      schema: schema,
-      isStoredInMemoryOnly: isStoredInMemoryOnly,
-      cloudKitDatabase: .none
-    )
-    let container = try ModelContainer(for: schema, configurations: [configuration])
-    return AppDataCache(
-      environment: environment,
-      store: SwiftDataSnapshotStore(modelContainer: container),
-      clock: clock
-    )
-  }
 
   private func cachedValue<Value: Decodable & Sendable>(
     for storageKey: String,
@@ -357,11 +356,13 @@ extension AppDataCache {
   private func dropSnapshot(for storageKey: String) async {
     advanceRevision(for: storageKey)
     memory[storageKey] = nil
+    resourceNamesByStorageKey[storageKey] = nil
     try? await store.remove(storageKey: storageKey)
   }
 
   private func advanceRevision(for storageKey: String) {
     revisions[storageKey, default: 0] += 1
+    inFlight[storageKey]?.task.cancel()
     inFlight[storageKey] = nil
   }
 

@@ -72,10 +72,10 @@ struct ConcertPeopleView: View {
     }
     .refreshable {
       await onRefresh()
-      await loadFriends()
+      await loadFriends(policy: .refresh)
     }
     .task {
-      await loadFriends()
+      await loadFriends(policy: .automatic)
     }
     .onChange(of: detail.concert.version) { _, _ in
       visibility = detail.concert.visibility
@@ -299,11 +299,11 @@ struct ConcertPeopleView: View {
     }
   }
 
-  private func loadFriends() async {
+  private func loadFriends(policy: CacheReadPolicy) async {
     defer { isLoadingFriends = false }
     guard viewerRole.canManagePeople, !viewerUsername.isEmpty else { return }
     do {
-      friends = try await socialRepository.friends(username: viewerUsername)
+      friends = try await socialRepository.friends(username: viewerUsername, policy: policy)
       errorMessage = nil
     } catch {
       errorMessage = error.localizedDescription
