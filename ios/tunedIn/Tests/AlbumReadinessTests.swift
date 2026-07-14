@@ -11,6 +11,13 @@ struct AlbumReadinessTests {
     #expect(configuration.timeoutIntervalForRequest == 30)
     #expect(configuration.timeoutIntervalForResource == 60)
     #expect(configuration.waitsForConnectivity == false)
+    #expect(configuration.requestCachePolicy == .reloadIgnoringLocalCacheData)
+    #expect(configuration.urlCache == nil)
+
+    let mediaConfiguration = AppNetworkSession.makeMediaConfiguration()
+    #expect(mediaConfiguration.urlCache == nil)
+    #expect(mediaConfiguration.httpCookieStorage == nil)
+    #expect(mediaConfiguration.httpShouldSetCookies == false)
   }
 
   @MainActor

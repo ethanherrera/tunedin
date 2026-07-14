@@ -454,10 +454,20 @@ private struct ActivityPhotoPreview: View {
   var body: some View {
     Group {
       if let url {
-        AsyncImage(url: url) { image in
-          image.resizable().scaledToFill()
-        } placeholder: {
-          TunedInImagePlaceholder()
+        CachedRemoteImage(
+          url: url,
+          resource: .albumPhoto(photoID: photoID, version: activity.photoVersion)
+        ) { phase in
+          switch phase {
+          case let .success(image):
+            image.resizable().scaledToFill()
+          case .failure:
+            TunedInImagePlaceholder(failed: true)
+          case .empty:
+            TunedInImagePlaceholder()
+          @unknown default:
+            TunedInImagePlaceholder()
+          }
         }
       } else {
         TunedInImagePlaceholder()

@@ -33,9 +33,16 @@ struct CachingProfileRepositoryTests {
     await cache.transition(to: userID)
 
     #expect(try await repository.fetchProfile(for: userID) == first)
-    #expect(try await repository.setAvatar(jpegData: Data([1]), for: userID) == updated)
+    let uploadBytes = Data([0xCA, 0xFE, 0xBA, 0xBE, 0x01, 0x02, 0x03])
+    #expect(try await repository.setAvatar(jpegData: uploadBytes, for: userID) == updated)
     #expect(try await repository.fetchProfile(for: userID) == updated)
     #expect(await remote.fetchCount == 1)
+
+    let resource = AppCacheResources.profile(userID: userID)
+    let storageKey = await cache.storageKey(resource: resource, viewerID: userID)
+    let store = await cache.store
+    let snapshot = try await store.snapshot(for: storageKey, accessedAt: .now)
+    #expect(snapshot?.payload.range(of: uploadBytes) == nil)
   }
 
   private func profile(displayName: String, version: Int64) -> Profile {
