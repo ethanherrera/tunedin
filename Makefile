@@ -7,7 +7,7 @@ DESTINATION := platform=iOS Simulator,name=iPhone 13
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup configure local-db-start configure-local-supabase local-next-steps generate format lint workflow-lint distribution-metadata-verify staging-configuration-test staging-auth-test staging-auth-plan staging-auth-verify posthog-test posthog-plan posthog-verify posthog-apply build build-local build-staging archive-staging test test-local check cache-reset simulator-auth-link simulator-local simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error local-db-reset local-seed-verify supabase-types check-supabase-types backend-test storage-integration-test backend-verify dev-status dev-plan dev-deploy dev-login-link staging-status staging-plan staging-promote
+.PHONY: help setup configure local-db-start configure-local-supabase local-next-steps generate format lint workflow-lint distribution-metadata-verify staging-configuration-test staging-auth-test staging-auth-plan staging-auth-verify staging-apple-sign-in-test staging-apple-sign-in-plan staging-apple-sign-in-verify staging-ipa-signing-test posthog-test posthog-plan posthog-verify posthog-apply build build-local build-staging archive-staging test test-local check cache-reset simulator-auth-link simulator-local simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error local-db-reset local-seed-verify supabase-types check-supabase-types backend-test storage-integration-test backend-verify dev-status dev-plan dev-deploy dev-login-link staging-status staging-plan staging-promote
 
 help: ## List available development commands.
 	@awk 'BEGIN {FS = ":.*##"}; /^[a-zA-Z_-]+:.*##/ { printf "%-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -52,6 +52,18 @@ staging-auth-plan: ## Show read-only drift from Staging native Apple/Google Auth
 staging-auth-verify: ## Verify Staging exposes native Apple/Google Auth and no email sign-up.
 	@./scripts/staging-auth.sh verify
 
+staging-apple-sign-in-test: ## Test protected Apple App ID capability reconciliation offline.
+	@./scripts/test-staging-apple-sign-in.sh
+
+staging-apple-sign-in-plan: ## Show read-only drift for the Staging Apple App ID capability.
+	@./scripts/staging-apple-sign-in.sh plan
+
+staging-apple-sign-in-verify: ## Verify the Staging Apple App ID is primary for Apple Sign In.
+	@./scripts/staging-apple-sign-in.sh verify
+
+staging-ipa-signing-test: ## Test signed Staging IPA and distribution-profile verification.
+	@./scripts/test-staging-ipa-signing.sh
+
 posthog-test: ## Validate the offline telemetry contract and PostHog control-plane tests.
 	@python3 scripts/posthog_control.py validate
 	@python3 -m unittest discover -s scripts/tests -p 'test_posthog_control.py'
@@ -85,7 +97,7 @@ test: generate ## Run the Swift Testing suite on the iPhone 13 Simulator.
 test-local: generate ## Run the Swift Testing suite with Local Supabase configuration.
 	@xcodebuild -project $(PROJECT) -scheme $(LOCAL_SCHEME) -destination '$(DESTINATION)' CODE_SIGNING_ALLOWED=NO test
 
-check: generate lint workflow-lint distribution-metadata-verify staging-configuration-test staging-auth-test posthog-test test ## Run generation, linting, workflow, auth, telemetry, metadata, and logic tests.
+check: generate lint workflow-lint distribution-metadata-verify staging-configuration-test staging-auth-test staging-apple-sign-in-test staging-ipa-signing-test posthog-test test ## Run generation, linting, workflow, auth, telemetry, metadata, and logic tests.
 
 cache-reset: ## Clear app-owned caches for tunedIn in the booted Simulator.
 	@./scripts/reset-simulator-cache.sh
