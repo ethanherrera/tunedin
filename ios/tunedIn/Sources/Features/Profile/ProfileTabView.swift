@@ -59,6 +59,7 @@ struct MainTabView: View {
         )
       }
       .environmentObject(concertFloatingControls)
+      .tunedInKeyboardManaged()
     }
     .onChange(of: isPresentingPeopleSearch) { _, isPresented in
       guard !isPresented, let pendingSearchedProfile else { return }
@@ -129,6 +130,7 @@ struct MainTabView: View {
               .frame(width: 330, height: 260)
               .presentationCompactAdaptation(.popover)
               .presentationBackground(.clear)
+              .tunedInKeyboardManaged(showsDismissControl: false)
             }
 
             TunedInGlassIconButton(

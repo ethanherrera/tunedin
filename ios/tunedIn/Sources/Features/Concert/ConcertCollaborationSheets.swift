@@ -691,6 +691,7 @@ private struct ConcertEditorPickerView: View {
         }
       }
     }
+    .tunedInKeyboardManaged()
   }
 
   private var filteredFriends: [SocialProfile] {

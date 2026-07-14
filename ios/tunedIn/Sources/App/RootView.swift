@@ -52,6 +52,7 @@ struct RootView: View {
     } message: {
       Text(session.authCallbackError ?? "The login link could not be verified.")
     }
+    .tunedInKeyboardManaged()
   }
 }
 

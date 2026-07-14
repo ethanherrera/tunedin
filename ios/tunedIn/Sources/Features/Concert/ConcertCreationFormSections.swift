@@ -64,6 +64,7 @@ struct ConcertCreationDetailsView: View {
       }
     }
     .tint(TunedInDesign.accent)
+    .tunedInKeyboardManaged()
   }
 
   private var pagePicker: some View {
