@@ -683,7 +683,7 @@ struct SettingsView: View {
           accountSection
         }
         .padding(20)
-        .padding(.bottom, 32)
+        .padding(.bottom, TunedInDesign.scrollContentBottomInset)
       }
       .refreshable {
         try? await session.refreshProfile()
