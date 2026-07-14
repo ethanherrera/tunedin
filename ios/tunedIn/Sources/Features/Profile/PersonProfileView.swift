@@ -118,7 +118,7 @@ struct PersonProfileView: View {
       guard onDismiss == nil else { return }
       floatingControls.resetBackOnly(owner: floatingControlOwner)
     }
-    .overlay(alignment: .bottom) {
+    .safeAreaInset(edge: .bottom, spacing: 0) {
       if let onDismiss {
         TunedInSubscreenBackBar(title: "Profile", action: onDismiss)
           .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)

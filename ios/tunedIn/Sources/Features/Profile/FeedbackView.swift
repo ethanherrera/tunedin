@@ -13,7 +13,7 @@ struct FeedbackView: View {
   private let characterLimit = 2_000
 
   var body: some View {
-    ZStack(alignment: .bottom) {
+    ZStack {
       TunedInDesign.pageBackground.ignoresSafeArea()
 
       ScrollView {
@@ -61,9 +61,10 @@ struct FeedbackView: View {
           }
         }
         .padding(20)
-        .padding(.bottom, 130)
+        .padding(.bottom, TunedInDesign.scrollContentBottomInset)
       }
-
+    }
+    .safeAreaInset(edge: .bottom, spacing: 0) {
       feedbackControls
         .padding(.horizontal, 18)
         .padding(.bottom, 10)
