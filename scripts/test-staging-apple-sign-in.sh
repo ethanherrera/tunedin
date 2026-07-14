@@ -96,7 +96,7 @@ payload = json.load(open(os.environ["PAYLOAD_PATH"], encoding="utf-8"))["data"]
 settings = payload["attributes"]["settings"]
 assert settings == [{
     "key": "APPLE_ID_AUTH_APP_CONSENT",
-    "options": [{"key": "PRIMARY_APP_CONSENT"}],
+    "options": [{"key": "PRIMARY_APP_CONSENT", "enabled": True}],
 }]
 if os.environ["METHOD"] == "POST":
     assert payload["attributes"]["capabilityType"] == "APPLE_ID_AUTH"

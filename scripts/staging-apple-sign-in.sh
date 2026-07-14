@@ -294,7 +294,7 @@ import sys
 
 settings = [{
     "key": "APPLE_ID_AUTH_APP_CONSENT",
-    "options": [{"key": "PRIMARY_APP_CONSENT"}],
+    "options": [{"key": "PRIMARY_APP_CONSENT", "enabled": True}],
 }]
 capability_id = os.environ["CAPABILITY_ID"]
 if capability_id:
