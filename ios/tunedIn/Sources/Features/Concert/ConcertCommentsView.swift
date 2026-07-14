@@ -9,6 +9,7 @@ struct ConcertCommentsView: View {
   let model: ConcertCommentsModel
 
   @Environment(\.telemetry) private var telemetry
+  @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
 
   @State private var draft = ""
   @State private var editingCommentID: UUID?
@@ -144,6 +145,12 @@ struct ConcertCommentsView: View {
         .background(TunedInDesign.accent, in: Circle())
         .disabled(isSending || ConcertInput.normalizedText(draft).isEmpty)
       }
+      .padding(
+        .trailing,
+        keyboardPresentation.showsDismissControl
+          ? TunedInDesign.keyboardDismissControlClearance
+          : 0
+      )
     }
     .padding(.horizontal, 16)
     .padding(.top, 10)
