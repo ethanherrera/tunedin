@@ -153,8 +153,44 @@ request() {
       --write-out '%{http_code}' "$url")"
   fi
   if [[ ! "$status" =~ ^2 ]]; then
-    fail "App Store Connect request failed with HTTP $status."
+    fail "App Store Connect request failed with HTTP $status: $(error_summary "$output_path")"
   fi
+}
+
+error_summary() {
+  local response_path="$1"
+  python3 - "$response_path" <<'PY'
+import json
+import sys
+
+
+try:
+    with open(sys.argv[1], encoding="utf-8") as source:
+        payload = json.load(source)
+except (OSError, json.JSONDecodeError):
+    print("Apple returned no structured error detail")
+    raise SystemExit(0)
+
+errors = payload.get("errors")
+if not isinstance(errors, list) or not errors:
+    print("Apple returned no structured error detail")
+    raise SystemExit(0)
+
+summaries = []
+for error in errors[:3]:
+    if not isinstance(error, dict):
+        continue
+    parts = [
+        str(error[key]).strip()
+        for key in ("code", "title", "detail")
+        if isinstance(error.get(key), str) and error[key].strip()
+    ]
+    if parts:
+        summaries.append(" — ".join(parts))
+
+summary = " | ".join(summaries) or "Apple returned no structured error detail"
+print(summary[:1000])
+PY
 }
 
 load_bundle_id() {
