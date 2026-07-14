@@ -227,6 +227,7 @@ struct MainTabView: View {
     .frame(minWidth: 58, minHeight: 48)
     .padding(.horizontal, 3)
     .background(isSelected ? TunedInDesign.accent : .clear, in: Capsule())
+    .contentShape(Capsule())
   }
 }
 
@@ -385,6 +386,7 @@ private struct ConcertContextBottomBar: View {
                     .matchedGeometryEffect(id: "concert-context-selection", in: selectionNamespace)
                 }
               }
+              .contentShape(Capsule())
             }
             .buttonStyle(.plain)
             .disabled(controls.isInteractionLocked)
