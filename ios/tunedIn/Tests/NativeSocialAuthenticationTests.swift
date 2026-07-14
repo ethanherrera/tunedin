@@ -47,7 +47,7 @@ struct NativeSocialAuthenticationTests {
         provider: .google,
         idToken: "id-token",
         accessToken: "access-token",
-        nonce: "nonce"
+        nonce: nil
       )
     )
 
