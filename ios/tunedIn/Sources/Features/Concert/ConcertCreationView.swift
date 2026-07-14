@@ -75,6 +75,7 @@ struct ConcertCreationView: View {
       }
     }
     .tint(TunedInDesign.accent)
+    .tunedInKeyboardManaged()
   }
 
   private var saveBar: some View {

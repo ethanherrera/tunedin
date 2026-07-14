@@ -69,6 +69,7 @@ struct FeedbackView: View {
         .padding(.bottom, 10)
     }
     .interactiveDismissDisabled(isSubmitting)
+    .tunedInKeyboardManaged()
   }
 
   private var feedbackControls: some View {
