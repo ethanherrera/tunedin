@@ -74,6 +74,7 @@ struct FriendsListView: View {
                     )
                     .frame(maxWidth: .infinity, minHeight: 48)
                     .background(selectedSection == section ? TunedInDesign.accent : .clear, in: Capsule())
+                    .contentShape(Capsule())
                   }
                   .buttonStyle(.plain)
                 }
