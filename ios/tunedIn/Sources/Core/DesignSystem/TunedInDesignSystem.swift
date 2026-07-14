@@ -64,7 +64,8 @@ struct TunedInFloatingAction: View {
       TunedInFloatingActionLabel(systemImage: systemImage)
     }
     .buttonStyle(.plain)
-    .contentShape(Circle())
+    .frame(width: 60, height: 60)
+    .contentShape(.interaction, Circle())
     .accessibilityLabel(accessibilityLabel)
     .accessibilityHint(accessibilityHint)
   }
@@ -78,7 +79,7 @@ struct TunedInFloatingActionLabel: View {
       .font(.system(size: 22, weight: .bold))
       .foregroundStyle(TunedInDesign.actionForeground)
       .frame(width: 60, height: 60)
-      .contentShape(Circle())
+      .contentShape(.interaction, Circle())
       .modifier(TunedInLiquidGlassActionSurface())
   }
 }
@@ -100,10 +101,12 @@ struct TunedInGlassIconButton: View {
         .font(.body.weight(.bold))
         .foregroundStyle(TunedInDesign.primaryText)
         .frame(width: 60, height: 60)
-        .contentShape(Circle())
+        .contentShape(.interaction, Circle())
         .modifier(TunedInLiquidGlassIconSurface(style: style))
     }
     .buttonStyle(.plain)
+    .frame(width: 60, height: 60)
+    .contentShape(.interaction, Circle())
     .accessibilityLabel(accessibilityLabel)
   }
 }
