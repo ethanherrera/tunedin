@@ -1,5 +1,30 @@
+import Combine
 import SwiftUI
 import UIKit
+
+enum TunedInKeyboardPresentation: Equatable {
+  case hidden
+  case presented
+
+  var showsPersistentGlass: Bool {
+    self == .hidden
+  }
+
+  var showsDismissControl: Bool {
+    self == .presented
+  }
+}
+
+private struct TunedInKeyboardPresentationKey: EnvironmentKey {
+  static let defaultValue = TunedInKeyboardPresentation.hidden
+}
+
+extension EnvironmentValues {
+  var tunedInKeyboardPresentation: TunedInKeyboardPresentation {
+    get { self[TunedInKeyboardPresentationKey.self] }
+    set { self[TunedInKeyboardPresentationKey.self] = newValue }
+  }
+}
 
 enum TunedInDesign {
   static let accent = Color(red: 1.0, green: 0.34, blue: 0.13)
@@ -18,6 +43,7 @@ enum TunedInDesign {
   static let cornerRadius: CGFloat = 18
   static let bottomControlInset: CGFloat = 44
   static let bottomControlHorizontalInset: CGFloat = 16
+  static let keyboardDismissControlClearance: CGFloat = 76
 
   private static func adaptive(light: Int, dark: Int) -> Color {
     Color(
@@ -46,6 +72,7 @@ struct TunedInFloatingAction: View {
   let accessibilityLabel: String
   let accessibilityHint: String
   let action: () -> Void
+  @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
 
   init(
     systemImage: String = "plus",
@@ -60,26 +87,33 @@ struct TunedInFloatingAction: View {
   }
 
   var body: some View {
-    Button(action: action) {
-      TunedInFloatingActionLabel(systemImage: systemImage)
+    if keyboardPresentation.showsPersistentGlass {
+      Button(action: action) {
+        TunedInFloatingActionLabel(systemImage: systemImage)
+      }
+      .buttonStyle(.plain)
+      .contentShape(Circle())
+      .accessibilityLabel(accessibilityLabel)
+      .accessibilityHint(accessibilityHint)
+      .transition(.opacity.combined(with: .scale(scale: 0.9)))
     }
-    .buttonStyle(.plain)
-    .contentShape(Circle())
-    .accessibilityLabel(accessibilityLabel)
-    .accessibilityHint(accessibilityHint)
   }
 }
 
 struct TunedInFloatingActionLabel: View {
   let systemImage: String
+  @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
 
   var body: some View {
-    Image(systemName: systemImage)
-      .font(.system(size: 22, weight: .bold))
-      .foregroundStyle(TunedInDesign.actionForeground)
-      .frame(width: 60, height: 60)
-      .contentShape(Circle())
-      .modifier(TunedInLiquidGlassActionSurface())
+    if keyboardPresentation.showsPersistentGlass {
+      Image(systemName: systemImage)
+        .font(.system(size: 22, weight: .bold))
+        .foregroundStyle(TunedInDesign.actionForeground)
+        .frame(width: 60, height: 60)
+        .contentShape(Circle())
+        .modifier(TunedInLiquidGlassActionSurface())
+        .transition(.opacity.combined(with: .scale(scale: 0.9)))
+    }
   }
 }
 
@@ -93,18 +127,22 @@ struct TunedInGlassIconButton: View {
   let accessibilityLabel: String
   var style: Style = .neutral
   let action: () -> Void
+  @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
 
   var body: some View {
-    Button(action: action) {
-      Image(systemName: systemImage)
-        .font(.body.weight(.bold))
-        .foregroundStyle(TunedInDesign.primaryText)
-        .frame(width: 60, height: 60)
-        .contentShape(Circle())
-        .modifier(TunedInLiquidGlassIconSurface(style: style))
+    if keyboardPresentation.showsPersistentGlass {
+      Button(action: action) {
+        Image(systemName: systemImage)
+          .font(.body.weight(.bold))
+          .foregroundStyle(TunedInDesign.primaryText)
+          .frame(width: 60, height: 60)
+          .contentShape(Circle())
+          .modifier(TunedInLiquidGlassIconSurface(style: style))
+      }
+      .buttonStyle(.plain)
+      .accessibilityLabel(accessibilityLabel)
+      .transition(.opacity.combined(with: .scale(scale: 0.9)))
     }
-    .buttonStyle(.plain)
-    .accessibilityLabel(accessibilityLabel)
   }
 }
 
@@ -194,11 +232,16 @@ struct TunedInFormCard<Content: View>: View {
 
 struct TunedInGlassSection<Content: View>: View {
   @ViewBuilder let content: Content
+  @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
 
   var body: some View {
     content
       .padding(16)
-      .modifier(TunedInLiquidGlassSectionSurface())
+      .modifier(
+        TunedInLiquidGlassSectionSurface(
+          isGlassEnabled: keyboardPresentation.showsPersistentGlass
+        )
+      )
   }
 }
 
@@ -211,6 +254,7 @@ struct TunedInGlassSearchField: View {
   @Binding var text: String
   let prompt: String
   let style: Style
+  @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
 
   init(text: Binding<String>, prompt: String, style: Style = .standard) {
     _text = text
@@ -241,17 +285,26 @@ struct TunedInGlassSearchField: View {
     }
     .padding(.horizontal, 14)
     .padding(.vertical, 13)
-    .modifier(TunedInLiquidGlassSearchSurface(style: style))
+    .modifier(
+      TunedInLiquidGlassSearchSurface(
+        style: style,
+        isGlassEnabled: keyboardPresentation.showsPersistentGlass
+      )
+    )
   }
 }
 
 struct TunedInGlassBottomBar<Content: View>: View {
   @ViewBuilder let content: Content
+  @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
 
   var body: some View {
-    content
-      .padding(6)
-      .modifier(TunedInLiquidGlassBottomBarSurface())
+    if keyboardPresentation.showsPersistentGlass {
+      content
+        .padding(6)
+        .modifier(TunedInLiquidGlassBottomBarSurface())
+        .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottom)))
+    }
   }
 }
 
@@ -343,10 +396,15 @@ extension View {
 
 struct TunedInGlassPopover<Content: View>: View {
   @ViewBuilder let content: Content
+  @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
 
   var body: some View {
     content
-      .modifier(TunedInLiquidGlassPopoverSurface())
+      .modifier(
+        TunedInLiquidGlassPopoverSurface(
+          isGlassEnabled: keyboardPresentation.showsPersistentGlass
+        )
+      )
   }
 }
 
@@ -393,8 +451,20 @@ struct TunedInPrivacyBadge: View {
 }
 
 private struct TunedInLiquidGlassSectionSurface: ViewModifier {
+  let isGlassEnabled: Bool
+
   func body(content: Content) -> some View {
-    if #available(iOS 26.0, *) {
+    if !isGlassEnabled {
+      content
+        .background(
+          TunedInDesign.cardBackground,
+          in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
+        )
+        .overlay {
+          RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
+            .strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
+        }
+    } else if #available(iOS 26.0, *) {
       content
         .glassEffect(
           .regular.tint(TunedInDesign.accent.opacity(0.08)).interactive(),
@@ -420,9 +490,17 @@ private struct TunedInLiquidGlassSectionSurface: ViewModifier {
 
 private struct TunedInLiquidGlassSearchSurface: ViewModifier {
   let style: TunedInGlassSearchField.Style
+  let isGlassEnabled: Bool
 
   func body(content: Content) -> some View {
-    if #available(iOS 26.0, *) {
+    if !isGlassEnabled {
+      content
+        .background(TunedInDesign.raisedSurface, in: Capsule())
+        .overlay {
+          Capsule()
+            .strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
+        }
+    } else if #available(iOS 26.0, *) {
       content
         .glassEffect(
           .regular.tint(tint).interactive(),
@@ -449,8 +527,16 @@ private struct TunedInLiquidGlassSearchSurface: ViewModifier {
 }
 
 private struct TunedInLiquidGlassPopoverSurface: ViewModifier {
+  let isGlassEnabled: Bool
+
   func body(content: Content) -> some View {
-    if #available(iOS 26.0, *) {
+    if !isGlassEnabled {
+      content
+        .background(
+          TunedInDesign.cardBackground,
+          in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
+        )
+    } else if #available(iOS 26.0, *) {
       content
         .glassEffect(
           .regular.tint(.white.opacity(0.08)).interactive(),
@@ -491,5 +577,90 @@ private struct TunedInLiquidGlassBottomBarSurface: ViewModifier {
             .strokeBorder(TunedInDesign.cardBorder.opacity(0.85))
         }
     }
+  }
+}
+
+private struct TunedInKeyboardDismissControl: View {
+  var body: some View {
+    Button {
+      UIApplication.shared.sendAction(
+        #selector(UIResponder.resignFirstResponder),
+        to: nil,
+        from: nil,
+        for: nil
+      )
+    } label: {
+      Image(systemName: "xmark")
+        .font(.body.weight(.bold))
+        .foregroundStyle(TunedInDesign.primaryText)
+        .frame(width: 60, height: 60)
+        .contentShape(Circle())
+        .modifier(TunedInLiquidGlassIconSurface(style: .neutral))
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel("Dismiss keyboard")
+  }
+}
+
+private struct TunedInKeyboardPresentationModifier: ViewModifier {
+  let showsDismissControl: Bool
+  @State private var presentation = TunedInKeyboardPresentation.hidden
+
+  func body(content: Content) -> some View {
+    content
+      .environment(\.tunedInKeyboardPresentation, presentation)
+      .safeAreaInset(edge: .bottom, spacing: 0) {
+        if presentation.showsDismissControl && showsDismissControl {
+          HStack {
+            Spacer(minLength: 0)
+            TunedInKeyboardDismissControl()
+          }
+          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+          .padding(.vertical, 8)
+          .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .bottomTrailing)))
+        }
+      }
+      .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+        setPresentation(.presented, notification: notification)
+      }
+      .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { notification in
+        setPresentation(.hidden, notification: notification)
+      }
+      .onReceive(
+        NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)
+      ) { notification in
+        setPresentation(presentation(for: notification), notification: notification)
+      }
+  }
+
+  private func presentation(for notification: Notification) -> TunedInKeyboardPresentation {
+    guard
+      let endFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+      let screenBounds = UIApplication.shared.connectedScenes
+        .compactMap({ ($0 as? UIWindowScene)?.screen.bounds })
+        .first
+    else {
+      return presentation
+    }
+
+    return endFrame.minY < screenBounds.maxY && endFrame.intersects(screenBounds)
+      ? .presented
+      : .hidden
+  }
+
+  private func setPresentation(
+    _ newPresentation: TunedInKeyboardPresentation,
+    notification: Notification
+  ) {
+    let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
+    withAnimation(.easeOut(duration: duration)) {
+      presentation = newPresentation
+    }
+  }
+}
+
+extension View {
+  func tunedInKeyboardManaged(showsDismissControl: Bool = true) -> some View {
+    modifier(TunedInKeyboardPresentationModifier(showsDismissControl: showsDismissControl))
   }
 }

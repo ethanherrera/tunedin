@@ -144,6 +144,7 @@ struct ConcertEditView: View {
       }
     }
     .tint(TunedInDesign.accent)
+    .tunedInKeyboardManaged()
     .onChange(of: selectedPhoto) { _, item in
       guard let item else { return }
       Task { await uploadPhoto(item) }

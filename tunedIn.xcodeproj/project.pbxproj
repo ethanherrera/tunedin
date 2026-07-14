@@ -71,6 +71,7 @@
 		8FCAFFA83A941FD8C0EB2B6F /* tunedInApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8046DFD22BCA47A3E52C7793 /* tunedInApp.swift */; };
 		905E3D91E2B813DA12200AAD /* SupabaseConcertRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B89C2123769CE8C8EE2427 /* SupabaseConcertRepository.swift */; };
 		92360D3D1229A15146C11DFE /* AlbumReadinessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B185CD800E6B9369C52FD98 /* AlbumReadinessTests.swift */; };
+		92D3C73DFE5BD6BA1C81A095 /* TunedInKeyboardPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F9B1A4D54544CD7AA15C942 /* TunedInKeyboardPresentationTests.swift */; };
 		9453A4623DBE50BCDF3AEC5F /* SwiftDataSnapshotStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B166E29D4B9DBD8DCFFC12B /* SwiftDataSnapshotStore.swift */; };
 		9807142221226376AA502CAC /* CachingConcertRepositoryTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A63A5DA16780038538F59309 /* CachingConcertRepositoryTestSupport.swift */; };
 		98FB5D12AFC8CB5F72B906F7 /* AppCacheStorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9874CBB46B7C10D8BD3D130 /* AppCacheStorageTests.swift */; };
@@ -158,6 +159,7 @@
 		4A5DDFF994E4A5513CAD3917 /* midnight-theatre.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "midnight-theatre.png"; sourceTree = "<group>"; };
 		4B166E29D4B9DBD8DCFFC12B /* SwiftDataSnapshotStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftDataSnapshotStore.swift; sourceTree = "<group>"; };
 		4B185CD800E6B9369C52FD98 /* AlbumReadinessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumReadinessTests.swift; sourceTree = "<group>"; };
+		4F9B1A4D54544CD7AA15C942 /* TunedInKeyboardPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunedInKeyboardPresentationTests.swift; sourceTree = "<group>"; };
 		52FC5FA5CC195C96AC2F7E11 /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
 		531CDC9DE20342FF17125961 /* TelemetryClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryClient.swift; sourceTree = "<group>"; };
 		532F8D6E5EB000F34B910F42 /* TunedInDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunedInDesignSystem.swift; sourceTree = "<group>"; };
@@ -525,6 +527,7 @@
 				2F7883953FF6E8AF449F2EEE /* SignedURLCacheTests.swift */,
 				DD654ACD06E9E04AD7DA86BF /* TelemetryTests.swift */,
 				93B17BB128F3EE14857B0AEB /* TunedInAppearanceTests.swift */,
+				4F9B1A4D54544CD7AA15C942 /* TunedInKeyboardPresentationTests.swift */,
 			);
 			name = Tests;
 			path = ios/tunedIn/Tests;
@@ -768,6 +771,7 @@
 				395C8557A1C118C14C1806B9 /* SignedURLCacheTests.swift in Sources */,
 				0686BF43E368DFAE66D3ED69 /* TelemetryTests.swift in Sources */,
 				83A9DCB96622FE84342F37C4 /* TunedInAppearanceTests.swift in Sources */,
+				92D3C73DFE5BD6BA1C81A095 /* TunedInKeyboardPresentationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
