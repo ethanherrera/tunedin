@@ -88,6 +88,64 @@ struct AppSessionTests {
     #expect(session.authCallbackError == "The login link could not be verified.")
   }
 
+  @MainActor
+  @Test
+  func manualProfileRefreshUpdatesTheSignedInProfile() async throws {
+    let user = try AuthenticatedUser(
+      id: #require(UUID(uuidString: "55555555-5555-5555-5555-555555555555")),
+      email: "refresh@example.test"
+    )
+    let initialProfile = makeProfile(id: user.id, completed: true)
+    let refreshedProfile = Profile(
+      id: user.id,
+      username: "listener",
+      displayName: "Refreshed Listener",
+      avatarObjectPath: "avatars/refreshed.jpg",
+      avatarVersion: 2,
+      onboardingCompletedAt: Date(timeIntervalSince1970: 1),
+      createdAt: Date(timeIntervalSince1970: 0),
+      updatedAt: Date(timeIntervalSince1970: 2)
+    )
+    let session = AppSession(
+      authenticationRepository: StaticAuthenticationRepository(user: user),
+      profileRepository: RefreshProfileRepository(initial: initialProfile, refreshed: refreshedProfile)
+    )
+
+    await settle(session)
+    try await session.refreshProfile()
+
+    guard case let .signedIn(_, profile) = session.phase else {
+      Issue.record("Expected refresh to keep the session signed in")
+      return
+    }
+    #expect(profile == refreshedProfile)
+  }
+
+  @MainActor
+  @Test
+  func failedManualProfileRefreshPreservesVisibleProfile() async throws {
+    let user = try AuthenticatedUser(
+      id: #require(UUID(uuidString: "66666666-6666-6666-6666-666666666666")),
+      email: "refresh-failure@example.test"
+    )
+    let profile = makeProfile(id: user.id, completed: true)
+    let session = AppSession(
+      authenticationRepository: StaticAuthenticationRepository(user: user),
+      profileRepository: RefreshProfileRepository(initial: profile, refreshed: nil)
+    )
+
+    await settle(session)
+    await #expect(throws: RefreshProfileRepository.Failure.self) {
+      try await session.refreshProfile()
+    }
+
+    guard case let .signedIn(_, visibleProfile) = session.phase else {
+      Issue.record("Expected a failed refresh to preserve the signed-in screen")
+      return
+    }
+    #expect(visibleProfile == profile)
+  }
+
   private func makeProfile(id: UUID, completed: Bool) -> Profile {
     Profile(
       id: id,
@@ -180,6 +238,48 @@ private struct StaticProfileRepository: ProfileRepository {
 
   func removeAvatar(for _: UUID) async throws -> Profile {
     profile
+  }
+
+  func avatarURL(profileID _: UUID, objectPath _: String, version _: Int64) async throws -> URL {
+    URL(string: "https://example.test/avatar.jpg")!
+  }
+}
+
+private actor RefreshProfileRepository: ProfileRepository {
+  enum Failure: Error {
+    case unavailable
+  }
+
+  let initial: Profile
+  let refreshed: Profile?
+  private var fetchCount = 0
+
+  init(initial: Profile, refreshed: Profile?) {
+    self.initial = initial
+    self.refreshed = refreshed
+  }
+
+  func fetchProfile(for _: UUID) async throws -> Profile {
+    defer { fetchCount += 1 }
+    guard fetchCount > 0 else { return initial }
+    guard let refreshed else { throw Failure.unavailable }
+    return refreshed
+  }
+
+  func isUsernameAvailable(_: String) async throws -> Bool {
+    true
+  }
+
+  func completeOnboarding(username _: String, displayName _: String) async throws -> Profile {
+    initial
+  }
+
+  func setAvatar(jpegData _: Data, for _: UUID) async throws -> Profile {
+    initial
+  }
+
+  func removeAvatar(for _: UUID) async throws -> Profile {
+    initial
   }
 
   func avatarURL(profileID _: UUID, objectPath _: String, version _: Int64) async throws -> URL {

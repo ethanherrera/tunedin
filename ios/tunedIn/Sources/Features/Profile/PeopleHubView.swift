@@ -87,7 +87,9 @@ struct FriendsListView: View {
 
           if model.isLoading, model.friends.isEmpty, model.incomingRequests.isEmpty {
             friendsSkeleton
-          } else if let errorMessage = model.errorMessage {
+          } else if let errorMessage = model.errorMessage,
+                    model.friends.isEmpty,
+                    model.incomingRequests.isEmpty {
             ContentUnavailableView {
               Label("Couldn’t refresh friends", systemImage: "exclamationmark.triangle")
             } description: {
@@ -124,6 +126,13 @@ struct FriendsListView: View {
         .padding(.horizontal, 20)
         .padding(.top, 18)
         .padding(.bottom, 32)
+      }
+      .refreshable {
+        if isOwnList {
+          await model.refresh()
+        } else {
+          await model.refreshFriends()
+        }
       }
     }
     .navigationTitle("Friends")
@@ -320,6 +329,12 @@ struct FriendSearchView: View {
               .foregroundStyle(TunedInDesign.mutedText)
           }
           .padding(.vertical, 18)
+        } else if let errorMessage = model.errorMessage, model.searchResults.isEmpty {
+          ContentUnavailableView {
+            Label("Couldn’t refresh search", systemImage: "exclamationmark.triangle")
+          } description: {
+            Text(errorMessage)
+          }
         } else if model.searchResults.isEmpty {
           ContentUnavailableView(
             "No results",
@@ -364,6 +379,9 @@ struct FriendSearchView: View {
       .padding(.horizontal, 20)
       .padding(.top, 12)
       .padding(.bottom, 32)
+    }
+    .refreshable {
+      await model.search()
     }
   }
 
@@ -410,7 +428,13 @@ struct FriendRequestsView: View {
             .font(.system(size: 34, weight: .bold, design: .serif))
             .foregroundStyle(TunedInDesign.primaryText)
 
-          if model.incomingRequests.isEmpty {
+          if let errorMessage = model.errorMessage, model.incomingRequests.isEmpty {
+            ContentUnavailableView {
+              Label("Couldn’t refresh requests", systemImage: "exclamationmark.triangle")
+            } description: {
+              Text(errorMessage)
+            }
+          } else if model.incomingRequests.isEmpty {
             ContentUnavailableView {
               Label("You’re all caught up", systemImage: "checkmark.circle")
             } description: {
@@ -431,6 +455,9 @@ struct FriendRequestsView: View {
         .padding(.horizontal, 20)
         .padding(.top, 18)
         .padding(.bottom, 32)
+      }
+      .refreshable {
+        await model.refresh()
       }
     }
     .navigationBarTitleDisplayMode(.inline)
@@ -490,6 +517,7 @@ final class PeopleHubModel {
   func search() async {
     guard !query.isEmpty else {
       searchResults = []
+      errorMessage = nil
       return
     }
 
@@ -498,7 +526,6 @@ final class PeopleHubModel {
       searchResults = try await repository.searchProfiles(usernamePrefix: query)
       errorMessage = nil
     } catch {
-      searchResults = []
       errorMessage = error.localizedDescription
     }
     isSearching = false

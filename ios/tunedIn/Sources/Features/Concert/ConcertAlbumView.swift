@@ -7,6 +7,7 @@ struct ConcertAlbumView: View {
   let viewerRole: ConcertViewerRole
   let concertRepository: any ConcertRepository
   let pageHeader: AnyView
+  let onRefresh: () async -> Void
 
   @EnvironmentObject private var concertFloatingControls: ConcertFloatingControls
   @Environment(\.telemetry) private var telemetry
@@ -97,6 +98,10 @@ struct ConcertAlbumView: View {
       }
       .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 132)
     }
+    .refreshable {
+      await onRefresh()
+      await load()
+    }
     .task { await load() }
     .onChange(of: concertFloatingControls.pendingPhotoSelections) { _, items in
       guard !items.isEmpty else { return }
@@ -138,6 +143,7 @@ struct ConcertAlbumView: View {
         concertFloatingControls.setAlbumPolicy(policy)
       }
       canLoadMore = photos.count == 30
+      errorMessage = nil
     } catch { loadErrorMessage = error.localizedDescription }
     isLoading = false
   }

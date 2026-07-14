@@ -48,18 +48,30 @@ struct FriendsActivityFeedView: View {
         .padding(.horizontal, 20)
         .padding(.top, 18)
         .padding(.bottom, 100)
-      } else if let errorMessage = model.errorMessage {
-        VStack(alignment: .leading, spacing: 0) {
-          feedHeader
-          failureState(message: errorMessage)
+      } else if let errorMessage = model.errorMessage, model.activities.isEmpty {
+        ScrollView {
+          VStack(alignment: .leading, spacing: 0) {
+            feedHeader
+            failureState(message: errorMessage)
+          }
+          .frame(minHeight: 540, alignment: .top)
+          .padding(.horizontal, 20)
+          .padding(.top, 18)
+          .padding(.bottom, 100)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 18)
-        .padding(.bottom, 100)
+        .refreshable {
+          await model.refreshVisibleSlice()
+        }
       } else {
         ScrollView {
           VStack(alignment: .leading, spacing: 0) {
             feedHeader
+            if let errorMessage = model.errorMessage {
+              Label(errorMessage, systemImage: "exclamationmark.triangle")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .padding(.bottom, 12)
+            }
             if model.activities.isEmpty {
               emptyState
                 .frame(minHeight: 540)
