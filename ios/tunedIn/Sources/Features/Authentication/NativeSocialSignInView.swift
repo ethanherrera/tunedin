@@ -102,6 +102,11 @@ struct NativeSocialSignInView: View {
       request.nonce = NativeAuthNonce.hashed(nonce)
     } catch {
       appleNonce = nil
+      session.recordNativeAuthenticationFailure(
+        provider: .apple,
+        error: error,
+        statusClass: NativeSocialSignInError.statusClass(for: .apple, error: error)
+      )
       errorMessage = error.localizedDescription
     }
   }
@@ -130,6 +135,11 @@ struct NativeSocialSignInView: View {
       )
     } catch {
       guard !NativeSocialSignInError.isCancellation(error) else { return }
+      session.recordNativeAuthenticationFailure(
+        provider: .apple,
+        error: error,
+        statusClass: NativeSocialSignInError.statusClass(for: .apple, error: error)
+      )
       errorMessage = NativeSocialSignInError.message(for: error)
     }
   }
@@ -140,13 +150,26 @@ struct NativeSocialSignInView: View {
     errorMessage = nil
 
     Task {
+      let credentials: NativeAuthCredentials
       do {
-        let credentials = try await GoogleNativeSignIn.credentials(configuration: configuration)
-        try await session.signIn(with: credentials)
+        credentials = try await GoogleNativeSignIn.credentials(configuration: configuration)
       } catch {
         if !NativeSocialSignInError.isCancellation(error) {
+          session.recordNativeAuthenticationFailure(
+            provider: .google,
+            error: error,
+            statusClass: NativeSocialSignInError.statusClass(for: .google, error: error)
+          )
           errorMessage = NativeSocialSignInError.message(for: error)
         }
+        isSubmitting = false
+        return
+      }
+
+      do {
+        try await session.signIn(with: credentials)
+      } catch {
+        errorMessage = NativeSocialSignInError.message(for: error)
       }
       isSubmitting = false
     }
@@ -282,5 +305,25 @@ private enum NativeSocialSignInError: LocalizedError {
       return error.localizedDescription
     }
     return AppFailure(error).localizedDescription
+  }
+
+  static func statusClass(for provider: NativeAuthProvider, error: any Error) -> String {
+    if let error = error as? NativeSocialSignInError {
+      return switch error {
+      case .missingAppleCredential: "apple_missing_credential"
+      case .missingGoogleCredential: "google_missing_credential"
+      case .missingPresentationContext: "presentation_unavailable"
+      case .nonceGenerationFailed: "nonce_generation"
+      }
+    }
+
+    let error = error as NSError
+    if provider == .apple, error.domain == ASAuthorizationError.errorDomain {
+      return "apple_authorization_\(error.code)"
+    }
+    if provider == .google, error.domain == kGIDSignInErrorDomain {
+      return "google_sdk_\(error.code)"
+    }
+    return "provider_response"
   }
 }

@@ -55,6 +55,45 @@ struct NativeSocialAuthenticationTests {
     #expect(record?.name == TelemetryEvent.authenticationCompleted.rawValue)
     #expect(record?.properties[.method] == .string("google"))
   }
+
+  @MainActor
+  @Test
+  func sessionRecordsSanitizedNativeProviderFailures() {
+    let configuration = NativeSocialAuthConfiguration(
+      googleIOSClientID: "ios.apps.googleusercontent.com",
+      googleServerClientID: "server.apps.googleusercontent.com"
+    )
+    let telemetry = AppTelemetryClient(
+      configuration: .recording,
+      release: ReleaseMetadata(
+        version: "test",
+        build: "test",
+        gitSHA: "test",
+        environment: .staging
+      )
+    )
+    let session = AppSession(
+      authenticationRepository: SuccessfulNativeAuthenticationRepository(),
+      profileRepository: NativeAuthenticationProfileRepository(),
+      nativeSocialAuthConfiguration: configuration,
+      telemetry: telemetry
+    )
+
+    session.recordNativeAuthenticationFailure(
+      provider: .apple,
+      error: AppFailure.unexpected,
+      statusClass: "apple_authorization_1000"
+    )
+
+    let event = telemetry.recentRecords.first { $0.name == TelemetryEvent.authenticationCompleted.rawValue }
+    #expect(event?.properties[.method] == .string("apple"))
+    #expect(event?.properties[.outcome] == .string("failed"))
+    #expect(event?.properties[.failureCategory] == .string("unexpected"))
+    #expect(event?.properties[.statusClass] == .string("apple_authorization_1000"))
+    let log = telemetry.recentRecords.first { $0.name == TelemetryLogMessage.nativeAuthenticationFailed.rawValue }
+    #expect(log?.properties[.operation] == .string("authenticate"))
+    #expect(log?.properties[.method] == .string("apple"))
+  }
 }
 
 private struct SuccessfulNativeAuthenticationRepository: AuthenticationRepository {

@@ -94,8 +94,19 @@ final class AppSession {
     }
 
     let startedAt = clock.now
-    try await authenticationRepository.signIn(with: credentials)
-    captureAuthenticationSuccess(method: credentials.provider.rawValue, startedAt: startedAt)
+    do {
+      try await authenticationRepository.signIn(with: credentials)
+      captureAuthenticationSuccess(method: credentials.provider.rawValue, startedAt: startedAt)
+    } catch {
+      let failure = AppFailure(error)
+      recordNativeAuthenticationFailure(
+        provider: credentials.provider,
+        error: failure,
+        statusClass: "backend_exchange",
+        startedAt: startedAt
+      )
+      throw failure
+    }
   }
 
   func checkUsernameAvailability(_ username: String) async throws -> Bool {
@@ -297,6 +308,41 @@ final class AppSession {
   ) {
     guard generation == profileLoadGeneration, currentUser == user else { return }
     phase = .profileUnavailable(user, error.localizedDescription)
+  }
+}
+
+extension AppSession {
+  func recordNativeAuthenticationFailure(
+    provider: NativeAuthProvider,
+    error: any Error,
+    statusClass: String,
+    startedAt: ContinuousClock.Instant? = nil
+  ) {
+    let failure = AppFailure(error)
+    guard failure.shouldReportToTelemetry else { return }
+
+    var properties: [TelemetryProperty: TelemetryValue] = [
+      .method: .string(provider.rawValue),
+      .outcome: .string(TelemetryOutcome.failed.rawValue),
+      .failureCategory: .string(TelemetryFailureCategory(failure).rawValue),
+      .retryable: .boolean(failure.allowsRetry),
+      .statusClass: .string(statusClass)
+    ]
+    if let startedAt {
+      properties[.durationMilliseconds] = .integer(startedAt.duration(to: clock.now).millisecondsValue)
+    }
+    telemetry.capture(.authenticationCompleted, properties: properties)
+    telemetry.log(
+      .error,
+      message: .nativeAuthenticationFailed,
+      properties: [
+        .operation: .string(TelemetryOperation.authenticate.rawValue),
+        .method: .string(provider.rawValue),
+        .failureCategory: .string(TelemetryFailureCategory(failure).rawValue),
+        .retryable: .boolean(failure.allowsRetry),
+        .statusClass: .string(statusClass)
+      ]
+    )
   }
 }
 

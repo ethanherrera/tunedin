@@ -70,6 +70,24 @@ struct TelemetryTests {
   }
 
   @Test
+  func sanitizerKeepsBoundedNativeAuthenticationDiagnostics() {
+    let sanitized = TelemetrySanitizer.sanitize(
+      event: .authenticationCompleted,
+      properties: [
+        .method: .string("apple"),
+        .outcome: .string("failed"),
+        .failureCategory: .string("unexpected"),
+        .statusClass: .string("apple_authorization_1000"),
+        .destination: .string("person@example.com")
+      ]
+    )
+
+    #expect(sanitized[.method] == .string("apple"))
+    #expect(sanitized[.statusClass] == .string("apple_authorization_1000"))
+    #expect(sanitized[.destination] == nil)
+  }
+
+  @Test
   func recordingBufferIsBounded() {
     let client = AppTelemetryClient(
       configuration: .recording,

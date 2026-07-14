@@ -103,8 +103,9 @@ The workflow performs these operations in order:
 3. Validate the offline PostHog contract and print a read-only Staging drift plan.
 4. Create an ephemeral ignored Staging configuration from protected values.
 5. Create an unsigned device archive and verify its expanded Supabase, PostHog, callback, environment,
-   and release values before changing hosted services. App Store Connect cloud-signs this same archive
-   during export, so the clean runner does not need a registered device or a local distribution certificate.
+   release values, and Sign in with Apple entitlement before changing hosted services. The runner applies
+   an ad-hoc signature so the entitlement survives into the archive; App Store Connect replaces that
+   signature during export, so the clean runner still needs no registered device or distribution certificate.
 6. Apply and verify the PostHog Staging contract and upload the archive's dSYMs without source files.
 7. Verify current Supabase Auth drift, then enable the Apple and Google providers while leaving the existing email path available until upload succeeds.
 8. Print the Staging migration dry run.
@@ -152,6 +153,14 @@ through `external_google_additional_client_ids`. The provider update succeeded, 
 rejected that valid response before migrations or TestFlight upload. The tracked payload, verifier, and
 offline regression test now use the canonical representation, making the partially applied preparation
 safe to retry.
+
+Build `1007.1` then showed that disabling signing while creating the archive omitted the Sign in with
+Apple entitlement from the processed TestFlight executable, even though the Xcode target and Apple App
+ID were configured correctly. App Store Connect metadata and Supabase Auth logs isolated the failure:
+Apple authorization stopped on-device and no Apple token reached Supabase. The workflow now ad-hoc
+signs the archived app with the tracked entitlement before cloud export, and archive verification fails
+before hosted mutation unless `com.apple.developer.applesignin` is present. A local export through
+Apple's automatic distribution signing confirmed the final IPA retains the entitlement.
 
 ## Recovery and rollback
 
