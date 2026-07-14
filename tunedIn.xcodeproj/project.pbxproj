@@ -17,6 +17,7 @@
 		113D27B6136FBB89C6B8D9A0 /* AvatarImageProcessorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57FDDFA7886E6E8E872E5AF9 /* AvatarImageProcessorTests.swift */; };
 		1793E9051F51C7519FF80E6E /* ConcertInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21073FA12796111F79010BBE /* ConcertInputTests.swift */; };
 		1B3DDAF057B8F6E131BDC885 /* LocalSeededAccountTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC42DD81FFABFB4F55ECBD0E /* LocalSeededAccountTests.swift */; };
+		1F2FB2032D33D2A7A5C26C62 /* AppDataCache+Construction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66ACE6CCD64E65364C095CE8 /* AppDataCache+Construction.swift */; };
 		1F370D3E3BCB807C700E18B0 /* ProfileTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0FBCDF44CFFCD6B78B8DD54 /* ProfileTabView.swift */; };
 		239BFE8594ABAC004DDA2D9E /* AlbumUploadBatchExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36855C0A3DE0CB302D9FE025 /* AlbumUploadBatchExecutor.swift */; };
 		2577832D8CB24FADB94E3250 /* ConcertRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C87D147D8C4F0FABCE333EE /* ConcertRepository.swift */; };
@@ -31,6 +32,7 @@
 		416E16CEB733DF73D5D7DD64 /* FeedbackRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F2144AD14AFB8762C4E55F1 /* FeedbackRepository.swift */; };
 		4A7F7564BB0EE2561B60B00F /* AppSessionPhase+Authentication.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA2D068894590F87FC06DF4D /* AppSessionPhase+Authentication.swift */; };
 		4D5EE7414954BFC0D4FAB931 /* TelemetryClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 531CDC9DE20342FF17125961 /* TelemetryClient.swift */; };
+		502ED9B66C75E572400D0553 /* CachingSocialRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE2F9F51BD9E636B4A4F0F2 /* CachingSocialRepositoryTests.swift */; };
 		50A81F38CF306B62FD2C87D7 /* AppSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 887C95DD1BE38E3C830C4D80 /* AppSession.swift */; };
 		5164EBAA34A274523174EBEB /* CachingConcertRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8CDE1BDB3C83CC1A3364240 /* CachingConcertRepository.swift */; };
 		578D26050C3AABF525F572E7 /* SocialRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DC82061C2F01AA6CEB2F6BC /* SocialRepository.swift */; };
@@ -40,6 +42,7 @@
 		65B10C1D7A2DE2006D794A5C /* EmailSignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FED4A315859A86F043EA6A2 /* EmailSignInView.swift */; };
 		66A649DA73F6A444CBA73DC8 /* CachingProfileRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8363D03499B325C56A35037 /* CachingProfileRepository.swift */; };
 		67345CBEAC36CF672F4158E0 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985739D4F2A12A277B1F5632 /* Profile.swift */; };
+		688D1000AEFBC476BB11BD63 /* SocialProfileSearchCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12BF5F5977FF497486952221 /* SocialProfileSearchCache.swift */; };
 		690FC5B8BB56B1E30AC47B72 /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = B70F123405BE8D8AEC81A601 /* AppConfiguration.swift */; };
 		69F0EFB8BBFFC8F44FBAAA53 /* FeedbackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADA1EA5245BDFD82C605C81B /* FeedbackView.swift */; };
 		6C0EDB26F090351F12437B36 /* TelemetrySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C0DDFE97BC599D751B4B028 /* TelemetrySettingsView.swift */; };
@@ -65,7 +68,9 @@
 		A111EE6F1E729528DDD55F8D /* ProfileAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B583B6D8C84821B5F36ABC1A /* ProfileAvatarView.swift */; };
 		A555A5875A5637540E1BC35E /* SupabaseProfileRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = C659A65B20724EDB509145AB /* SupabaseProfileRepository.swift */; };
 		A8A2DDCEBC958A4C3C29E0A0 /* EmailVerificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2644431350079CF5B9312C52 /* EmailVerificationView.swift */; };
+		AC269C3B78F78CDE8267040A /* CachingSocialRepositoryTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1E38A8A523C54E3092618A /* CachingSocialRepositoryTestSupport.swift */; };
 		ACE8334B175DF5C109B78F0C /* ConcertCreationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B68A83B5FEE54C667FDD5DF /* ConcertCreationView.swift */; };
+		AE81DCE029F4C5D0BAFD47C3 /* CachingSocialRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14F8C6D775F7CCFD0EECADC0 /* CachingSocialRepository.swift */; };
 		B0D627D07A1F3473D8C920C8 /* ConcertAlbumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9224775E10F128EC952F4D9 /* ConcertAlbumView.swift */; };
 		B285EF895AF1F404CC298893 /* DevelopmentScenarioTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB65B95E9AC543A960D5F27F /* DevelopmentScenarioTests.swift */; };
 		BA7A55F7A9F1B31C691FDC04 /* DevelopmentConcertRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED1E308009003391C9687626 /* DevelopmentConcertRepository.swift */; };
@@ -112,7 +117,10 @@
 		0FFF5BB2D4E0012FC744B6C7 /* CachingConcertRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachingConcertRepositoryTests.swift; sourceTree = "<group>"; };
 		1237B11A854A5A058C98A39C /* ProfileInputTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileInputTests.swift; sourceTree = "<group>"; };
 		1243DF949645D1AB5318AC3A /* AppFailureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFailureTests.swift; sourceTree = "<group>"; };
+		12BF5F5977FF497486952221 /* SocialProfileSearchCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialProfileSearchCache.swift; sourceTree = "<group>"; };
+		14F8C6D775F7CCFD0EECADC0 /* CachingSocialRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachingSocialRepository.swift; sourceTree = "<group>"; };
 		1B68A83B5FEE54C667FDD5DF /* ConcertCreationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertCreationView.swift; sourceTree = "<group>"; };
+		1BE2F9F51BD9E636B4A4F0F2 /* CachingSocialRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachingSocialRepositoryTests.swift; sourceTree = "<group>"; };
 		1FED4A315859A86F043EA6A2 /* EmailSignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailSignInView.swift; sourceTree = "<group>"; };
 		21073FA12796111F79010BBE /* ConcertInputTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertInputTests.swift; sourceTree = "<group>"; };
 		2644431350079CF5B9312C52 /* EmailVerificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailVerificationView.swift; sourceTree = "<group>"; };
@@ -140,6 +148,7 @@
 		607F112255B95105F98C8662 /* ConcertCollaborationSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertCollaborationSheets.swift; sourceTree = "<group>"; };
 		61399B814DE19CDCDA167DE0 /* Concert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Concert.swift; sourceTree = "<group>"; };
 		633725CD557D467B89AF6D8A /* tunedIn-Staging.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "tunedIn-Staging.entitlements"; sourceTree = "<group>"; };
+		66ACE6CCD64E65364C095CE8 /* AppDataCache+Construction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDataCache+Construction.swift"; sourceTree = "<group>"; };
 		69FF7F1D63EE17CDDD562417 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		7154E731D6C3141004BB4208 /* LocalSeededAccount.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSeededAccount.swift; sourceTree = "<group>"; };
 		74193CBB4CFA490AEC77ACC8 /* PersonProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonProfileView.swift; sourceTree = "<group>"; };
@@ -175,6 +184,7 @@
 		BD75288821322770423012C4 /* ConcertCreationFormSections.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertCreationFormSections.swift; sourceTree = "<group>"; };
 		C162FF260B31AE1B0940D6CC /* PeopleHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeopleHubView.swift; sourceTree = "<group>"; };
 		C659A65B20724EDB509145AB /* SupabaseProfileRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseProfileRepository.swift; sourceTree = "<group>"; };
+		CC1E38A8A523C54E3092618A /* CachingSocialRepositoryTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachingSocialRepositoryTestSupport.swift; sourceTree = "<group>"; };
 		CC42DD81FFABFB4F55ECBD0E /* LocalSeededAccountTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSeededAccountTests.swift; sourceTree = "<group>"; };
 		CEF24A80EA0C54BE0246F2EC /* ConcertAlbumImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertAlbumImageProcessor.swift; sourceTree = "<group>"; };
 		D3B89C2123769CE8C8EE2427 /* SupabaseConcertRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConcertRepository.swift; sourceTree = "<group>"; };
@@ -222,8 +232,10 @@
 			children = (
 				3531262D0A7C77D265C40BCC /* AvatarImageProcessor.swift */,
 				D8363D03499B325C56A35037 /* CachingProfileRepository.swift */,
+				14F8C6D775F7CCFD0EECADC0 /* CachingSocialRepository.swift */,
 				96E0DD7FF8EEA60EC2BF9AFB /* DevelopmentSocialRepository.swift */,
 				9717CE9DFB9D76660ECB11B4 /* ProfileRepository.swift */,
+				12BF5F5977FF497486952221 /* SocialProfileSearchCache.swift */,
 				9DC82061C2F01AA6CEB2F6BC /* SocialRepository.swift */,
 				C659A65B20724EDB509145AB /* SupabaseProfileRepository.swift */,
 				97612F74273AC229E9F25417 /* SupabaseSocialRepository.swift */,
@@ -337,6 +349,7 @@
 			children = (
 				55A9490B05F3968CDA10B425 /* AppCacheTypes.swift */,
 				ED2886E2E60B530A1E241144 /* AppDataCache.swift */,
+				66ACE6CCD64E65364C095CE8 /* AppDataCache+Construction.swift */,
 				4B166E29D4B9DBD8DCFFC12B /* SwiftDataSnapshotStore.swift */,
 			);
 			path = Cache;
@@ -450,6 +463,8 @@
 				57FDDFA7886E6E8E872E5AF9 /* AvatarImageProcessorTests.swift */,
 				0FFF5BB2D4E0012FC744B6C7 /* CachingConcertRepositoryTests.swift */,
 				01B0D96A0DB3CFC7F3523631 /* CachingProfileRepositoryTests.swift */,
+				1BE2F9F51BD9E636B4A4F0F2 /* CachingSocialRepositoryTests.swift */,
+				CC1E38A8A523C54E3092618A /* CachingSocialRepositoryTestSupport.swift */,
 				21073FA12796111F79010BBE /* ConcertInputTests.swift */,
 				8D20A416A01449F03EA5661F /* DevelopmentConcertRepositoryTests.swift */,
 				AB65B95E9AC543A960D5F27F /* DevelopmentScenarioTests.swift */,
@@ -599,6 +614,7 @@
 				718A767D406EBF76FBCB488B /* AppCacheTypes.swift in Sources */,
 				690FC5B8BB56B1E30AC47B72 /* AppConfiguration.swift in Sources */,
 				9B82FB9B7F094931B9622D52 /* AppContainer.swift in Sources */,
+				1F2FB2032D33D2A7A5C26C62 /* AppDataCache+Construction.swift in Sources */,
 				2EF48A51D139DB745D41B9E3 /* AppDataCache.swift in Sources */,
 				8DB5FDBE3AA6727C196A4337 /* AppFailure.swift in Sources */,
 				E4D4BB4077D2B6C7E74F7E08 /* AppNetworkSession.swift in Sources */,
@@ -608,6 +624,7 @@
 				8A0FCDC894E557A1EFB27587 /* AvatarImageProcessor.swift in Sources */,
 				5164EBAA34A274523174EBEB /* CachingConcertRepository.swift in Sources */,
 				66A649DA73F6A444CBA73DC8 /* CachingProfileRepository.swift in Sources */,
+				AE81DCE029F4C5D0BAFD47C3 /* CachingSocialRepository.swift in Sources */,
 				6F2919030AA61C68435BC5B8 /* Concert.swift in Sources */,
 				CA3B62A0ECBE75BF5F832D04 /* ConcertAlbumImageProcessor.swift in Sources */,
 				B0D627D07A1F3473D8C920C8 /* ConcertAlbumView.swift in Sources */,
@@ -641,6 +658,7 @@
 				6E2D811C78F565BE6B11B403 /* ProfileRepository.swift in Sources */,
 				1F370D3E3BCB807C700E18B0 /* ProfileTabView.swift in Sources */,
 				57F081E618CAF393AF471A66 /* RootView.swift in Sources */,
+				688D1000AEFBC476BB11BD63 /* SocialProfileSearchCache.swift in Sources */,
 				578D26050C3AABF525F572E7 /* SocialRepository.swift in Sources */,
 				2AEC9C708B7ADD5C38F331BE /* SupabaseAuthenticationRepository.swift in Sources */,
 				905E3D91E2B813DA12200AAD /* SupabaseConcertRepository.swift in Sources */,
@@ -671,6 +689,8 @@
 				113D27B6136FBB89C6B8D9A0 /* AvatarImageProcessorTests.swift in Sources */,
 				2B4113343973AA06563A64DD /* CachingConcertRepositoryTests.swift in Sources */,
 				580A93FE07FE0567E4FE811B /* CachingProfileRepositoryTests.swift in Sources */,
+				AC269C3B78F78CDE8267040A /* CachingSocialRepositoryTestSupport.swift in Sources */,
+				502ED9B66C75E572400D0553 /* CachingSocialRepositoryTests.swift in Sources */,
 				1793E9051F51C7519FF80E6E /* ConcertInputTests.swift in Sources */,
 				29178E4550968F8687FE86CA /* DevelopmentConcertRepositoryTests.swift in Sources */,
 				B285EF895AF1F404CC298893 /* DevelopmentScenarioTests.swift in Sources */,

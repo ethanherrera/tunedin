@@ -105,7 +105,7 @@ struct PersonProfileView: View {
       Text("Friends-visible concerts disappear for both of you unless you are tagged collaborators.")
     }
     .task {
-      await loadFriendCount()
+      await loadSocialContent(policy: .automatic)
     }
     .onAppear {
       guard onDismiss == nil else { return }
@@ -346,11 +346,14 @@ struct PersonProfileView: View {
         try await action.perform(on: socialRepository, profileID: profile.id)
         profile = profile.updatingRelationship(action.resultingRelationship)
         if action != .block {
-          if let refreshed = try await socialRepository.profile(username: profile.username) {
+          if let refreshed = try await socialRepository.profile(
+            username: profile.username,
+            policy: .refresh
+          ) {
             profile = refreshed
           }
         }
-        await loadFriendCount()
+        await loadFriendCount(policy: .refresh)
         errorMessage = nil
       } catch {
         errorMessage = error.localizedDescription
@@ -359,30 +362,43 @@ struct PersonProfileView: View {
     }
   }
 
-  private func loadFriendCount() async {
-    guard isCurrentUser || profile.relationship.canViewFriendContent else {
-      friendCount = 0
-      return
-    }
-
+  private func loadSocialContent(policy: CacheReadPolicy) async {
     do {
-      friendCount = try await socialRepository.friends(username: profile.username).count
-    } catch {
-      errorMessage = error.localizedDescription
-    }
-  }
-
-  private func refreshServerContent() async {
-    do {
-      if let refreshedProfile = try await socialRepository.profile(username: profile.username) {
+      let refreshedProfile = try await socialRepository.profile(
+        username: profile.username,
+        policy: policy
+      )
+      if let refreshedProfile {
         profile = refreshedProfile
+      } else {
+        profile = profile.updatingRelationship(.unavailable)
       }
       errorMessage = nil
     } catch {
       errorMessage = error.localizedDescription
     }
 
-    await loadFriendCount()
+    await loadFriendCount(policy: policy)
+  }
+
+  private func loadFriendCount(policy: CacheReadPolicy) async {
+    guard isCurrentUser || profile.relationship.canViewFriendContent else {
+      friendCount = 0
+      return
+    }
+
+    do {
+      friendCount = try await socialRepository.friends(
+        username: profile.username,
+        policy: policy
+      ).count
+    } catch {
+      errorMessage = error.localizedDescription
+    }
+  }
+
+  private func refreshServerContent() async {
+    await loadSocialContent(policy: .refresh)
     if isCurrentUser || profile.relationship.canViewFriendContent {
       await archiveModel.reload()
     }
@@ -391,7 +407,14 @@ struct PersonProfileView: View {
 
 private extension SocialProfile {
   func updatingRelationship(_ relationship: RelationshipState) -> Self {
-    Self(id: id, username: username, displayName: displayName, relationship: relationship)
+    Self(
+      id: id,
+      username: username,
+      displayName: displayName,
+      relationship: relationship,
+      avatarObjectPath: avatarObjectPath,
+      avatarVersion: avatarVersion
+    )
   }
 }
 

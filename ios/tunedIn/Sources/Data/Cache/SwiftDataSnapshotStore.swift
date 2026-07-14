@@ -103,6 +103,27 @@ actor SwiftDataSnapshotStore {
     try modelContext.save()
   }
 
+  func remove(
+    environment: AppEnvironment,
+    viewerID: UUID,
+    resourcesNamed resourceNames: Set<String>
+  ) throws -> [String] {
+    let environmentValue = environment.rawValue
+    let descriptor = FetchDescriptor<CachedServerSnapshot>(
+      predicate: #Predicate { snapshot in
+        snapshot.environment == environmentValue && snapshot.viewerID == viewerID
+      }
+    )
+    let snapshots = try modelContext.fetch(descriptor).filter { snapshot in
+      resourceNames.contains(snapshot.resource)
+    }
+    for snapshot in snapshots {
+      modelContext.delete(snapshot)
+    }
+    try modelContext.save()
+    return snapshots.map(\.storageKey)
+  }
+
   func remove(excluding environment: AppEnvironment) throws {
     let environmentValue = environment.rawValue
     let descriptor = FetchDescriptor<CachedServerSnapshot>(
