@@ -16,6 +16,7 @@ struct PersonProfileView: View {
   @State private var isPerformingAction = false
   @State private var errorMessage: String?
   @State private var isShowingRemoveConfirmation = false
+  @State private var archiveModel: ConcertArchiveModel
 
   init(
     profile: SocialProfile,
@@ -31,6 +32,9 @@ struct PersonProfileView: View {
     self.concertRepository = concertRepository
     self.onDismiss = onDismiss
     _profile = State(initialValue: profile)
+    _archiveModel = State(
+      initialValue: ConcertArchiveModel(profileID: profile.id, concertRepository: concertRepository)
+    )
   }
 
   var body: some View {
@@ -71,6 +75,7 @@ struct PersonProfileView: View {
               isOwner: isCurrentUser,
               concertRepository: concertRepository,
               socialRepository: socialRepository,
+              model: archiveModel,
               refreshToken: 0
             )
           } else {
@@ -80,6 +85,9 @@ struct PersonProfileView: View {
         .padding(.horizontal, 20)
         .padding(.top, 20)
         .padding(.bottom, 32)
+      }
+      .refreshable {
+        await refreshServerContent()
       }
     }
     .navigationTitle("Profile")
@@ -97,7 +105,7 @@ struct PersonProfileView: View {
       Text("Friends-visible concerts disappear for both of you unless you are tagged collaborators.")
     }
     .task {
-      await loadFriendCount()
+      await loadSocialContent(policy: .automatic)
     }
     .onAppear {
       guard onDismiss == nil else { return }
@@ -338,11 +346,14 @@ struct PersonProfileView: View {
         try await action.perform(on: socialRepository, profileID: profile.id)
         profile = profile.updatingRelationship(action.resultingRelationship)
         if action != .block {
-          if let refreshed = try await socialRepository.profile(username: profile.username) {
+          if let refreshed = try await socialRepository.profile(
+            username: profile.username,
+            policy: .refresh
+          ) {
             profile = refreshed
           }
         }
-        await loadFriendCount()
+        await loadFriendCount(policy: .refresh)
         errorMessage = nil
       } catch {
         errorMessage = error.localizedDescription
@@ -351,23 +362,59 @@ struct PersonProfileView: View {
     }
   }
 
-  private func loadFriendCount() async {
+  private func loadSocialContent(policy: CacheReadPolicy) async {
+    do {
+      let refreshedProfile = try await socialRepository.profile(
+        username: profile.username,
+        policy: policy
+      )
+      if let refreshedProfile {
+        profile = refreshedProfile
+      } else {
+        profile = profile.updatingRelationship(.unavailable)
+      }
+      errorMessage = nil
+    } catch {
+      errorMessage = error.localizedDescription
+    }
+
+    await loadFriendCount(policy: policy)
+  }
+
+  private func loadFriendCount(policy: CacheReadPolicy) async {
     guard isCurrentUser || profile.relationship.canViewFriendContent else {
       friendCount = 0
       return
     }
 
     do {
-      friendCount = try await socialRepository.friends(username: profile.username).count
+      friendCount = try await socialRepository.friends(
+        username: profile.username,
+        policy: policy
+      ).count
     } catch {
       errorMessage = error.localizedDescription
+    }
+  }
+
+  private func refreshServerContent() async {
+    await loadSocialContent(policy: .refresh)
+    if isCurrentUser || profile.relationship.canViewFriendContent {
+      await archiveModel.reload(policy: .refresh)
     }
   }
 }
 
 private extension SocialProfile {
   func updatingRelationship(_ relationship: RelationshipState) -> Self {
-    Self(id: id, username: username, displayName: displayName, relationship: relationship)
+    Self(
+      id: id,
+      username: username,
+      displayName: displayName,
+      relationship: relationship,
+      avatarObjectPath: avatarObjectPath,
+      avatarVersion: avatarVersion
+    )
   }
 }
 

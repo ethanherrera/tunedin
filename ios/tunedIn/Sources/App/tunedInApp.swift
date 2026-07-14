@@ -19,6 +19,7 @@ struct TunedInApp: App {
         socialRepository: container.socialRepository
       )
       .environment(\.profileRepository, container.profileRepository)
+      .environment(\.imageLoader, container.imageLoader)
       .environment(\.telemetry, container.telemetry)
       .tint(TunedInDesign.accent)
       .preferredColorScheme(appearance.colorScheme)

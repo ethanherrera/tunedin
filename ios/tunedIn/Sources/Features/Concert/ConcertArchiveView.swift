@@ -1,5 +1,6 @@
 // swiftlint:disable file_length
 
+import Observation
 import SwiftUI
 import UIKit
 
@@ -10,16 +11,12 @@ struct ConcertArchiveView: View {
   let isOwner: Bool
   let concertRepository: any ConcertRepository
   let socialRepository: any SocialRepository
+  let model: ConcertArchiveModel
   let refreshToken: Int
 
-  @State private var query = ConcertHistoryQuery()
-  @State private var concerts: [ConcertPreview] = []
-  @State private var isLoading = false
-  @State private var isLoadingMore = false
-  @State private var canLoadMore = false
-  @State private var errorMessage: String?
-
   var body: some View {
+    @Bindable var model = model
+
     VStack(alignment: .leading, spacing: 14) {
       HStack(alignment: .firstTextBaseline) {
         VStack(alignment: .leading, spacing: 3) {
@@ -67,7 +64,7 @@ struct ConcertArchiveView: View {
               Button {
                 setSort(sort)
               } label: {
-                if query.sort == sort {
+                if model.query.sort == sort {
                   Label(sort.displayTitle, systemImage: "checkmark")
                 } else {
                   Text(sort.displayTitle)
@@ -90,9 +87,9 @@ struct ConcertArchiveView: View {
         .accessibilityLabel("Filter archive")
       }
 
-      TunedInGlassSearchField(text: $query.searchText, prompt: "Search artists, venues, cities")
+      TunedInGlassSearchField(text: $model.query.searchText, prompt: "Search artists, venues, cities")
 
-      if isLoading, concerts.isEmpty {
+      if model.isLoading, model.concerts.isEmpty {
         VStack(spacing: 10) {
           ForEach(0 ..< 3, id: \.self) { _ in
             TunedInSkeletonBlock(cornerRadius: 20)
@@ -100,23 +97,30 @@ struct ConcertArchiveView: View {
           }
         }
         .accessibilityLabel("Loading concerts")
-      } else if let errorMessage {
+      } else if let errorMessage = model.errorMessage, model.concerts.isEmpty {
         ContentUnavailableView {
           Label("Couldn’t load this archive", systemImage: "exclamationmark.triangle")
         } description: {
           Text(errorMessage)
         } actions: {
           Button("Try again") {
-            Task { await reload() }
+            Task { await model.reload(policy: .refresh) }
           }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
-      } else if concerts.isEmpty {
+      } else if model.concerts.isEmpty {
         archiveEmptyState
       } else {
         LazyVStack(spacing: 10) {
-          ForEach(concerts) { preview in
+          if let errorMessage = model.errorMessage {
+            Label(errorMessage, systemImage: "exclamationmark.triangle")
+              .font(.caption)
+              .foregroundStyle(.orange)
+              .frame(maxWidth: .infinity, alignment: .leading)
+          }
+
+          ForEach(model.concerts) { preview in
             NavigationLink {
               ConcertDetailView(
                 concertID: preview.id,
@@ -133,15 +137,15 @@ struct ConcertArchiveView: View {
             .accessibilityLabel("Open \(preview.primaryArtistName)")
           }
 
-          if canLoadMore {
+          if model.canLoadMore {
             Button {
-              Task { await loadMore() }
+              Task { await model.loadMore() }
             } label: {
               HStack(spacing: 8) {
-                if isLoadingMore {
+                if model.isLoadingMore {
                   ProgressView()
                 }
-                Text(isLoadingMore ? "Loading more concerts…" : "Show more concerts")
+                Text(model.isLoadingMore ? "Loading more concerts…" : "Show more concerts")
               }
               .font(.subheadline.weight(.bold))
               .foregroundStyle(TunedInDesign.primaryText)
@@ -150,28 +154,28 @@ struct ConcertArchiveView: View {
               .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             .buttonStyle(.plain)
-            .disabled(isLoadingMore)
+            .disabled(model.isLoadingMore)
           }
         }
       }
     }
     .task(id: refreshToken) {
-      await reload()
+      await model.reload(policy: refreshToken == 0 ? .automatic : .refresh)
     }
-    .onChange(of: query.searchText) { _, searchText in
+    .onChange(of: model.query.searchText) { _, searchText in
       Task {
         try? await Task.sleep(for: .milliseconds(250))
-        guard searchText == query.searchText else { return }
-        await reload()
+        guard searchText == model.query.searchText else { return }
+        await model.reload()
       }
     }
   }
 
   private var archiveMenuLabel: String {
     let selections = [
-      query.year.map(String.init),
-      query.visibility?.archiveTitle,
-      query.sort == .newest ? nil : query.sort.displayTitle
+      model.query.year.map(String.init),
+      model.query.visibility?.archiveTitle,
+      model.query.sort == .newest ? nil : model.query.sort.displayTitle
     ].compactMap(\.self)
 
     if selections.count == 1 {
@@ -190,11 +194,11 @@ struct ConcertArchiveView: View {
       Image(systemName: "music.quarternote.3")
         .font(.title2)
         .foregroundStyle(TunedInDesign.accent)
-      Text(query.searchText.isEmpty ? "No concerts yet." : "No concerts match that search.")
+      Text(model.query.searchText.isEmpty ? "No concerts yet." : "No concerts match that search.")
         .font(.headline)
         .foregroundStyle(TunedInDesign.primaryText)
       Text(
-        query.searchText.isEmpty
+        model.query.searchText.isEmpty
           ? "Use the plus button to log one."
           : "Try an artist, venue, or city."
       )
@@ -204,21 +208,40 @@ struct ConcertArchiveView: View {
   }
 
   private func setVisibilityFilter(_ visibility: ConcertVisibility?) {
-    query.visibility = visibility
-    Task { await reload() }
+    model.query.visibility = visibility
+    Task { await model.reload() }
   }
 
   private func setYearFilter(_ year: Int?) {
-    query.year = year
-    Task { await reload() }
+    model.query.year = year
+    Task { await model.reload() }
   }
 
   private func setSort(_ sort: ConcertHistorySort) {
-    query.sort = sort
-    Task { await reload() }
+    model.query.sort = sort
+    Task { await model.reload() }
+  }
+}
+
+@MainActor
+@Observable
+final class ConcertArchiveModel {
+  var query = ConcertHistoryQuery()
+  private(set) var concerts: [ConcertPreview] = []
+  private(set) var isLoading = false
+  private(set) var isLoadingMore = false
+  private(set) var canLoadMore = false
+  private(set) var errorMessage: String?
+
+  private let profileID: UUID
+  private let concertRepository: any ConcertRepository
+
+  init(profileID: UUID, concertRepository: any ConcertRepository) {
+    self.profileID = profileID
+    self.concertRepository = concertRepository
   }
 
-  private func reload() async {
+  func reload(policy: CacheReadPolicy = .automatic) async {
     guard !isLoading else { return }
     isLoading = true
     errorMessage = nil
@@ -230,14 +253,18 @@ struct ConcertArchiveView: View {
         let loaded = try await concertRepository.profileConcertHistory(
           profileID: profileID,
           query: requestedQuery,
-          cursor: nil
+          cursor: nil,
+          policy: policy
         )
         guard requestedQuery == query else { continue }
         concerts = loaded
         canLoadMore = loaded.count == 30
       } catch {
         guard requestedQuery == query else { continue }
-        concerts = []
+        let failure = AppFailure(error)
+        if failure == .permissionDenied || failure == .unavailable {
+          concerts = []
+        }
         canLoadMore = false
         errorMessage = error.localizedDescription
       }
@@ -246,7 +273,7 @@ struct ConcertArchiveView: View {
     isLoading = false
   }
 
-  private func loadMore() async {
+  func loadMore() async {
     guard let lastConcert = concerts.last, !isLoadingMore else { return }
     isLoadingMore = true
 
@@ -254,9 +281,11 @@ struct ConcertArchiveView: View {
       let loaded = try await concertRepository.profileConcertHistory(
         profileID: profileID,
         query: query,
-        cursor: ConcertHistoryCursor(preview: lastConcert, sort: query.sort)
+        cursor: ConcertHistoryCursor(preview: lastConcert, sort: query.sort),
+        policy: .networkOnly
       )
-      concerts.append(contentsOf: loaded)
+      let existingIDs = Set(concerts.map(\.id))
+      concerts.append(contentsOf: loaded.filter { !existingIDs.contains($0.id) })
       canLoadMore = loaded.count == 30
     } catch {
       errorMessage = error.localizedDescription
@@ -386,6 +415,27 @@ struct ConcertDetailView: View {
   @State private var isShowingDeleteConfirmation = false
   @State private var isShowingFinalDeleteConfirmation = false
   @State private var isDeleting = false
+  @State private var hasRemoteChanges = false
+  @State private var isApplyingRemoteChanges = false
+  @State private var albumRefreshToken = 0
+  @State private var commentsModel: ConcertCommentsModel
+
+  init(
+    concertID: UUID,
+    viewerID: UUID,
+    viewerUsername: String,
+    concertRepository: any ConcertRepository,
+    socialRepository: any SocialRepository
+  ) {
+    self.concertID = concertID
+    self.viewerID = viewerID
+    self.viewerUsername = viewerUsername
+    self.concertRepository = concertRepository
+    self.socialRepository = socialRepository
+    _commentsModel = State(
+      initialValue: ConcertCommentsModel(concertID: concertID, concertRepository: concertRepository)
+    )
+  }
 
   var body: some View {
     ZStack {
@@ -405,9 +455,10 @@ struct ConcertDetailView: View {
             socialRepository: socialRepository,
             concertRepository: concertRepository,
             onChanged: {
-              Task { await loadDetail() }
+              Task { await loadDetail(policy: .refresh) }
             },
-            pageHeader: AnyView(concertHeader(detail, artworkStyle: .preview))
+            pageHeader: AnyView(concertHeader(detail, artworkStyle: .preview)),
+            onRefresh: { await loadDetail(policy: .refresh) }
           )
         case .photos:
           ConcertAlbumView(
@@ -415,19 +466,25 @@ struct ConcertDetailView: View {
             viewerID: viewerID,
             viewerRole: viewerRole,
             concertRepository: concertRepository,
-            pageHeader: AnyView(concertHeader(detail, artworkStyle: .preview))
+            pageHeader: AnyView(concertHeader(detail, artworkStyle: .preview)),
+            refreshToken: albumRefreshToken,
+            onRefresh: { await loadDetail(policy: .refresh) }
           )
         }
       } else if let errorMessage {
-        ContentUnavailableView {
-          Label("This concert isn’t available", systemImage: "lock.trianglebadge.exclamationmark")
-        } description: {
-          Text(errorMessage)
-        } actions: {
-          Button("Try again") {
-            Task { await loadDetail() }
+        ScrollView {
+          ContentUnavailableView {
+            Label("This concert isn’t available", systemImage: "lock.trianglebadge.exclamationmark")
+          } description: {
+            Text(errorMessage)
+          } actions: {
+            Button("Try again") {
+              Task { await loadDetail(policy: .refresh) }
+            }
           }
+          .frame(minHeight: 520)
         }
+        .refreshable { await loadDetail() }
       } else {
         ScrollView {
           VStack(alignment: .leading, spacing: 18) {
@@ -444,16 +501,23 @@ struct ConcertDetailView: View {
         .accessibilityLabel("Opening concert")
       }
     }
+    .overlay(alignment: .top) {
+      if hasRemoteChanges {
+        updatesAvailableButton
+          .padding(.horizontal, 20)
+          .padding(.top, 10)
+      }
+    }
     .toolbar(.hidden, for: .navigationBar)
     .onAppear { configureFloatingControls() }
     .onChange(of: viewerRole) { _, _ in configureFloatingControls() }
     .onDisappear { concertFloatingControls.reset() }
     .task(id: concertID) {
-      await loadDetail()
+      await loadDetail(policy: .automatic)
     }
     .task(id: concertID) {
       for await _ in concertRepository.observeConcert(id: concertID) {
-        await loadDetail()
+        hasRemoteChanges = true
       }
     }
     .sheet(isPresented: $isShowingEditor) {
@@ -466,10 +530,14 @@ struct ConcertDetailView: View {
           socialRepository: socialRepository,
           concertRepository: concertRepository,
           loadLatestDetail: {
-            try await concertRepository.fetchConcertDetail(id: concertID, viewerID: viewerID)
+            try await concertRepository.fetchConcertDetail(
+              id: concertID,
+              viewerID: viewerID,
+              policy: .networkOnly
+            )
           },
           onSaved: { _ in
-            Task { await loadDetail() }
+            Task { await loadDetail(policy: .refresh) }
           }
         )
       }
@@ -626,7 +694,8 @@ struct ConcertDetailView: View {
             concertID: concertID,
             viewerID: viewerID,
             concertRepository: concertRepository,
-            pageHeader: AnyView(EmptyView())
+            pageHeader: AnyView(EmptyView()),
+            model: commentsModel
           )
         }
         .padding(.top, 4)
@@ -635,6 +704,13 @@ struct ConcertDetailView: View {
       .padding(.horizontal, 20)
       .padding(.top, 10)
       .padding(.bottom, 36)
+    }
+    .refreshable {
+      await loadDetail(policy: .refresh)
+      await commentsModel.loadComments(policy: .refresh)
+      if errorMessage == nil, commentsModel.loadErrorMessage == nil {
+        hasRemoteChanges = false
+      }
     }
   }
 
@@ -692,11 +768,15 @@ struct ConcertDetailView: View {
     .frame(maxWidth: .infinity, alignment: .leading)
   }
 
-  private func loadDetail() async {
+  private func loadDetail(policy: CacheReadPolicy = .automatic) async {
     let startedAt = ContinuousClock.now
     errorMessage = nil
     do {
-      detail = try await concertRepository.fetchConcertDetail(id: concertID, viewerID: viewerID)
+      detail = try await concertRepository.fetchConcertDetail(
+        id: concertID,
+        viewerID: viewerID,
+        policy: policy
+      )
       telemetry?.capture(
         .screenLoadCompleted,
         properties: [
@@ -708,6 +788,9 @@ struct ConcertDetailView: View {
     } catch {
       errorMessage = error.localizedDescription
       let failure = AppFailure(error)
+      if failure == .permissionDenied || failure == .unavailable {
+        detail = nil
+      }
       if failure.shouldReportToTelemetry {
         telemetry?.capture(
           .screenLoadCompleted,
@@ -720,6 +803,66 @@ struct ConcertDetailView: View {
           ]
         )
       }
+    }
+  }
+
+  private var updatesAvailableButton: some View {
+    Button {
+      Task { await applyRemoteChanges() }
+    } label: {
+      HStack(spacing: 9) {
+        if isApplyingRemoteChanges {
+          ProgressView()
+        } else {
+          Image(systemName: "arrow.down.circle.fill")
+        }
+        Text(isApplyingRemoteChanges ? "Updating…" : "Updates available")
+          .fontWeight(.bold)
+        Spacer()
+        Text("Refresh")
+          .font(.caption.weight(.semibold))
+      }
+      .font(.subheadline)
+      .foregroundStyle(TunedInDesign.primaryText)
+      .padding(.horizontal, 14)
+      .padding(.vertical, 11)
+      .background(
+        TunedInDesign.accentTint,
+        in: RoundedRectangle(cornerRadius: 15, style: .continuous)
+      )
+    }
+    .buttonStyle(.plain)
+    .disabled(isApplyingRemoteChanges)
+    .accessibilityHint("Loads the latest concert information from the server")
+  }
+
+  private func applyRemoteChanges() async {
+    guard !isApplyingRemoteChanges else { return }
+    isApplyingRemoteChanges = true
+    defer { isApplyingRemoteChanges = false }
+
+    await loadDetail(policy: .refresh)
+    switch selectedPage {
+    case .concert:
+      await commentsModel.loadComments(policy: .refresh)
+      guard commentsModel.loadErrorMessage == nil else { return }
+    case .people:
+      break
+    case .photos:
+      do {
+        _ = try await concertRepository.albumPhotos(
+          concertID: concertID,
+          cursor: nil,
+          policy: .refresh
+        )
+        albumRefreshToken += 1
+      } catch {
+        errorMessage = error.localizedDescription
+        return
+      }
+    }
+    if errorMessage == nil {
+      hasRemoteChanges = false
     }
   }
 

@@ -11,27 +11,13 @@ struct AlbumReadinessTests {
     #expect(configuration.timeoutIntervalForRequest == 30)
     #expect(configuration.timeoutIntervalForResource == 60)
     #expect(configuration.waitsForConnectivity == false)
-  }
+    #expect(configuration.requestCachePolicy == .reloadIgnoringLocalCacheData)
+    #expect(configuration.urlCache == nil)
 
-  @Test
-  func albumPolicyCacheExpiresAndCanBeRefreshed() async {
-    let cache = AlbumPolicyCache()
-    let policy = ConcertAlbumPolicy(
-      policyVersion: 1,
-      concertPhotoLimit: 100,
-      contributorPhotoLimit: 30,
-      reservationLimit24Hours: 10,
-      pickerBatchLimit: 10,
-      captionCharacterLimit: 300,
-      attachedFileByteLimit: 2_097_152,
-      pendingReservationLifetimeSeconds: 3_600
-    )
-    let now = Date(timeIntervalSince1970: 1_000)
-
-    await cache.insert(policy, now: now)
-
-    #expect(await cache.value(now: now.addingTimeInterval(54 * 60)) == policy)
-    #expect(await cache.value(now: now.addingTimeInterval(56 * 60)) == nil)
+    let mediaConfiguration = AppNetworkSession.makeMediaConfiguration()
+    #expect(mediaConfiguration.urlCache == nil)
+    #expect(mediaConfiguration.httpCookieStorage == nil)
+    #expect(mediaConfiguration.httpShouldSetCookies == false)
   }
 
   @MainActor

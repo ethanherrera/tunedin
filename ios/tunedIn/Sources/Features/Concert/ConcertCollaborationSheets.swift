@@ -9,6 +9,7 @@ struct ConcertPeopleView: View {
   let concertRepository: any ConcertRepository
   let onChanged: () -> Void
   let pageHeader: AnyView
+  let onRefresh: () async -> Void
 
   @Environment(\.telemetry) private var telemetry
 
@@ -31,7 +32,8 @@ struct ConcertPeopleView: View {
     socialRepository: any SocialRepository,
     concertRepository: any ConcertRepository,
     onChanged: @escaping () -> Void,
-    pageHeader: AnyView
+    pageHeader: AnyView,
+    onRefresh: @escaping () async -> Void = {}
   ) {
     self.detail = detail
     self.viewerRole = viewerRole
@@ -41,6 +43,7 @@ struct ConcertPeopleView: View {
     self.concertRepository = concertRepository
     self.onChanged = onChanged
     self.pageHeader = pageHeader
+    self.onRefresh = onRefresh
     _visibility = State(initialValue: detail.concert.visibility)
   }
 
@@ -67,8 +70,12 @@ struct ConcertPeopleView: View {
       .padding(.top, 12)
       .padding(.bottom, 128)
     }
+    .refreshable {
+      await onRefresh()
+      await loadFriends(policy: .refresh)
+    }
     .task {
-      await loadFriends()
+      await loadFriends(policy: .automatic)
     }
     .onChange(of: detail.concert.version) { _, _ in
       visibility = detail.concert.visibility
@@ -292,11 +299,12 @@ struct ConcertPeopleView: View {
     }
   }
 
-  private func loadFriends() async {
+  private func loadFriends(policy: CacheReadPolicy) async {
     defer { isLoadingFriends = false }
     guard viewerRole.canManagePeople, !viewerUsername.isEmpty else { return }
     do {
-      friends = try await socialRepository.friends(username: viewerUsername)
+      friends = try await socialRepository.friends(username: viewerUsername, policy: policy)
+      errorMessage = nil
     } catch {
       errorMessage = error.localizedDescription
     }

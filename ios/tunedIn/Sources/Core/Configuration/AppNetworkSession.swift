@@ -9,6 +9,15 @@ enum AppNetworkSession {
     configuration.timeoutIntervalForRequest = requestTimeout
     configuration.timeoutIntervalForResource = resourceTimeout
     configuration.waitsForConnectivity = false
+    configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+    configuration.urlCache = nil
+    return configuration
+  }
+
+  static func makeMediaConfiguration() -> URLSessionConfiguration {
+    let configuration = makeConfiguration()
+    configuration.httpCookieStorage = nil
+    configuration.httpShouldSetCookies = false
     return configuration
   }
 

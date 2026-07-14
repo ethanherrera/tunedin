@@ -1,3 +1,4 @@
+import Observation
 import SwiftUI
 
 struct ConcertCommentsView: View {
@@ -5,18 +6,14 @@ struct ConcertCommentsView: View {
   let viewerID: UUID
   let concertRepository: any ConcertRepository
   let pageHeader: AnyView
+  let model: ConcertCommentsModel
 
   @Environment(\.telemetry) private var telemetry
 
-  @State private var comments: [ConcertComment] = []
   @State private var draft = ""
   @State private var editingCommentID: UUID?
   @State private var editDraft = ""
-  @State private var isLoading = true
-  @State private var isLoadingOlder = false
-  @State private var canLoadOlder = false
   @State private var isSending = false
-  @State private var loadErrorMessage: String?
   @State private var errorMessage: String?
   @State private var commentPendingDeletion: ConcertComment?
 
@@ -24,18 +21,18 @@ struct ConcertCommentsView: View {
     VStack(alignment: .leading, spacing: 12) {
       pageHeader
 
-      if isLoading {
+      if model.isLoading {
         loadingState
-      } else if let loadErrorMessage, comments.isEmpty {
+      } else if let loadErrorMessage = model.loadErrorMessage, model.comments.isEmpty {
         loadFailure(message: loadErrorMessage)
-      } else if comments.isEmpty {
+      } else if model.comments.isEmpty {
         emptyState
       } else {
         commentList
       }
       composer
     }
-    .task { await loadComments() }
+    .task { await model.loadComments(policy: .automatic) }
     .confirmationDialog(
       "Delete this comment?",
       isPresented: isShowingDeleteConfirmation,
@@ -70,22 +67,28 @@ struct ConcertCommentsView: View {
       Text(message)
     } actions: {
       Button("Try again") {
-        Task { await retryLoadComments() }
+        Task { await model.retryLoadComments() }
       }
     }
   }
 
   private var commentList: some View {
     LazyVStack(alignment: .leading, spacing: 12) {
-      if canLoadOlder {
+      if let loadErrorMessage = model.loadErrorMessage {
+        Label(loadErrorMessage, systemImage: "exclamationmark.triangle")
+          .font(.caption)
+          .foregroundStyle(.orange)
+      }
+
+      if model.canLoadOlder {
         Button {
-          Task { await loadOlderComments() }
+          Task { await model.loadOlderComments() }
         } label: {
           HStack(spacing: 8) {
-            if isLoadingOlder {
+            if model.isLoadingOlder {
               ProgressView()
             }
-            Text(isLoadingOlder ? "Loading earlier comments…" : "Show earlier comments")
+            Text(model.isLoadingOlder ? "Loading earlier comments…" : "Show earlier comments")
           }
           .font(.subheadline.weight(.bold))
           .foregroundStyle(TunedInDesign.primaryText)
@@ -94,9 +97,9 @@ struct ConcertCommentsView: View {
           .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
-        .disabled(isLoadingOlder)
+        .disabled(model.isLoadingOlder)
       }
-      ForEach(comments.sorted(by: { $0.createdAt < $1.createdAt })) { comment in
+      ForEach(model.comments.sorted(by: { $0.createdAt < $1.createdAt })) { comment in
         commentCard(comment)
       }
     }
@@ -215,50 +218,6 @@ struct ConcertCommentsView: View {
     })
   }
 
-  private func loadComments() async {
-    defer { isLoading = false }
-    loadErrorMessage = nil
-    do {
-      let loaded = try await concertRepository.comments(concertID: concertID, cursor: nil)
-      comments = loaded
-      canLoadOlder = loaded.count == 30
-    } catch {
-      loadErrorMessage = error.localizedDescription
-    }
-  }
-
-  private func retryLoadComments() async {
-    isLoading = true
-    loadErrorMessage = nil
-    await loadComments()
-  }
-
-  private func loadOlderComments() async {
-    guard let oldestComment = comments.min(by: isOlderComment), !isLoadingOlder else { return }
-    isLoadingOlder = true
-
-    do {
-      let loaded = try await concertRepository.comments(
-        concertID: concertID,
-        cursor: ConcertCommentCursor(createdAt: oldestComment.createdAt, commentID: oldestComment.id)
-      )
-      comments.append(contentsOf: loaded)
-      canLoadOlder = loaded.count == 30
-      errorMessage = nil
-    } catch {
-      errorMessage = error.localizedDescription
-    }
-
-    isLoadingOlder = false
-  }
-
-  private func isOlderComment(_ lhs: ConcertComment, _ rhs: ConcertComment) -> Bool {
-    if lhs.createdAt == rhs.createdAt {
-      return lhs.id.uuidString < rhs.id.uuidString
-    }
-    return lhs.createdAt < rhs.createdAt
-  }
-
   private func send() {
     let text = ConcertInput.normalizedText(draft)
     guard !text.isEmpty else { return }
@@ -267,7 +226,7 @@ struct ConcertCommentsView: View {
     Task {
       do {
         let comment = try await concertRepository.createComment(concertID: concertID, body: text)
-        comments.append(comment)
+        model.comments.append(comment)
         draft = ""
         errorMessage = nil
         telemetry?.capture(
@@ -296,8 +255,8 @@ struct ConcertCommentsView: View {
     Task {
       do {
         let updated = try await concertRepository.updateComment(commentID: comment.id, body: text)
-        guard let index = comments.firstIndex(where: { $0.id == updated.id }) else { return }
-        comments[index] = updated
+        guard let index = model.comments.firstIndex(where: { $0.id == updated.id }) else { return }
+        model.comments[index] = updated
         editingCommentID = nil
         errorMessage = nil
       } catch {
@@ -309,9 +268,12 @@ struct ConcertCommentsView: View {
   private func delete(_ comment: ConcertComment) {
     Task {
       do {
-        try await concertRepository.deleteComment(commentID: comment.id)
-        guard let index = comments.firstIndex(where: { $0.id == comment.id }) else { return }
-        comments[index] = ConcertComment(
+        try await concertRepository.deleteComment(
+          commentID: comment.id,
+          concertID: comment.concertID
+        )
+        guard let index = model.comments.firstIndex(where: { $0.id == comment.id }) else { return }
+        model.comments[index] = ConcertComment(
           id: comment.id,
           concertID: comment.concertID,
           authorID: comment.authorID,
@@ -327,6 +289,78 @@ struct ConcertCommentsView: View {
         errorMessage = error.localizedDescription
       }
     }
+  }
+}
+
+@MainActor
+@Observable
+final class ConcertCommentsModel {
+  var comments: [ConcertComment] = []
+  private(set) var isLoading = true
+  private(set) var isLoadingOlder = false
+  private(set) var canLoadOlder = false
+  private(set) var loadErrorMessage: String?
+
+  private let concertID: UUID
+  private let concertRepository: any ConcertRepository
+
+  init(concertID: UUID, concertRepository: any ConcertRepository) {
+    self.concertID = concertID
+    self.concertRepository = concertRepository
+  }
+
+  func loadComments(policy: CacheReadPolicy = .automatic) async {
+    loadErrorMessage = nil
+    do {
+      let loaded = try await concertRepository.comments(
+        concertID: concertID,
+        cursor: nil,
+        policy: policy
+      )
+      comments = loaded
+      canLoadOlder = loaded.count == 30
+    } catch {
+      let failure = AppFailure(error)
+      if failure == .permissionDenied || failure == .unavailable {
+        comments = []
+        canLoadOlder = false
+      }
+      loadErrorMessage = error.localizedDescription
+    }
+    isLoading = false
+  }
+
+  func retryLoadComments() async {
+    isLoading = true
+    await loadComments(policy: .refresh)
+  }
+
+  func loadOlderComments() async {
+    guard let oldestComment = comments.min(by: isOlderComment), !isLoadingOlder else { return }
+    isLoadingOlder = true
+
+    do {
+      let loaded = try await concertRepository.comments(
+        concertID: concertID,
+        cursor: ConcertCommentCursor(createdAt: oldestComment.createdAt, commentID: oldestComment.id),
+        policy: .networkOnly
+      )
+      let existingIDs = Set(comments.map(\.id))
+      comments.append(contentsOf: loaded.filter { !existingIDs.contains($0.id) })
+      canLoadOlder = loaded.count == 30
+      loadErrorMessage = nil
+    } catch {
+      loadErrorMessage = error.localizedDescription
+    }
+
+    isLoadingOlder = false
+  }
+
+  private func isOlderComment(_ lhs: ConcertComment, _ rhs: ConcertComment) -> Bool {
+    if lhs.createdAt == rhs.createdAt {
+      return lhs.id.uuidString < rhs.id.uuidString
+    }
+    return lhs.createdAt < rhs.createdAt
   }
 }
 
