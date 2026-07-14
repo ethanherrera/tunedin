@@ -181,6 +181,7 @@ struct MainTabView: View {
       navigationLabel(title: title, icon: icon, isSelected: selectedTab == tab)
     }
     .buttonStyle(.plain)
+    .contentShape(.interaction, Capsule())
   }
 
   private func activateTab(_ tab: Tab) {
@@ -227,7 +228,7 @@ struct MainTabView: View {
     .frame(minWidth: 58, minHeight: 48)
     .padding(.horizontal, 3)
     .background(isSelected ? TunedInDesign.accent : .clear, in: Capsule())
-    .contentShape(Capsule())
+    .contentShape(.interaction, Capsule())
   }
 }
 
@@ -386,9 +387,10 @@ private struct ConcertContextBottomBar: View {
                     .matchedGeometryEffect(id: "concert-context-selection", in: selectionNamespace)
                 }
               }
-              .contentShape(Capsule())
+              .contentShape(.interaction, Capsule())
             }
             .buttonStyle(.plain)
+            .contentShape(.interaction, Capsule())
             .disabled(controls.isInteractionLocked)
             .accessibilityLabel("Show \(page.title.lowercased())")
           }
