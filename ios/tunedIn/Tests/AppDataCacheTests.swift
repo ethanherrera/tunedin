@@ -188,6 +188,7 @@ struct AppDataCacheTests {
 
     #expect(value == 2)
     #expect(await loader.count == 2)
+    #expect(await cache.state(for: resource, freshness: freshness) == .missing)
   }
 
   private func load(

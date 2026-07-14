@@ -7,7 +7,7 @@ DESTINATION := platform=iOS Simulator,name=iPhone 13
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup configure local-db-start configure-local-supabase local-next-steps generate format lint workflow-lint distribution-metadata-verify staging-configuration-test staging-auth-test staging-auth-plan staging-auth-verify posthog-test posthog-plan posthog-verify posthog-apply build build-local build-staging archive-staging test test-local check simulator-auth-link simulator-local simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error local-db-reset local-seed-verify supabase-types check-supabase-types backend-test storage-integration-test backend-verify dev-status dev-plan dev-deploy dev-login-link staging-status staging-plan staging-promote
+.PHONY: help setup configure local-db-start configure-local-supabase local-next-steps generate format lint workflow-lint distribution-metadata-verify staging-configuration-test staging-auth-test staging-auth-plan staging-auth-verify posthog-test posthog-plan posthog-verify posthog-apply build build-local build-staging archive-staging test test-local check cache-reset simulator-auth-link simulator-local simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error local-db-reset local-seed-verify supabase-types check-supabase-types backend-test storage-integration-test backend-verify dev-status dev-plan dev-deploy dev-login-link staging-status staging-plan staging-promote
 
 help: ## List available development commands.
 	@awk 'BEGIN {FS = ":.*##"}; /^[a-zA-Z_-]+:.*##/ { printf "%-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -86,6 +86,9 @@ test-local: generate ## Run the Swift Testing suite with Local Supabase configur
 	@xcodebuild -project $(PROJECT) -scheme $(LOCAL_SCHEME) -destination '$(DESTINATION)' CODE_SIGNING_ALLOWED=NO test
 
 check: generate lint workflow-lint distribution-metadata-verify staging-configuration-test staging-auth-test posthog-test test ## Run generation, linting, workflow, auth, telemetry, metadata, and logic tests.
+
+cache-reset: ## Clear app-owned caches for tunedIn in the booted Simulator.
+	@./scripts/reset-simulator-cache.sh
 
 simulator-auth-link: ## Open a copied Supabase sign-in link in the booted Simulator.
 	@./scripts/open-simulator-auth-link.sh

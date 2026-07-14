@@ -312,7 +312,21 @@ private struct AlbumPhotoImage: View {
   var body: some View {
     Group {
       if let url {
-        AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { fallback }
+        CachedRemoteImage(
+          url: url,
+          resource: .albumPhoto(photoID: photo.id, version: photo.version)
+        ) { phase in
+          switch phase {
+          case let .success(image):
+            image.resizable().scaledToFill()
+          case .failure:
+            TunedInImagePlaceholder(failed: true)
+          case .empty:
+            fallback
+          @unknown default:
+            fallback
+          }
+        }
       } else {
         fallback
       }

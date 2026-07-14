@@ -44,6 +44,16 @@ struct AppCacheFreshness: Equatable, Sendable {
   )
 }
 
+struct AppCacheBudget: Equatable, Sendable {
+  let maximumEntryCount: Int
+  let maximumPayloadBytes: Int
+
+  static let structured = Self(
+    maximumEntryCount: 250,
+    maximumPayloadBytes: 8 * 1_024 * 1_024
+  )
+}
+
 enum AppCacheEntryState: Equatable, Sendable {
   case missing
   case fresh

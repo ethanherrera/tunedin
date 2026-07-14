@@ -8,6 +8,7 @@ final class AppContainer {
   let socialRepository: any SocialRepository
   let profileRepository: any ProfileRepository
   let telemetry: AppTelemetryClient
+  let imageLoader: AppMediaCache
 
   private init(
     appSession: AppSession,
@@ -19,6 +20,7 @@ final class AppContainer {
     self.socialRepository = socialRepository
     telemetry = appSession.telemetry
     profileRepository = appSession.profileRepositoryForViews
+    imageLoader = .ephemeral()
   }
 
   init(configuration: AppConfiguration) throws {
@@ -26,26 +28,15 @@ final class AppContainer {
       configuration: configuration.telemetry,
       release: configuration.release
     )
-    let authStorage: any AuthLocalStorage = configuration.usesLocalSimulatorAuthStorage
-      ? LocalSimulatorAuthStorage()
-      : AuthClient.Configuration.defaultLocalStorage
-
-    let client = SupabaseClient(
-      supabaseURL: configuration.supabaseURL,
-      supabaseKey: configuration.supabasePublishableKey,
-      options: .init(
-        auth: .init(
-          storage: authStorage,
-          redirectToURL: configuration.authCallbackURL,
-          storageKey: configuration.authSessionStorageKey
-        ),
-        global: .init(session: AppNetworkSession.makeSession())
-      )
-    )
-
-    let dataCache = try AppDataCache.live(environment: configuration.environment)
+    let client = Self.makeSupabaseClient(configuration: configuration)
+    let caches = try Self.makeCaches(environment: configuration.environment)
+    let mediaCache = caches.media
+    let dataCache = caches.data
     let profileRepository = CachingProfileRepository(
-      remote: SupabaseProfileRepository(client: client),
+      remote: SupabaseProfileRepository(
+        client: client,
+        signedURLs: mediaCache.signedURLs
+      ),
       cache: dataCache
     )
     let feedbackRepository = SupabaseFeedbackRepository(client: client, release: configuration.release)
@@ -63,7 +54,10 @@ final class AppContainer {
       telemetry: telemetry
     )
     concertRepository = CachingConcertRepository(
-      remote: SupabaseConcertRepository(client: client),
+      remote: SupabaseConcertRepository(
+        client: client,
+        signedURLs: mediaCache.signedURLs
+      ),
       cache: dataCache
     )
     socialRepository = CachingSocialRepository(
@@ -72,6 +66,41 @@ final class AppContainer {
     )
     self.profileRepository = profileRepository
     self.telemetry = telemetry
+    imageLoader = mediaCache
+  }
+
+  private static func makeSupabaseClient(configuration: AppConfiguration) -> SupabaseClient {
+    let authStorage: any AuthLocalStorage = configuration.usesLocalSimulatorAuthStorage
+      ? LocalSimulatorAuthStorage()
+      : AuthClient.Configuration.defaultLocalStorage
+    return SupabaseClient(
+      supabaseURL: configuration.supabaseURL,
+      supabaseKey: configuration.supabasePublishableKey,
+      options: .init(
+        auth: .init(
+          storage: authStorage,
+          redirectToURL: configuration.authCallbackURL,
+          storageKey: configuration.authSessionStorageKey
+        ),
+        global: .init(session: AppNetworkSession.makeSession())
+      )
+    )
+  }
+
+  private static func makeCaches(
+    environment: AppEnvironment
+  ) throws -> (data: AppDataCache, media: AppMediaCache) {
+    let diagnostics = AppCacheDiagnostics()
+    let mediaCache = try AppMediaCache.live(
+      environment: environment,
+      diagnostics: diagnostics
+    )
+    let dataCache = try AppDataCache.live(
+      environment: environment,
+      diagnostics: diagnostics,
+      mediaCache: mediaCache
+    )
+    return (dataCache, mediaCache)
   }
 
   static func live() -> AppContainer {

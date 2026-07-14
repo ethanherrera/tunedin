@@ -17,7 +17,10 @@ struct ProfileAvatarView: View {
       if profile.avatarObjectPath == nil || failed {
         ProfileMonogram(profile: profile, size: size)
       } else if let url {
-        AsyncImage(url: url) { phase in
+        CachedRemoteImage(
+          url: url,
+          resource: .avatar(profileID: profile.id, version: profile.avatarVersion)
+        ) { phase in
           switch phase {
           case let .success(image):
             image.resizable().scaledToFill()

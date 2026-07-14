@@ -51,7 +51,7 @@ extension AppDataCache {
       invalidatedAt: invalidatedAt
     )
     resourceNamesByStorageKey[key] = resource.name
-    try? await store.save(
+    try? await saveSnapshot(
       CachedSnapshotWrite(
         value: CachedSnapshotValue(
           payload: payload,

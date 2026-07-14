@@ -13,7 +13,10 @@ struct ConcertPhotoView: View {
       if concert.photoObjectPath == nil || failed {
         ConcertArtworkImage(artistName: artistName)
       } else if let url {
-        AsyncImage(url: url) { phase in
+        CachedRemoteImage(
+          url: url,
+          resource: .concertPhoto(concertID: concert.id, version: concert.photoVersion)
+        ) { phase in
           switch phase {
           case let .success(image):
             image.resizable().scaledToFill()
