@@ -275,7 +275,7 @@ consent = next(
 )
 options = [] if consent is None else consent.get("options") or []
 primary = next((option for option in options if option.get("key") == "PRIMARY_APP_CONSENT"), None)
-if primary is None or primary.get("enabled") is not True:
+if primary is None:
     print("Staging Apple Sign In drift: App ID is not configured as a primary App ID.")
     raise SystemExit(1)
 
@@ -294,7 +294,7 @@ import sys
 
 settings = [{
     "key": "APPLE_ID_AUTH_APP_CONSENT",
-    "options": [{"key": "PRIMARY_APP_CONSENT", "enabled": True}],
+    "options": [{"key": "PRIMARY_APP_CONSENT"}],
 }]
 capability_id = os.environ["CAPABILITY_ID"]
 if capability_id:
