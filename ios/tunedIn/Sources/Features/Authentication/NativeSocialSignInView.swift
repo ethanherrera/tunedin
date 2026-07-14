@@ -213,77 +213,47 @@ enum NativeAuthNonce {
 @MainActor
 private enum GoogleNativeSignIn {
   static func credentials(configuration: NativeSocialAuthConfiguration) async throws -> NativeAuthCredentials {
+    guard let presentingViewController = presentingViewController() else {
+      throw NativeSocialSignInError.missingPresentationContext
+    }
+
+    let rawNonce = try NativeAuthNonce.random()
     let google = GIDSignIn.sharedInstance
     google.configuration = GIDConfiguration(
       clientID: configuration.googleIOSClientID,
       serverClientID: configuration.googleServerClientID
     )
-
-    if google.hasPreviousSignIn(),
-       let restoredCredentials = try? await restoredCredentials(using: google) {
-      return restoredCredentials
-    }
-
-    guard let presentingViewController = presentingViewController() else {
-      throw NativeSocialSignInError.missingPresentationContext
-    }
+    google.signOut()
 
     return try await withCheckedThrowingContinuation { continuation in
       google.signIn(
         withPresenting: presentingViewController,
         hint: nil,
-        additionalScopes: nil
+        additionalScopes: nil,
+        nonce: NativeAuthNonce.hashed(rawNonce)
       ) { result, error in
         if let error {
           continuation.resume(throwing: error)
           return
         }
-        guard let user = result?.user else {
+        guard
+          let user = result?.user,
+          let idToken = user.idToken?.tokenString
+        else {
           continuation.resume(throwing: NativeSocialSignInError.missingGoogleCredential)
           return
         }
 
-        do {
-          continuation.resume(returning: try credentials(for: user))
-        } catch {
-          continuation.resume(throwing: error)
-        }
+        continuation.resume(
+          returning: NativeAuthCredentials(
+            provider: .google,
+            idToken: idToken,
+            accessToken: user.accessToken.tokenString,
+            nonce: rawNonce
+          )
+        )
       }
     }
-  }
-
-  private static func restoredCredentials(using google: GIDSignIn) async throws -> NativeAuthCredentials {
-    try await withCheckedThrowingContinuation { continuation in
-      google.restorePreviousSignIn { user, error in
-        if let error {
-          continuation.resume(throwing: error)
-          return
-        }
-        guard let user else {
-          continuation.resume(throwing: NativeSocialSignInError.missingGoogleCredential)
-          return
-        }
-
-        do {
-          continuation.resume(returning: try credentials(for: user))
-        } catch {
-          continuation.resume(throwing: error)
-        }
-      }
-    }
-  }
-
-  nonisolated private static func credentials(for user: GIDGoogleUser) throws -> NativeAuthCredentials {
-    guard let idToken = user.idToken?.tokenString else {
-      throw NativeSocialSignInError.missingGoogleCredential
-    }
-
-    return NativeAuthCredentials(
-      provider: .google,
-      idToken: idToken,
-      accessToken: user.accessToken.tokenString,
-      nonce: nil
-    )
   }
 
   private static func presentingViewController() -> UIViewController? {
