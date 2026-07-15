@@ -38,12 +38,14 @@
 		4A58FD142ED9EDD99A299E8C /* AppDataCache+Mutation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00AA7CDE85C3B0F94346A4CA /* AppDataCache+Mutation.swift */; };
 		4A7F7564BB0EE2561B60B00F /* AppSessionPhase+Authentication.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA2D068894590F87FC06DF4D /* AppSessionPhase+Authentication.swift */; };
 		4D5EE7414954BFC0D4FAB931 /* TelemetryClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 531CDC9DE20342FF17125961 /* TelemetryClient.swift */; };
+		4DEE2B4C25A87C1C688EBCB1 /* GoogleAuthenticationClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAB98AA3DDEE979A1C52AA7E /* GoogleAuthenticationClient.swift */; };
 		502ED9B66C75E572400D0553 /* CachingSocialRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE2F9F51BD9E636B4A4F0F2 /* CachingSocialRepositoryTests.swift */; };
 		50A81F38CF306B62FD2C87D7 /* AppSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 887C95DD1BE38E3C830C4D80 /* AppSession.swift */; };
 		5164EBAA34A274523174EBEB /* CachingConcertRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8CDE1BDB3C83CC1A3364240 /* CachingConcertRepository.swift */; };
 		578D26050C3AABF525F572E7 /* SocialRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DC82061C2F01AA6CEB2F6BC /* SocialRepository.swift */; };
 		57F081E618CAF393AF471A66 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB6C524BEA58A2B8496E011 /* RootView.swift */; };
 		580A93FE07FE0567E4FE811B /* CachingProfileRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01B0D96A0DB3CFC7F3523631 /* CachingProfileRepositoryTests.swift */; };
+		5EEBEE3DD207E153FB648433 /* GoogleAuthenticationClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6AB621B9A64BDE7C998C6D0 /* GoogleAuthenticationClientTests.swift */; };
 		61EA68C9D69C488AD366940C /* DevelopmentSocialRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5459A1928EB0514BA0734156 /* DevelopmentSocialRepositoryTests.swift */; };
 		65B10C1D7A2DE2006D794A5C /* EmailSignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FED4A315859A86F043EA6A2 /* EmailSignInView.swift */; };
 		66A649DA73F6A444CBA73DC8 /* CachingProfileRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8363D03499B325C56A35037 /* CachingProfileRepository.swift */; };
@@ -78,6 +80,7 @@
 		995AACDF119F6E2E3067FC3D /* ConcertMonogramViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CE4DB3E207A0AC8993F44B3 /* ConcertMonogramViews.swift */; };
 		9B82FB9B7F094931B9622D52 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52FC5FA5CC195C96AC2F7E11 /* AppContainer.swift */; };
 		9C11EF2F74441C11ACC3B3C2 /* AppCacheDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = E129D134607112FF14A7D0C4 /* AppCacheDiagnostics.swift */; };
+		9EF2B758E88A5DDFF15F0B12 /* AppSessionSignOutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD9A69947EB0D7D466B95A6D /* AppSessionSignOutTests.swift */; };
 		A111EE6F1E729528DDD55F8D /* ProfileAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B583B6D8C84821B5F36ABC1A /* ProfileAvatarView.swift */; };
 		A555A5875A5637540E1BC35E /* SupabaseProfileRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = C659A65B20724EDB509145AB /* SupabaseProfileRepository.swift */; };
 		A8A2DDCEBC958A4C3C29E0A0 /* EmailVerificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2644431350079CF5B9312C52 /* EmailVerificationView.swift */; };
@@ -219,6 +222,7 @@
 		CBB5EF092381A81E8DCEABEA /* CachingConcertMutationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachingConcertMutationTests.swift; sourceTree = "<group>"; };
 		CC1E38A8A523C54E3092618A /* CachingSocialRepositoryTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachingSocialRepositoryTestSupport.swift; sourceTree = "<group>"; };
 		CC42DD81FFABFB4F55ECBD0E /* LocalSeededAccountTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSeededAccountTests.swift; sourceTree = "<group>"; };
+		CD9A69947EB0D7D466B95A6D /* AppSessionSignOutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSessionSignOutTests.swift; sourceTree = "<group>"; };
 		CEF24A80EA0C54BE0246F2EC /* ConcertAlbumImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertAlbumImageProcessor.swift; sourceTree = "<group>"; };
 		D3B89C2123769CE8C8EE2427 /* SupabaseConcertRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConcertRepository.swift; sourceTree = "<group>"; };
 		D67B053FD48480724DE8A13B /* Development.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Development.xcconfig; sourceTree = "<group>"; };
@@ -227,6 +231,7 @@
 		D967C5B386F95DD48B19CAE9 /* SupabaseAuthenticationRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseAuthenticationRepository.swift; sourceTree = "<group>"; };
 		D9874CBB46B7C10D8BD3D130 /* AppCacheStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCacheStorageTests.swift; sourceTree = "<group>"; };
 		DA2D068894590F87FC06DF4D /* AppSessionPhase+Authentication.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppSessionPhase+Authentication.swift"; sourceTree = "<group>"; };
+		DAB98AA3DDEE979A1C52AA7E /* GoogleAuthenticationClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuthenticationClient.swift; sourceTree = "<group>"; };
 		DD654ACD06E9E04AD7DA86BF /* TelemetryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryTests.swift; sourceTree = "<group>"; };
 		E0FBCDF44CFFCD6B78B8DD54 /* ProfileTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileTabView.swift; sourceTree = "<group>"; };
 		E103725C09E72C1E7A74466D /* TelemetryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryModels.swift; sourceTree = "<group>"; };
@@ -238,6 +243,7 @@
 		ED2886E2E60B530A1E241144 /* AppDataCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDataCache.swift; sourceTree = "<group>"; };
 		EE537AE3FB6165A62FE039E0 /* NativeSocialAuthenticationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSocialAuthenticationTests.swift; sourceTree = "<group>"; };
 		EF321C880B55FB19086D20D1 /* Production.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Production.xcconfig; sourceTree = "<group>"; };
+		F6AB621B9A64BDE7C998C6D0 /* GoogleAuthenticationClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuthenticationClientTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -459,6 +465,7 @@
 			isa = PBXGroup;
 			children = (
 				075C8094B7B7249F8E4DF36F /* AuthenticationRepository.swift */,
+				DAB98AA3DDEE979A1C52AA7E /* GoogleAuthenticationClient.swift */,
 				7154E731D6C3141004BB4208 /* LocalSeededAccount.swift */,
 				32C1D6763D82D3E1FE54AAB8 /* LocalSimulatorAuthStorage.swift */,
 				D967C5B386F95DD48B19CAE9 /* SupabaseAuthenticationRepository.swift */,
@@ -506,6 +513,7 @@
 				013F52C7F7D39C1E0370B322 /* AppDataCacheTests.swift */,
 				1243DF949645D1AB5318AC3A /* AppFailureTests.swift */,
 				5B4D78CF3EBF909F50D10F04 /* AppMediaCacheTests.swift */,
+				CD9A69947EB0D7D466B95A6D /* AppSessionSignOutTests.swift */,
 				B7788CE273B97F5DF8299CB3 /* AppSessionTests.swift */,
 				57FDDFA7886E6E8E872E5AF9 /* AvatarImageProcessorTests.swift */,
 				74E554D5641FBB717D1051A1 /* CachingConcertFixtures.swift */,
@@ -521,6 +529,7 @@
 				8D20A416A01449F03EA5661F /* DevelopmentConcertRepositoryTests.swift */,
 				AB65B95E9AC543A960D5F27F /* DevelopmentScenarioTests.swift */,
 				5459A1928EB0514BA0734156 /* DevelopmentSocialRepositoryTests.swift */,
+				F6AB621B9A64BDE7C998C6D0 /* GoogleAuthenticationClientTests.swift */,
 				CC42DD81FFABFB4F55ECBD0E /* LocalSeededAccountTests.swift */,
 				EE537AE3FB6165A62FE039E0 /* NativeSocialAuthenticationTests.swift */,
 				1237B11A854A5A058C98A39C /* ProfileInputTests.swift */,
@@ -707,6 +716,7 @@
 				C971A43D0669101756911698 /* FeedPlaceholderView.swift in Sources */,
 				416E16CEB733DF73D5D7DD64 /* FeedbackRepository.swift in Sources */,
 				69F0EFB8BBFFC8F44FBAAA53 /* FeedbackView.swift in Sources */,
+				4DEE2B4C25A87C1C688EBCB1 /* GoogleAuthenticationClient.swift in Sources */,
 				BEE8A816110FA18CB281A6D8 /* LocalSeededAccount.swift in Sources */,
 				F7FDC6308F271BC12826390A /* LocalSimulatorAuthStorage.swift in Sources */,
 				E3BAF02B2C8ECCF11FD56841 /* NativeSocialSignInView.swift in Sources */,
@@ -750,6 +760,7 @@
 				EF0BD50EED03923207110104 /* AppDataCacheTests.swift in Sources */,
 				305EB7B1166D9EC2981A9292 /* AppFailureTests.swift in Sources */,
 				84FDEA100713BBBCA0F44762 /* AppMediaCacheTests.swift in Sources */,
+				9EF2B758E88A5DDFF15F0B12 /* AppSessionSignOutTests.swift in Sources */,
 				F4E200A9A3F2B4A822C52209 /* AppSessionTests.swift in Sources */,
 				113D27B6136FBB89C6B8D9A0 /* AvatarImageProcessorTests.swift in Sources */,
 				120F59420E5B1D42BAE52358 /* CachingConcertFixtures.swift in Sources */,
@@ -765,6 +776,7 @@
 				29178E4550968F8687FE86CA /* DevelopmentConcertRepositoryTests.swift in Sources */,
 				B285EF895AF1F404CC298893 /* DevelopmentScenarioTests.swift in Sources */,
 				61EA68C9D69C488AD366940C /* DevelopmentSocialRepositoryTests.swift in Sources */,
+				5EEBEE3DD207E153FB648433 /* GoogleAuthenticationClientTests.swift in Sources */,
 				1B3DDAF057B8F6E131BDC885 /* LocalSeededAccountTests.swift in Sources */,
 				727253E2D1A906BA97CFDAE5 /* NativeSocialAuthenticationTests.swift in Sources */,
 				D6331F38545589E8EC42E675 /* ProfileInputTests.swift in Sources */,

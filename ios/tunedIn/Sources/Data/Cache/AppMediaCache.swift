@@ -60,7 +60,19 @@ actor AppMediaCache {
 
   private struct InFlightRequest {
     let id: UUID
+    let cacheGeneration: Int
     let task: Task<DownloadedMedia, any Error>
+  }
+
+  private struct ActiveOperation {
+    let id: UUID
+    let cacheGeneration: Int
+    var callerCount: Int
+  }
+
+  private struct OperationHandle: Sendable {
+    let id: UUID
+    let cacheGeneration: Int
   }
 
   private let environment: AppEnvironment
@@ -68,8 +80,14 @@ actor AppMediaCache {
   private let dataLoader: any AppMediaDataLoading
   private let diagnostics: AppCacheDiagnostics
   private let scopeMarkerURL: URL?
+  private let transitionCheckpoint: (@Sendable () async -> Void)?
   private var viewerID: UUID?
   private var hasTransitioned = false
+  private var transitionLockIsHeld = false
+  private var transitionWaiters: [CheckedContinuation<Void, Never>] = []
+  private var cacheGeneration = 0
+  private var activeCacheTransitions = 0
+  private var activeOperations: [AppMediaResource: ActiveOperation] = [:]
   private var inFlight: [AppMediaResource: InFlightRequest] = [:]
 
   init(
@@ -77,13 +95,15 @@ actor AppMediaCache {
     urlCache: URLCache,
     dataLoader: any AppMediaDataLoading,
     diagnostics: AppCacheDiagnostics = AppCacheDiagnostics(),
-    scopeMarkerURL: URL? = nil
+    scopeMarkerURL: URL? = nil,
+    transitionCheckpoint: (@Sendable () async -> Void)? = nil
   ) {
     self.environment = environment
     self.urlCache = urlCache
     self.dataLoader = dataLoader
     self.diagnostics = diagnostics
     self.scopeMarkerURL = scopeMarkerURL
+    self.transitionCheckpoint = transitionCheckpoint
     signedURLs = SignedURLCache(diagnostics: diagnostics)
   }
 
@@ -130,26 +150,42 @@ actor AppMediaCache {
   }
 
   func transition(to newViewerID: UUID?) async {
+    await acquireTransitionLock()
+    defer { releaseTransitionLock() }
     guard !hasTransitioned || viewerID != newViewerID else { return }
+    let changedViewerInProcess = hasTransitioned && viewerID != newViewerID
     hasTransitioned = true
     viewerID = newViewerID
-    await signedURLs.removeAll()
+    activeCacheTransitions += 1
+    defer { activeCacheTransitions -= 1 }
     cancelInFlightRequests()
+    await signedURLs.beginTransition()
+    if let transitionCheckpoint {
+      await transitionCheckpoint()
+    }
 
     let nextScope = newViewerID.map { scopeHash(viewerID: $0) }
     let storedScope = readStoredScope()
-    if storedScope != nextScope {
+    if changedViewerInProcess || storedScope != nextScope {
       urlCache.removeAllCachedResponses()
     }
     writeStoredScope(nextScope)
+    await signedURLs.endTransition()
   }
 
   func data(from sourceURL: URL, for resource: AppMediaResource) async throws -> Data {
+    try Task.checkCancellation()
+    guard activeCacheTransitions == 0 else {
+      throw CancellationError()
+    }
+    let operation = acquireOperation(for: resource)
+    defer { release(operation, for: resource) }
     let cacheRequest = resource.cacheRequest
     var foundCorruptResponse = false
     if let cached = urlCache.cachedResponse(for: cacheRequest) {
       if Self.isValidImage(cached.data) {
         await diagnostics.record(.hit)
+        try ensureValid(operation, for: resource)
         return cached.data
       }
       urlCache.removeCachedResponse(for: cacheRequest)
@@ -159,33 +195,50 @@ actor AppMediaCache {
     if let request = inFlight[resource] {
       if foundCorruptResponse {
         await diagnostics.record(.decodeFailure)
+        try ensureValid(operation, for: resource)
       }
       await diagnostics.record(.miss)
+      try ensureValid(operation, for: resource)
       await diagnostics.record(.coalesced)
-      return try await request.task.value.data
+      try ensureValid(operation, for: resource)
+      let download = try await request.task.value
+      try ensureValid(operation, for: resource, request: request)
+      guard Self.isValidImage(download.data) else {
+        await diagnostics.record(.decodeFailure)
+        try ensureValid(operation, for: resource, request: request)
+        throw AppMediaCacheError.invalidImage
+      }
+      return download.data
     }
 
     let dataLoader = dataLoader
     let request = InFlightRequest(
       id: UUID(),
+      cacheGeneration: cacheGeneration,
       task: Task {
         try await Self.download(from: sourceURL, using: dataLoader)
       }
     )
     inFlight[resource] = request
-    if foundCorruptResponse {
-      await diagnostics.record(.decodeFailure)
-    }
-    await diagnostics.record(.miss)
-    await diagnostics.record(.network)
     do {
-      let download = try await request.task.value
-      clear(request, for: resource)
-      guard Self.isValidImage(download.data) else {
+      if foundCorruptResponse {
         await diagnostics.record(.decodeFailure)
+        try ensureValid(operation, for: resource, request: request)
+      }
+      await diagnostics.record(.miss)
+      try ensureValid(operation, for: resource, request: request)
+      await diagnostics.record(.network)
+      try ensureValid(operation, for: resource, request: request)
+      let download = try await request.task.value
+      try ensureValid(operation, for: resource, request: request)
+      guard Self.isValidImage(download.data) else {
+        clear(request, for: resource)
+        await diagnostics.record(.decodeFailure)
+        try ensureValid(operation, for: resource, request: request)
         throw AppMediaCacheError.invalidImage
       }
       store(download, for: cacheRequest)
+      clear(request, for: resource)
       return download.data
     } catch {
       clear(request, for: resource)
@@ -194,15 +247,23 @@ actor AppMediaCache {
   }
 
   func remove(_ resource: AppMediaResource) {
+    activeOperations[resource] = nil
+    if let request = inFlight[resource] {
+      request.task.cancel()
+      inFlight[resource] = nil
+    }
     urlCache.removeCachedResponse(for: resource.cacheRequest)
-    inFlight[resource]?.task.cancel()
-    inFlight[resource] = nil
   }
 
   func reset() async {
+    await acquireTransitionLock()
+    defer { releaseTransitionLock() }
+    activeCacheTransitions += 1
+    defer { activeCacheTransitions -= 1 }
     urlCache.removeAllCachedResponses()
     cancelInFlightRequests()
-    await signedURLs.removeAll()
+    await signedURLs.beginTransition()
+    await signedURLs.endTransition()
   }
 
   #if DEBUG
@@ -212,6 +273,14 @@ actor AppMediaCache {
 
     func configuredCapacities() -> (memory: Int, disk: Int) {
       (urlCache.memoryCapacity, urlCache.diskCapacity)
+    }
+
+    func currentViewerIDForTesting() -> UUID? {
+      viewerID
+    }
+
+    func transitionWaiterCountForTesting() -> Int {
+      transitionWaiters.count
     }
   #endif
 
@@ -229,9 +298,10 @@ actor AppMediaCache {
     var request = URLRequest(url: sourceURL)
     request.cachePolicy = .reloadIgnoringLocalCacheData
     let (data, response) = try await dataLoader.data(for: request)
-    if let httpResponse = response as? HTTPURLResponse,
-       !(200 ..< 300).contains(httpResponse.statusCode) {
-      throw AppMediaCacheError.httpStatus(httpResponse.statusCode)
+    if let httpResponse = response as? HTTPURLResponse {
+      guard (200 ..< 300).contains(httpResponse.statusCode) else {
+        throw AppMediaCacheError.httpStatus(httpResponse.statusCode)
+      }
     }
     return DownloadedMedia(
       data: data,
@@ -266,11 +336,72 @@ actor AppMediaCache {
     inFlight[resource] = nil
   }
 
+  private func acquireOperation(for resource: AppMediaResource) -> OperationHandle {
+    if var operation = activeOperations[resource] {
+      operation.callerCount += 1
+      activeOperations[resource] = operation
+      return OperationHandle(id: operation.id, cacheGeneration: operation.cacheGeneration)
+    }
+    let operation = ActiveOperation(
+      id: UUID(),
+      cacheGeneration: cacheGeneration,
+      callerCount: 1
+    )
+    activeOperations[resource] = operation
+    return OperationHandle(id: operation.id, cacheGeneration: operation.cacheGeneration)
+  }
+
+  private func release(_ handle: OperationHandle, for resource: AppMediaResource) {
+    guard var operation = activeOperations[resource], operation.id == handle.id else { return }
+    operation.callerCount -= 1
+    if operation.callerCount == 0 {
+      activeOperations[resource] = nil
+    } else {
+      activeOperations[resource] = operation
+    }
+  }
+
+  private func ensureValid(
+    _ handle: OperationHandle,
+    for resource: AppMediaResource,
+    request: InFlightRequest? = nil
+  ) throws {
+    try Task.checkCancellation()
+    guard handle.cacheGeneration == cacheGeneration,
+          activeOperations[resource]?.id == handle.id
+    else {
+      throw CancellationError()
+    }
+    if let request, request.cacheGeneration != cacheGeneration {
+      throw CancellationError()
+    }
+  }
+
   private func cancelInFlightRequests() {
+    cacheGeneration += 1
+    activeOperations.removeAll()
     for request in inFlight.values {
       request.task.cancel()
     }
     inFlight.removeAll()
+  }
+
+  private func acquireTransitionLock() async {
+    if !transitionLockIsHeld {
+      transitionLockIsHeld = true
+      return
+    }
+    await withCheckedContinuation { continuation in
+      transitionWaiters.append(continuation)
+    }
+  }
+
+  private func releaseTransitionLock() {
+    guard !transitionWaiters.isEmpty else {
+      transitionLockIsHeld = false
+      return
+    }
+    transitionWaiters.removeFirst().resume()
   }
 
   private func scopeHash(viewerID: UUID) -> String {

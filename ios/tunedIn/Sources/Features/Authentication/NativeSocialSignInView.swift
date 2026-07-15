@@ -1,13 +1,10 @@
 import AuthenticationServices
 import CryptoKit
-import GoogleSignIn
 import Security
 import SwiftUI
-import UIKit
 
 struct NativeSocialSignInView: View {
   let session: AppSession
-  let configuration: NativeSocialAuthConfiguration
 
   @State private var appleNonce: String?
   @State private var isSubmitting = false
@@ -31,19 +28,6 @@ struct NativeSocialSignInView: View {
       }
 
       VStack(spacing: 14) {
-        SignInWithAppleButton(.signIn) { request in
-          prepareAppleRequest(request)
-        } onCompletion: { result in
-          handleAppleCompletion(result)
-        }
-        .signInWithAppleButtonStyle(.white)
-        .frame(maxWidth: .infinity)
-        .frame(height: 56)
-        .clipShape(Capsule())
-        .allowsHitTesting(!isSubmitting)
-        .opacity(isSubmitting ? 0.6 : 1)
-        .accessibilityLabel("Continue with Apple")
-
         Button {
           signInWithGoogle()
         } label: {
@@ -53,7 +37,7 @@ struct NativeSocialSignInView: View {
               .scaledToFit()
               .frame(width: 22, height: 22)
 
-            Text("Sign in with Google")
+            Text("Continue with Google")
               .font(.system(size: 19, weight: .semibold))
           }
           .foregroundStyle(.black)
@@ -84,7 +68,7 @@ struct NativeSocialSignInView: View {
           .accessibilityIdentifier("social-sign-in-error")
       }
 
-      Text("Apple or Google will confirm your identity. tunedIn never receives your password.")
+      Text("Google will confirm your identity. tunedIn never receives your password.")
         .font(.footnote)
         .foregroundStyle(.tertiary)
 
@@ -152,7 +136,7 @@ struct NativeSocialSignInView: View {
     Task {
       let credentials: NativeAuthCredentials
       do {
-        credentials = try await GoogleNativeSignIn.credentials(configuration: configuration)
+        credentials = try await session.googleCredentials()
       } catch {
         if !NativeSocialSignInError.isCancellation(error) {
           session.recordNativeAuthenticationFailure(
@@ -169,7 +153,9 @@ struct NativeSocialSignInView: View {
       do {
         try await session.signIn(with: credentials)
       } catch {
-        errorMessage = NativeSocialSignInError.message(for: error)
+        if !NativeSocialSignInError.isCancellation(error) {
+          errorMessage = NativeSocialSignInError.message(for: error)
+        }
       }
       isSubmitting = false
     }
@@ -207,186 +193,5 @@ enum NativeAuthNonce {
 
   static func hashed(_ nonce: String) -> String {
     SHA256.hash(data: Data(nonce.utf8)).map { String(format: "%02x", $0) }.joined()
-  }
-}
-
-@MainActor
-private enum GoogleNativeSignIn {
-  static func credentials(configuration: NativeSocialAuthConfiguration) async throws -> NativeAuthCredentials {
-    let google = GIDSignIn.sharedInstance
-    google.configuration = GIDConfiguration(
-      clientID: configuration.googleIOSClientID,
-      serverClientID: configuration.googleServerClientID
-    )
-
-    if google.hasPreviousSignIn() {
-      do {
-        if let restoredCredentials = try await restoredCredentials(using: google) {
-          return restoredCredentials
-        }
-      } catch {
-        // A stale or unreadable SDK session should not block a fresh interactive sign-in.
-      }
-      google.signOut()
-    }
-
-    guard let presentingViewController = presentingViewController() else {
-      throw NativeSocialSignInError.missingPresentationContext
-    }
-
-    return try await withCheckedThrowingContinuation { continuation in
-      google.signIn(
-        withPresenting: presentingViewController,
-        hint: nil,
-        additionalScopes: nil
-      ) { result, error in
-        if let error {
-          continuation.resume(throwing: error)
-          return
-        }
-        guard let user = result?.user else {
-          continuation.resume(throwing: NativeSocialSignInError.missingGoogleCredential)
-          return
-        }
-
-        do {
-          continuation.resume(returning: try credentials(for: user))
-        } catch {
-          continuation.resume(throwing: error)
-        }
-      }
-    }
-  }
-
-  private static func restoredCredentials(using google: GIDSignIn) async throws -> NativeAuthCredentials? {
-    try await withCheckedThrowingContinuation { continuation in
-      google.restorePreviousSignIn { user, error in
-        if let error {
-          continuation.resume(throwing: error)
-          return
-        }
-        guard let user else {
-          continuation.resume(throwing: NativeSocialSignInError.missingGoogleCredential)
-          return
-        }
-
-        do {
-          let credentials = try credentials(for: user)
-          guard RestoredGoogleIDTokenPolicy.canReuse(credentials.idToken) else {
-            continuation.resume(returning: nil)
-            return
-          }
-          continuation.resume(returning: credentials)
-        } catch {
-          continuation.resume(throwing: error)
-        }
-      }
-    }
-  }
-
-  nonisolated private static func credentials(for user: GIDGoogleUser) throws -> NativeAuthCredentials {
-    guard let idToken = user.idToken?.tokenString else {
-      throw NativeSocialSignInError.missingGoogleCredential
-    }
-
-    return NativeAuthCredentials(
-      provider: .google,
-      idToken: idToken,
-      accessToken: user.accessToken.tokenString,
-      nonce: nil
-    )
-  }
-
-  private static func presentingViewController() -> UIViewController? {
-    let root = UIApplication.shared.connectedScenes
-      .compactMap { $0 as? UIWindowScene }
-      .flatMap(\.windows)
-      .first(where: \.isKeyWindow)?
-      .rootViewController
-
-    var presenter = root
-    while let presented = presenter?.presentedViewController {
-      presenter = presented
-    }
-    return presenter
-  }
-}
-
-enum RestoredGoogleIDTokenPolicy {
-  static func canReuse(_ idToken: String) -> Bool {
-    let segments = idToken.split(separator: ".", omittingEmptySubsequences: false)
-    guard segments.count == 3 else { return false }
-
-    var payload = String(segments[1])
-      .replacingOccurrences(of: "-", with: "+")
-      .replacingOccurrences(of: "_", with: "/")
-    let paddingCount = (4 - payload.count % 4) % 4
-    payload.append(String(repeating: "=", count: paddingCount))
-
-    guard
-      let data = Data(base64Encoded: payload),
-      let claims = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-    else {
-      return false
-    }
-
-    return !claims.keys.contains("nonce")
-  }
-}
-
-private enum NativeSocialSignInError: LocalizedError {
-  case missingAppleCredential
-  case missingGoogleCredential
-  case missingPresentationContext
-  case nonceGenerationFailed
-
-  var errorDescription: String? {
-    switch self {
-    case .missingAppleCredential:
-      "Apple didn’t return a valid sign-in credential. Please try again."
-    case .missingGoogleCredential:
-      "Google didn’t return a valid sign-in credential. Please try again."
-    case .missingPresentationContext:
-      "The sign-in screen isn’t ready yet. Please try again."
-    case .nonceGenerationFailed:
-      "A secure sign-in request couldn’t be created. Please try again."
-    }
-  }
-
-  static func isCancellation(_ error: any Error) -> Bool {
-    let error = error as NSError
-    let isAppleCancellation = error.domain == ASAuthorizationError.errorDomain
-      && error.code == ASAuthorizationError.canceled.rawValue
-    if isAppleCancellation {
-      return true
-    }
-    return error.domain == kGIDSignInErrorDomain && error.code == -5
-  }
-
-  static func message(for error: any Error) -> String {
-    if let error = error as? NativeSocialSignInError {
-      return error.localizedDescription
-    }
-    return AppFailure(error).localizedDescription
-  }
-
-  static func statusClass(for provider: NativeAuthProvider, error: any Error) -> String {
-    if let error = error as? NativeSocialSignInError {
-      return switch error {
-      case .missingAppleCredential: "apple_missing_credential"
-      case .missingGoogleCredential: "google_missing_credential"
-      case .missingPresentationContext: "presentation_unavailable"
-      case .nonceGenerationFailed: "nonce_generation"
-      }
-    }
-
-    let error = error as NSError
-    if provider == .apple, error.domain == ASAuthorizationError.errorDomain {
-      return "apple_authorization_\(error.code)"
-    }
-    if provider == .google, error.domain == kGIDSignInErrorDomain {
-      return "google_sdk_\(error.code)"
-    }
-    return "provider_response"
   }
 }

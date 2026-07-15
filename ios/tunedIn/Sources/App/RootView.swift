@@ -13,8 +13,8 @@ struct RootView: View {
           .frame(maxWidth: .infinity, maxHeight: .infinity)
 
       case .signedOut:
-        if let configuration = session.nativeSocialAuthConfiguration {
-          NativeSocialSignInView(session: session, configuration: configuration)
+        if session.nativeSocialAuthConfiguration != nil {
+          NativeSocialSignInView(session: session)
         } else {
           EmailSignInView(session: session)
         }

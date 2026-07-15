@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import OSLog
 
 enum AppSessionPhase {
   case restoring
@@ -13,14 +14,22 @@ enum AppSessionPhase {
 @MainActor
 @Observable
 final class AppSession {
+  private static let logger = Logger(subsystem: "com.ethanherrera.tunedin", category: "authentication")
+
   private let authenticationRepository: any AuthenticationRepository
+  private let googleAuthenticationClient: any GoogleAuthenticationClient
   private let profileRepository: any ProfileRepository
   private let dataCache: AppDataCache?
   private let feedbackRepository: any FeedbackRepository
   private var authStateTask: Task<Void, Never>?
   private var profileLoadTask: Task<Void, Never>?
+  private var signOutTask: Task<AppFailure?, Never>?
   private var currentUser: AuthenticatedUser?
   private var profileLoadGeneration = 0
+  private var authenticationOperationGeneration = 0
+  private var blocksAuthEventsAfterSignOut = false
+  private var blockedSignedOutUserID: UUID?
+  private var requiresInteractiveGoogleSignIn = false
   private let clock = ContinuousClock()
 
   let authEmailDeliveryMode: AuthEmailDeliveryMode
@@ -29,12 +38,14 @@ final class AppSession {
   let telemetry: AppTelemetryClient
   private(set) var phase: AppSessionPhase = .restoring
   private(set) var authCallbackError: String?
+  private(set) var lastSignOutFailure: AppFailure?
   var profileRepositoryForViews: any ProfileRepository {
     profileRepository
   }
 
   init(
     authenticationRepository: any AuthenticationRepository,
+    googleAuthenticationClient: any GoogleAuthenticationClient = UnavailableGoogleAuthenticationClient(),
     profileRepository: any ProfileRepository,
     dataCache: AppDataCache? = nil,
     feedbackRepository: any FeedbackRepository = DevelopmentFeedbackRepository(),
@@ -52,6 +63,7 @@ final class AppSession {
     )
   ) {
     self.authenticationRepository = authenticationRepository
+    self.googleAuthenticationClient = googleAuthenticationClient
     self.profileRepository = profileRepository
     self.dataCache = dataCache
     self.feedbackRepository = feedbackRepository
@@ -78,17 +90,43 @@ final class AppSession {
     }
 
     let startedAt = clock.now
-    try await authenticationRepository.signInWithPassword(
-      email: localAccount.email,
-      password: LocalSeededAccount.password
-    )
+    let attempt = await beginUserInitiatedAuthentication()
+    do {
+      try await authenticationRepository.signInWithPassword(
+        email: localAccount.email,
+        password: LocalSeededAccount.password
+      )
+    } catch {
+      restoreAuthenticationBlockAfterFailedAttempt(attempt)
+      throw error
+    }
+    try ensureCurrentAuthenticationOperation(attempt.generation)
     captureAuthenticationSuccess(method: "local_seed", startedAt: startedAt)
   }
 
   func verifyEmailOTP(email: String, code: String) async throws {
     let startedAt = clock.now
-    try await authenticationRepository.verifyEmailOTP(email: email, code: code)
+    let attempt = await beginUserInitiatedAuthentication()
+    do {
+      try await authenticationRepository.verifyEmailOTP(email: email, code: code)
+    } catch {
+      restoreAuthenticationBlockAfterFailedAttempt(attempt)
+      throw error
+    }
+    try ensureCurrentAuthenticationOperation(attempt.generation)
     captureAuthenticationSuccess(method: "email", startedAt: startedAt)
+  }
+
+  func googleCredentials() async throws -> NativeAuthCredentials {
+    guard let configuration = nativeSocialAuthConfiguration else {
+      throw AppSessionError.nativeSocialSignInUnavailable
+    }
+
+    await waitForPendingSignOut()
+    return try await googleAuthenticationClient.credentials(
+      configuration: configuration,
+      allowsPreviousSignInRestore: !requiresInteractiveGoogleSignIn
+    )
   }
 
   func signIn(with credentials: NativeAuthCredentials) async throws {
@@ -97,10 +135,32 @@ final class AppSession {
     }
 
     let startedAt = clock.now
+    await waitForPendingSignOut()
+    authenticationOperationGeneration += 1
+    let operationGeneration = authenticationOperationGeneration
+    let wasBlockingAuthenticatedEvents = blocksAuthEventsAfterSignOut
     do {
-      try await authenticationRepository.signIn(with: credentials)
+      let user = try await authenticationRepository.signIn(with: credentials)
+      try ensureCurrentAuthenticationOperation(operationGeneration)
+      blocksAuthEventsAfterSignOut = false
+      if blockedSignedOutUserID == user.id {
+        blockedSignedOutUserID = nil
+      }
+      await receiveAuthenticationChange(user)
+      if credentials.provider == .google {
+        requiresInteractiveGoogleSignIn = false
+      }
       captureAuthenticationSuccess(method: credentials.provider.rawValue, startedAt: startedAt)
     } catch {
+      guard operationGeneration == authenticationOperationGeneration else {
+        throw CancellationError()
+      }
+      if error is CancellationError {
+        throw error
+      }
+      if wasBlockingAuthenticatedEvents {
+        blocksAuthEventsAfterSignOut = true
+      }
       let failure = AppFailure(error)
       recordNativeAuthenticationFailure(
         provider: credentials.provider,
@@ -168,13 +228,18 @@ final class AppSession {
     guard let currentUser else {
       throw AppSessionError.missingAuthenticatedUser
     }
+    let operationGeneration = authenticationOperationGeneration
 
     let startedAt = clock.now
     let profile = try await profileRepository.completeOnboarding(
       username: username,
       displayName: displayName
     )
-    phase = .signedIn(currentUser, profile)
+    let authenticatedUser = try authenticatedUser(
+      matching: currentUser,
+      operationGeneration: operationGeneration
+    )
+    phase = .signedIn(authenticatedUser, profile)
     telemetry.capture(
       .profileSetupCompleted,
       properties: [.durationMilliseconds: .integer(startedAt.duration(to: clock.now).millisecondsValue)]
@@ -183,19 +248,45 @@ final class AppSession {
 
   func setAvatar(jpegData: Data) async throws {
     guard let currentUser else { throw AppSessionError.missingAuthenticatedUser }
+    let operationGeneration = authenticationOperationGeneration
     let profile = try await profileRepository.setAvatar(jpegData: jpegData, for: currentUser.id)
-    phase = .signedIn(currentUser, profile)
+    let authenticatedUser = try authenticatedUser(
+      matching: currentUser,
+      operationGeneration: operationGeneration
+    )
+    phase = .signedIn(authenticatedUser, profile)
   }
 
   func removeAvatar() async throws {
     guard let currentUser else { throw AppSessionError.missingAuthenticatedUser }
+    let operationGeneration = authenticationOperationGeneration
     do {
       let profile = try await profileRepository.removeAvatar(for: currentUser.id)
-      phase = .signedIn(currentUser, profile)
+      let authenticatedUser = try authenticatedUser(
+        matching: currentUser,
+        operationGeneration: operationGeneration
+      )
+      phase = .signedIn(authenticatedUser, profile)
     } catch let error as AvatarRemovalError {
-      phase = .signedIn(currentUser, error.profile)
+      let authenticatedUser = try authenticatedUser(
+        matching: currentUser,
+        operationGeneration: operationGeneration
+      )
+      phase = .signedIn(authenticatedUser, error.profile)
       throw error
     }
+  }
+
+  private func authenticatedUser(
+    matching expectedUser: AuthenticatedUser,
+    operationGeneration: Int
+  ) throws -> AuthenticatedUser {
+    try Task.checkCancellation()
+    try ensureCurrentAuthenticationOperation(operationGeneration)
+    guard let currentUser, currentUser.id == expectedUser.id else {
+      throw CancellationError()
+    }
+    return currentUser
   }
 
   func retryProfileLoad() {
@@ -211,68 +302,6 @@ final class AppSession {
     let profile = try await profileRepository.fetchProfile(for: user.id, policy: .refresh)
     guard let currentUser, currentUser.id == user.id else { return }
     phase = profile.hasCompletedOnboarding ? .signedIn(currentUser, profile) : .needsOnboarding(currentUser)
-  }
-
-  func signOut() async {
-    do {
-      try await authenticationRepository.signOut()
-      await receiveAuthenticationChange(nil)
-    } catch {
-      if currentUser == nil {
-        phase = .signedOut
-      }
-    }
-  }
-
-  func handleAuthCallback(_ url: URL) {
-    authCallbackError = nil
-    let startedAt = clock.now
-    Task { [weak self, authenticationRepository] in
-      do {
-        try await authenticationRepository.handleAuthCallback(url)
-        self?.captureAuthenticationSuccess(method: "email", startedAt: startedAt)
-      } catch {
-        self?.authCallbackError = error.localizedDescription
-      }
-    }
-  }
-
-  private func captureAuthenticationSuccess(method: String, startedAt: ContinuousClock.Instant) {
-    telemetry.capture(
-      .authenticationCompleted,
-      properties: [
-        .method: .string(method),
-        .outcome: .string(TelemetryOutcome.succeeded.rawValue),
-        .durationMilliseconds: .integer(startedAt.duration(to: clock.now).millisecondsValue)
-      ]
-    )
-  }
-
-  func dismissAuthCallbackError() {
-    authCallbackError = nil
-  }
-
-  private func receiveAuthenticationChange(_ user: AuthenticatedUser?) async {
-    let previousUserID = currentUser?.id
-    if let user, previousUserID == user.id {
-      currentUser = user
-      phase = phase.replacingAuthenticatedUser(with: user)
-      return
-    }
-
-    profileLoadTask?.cancel()
-    profileLoadGeneration += 1
-    currentUser = user
-    await dataCache?.transition(to: user?.id)
-
-    guard let user else {
-      telemetry.reset()
-      phase = .signedOut
-      return
-    }
-
-    telemetry.identify(userID: user.id)
-    loadProfile(for: user)
   }
 
   private func loadProfile(for user: AuthenticatedUser, policy: CacheReadPolicy = .automatic) {
@@ -329,6 +358,161 @@ final class AppSession {
 }
 
 extension AppSession {
+  func signOut() async {
+    if let signOutTask {
+      _ = await signOutTask.value
+      return
+    }
+
+    authenticationOperationGeneration += 1
+    blocksAuthEventsAfterSignOut = true
+    blockedSignedOutUserID = currentUser?.id
+    requiresInteractiveGoogleSignIn = true
+    lastSignOutFailure = nil
+    googleAuthenticationClient.signOut()
+    applyImmediateSignedOutState()
+
+    let authenticationRepository = authenticationRepository
+    let dataCache = dataCache
+    let cleanupTask = Task<AppFailure?, Never> {
+      let cacheTask = Task<Void, Never> {
+        guard let dataCache else { return }
+        await dataCache.transition(to: nil)
+      }
+
+      let failure: AppFailure?
+      do {
+        try await authenticationRepository.signOut()
+        failure = nil
+      } catch {
+        failure = AppFailure(error)
+      }
+
+      await cacheTask.value
+      return failure
+    }
+    signOutTask = cleanupTask
+
+    let failure = await cleanupTask.value
+    lastSignOutFailure = failure
+    if let failure {
+      Self.logger.warning(
+        "Remote current-session sign-out cleanup failed: \(String(describing: failure), privacy: .public)"
+      )
+    }
+    signOutTask = nil
+  }
+
+  func handleAuthCallback(_ url: URL) {
+    authCallbackError = nil
+    let startedAt = clock.now
+    Task { [weak self, authenticationRepository] in
+      guard let self else { return }
+      let attempt = await beginUserInitiatedAuthentication()
+      do {
+        try await authenticationRepository.handleAuthCallback(url)
+        try ensureCurrentAuthenticationOperation(attempt.generation)
+        captureAuthenticationSuccess(method: "email", startedAt: startedAt)
+      } catch {
+        guard attempt.generation == authenticationOperationGeneration else { return }
+        restoreAuthenticationBlockAfterFailedAttempt(attempt)
+        authCallbackError = error.localizedDescription
+      }
+    }
+  }
+
+  func dismissAuthCallbackError() {
+    authCallbackError = nil
+  }
+
+  private func captureAuthenticationSuccess(method: String, startedAt: ContinuousClock.Instant) {
+    telemetry.capture(
+      .authenticationCompleted,
+      properties: [
+        .method: .string(method),
+        .outcome: .string(TelemetryOutcome.succeeded.rawValue),
+        .durationMilliseconds: .integer(startedAt.duration(to: clock.now).millisecondsValue)
+      ]
+    )
+  }
+
+  private func receiveAuthenticationChange(_ user: AuthenticatedUser?) async {
+    if let user, user.id == blockedSignedOutUserID {
+      return
+    }
+    if user != nil, blocksAuthEventsAfterSignOut {
+      return
+    }
+    if user == nil, currentUser == nil, case .signedOut = phase {
+      return
+    }
+
+    let previousUserID = currentUser?.id
+    if let user, previousUserID == user.id {
+      currentUser = user
+      phase = phase.replacingAuthenticatedUser(with: user)
+      return
+    }
+
+    profileLoadTask?.cancel()
+    profileLoadGeneration += 1
+    currentUser = user
+    await dataCache?.transition(to: user?.id)
+
+    guard let user else {
+      telemetry.reset()
+      phase = .signedOut
+      return
+    }
+
+    telemetry.identify(userID: user.id)
+    loadProfile(for: user)
+  }
+
+  private func applyImmediateSignedOutState() {
+    profileLoadTask?.cancel()
+    profileLoadGeneration += 1
+    currentUser = nil
+    telemetry.reset()
+    phase = .signedOut
+  }
+
+  private func waitForPendingSignOut() async {
+    if let signOutTask {
+      _ = await signOutTask.value
+    }
+  }
+
+  private struct AuthenticationAttempt {
+    let generation: Int
+    let wasBlockingAuthenticatedEvents: Bool
+  }
+
+  private func beginUserInitiatedAuthentication() async -> AuthenticationAttempt {
+    await waitForPendingSignOut()
+    authenticationOperationGeneration += 1
+    let wasBlockingAuthenticatedEvents = blocksAuthEventsAfterSignOut
+    blocksAuthEventsAfterSignOut = false
+    blockedSignedOutUserID = nil
+    return AuthenticationAttempt(
+      generation: authenticationOperationGeneration,
+      wasBlockingAuthenticatedEvents: wasBlockingAuthenticatedEvents
+    )
+  }
+
+  private func restoreAuthenticationBlockAfterFailedAttempt(_ attempt: AuthenticationAttempt) {
+    guard attempt.generation == authenticationOperationGeneration else { return }
+    if attempt.wasBlockingAuthenticatedEvents {
+      blocksAuthEventsAfterSignOut = true
+    }
+  }
+
+  private func ensureCurrentAuthenticationOperation(_ generation: Int) throws {
+    guard generation == authenticationOperationGeneration else {
+      throw CancellationError()
+    }
+  }
+
   func recordNativeAuthenticationFailure(
     provider: NativeAuthProvider,
     error: any Error,
