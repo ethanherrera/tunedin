@@ -1063,6 +1063,15 @@ begin
 end;
 $$;
 
+-- Backfill updates queue the pre-existing deferred lineup checks. Execute them
+-- before ALTER TABLE, which rejects relations with pending trigger events.
+do $$
+begin
+  execute 'set constraints public.concerts_require_valid_lineup, '
+    || 'public.concert_artists_require_valid_lineup immediate';
+end;
+$$;
+
 alter table public.concerts
   alter column catalog_place_id set not null;
 alter table public.concert_artists

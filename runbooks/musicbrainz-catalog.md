@@ -40,11 +40,20 @@ Rebuild the disposable schema and seed after a migration, then start and verify 
 gateway:
 
 ```sh
+make musicbrainz-upgrade-test
 make local-db-reset
 make functions-test
 make local-catalog-verify
 make local-catalog-status
 ```
+
+`make musicbrainz-upgrade-test` first resets the disposable Local database through
+the last pre-catalog migration, loads two valid legacy concerts, applies the catalog
+migration, and verifies that snapshot text and row identity survive while reusable
+legacy catalog links are populated. It also proves the pre-existing deferred lineup
+checks are executed before the migration changes table constraints. The command is
+part of `make backend-verify`; run `make local-db-reset` afterward to restore the
+normal development journey seed.
 
 `make local-catalog-verify` starts/reuses two tracked processes:
 
@@ -145,6 +154,10 @@ database workflow remains migrations-only.
   `make local-catalog-verify`. Only ignored local processes/data are replaced.
 - Verification failure before deployment: no hosted Function or database state was
   changed. Correct the branch in a PR and redispatch after merge.
+- Existing-data migration failure: confirm the failed transaction left the migration
+  absent from every shared environment before amending it. If any shared environment
+  recorded it, preserve the applied file and add a new forward-only corrective
+  migration instead. Reproduce the path with `make musicbrainz-upgrade-test`.
 - Runtime configuration failure: correct the protected environment variable; never
   add a fallback contact or non-official hosted base URL in source.
 - Function defect after deployment: redeploy the last known-good reviewed `main`

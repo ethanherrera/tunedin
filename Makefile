@@ -7,7 +7,7 @@ DESTINATION := platform=iOS Simulator,name=iPhone 13
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup configure local-db-start configure-local-supabase local-next-steps generate format lint workflow-lint distribution-metadata-verify staging-configuration-test staging-auth-test staging-auth-plan staging-auth-verify staging-apple-sign-in-test staging-apple-sign-in-plan staging-apple-sign-in-verify staging-ipa-signing-test posthog-test posthog-plan posthog-verify posthog-apply build build-local build-staging archive-staging test test-local check cache-reset simulator-auth-link simulator-local simulator-catalog simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error local-db-reset local-seed-verify supabase-types check-supabase-types backend-test functions-test local-catalog-start local-catalog-stop local-catalog-status local-catalog-verify musicbrainz-smoke storage-integration-test backend-verify dev-status dev-plan dev-deploy dev-functions-status dev-functions-plan dev-functions-deploy dev-login-link staging-status staging-plan staging-promote
+.PHONY: help setup configure local-db-start configure-local-supabase local-next-steps generate format lint workflow-lint distribution-metadata-verify staging-configuration-test staging-auth-test staging-auth-plan staging-auth-verify staging-apple-sign-in-test staging-apple-sign-in-plan staging-apple-sign-in-verify staging-ipa-signing-test posthog-test posthog-plan posthog-verify posthog-apply build build-local build-staging archive-staging test test-local check cache-reset simulator-auth-link simulator-local simulator-catalog simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error local-db-reset local-seed-verify supabase-types check-supabase-types backend-test functions-test local-catalog-start local-catalog-stop local-catalog-status local-catalog-verify musicbrainz-upgrade-test musicbrainz-smoke storage-integration-test backend-verify dev-status dev-plan dev-deploy dev-functions-status dev-functions-plan dev-functions-deploy dev-login-link staging-status staging-plan staging-promote
 
 help: ## List available development commands.
 	@awk 'BEGIN {FS = ":.*##"}; /^[a-zA-Z_-]+:.*##/ { printf "%-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -170,13 +170,20 @@ local-catalog-status: ## Report the tracked Local catalog lifecycle status.
 local-catalog-verify: local-db-start ## Exercise the authenticated Local gateway against deterministic fixtures.
 	@./scripts/local-music-catalog.sh verify
 
+musicbrainz-upgrade-test: local-db-start ## Migrate pre-catalog Local rows and verify the existing-data path.
+	@./scripts/verify-musicbrainz-upgrade.sh
+
 musicbrainz-smoke: ## Opt-in serialized live schema smoke (MUSICBRAINZ_USER_AGENT required).
 	@deno run --allow-env=MUSICBRAINZ_USER_AGENT --allow-net=musicbrainz.org:443 scripts/musicbrainz-smoke.ts
 
 storage-integration-test: ## Exercise private avatar authorization through the Local Storage API.
 	@./scripts/test-profile-storage-api.sh
 
-backend-verify: local-db-reset check-supabase-types backend-test storage-integration-test ## Rebuild and verify schema, types, RLS, and Storage API behavior.
+backend-verify: musicbrainz-upgrade-test ## Verify existing-data upgrade, schema, types, RLS, and Storage behavior.
+	@$(MAKE) --no-print-directory local-db-reset
+	@$(MAKE) --no-print-directory check-supabase-types
+	@$(MAKE) --no-print-directory backend-test
+	@$(MAKE) --no-print-directory storage-integration-test
 
 dev-status: ## Show remote migration parity for the hosted tunedin-dev database.
 	@./scripts/development-database.sh status
