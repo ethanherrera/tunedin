@@ -141,7 +141,13 @@ private struct SuccessfulNativeAuthenticationRepository: AuthenticationRepositor
   func sendEmailOTP(to _: String) async throws {}
   func signInWithPassword(email _: String, password _: String) async throws {}
   func verifyEmailOTP(email _: String, code _: String) async throws {}
-  func signIn(with _: NativeAuthCredentials) async throws {}
+  func signIn(with _: NativeAuthCredentials) async throws -> AuthenticatedUser {
+    AuthenticatedUser(
+      id: UUID(uuidString: "99999999-9999-9999-9999-999999999999")!,
+      email: "google@example.test"
+    )
+  }
+
   func signOut() async throws {}
   func handleAuthCallback(_: URL) async throws {}
 }

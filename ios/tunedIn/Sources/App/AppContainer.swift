@@ -45,6 +45,7 @@ final class AppContainer {
         client: client,
         authCallbackURL: configuration.authCallbackURL
       ),
+      googleAuthenticationClient: LiveGoogleAuthenticationClient(),
       profileRepository: profileRepository,
       dataCache: dataCache,
       feedbackRepository: feedbackRepository,

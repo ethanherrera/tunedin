@@ -137,7 +137,7 @@
       throw DevelopmentScenarioError.liveAuthenticationRequired
     }
 
-    func signIn(with _: NativeAuthCredentials) async throws {
+    func signIn(with _: NativeAuthCredentials) async throws -> AuthenticatedUser {
       throw DevelopmentScenarioError.liveAuthenticationRequired
     }
 

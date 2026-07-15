@@ -33,13 +33,28 @@ actor SignedURLCache {
 
   private struct InFlightRequest {
     let id: UUID
+    let cacheGeneration: Int
     let task: Task<URL, any Error>
+  }
+
+  private struct ActiveOperation {
+    let id: UUID
+    let cacheGeneration: Int
+    var callerCount: Int
+  }
+
+  private struct OperationHandle: Sendable {
+    let id: UUID
+    let cacheGeneration: Int
   }
 
   private let capacity: Int
   private let lifetime: TimeInterval
   private let diagnostics: AppCacheDiagnostics
+  private var cacheGeneration = 0
+  private var activeTransitions = 0
   private var entries: [SignedURLCacheKey: Entry] = [:]
+  private var activeOperations: [SignedURLCacheKey: ActiveOperation] = [:]
   private var inFlight: [SignedURLCacheKey: InFlightRequest] = [:]
 
   init(
@@ -57,33 +72,52 @@ actor SignedURLCache {
     now: Date = .now,
     load: @escaping @Sendable () async throws -> URL
   ) async throws -> URL {
+    try Task.checkCancellation()
+    guard activeTransitions == 0 else {
+      throw CancellationError()
+    }
+    let operation = acquireOperation(for: key)
+    defer { release(operation, for: key) }
     if var entry = entries[key], entry.expiresAt > now {
       entry.lastAccessedAt = now
       entries[key] = entry
       await diagnostics.record(.hit)
+      try ensureValid(operation, for: key)
       return entry.url
     }
     entries[key] = nil
 
     if let request = inFlight[key] {
       await diagnostics.record(.miss)
+      try ensureValid(operation, for: key, request: request)
       await diagnostics.record(.coalesced)
-      return try await request.task.value
+      try ensureValid(operation, for: key, request: request)
+      let url = try await request.task.value
+      try ensureValid(operation, for: key, request: request)
+      return url
     }
 
-    let request = InFlightRequest(id: UUID(), task: Task { try await load() })
+    let request = InFlightRequest(
+      id: UUID(),
+      cacheGeneration: cacheGeneration,
+      task: Task { try await load() }
+    )
     inFlight[key] = request
-    await diagnostics.record(.miss)
-    await diagnostics.record(.network)
     do {
+      await diagnostics.record(.miss)
+      try ensureValid(operation, for: key, request: request)
+      await diagnostics.record(.network)
+      try ensureValid(operation, for: key, request: request)
       let url = try await request.task.value
-      clear(request, for: key)
+      try ensureValid(operation, for: key, request: request)
       entries[key] = Entry(
         url: url,
         expiresAt: now.addingTimeInterval(lifetime),
         lastAccessedAt: now
       )
       await prune(now: now)
+      try ensureValid(operation, for: key, request: request)
+      clear(request, for: key)
       return url
     } catch {
       clear(request, for: key)
@@ -91,23 +125,37 @@ actor SignedURLCache {
     }
   }
 
+  func beginTransition() {
+    activeTransitions += 1
+    invalidateInFlightRequests()
+    entries.removeAll()
+  }
+
+  func endTransition() {
+    precondition(activeTransitions > 0)
+    activeTransitions -= 1
+  }
+
   func remove(kind: SignedURLCacheKey.Kind, id: UUID) {
-    let keys = Set(entries.keys).union(inFlight.keys).filter { key in
-      key.kind == kind && key.id == id
-    }
+    let keys = Set(entries.keys)
+      .union(activeOperations.keys)
+      .union(inFlight.keys)
+      .filter { key in
+        key.kind == kind && key.id == id
+      }
     for key in keys {
       entries[key] = nil
-      inFlight[key]?.task.cancel()
-      inFlight[key] = nil
+      activeOperations[key] = nil
+      if let request = inFlight[key] {
+        request.task.cancel()
+        inFlight[key] = nil
+      }
     }
   }
 
   func removeAll() {
+    invalidateInFlightRequests()
     entries.removeAll()
-    for request in inFlight.values {
-      request.task.cancel()
-    }
-    inFlight.removeAll()
   }
 
   #if DEBUG
@@ -121,6 +169,56 @@ actor SignedURLCache {
     inFlight[key] = nil
   }
 
+  private func acquireOperation(for key: SignedURLCacheKey) -> OperationHandle {
+    if var operation = activeOperations[key] {
+      operation.callerCount += 1
+      activeOperations[key] = operation
+      return OperationHandle(id: operation.id, cacheGeneration: operation.cacheGeneration)
+    }
+    let operation = ActiveOperation(
+      id: UUID(),
+      cacheGeneration: cacheGeneration,
+      callerCount: 1
+    )
+    activeOperations[key] = operation
+    return OperationHandle(id: operation.id, cacheGeneration: operation.cacheGeneration)
+  }
+
+  private func release(_ handle: OperationHandle, for key: SignedURLCacheKey) {
+    guard var operation = activeOperations[key], operation.id == handle.id else { return }
+    operation.callerCount -= 1
+    if operation.callerCount == 0 {
+      activeOperations[key] = nil
+    } else {
+      activeOperations[key] = operation
+    }
+  }
+
+  private func ensureValid(
+    _ handle: OperationHandle,
+    for key: SignedURLCacheKey,
+    request: InFlightRequest? = nil
+  ) throws {
+    try Task.checkCancellation()
+    guard handle.cacheGeneration == cacheGeneration,
+          activeOperations[key]?.id == handle.id
+    else {
+      throw CancellationError()
+    }
+    if let request, request.cacheGeneration != cacheGeneration {
+      throw CancellationError()
+    }
+  }
+
+  private func invalidateInFlightRequests() {
+    cacheGeneration += 1
+    activeOperations.removeAll()
+    for request in inFlight.values {
+      request.task.cancel()
+    }
+    inFlight.removeAll()
+  }
+
   private func prune(now: Date) async {
     let expiredKeys = entries.compactMap { key, entry in
       entry.expiresAt <= now ? key : nil
@@ -130,10 +228,10 @@ actor SignedURLCache {
     }
 
     var evictionCount = expiredKeys.count
-    while entries.count > capacity,
-          let oldestKey = entries.min(by: {
-            $0.value.lastAccessedAt < $1.value.lastAccessedAt
-          })?.key {
+    while entries.count > capacity {
+      guard let oldestKey = entries.min(by: {
+        $0.value.lastAccessedAt < $1.value.lastAccessedAt
+      })?.key else { break }
       entries[oldestKey] = nil
       evictionCount += 1
     }

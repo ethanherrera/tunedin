@@ -212,7 +212,10 @@ private struct FailingCallbackAuthenticationRepository: AuthenticationRepository
   func sendEmailOTP(to _: String) async throws {}
   func signInWithPassword(email _: String, password _: String) async throws {}
   func verifyEmailOTP(email _: String, code _: String) async throws {}
-  func signIn(with _: NativeAuthCredentials) async throws {}
+  func signIn(with _: NativeAuthCredentials) async throws -> AuthenticatedUser {
+    throw AppFailure.unavailable
+  }
+
   func signOut() async throws {}
 
   func handleAuthCallback(_: URL) async throws {
@@ -241,7 +244,11 @@ private struct StaticAuthenticationRepository: AuthenticationRepository {
   func sendEmailOTP(to _: String) async throws {}
   func signInWithPassword(email _: String, password _: String) async throws {}
   func verifyEmailOTP(email _: String, code _: String) async throws {}
-  func signIn(with _: NativeAuthCredentials) async throws {}
+  func signIn(with _: NativeAuthCredentials) async throws -> AuthenticatedUser {
+    guard let user else { throw AppFailure.unavailable }
+    return user
+  }
+
   func signOut() async throws {}
   func handleAuthCallback(_: URL) async throws {}
 }
@@ -261,7 +268,11 @@ private struct RepeatedAuthenticationRepository: AuthenticationRepository {
   func sendEmailOTP(to _: String) async throws {}
   func signInWithPassword(email _: String, password _: String) async throws {}
   func verifyEmailOTP(email _: String, code _: String) async throws {}
-  func signIn(with _: NativeAuthCredentials) async throws {}
+  func signIn(with _: NativeAuthCredentials) async throws -> AuthenticatedUser {
+    guard let user = users.last else { throw AppFailure.unavailable }
+    return user
+  }
+
   func signOut() async throws {}
   func handleAuthCallback(_: URL) async throws {}
 }
