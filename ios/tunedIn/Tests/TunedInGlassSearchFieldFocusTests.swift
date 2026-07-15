@@ -18,16 +18,19 @@ struct TunedInGlassSearchFieldFocusTests {
   }
 
   @Test
-  func nestedKeyboardManagersExposeOneDismissControlAndRestoreTheOuterControl() async {
+  func nestedKeyboardManagersRegisterAndUnregisterWithSharedCoordinator() async {
     let model = NestedKeyboardManagerHarness()
-    let host = UIHostingController(rootView: NestedKeyboardManagerHarnessView(model: model))
+    let coordinator = TunedInKeyboardDismissControlCoordinator()
+    let host = UIHostingController(
+      rootView: NestedKeyboardManagerHarnessView(model: model)
+        .environment(\.tunedInKeyboardDismissControlCoordinator, coordinator)
+    )
     let previousKeyWindow = UIApplication.shared.connectedScenes
       .compactMap { $0 as? UIWindowScene }
       .flatMap(\.windows)
       .first(where: \.isKeyWindow)
     let window = makeWindow(rootViewController: host)
     defer {
-      NotificationCenter.default.post(name: UIResponder.keyboardDidHideNotification, object: nil)
       window.isHidden = true
       previousKeyWindow?.makeKey()
     }
@@ -36,24 +39,13 @@ struct TunedInGlassSearchFieldFocusTests {
     host.view.setNeedsLayout()
     host.view.layoutIfNeeded()
     await settleViewUpdates()
-
-    NotificationCenter.default.post(name: UIResponder.keyboardWillShowNotification, object: nil)
-    await settleViewUpdates()
-    host.view.layoutIfNeeded()
-    #expect(dismissKeyboardControlCount(in: host.view) == 1)
+    #expect(await registeredOwnerCount(1, in: coordinator) == 1)
 
     model.showsInnerManager = true
-    await settleViewUpdates()
-    host.view.layoutIfNeeded()
-    NotificationCenter.default.post(name: UIResponder.keyboardWillShowNotification, object: nil)
-    await settleViewUpdates()
-    host.view.layoutIfNeeded()
-    #expect(dismissKeyboardControlCount(in: host.view) == 1)
+    #expect(await registeredOwnerCount(2, in: coordinator) == 2)
 
     model.showsInnerManager = false
-    await settleViewUpdates()
-    host.view.layoutIfNeeded()
-    #expect(dismissKeyboardControlCount(in: host.view) == 1)
+    #expect(await registeredOwnerCount(1, in: coordinator) == 1)
   }
 
   private func verifyFocusPersistence(wrappedInPopover: Bool) async throws {
@@ -114,26 +106,17 @@ struct TunedInGlassSearchFieldFocusTests {
     await Task.yield()
   }
 
-  private func dismissKeyboardControlCount(in rootView: UIView) -> Int {
-    var labels: [String] = []
-    var visited: Set<ObjectIdentifier> = []
-
-    func visit(_ object: AnyObject) {
-      guard visited.insert(ObjectIdentifier(object)).inserted else { return }
-
-      if let accessibilityObject = object as? NSObject,
-         accessibilityObject.isAccessibilityElement,
-         let label = accessibilityObject.accessibilityLabel {
-        labels.append(label)
-      }
-
-      guard let view = object as? UIView else { return }
-      view.accessibilityElements?.forEach { visit($0 as AnyObject) }
-      view.subviews.forEach { visit($0) }
+  private func registeredOwnerCount(
+    _ expectedCount: Int,
+    in coordinator: TunedInKeyboardDismissControlCoordinator
+  ) async -> Int {
+    for _ in 0..<50 {
+      let count = coordinator.registeredOwnerCount
+      guard count != expectedCount else { return count }
+      try? await Task.sleep(for: .milliseconds(20))
     }
 
-    visit(rootView)
-    return labels.count(where: { $0 == "Dismiss keyboard" })
+    return coordinator.registeredOwnerCount
   }
 }
 

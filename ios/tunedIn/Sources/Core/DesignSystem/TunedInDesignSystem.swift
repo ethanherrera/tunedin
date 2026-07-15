@@ -41,6 +41,10 @@ private struct TunedInKeyboardPresentationKey: EnvironmentKey {
 final class TunedInKeyboardDismissControlCoordinator {
   private var owners: [UUID] = []
 
+  var registeredOwnerCount: Int {
+    owners.count
+  }
+
   func register(_ owner: UUID) {
     owners.removeAll { $0 == owner }
     owners.append(owner)
@@ -65,7 +69,7 @@ extension EnvironmentValues {
     set { self[TunedInKeyboardPresentationKey.self] = newValue }
   }
 
-  fileprivate var tunedInKeyboardDismissControlCoordinator: TunedInKeyboardDismissControlCoordinator? {
+  var tunedInKeyboardDismissControlCoordinator: TunedInKeyboardDismissControlCoordinator? {
     get { self[TunedInKeyboardDismissCoordinatorKey.self] }
     set { self[TunedInKeyboardDismissCoordinatorKey.self] = newValue }
   }
