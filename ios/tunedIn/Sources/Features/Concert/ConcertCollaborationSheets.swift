@@ -51,7 +51,7 @@ struct ConcertPeopleView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 18) {
         pageHeader
-        header
+        ConcertPeopleHeader(canManagePeople: viewerRole.canManagePeople)
         sharingControls
 
         if canAddPeople {
@@ -121,21 +121,6 @@ struct ConcertPeopleView: View {
     }
   }
 
-  private var header: some View {
-    VStack(alignment: .leading, spacing: 5) {
-      Text("The people in this night")
-        .font(.system(size: 29, weight: .bold, design: .serif))
-        .foregroundStyle(TunedInDesign.primaryText)
-      Text(
-        viewerRole.canManagePeople
-          ? "Set sharing and choose who can help with this concert."
-          : "See who helps with this concert."
-      )
-      .font(.subheadline)
-      .foregroundStyle(TunedInDesign.mutedText)
-    }
-  }
-
   private var sharingControls: some View {
     ConcertSharingControls(
       visibility: visibility,
@@ -177,12 +162,12 @@ struct ConcertPeopleView: View {
       Button {
         isPresentingEditorPicker = true
       } label: {
-        Label("Add a friend as an editor", systemImage: "person.badge.plus")
+        Label("Add an editor", systemImage: "person.badge.plus")
           .font(.headline)
           .foregroundStyle(TunedInDesign.actionForeground)
           .frame(maxWidth: .infinity)
           .padding(.vertical, 14)
-          .background(TunedInDesign.accent, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+          .background(TunedInDesign.accent, in: Capsule())
       }
       .buttonStyle(.plain)
       .disabled(isWorking)
@@ -190,10 +175,16 @@ struct ConcertPeopleView: View {
   }
 
   private var memberList: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      Text("The circle")
-        .font(.headline)
-        .foregroundStyle(TunedInDesign.primaryText)
+    VStack(alignment: .leading, spacing: 0) {
+      HStack {
+        Text("Editors")
+        Spacer()
+        Text("\(members.count)")
+          .foregroundStyle(TunedInDesign.mutedText)
+      }
+      .font(.headline)
+      .foregroundStyle(TunedInDesign.primaryText)
+      .padding(.bottom, 8)
 
       if members.isEmpty {
         Text("This concert has no visible editor list yet.")
@@ -240,13 +231,16 @@ struct ConcertPeopleView: View {
         Text("OWNER")
           .font(.caption2.weight(.black))
           .foregroundStyle(TunedInDesign.accent)
+          .padding(.horizontal, 9)
+          .padding(.vertical, 6)
+          .background(TunedInDesign.accentTint, in: Capsule())
       }
     }
-    .padding(13)
-    .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-    .overlay {
-      RoundedRectangle(cornerRadius: 16, style: .continuous)
-        .strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
+    .padding(.vertical, 13)
+    .overlay(alignment: .bottom) {
+      Divider()
+        .overlay(TunedInDesign.cardBorder.opacity(0.5))
+        .padding(.leading, 57)
     }
   }
 
@@ -379,10 +373,29 @@ struct ConcertPeopleView: View {
   }
 }
 
+private struct ConcertPeopleHeader: View {
+  let canManagePeople: Bool
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 5) {
+      Text("People & access")
+        .font(.system(size: 30, weight: .bold, design: .rounded))
+        .foregroundStyle(TunedInDesign.primaryText)
+      Text(
+        canManagePeople
+          ? "Choose who can see the night and who can help shape it."
+          : "See who can shape this concert with you."
+      )
+      .font(.subheadline)
+      .foregroundStyle(TunedInDesign.mutedText)
+    }
+  }
+}
+
 private extension Duration {
   var peopleTelemetryMilliseconds: Int {
-    let components = self.components
-    return Int(components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000)
+    let components = components
+    return Int(components.seconds * 1000 + components.attoseconds / 1_000_000_000_000_000)
   }
 }
 
@@ -424,12 +437,8 @@ private struct ConcertEditingHistoryView: View {
         }
       }
     }
-    .padding(16)
+    .padding(.top, 8)
     .frame(maxWidth: .infinity, alignment: .leading)
-    .background(
-      TunedInDesign.raisedSurface.opacity(0.6),
-      in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-    )
     .accessibilityElement(children: .contain)
     .accessibilityLabel("Editing history")
   }
@@ -487,11 +496,7 @@ private struct ConcertSharingControls: View {
       .foregroundStyle(TunedInDesign.primaryText)
       .padding(.horizontal, 12)
       .padding(.vertical, 9)
-      .background(TunedInDesign.raisedSurface, in: Capsule())
-      .overlay {
-        Capsule()
-          .strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
-      }
+      .background(TunedInDesign.accentTint, in: Capsule())
     }
     .buttonStyle(.plain)
     .disabled(!canManagePeople)
@@ -685,9 +690,14 @@ private struct ConcertEditorPickerView: View {
       }
       .navigationTitle("Add an editor")
       .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("Cancel") { dismiss() }
+      .safeAreaInset(edge: .bottom, spacing: 0) {
+        TunedInPersistentControlRegion {
+          TunedInSubscreenBackBar(title: "Add editor") {
+            dismiss()
+          }
+          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+          .padding(.top, 8)
+          .padding(.bottom, TunedInDesign.bottomControlInset)
         }
       }
     }

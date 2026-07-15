@@ -156,40 +156,20 @@ struct ConcertEditView: View {
   private var nightPage: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 18) {
-        concertPhotoEditor
-
-        TunedInTicketCard {
-          Text("HEADLINER")
-            .font(.caption.weight(.bold))
-            .foregroundStyle(.white.opacity(0.78))
-          TextField(
-            "Artist",
-            text: artistBinding(for: draft.artists.first?.id)
-          )
-          .font(.title2.weight(.bold))
-          .foregroundStyle(.white)
-          .tint(.white)
-          .textInputAutocapitalization(.words)
-
-          Divider().overlay(.white.opacity(0.24))
-
-          TextField("Venue", text: $draft.venueName)
-            .font(.title3.weight(.semibold))
-            .foregroundStyle(.white)
-            .tint(.white)
-            .textInputAutocapitalization(.words)
-
-          HStack {
-            Label("Date", systemImage: "calendar")
-              .foregroundStyle(.white.opacity(0.84))
-            Spacer()
-            DatePicker("Concert date", selection: $draft.concertDate, displayedComponents: .date)
-              .labelsHidden()
-              .tint(.white)
-          }
+        VStack(alignment: .leading, spacing: 5) {
+          Text("Shape the night")
+            .font(.system(size: 30, weight: .bold, design: .rounded))
+            .foregroundStyle(TunedInDesign.primaryText)
+          Text("Photo changes save immediately. The rest stays in this draft until you save.")
+            .font(.subheadline)
+            .foregroundStyle(TunedInDesign.mutedText)
         }
 
-        TunedInFormCard {
+        concertPhotoEditor
+
+        nightBasics
+
+        editSection {
           Text("Details")
             .font(.headline)
             .foregroundStyle(TunedInDesign.primaryText)
@@ -209,7 +189,7 @@ struct ConcertEditView: View {
         }
 
         if draft.artists.count > 1 {
-          TunedInFormCard {
+          editSection {
             Text("On the bill")
               .font(.headline)
               .foregroundStyle(TunedInDesign.primaryText)
@@ -225,8 +205,73 @@ struct ConcertEditView: View {
         }
       }
       .padding(.horizontal, 20)
+      .padding(.top, 12)
       .padding(.bottom, TunedInDesign.scrollContentBottomInset)
     }
+  }
+
+  private var nightBasics: some View {
+    VStack(spacing: 0) {
+      VStack(alignment: .leading, spacing: 5) {
+        Text("HEADLINER")
+          .font(.caption2.weight(.black))
+          .foregroundStyle(TunedInDesign.accent)
+        TextField("Artist", text: artistBinding(for: draft.artists.first?.id))
+          .font(.system(size: 28, weight: .bold, design: .serif))
+          .foregroundStyle(TunedInDesign.primaryText)
+          .tint(TunedInDesign.accent)
+          .textInputAutocapitalization(.words)
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .padding(18)
+
+      Divider()
+        .overlay(TunedInDesign.cardBorder.opacity(0.55))
+        .padding(.leading, 18)
+
+      HStack(spacing: 12) {
+        Image(systemName: "mappin.and.ellipse")
+          .foregroundStyle(TunedInDesign.accent)
+          .frame(width: 24)
+        TextField("Venue", text: $draft.venueName)
+          .font(.title3.weight(.semibold))
+          .foregroundStyle(TunedInDesign.primaryText)
+          .tint(TunedInDesign.accent)
+          .textInputAutocapitalization(.words)
+      }
+      .padding(18)
+
+      Divider()
+        .overlay(TunedInDesign.cardBorder.opacity(0.55))
+        .padding(.leading, 18)
+
+      HStack {
+        Label("Concert date", systemImage: "calendar")
+          .font(.body.weight(.semibold))
+          .foregroundStyle(TunedInDesign.primaryText)
+        Spacer()
+        DatePicker("Concert date", selection: $draft.concertDate, displayedComponents: .date)
+          .labelsHidden()
+          .tint(TunedInDesign.accent)
+      }
+      .padding(18)
+    }
+    .background(
+      TunedInDesign.cardBackground,
+      in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+    )
+  }
+
+  private func editSection(@ViewBuilder content: () -> some View) -> some View {
+    VStack(alignment: .leading, spacing: 13) {
+      content()
+    }
+    .padding(18)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(
+      TunedInDesign.cardBackground,
+      in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+    )
   }
 
   private var concertPhotoEditor: some View {
@@ -236,12 +281,12 @@ struct ConcertEditView: View {
         artistName: detail.artists.first(where: \.isPrimary)?.name ?? "Concert",
         repository: concertRepository
       )
-      .frame(width: 104, height: 138)
-      .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+      .frame(width: 88, height: 112)
+      .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
       VStack(alignment: .leading, spacing: 9) {
         Text("Main photo").font(.headline).foregroundStyle(TunedInDesign.primaryText)
-        Text("Portrait 3:4").font(.caption).foregroundStyle(TunedInDesign.mutedText)
+        Text("Photo changes are saved now").font(.caption).foregroundStyle(TunedInDesign.mutedText)
         PhotosPicker(selection: $selectedPhoto, matching: .images) {
           Label(detail.concert.photoObjectPath == nil ? "Add photo" : "Change photo", systemImage: "photo")
             .font(.subheadline.weight(.semibold))
@@ -258,7 +303,7 @@ struct ConcertEditView: View {
       .disabled(isChangingPhoto)
     }
     .padding(14)
-    .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
   }
 
   private func uploadPhoto(_ item: PhotosPickerItem) async {
@@ -287,7 +332,7 @@ struct ConcertEditView: View {
     VStack(alignment: .leading, spacing: 16) {
       VStack(alignment: .leading, spacing: 4) {
         Text("Setlist")
-          .font(.system(size: 30, weight: .bold, design: .serif))
+          .font(.system(size: 30, weight: .bold, design: .rounded))
           .foregroundStyle(TunedInDesign.primaryText)
         Text("Drag to reorder.")
           .font(.subheadline)
@@ -307,7 +352,8 @@ struct ConcertEditView: View {
               Label("Remove", systemImage: "trash")
             }
           }
-          .listRowBackground(TunedInDesign.cardBackground)
+          .padding(.vertical, 6)
+          .listRowBackground(Color.clear)
         }
         .onMove { source, destination in
           draft.moveSetlist(from: source, to: destination)
@@ -321,9 +367,11 @@ struct ConcertEditView: View {
             .foregroundStyle(TunedInDesign.accent)
         }
         .disabled(draft.setlist.count == 50)
-        .listRowBackground(TunedInDesign.raisedSurface)
+        .padding(.vertical, 8)
+        .listRowBackground(Color.clear)
       }
-      .listStyle(.insetGrouped)
+      .listStyle(.plain)
+      .contentMargins(.horizontal, 20, for: .scrollContent)
       .scrollContentBackground(.hidden)
       .background(TunedInDesign.pageBackground)
       .environment(\.editMode, .constant(.active))
@@ -631,8 +679,8 @@ struct ConcertEditView: View {
 
 private extension Duration {
   var editTelemetryMilliseconds: Int {
-    let components = self.components
-    return Int(components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000)
+    let components = components
+    return Int(components.seconds * 1000 + components.attoseconds / 1_000_000_000_000_000)
   }
 }
 

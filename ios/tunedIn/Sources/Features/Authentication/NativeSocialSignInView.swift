@@ -11,70 +11,122 @@ struct NativeSocialSignInView: View {
   @State private var errorMessage: String?
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 24) {
-      Spacer()
+    ZStack {
+      TunedInDesign.pageBackground
+        .ignoresSafeArea()
 
-      Image(systemName: "music.note.list")
-        .font(.system(size: 44, weight: .semibold))
-        .foregroundStyle(.tint)
-        .accessibilityHidden(true)
+      ScrollView {
+        VStack(alignment: .leading, spacing: 22) {
+          signInArtwork
 
-      VStack(alignment: .leading, spacing: 8) {
-        Text("Welcome to tunedIn")
-          .font(.largeTitle.bold())
+          VStack(alignment: .leading, spacing: 8) {
+            Text("Your concert life, beautifully kept.")
+              .font(.system(size: 34, weight: .bold, design: .rounded))
+              .foregroundStyle(TunedInDesign.primaryText)
+              .fixedSize(horizontal: false, vertical: true)
 
-        Text("Keep the concerts you love and share the night with your circle.")
-          .foregroundStyle(.secondary)
-      }
-
-      VStack(spacing: 14) {
-        Button {
-          signInWithGoogle()
-        } label: {
-          HStack(spacing: 12) {
-            Image("GoogleSignInLogo")
-              .resizable()
-              .scaledToFit()
-              .frame(width: 22, height: 22)
-
-            Text("Continue with Google")
-              .font(.system(size: 19, weight: .semibold))
+            Text("Save every setlist, photo, and shared night in one place.")
+              .font(.body)
+              .foregroundStyle(TunedInDesign.mutedText)
           }
-          .foregroundStyle(.black)
-          .frame(maxWidth: .infinity)
-          .frame(height: 56)
-          .background(.white, in: Capsule())
+
+          Button {
+            signInWithGoogle()
+          } label: {
+            HStack(spacing: 12) {
+              Image("GoogleSignInLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 21, height: 21)
+
+              Text("Continue with Google")
+                .font(.body.weight(.semibold))
+            }
+            .foregroundStyle(.black)
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(.white, in: Capsule())
+            .overlay {
+              Capsule().strokeBorder(.black.opacity(0.08))
+            }
+          }
+          .buttonStyle(.plain)
+          .disabled(isSubmitting)
+          .opacity(isSubmitting ? 0.62 : 1)
+          .accessibilityLabel("Continue with Google")
+
+          if isSubmitting {
+            HStack(spacing: 10) {
+              ProgressView()
+              Text("Signing you in…")
+            }
+            .font(.footnote.weight(.medium))
+            .foregroundStyle(TunedInDesign.mutedText)
+            .frame(maxWidth: .infinity)
+          }
+
+          if let errorMessage {
+            Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+              .font(.footnote)
+              .foregroundStyle(.red)
+              .padding(14)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+              .accessibilityIdentifier("social-sign-in-error")
+          }
+
+          Text("Google confirms your identity. tunedIn never receives your password.")
+            .font(.footnote)
+            .foregroundStyle(TunedInDesign.mutedText)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .multilineTextAlignment(.center)
         }
-        .buttonStyle(.plain)
-        .disabled(isSubmitting)
-        .opacity(isSubmitting ? 0.6 : 1)
-        .accessibilityLabel("Continue with Google")
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 28)
       }
-
-      if isSubmitting {
-        HStack(spacing: 10) {
-          ProgressView()
-          Text("Signing you in…")
-        }
-        .font(.footnote)
-        .foregroundStyle(.secondary)
-        .frame(maxWidth: .infinity)
-      }
-
-      if let errorMessage {
-        Text(errorMessage)
-          .font(.footnote)
-          .foregroundStyle(.red)
-          .accessibilityIdentifier("social-sign-in-error")
-      }
-
-      Text("Google will confirm your identity. tunedIn never receives your password.")
-        .font(.footnote)
-        .foregroundStyle(.tertiary)
-
-      Spacer()
     }
-    .padding(24)
+    .tint(TunedInDesign.accent)
+  }
+
+  private var signInArtwork: some View {
+    ZStack(alignment: .bottomLeading) {
+      LinearGradient(
+        colors: [TunedInDesign.ticketViolet, TunedInDesign.ticketRose, TunedInDesign.ink],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+      )
+
+      Circle()
+        .fill(.white.opacity(0.18))
+        .frame(width: 220, height: 220)
+        .blur(radius: 2)
+        .offset(x: 150, y: -100)
+
+      Image(systemName: "waveform")
+        .font(.system(size: 118, weight: .thin))
+        .foregroundStyle(.white.opacity(0.17))
+        .offset(x: 118, y: 22)
+
+      VStack(alignment: .leading, spacing: 7) {
+        Text("tunedIn")
+          .font(.caption.weight(.black))
+          .tracking(1.3)
+          .textCase(.uppercase)
+        Text("Keep the night.")
+          .font(.system(size: 38, weight: .bold, design: .serif))
+      }
+      .foregroundStyle(.white)
+      .padding(22)
+    }
+    .frame(maxWidth: .infinity)
+    .frame(height: 284)
+    .clipShape(RoundedRectangle(cornerRadius: TunedInDesign.largeCornerRadius, style: .continuous))
+    .overlay {
+      RoundedRectangle(cornerRadius: TunedInDesign.largeCornerRadius, style: .continuous)
+        .strokeBorder(.white.opacity(0.18))
+    }
+    .accessibilityHidden(true)
   }
 
   private func prepareAppleRequest(_ request: ASAuthorizationAppleIDRequest) {

@@ -19,6 +19,7 @@ struct FriendsListView: View {
   @State private var query = ""
   @State private var selectedSection: Section = .friends
   @State private var floatingControlOwner = UUID()
+  @Namespace private var sectionSelectionNamespace
   @Environment(\.dismiss) private var dismiss
   @Environment(\.telemetry) private var telemetry
   @EnvironmentObject private var floatingControls: ConcertFloatingControls
@@ -73,7 +74,13 @@ struct FriendsListView: View {
                       selectedSection == section ? TunedInDesign.actionForeground : TunedInDesign.primaryText
                     )
                     .frame(maxWidth: .infinity, minHeight: 48)
-                    .background(selectedSection == section ? TunedInDesign.accent : .clear, in: Capsule())
+                    .background {
+                      if selectedSection == section {
+                        Capsule()
+                          .fill(TunedInDesign.accent)
+                          .matchedGeometryEffect(id: "people-section", in: sectionSelectionNamespace)
+                      }
+                    }
                     .contentShape(.interaction, Capsule())
                   }
                   .buttonStyle(.plain)
@@ -282,10 +289,30 @@ struct FriendSearchView: View {
     .navigationTitle(presentation == .page ? "Search" : "Search people")
     .navigationBarTitleDisplayMode(.inline)
     .navigationBarBackButtonHidden()
-    .toolbar {
-      if presentation == .drawer {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("Cancel") { dismiss() }
+    .safeAreaInset(edge: .bottom, spacing: 0) {
+      TunedInPersistentControlRegion {
+        if presentation == .drawer {
+          TunedInGlassTraversalLayout {
+            TunedInGlassIconButton(
+              systemImage: "xmark",
+              accessibilityLabel: "Close people search"
+            ) {
+              dismiss()
+            }
+          } center: {
+            TunedInGlassBottomBar {
+              Text("Search people")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(TunedInDesign.primaryText)
+                .frame(minWidth: 132, minHeight: 44)
+                .padding(.horizontal, 10)
+            }
+          } trailing: {
+            EmptyView()
+          }
+          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+          .padding(.top, 6)
+          .padding(.bottom, TunedInDesign.bottomControlInset)
         }
       }
     }
@@ -668,11 +695,10 @@ struct PersonRow: View {
         .foregroundStyle(TunedInDesign.mutedText)
     }
     .padding(13)
-    .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-    .overlay {
-      RoundedRectangle(cornerRadius: 16, style: .continuous)
-        .strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
-    }
+    .background(
+      TunedInDesign.cardBackground,
+      in: RoundedRectangle(cornerRadius: TunedInDesign.mediumCornerRadius, style: .continuous)
+    )
     .accessibilityElement(children: .combine)
   }
 }

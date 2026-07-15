@@ -32,17 +32,33 @@ struct FriendsActivityFeedView: View {
         .ignoresSafeArea()
 
       if model.isLoading, model.activities.isEmpty {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 0) {
           feedHeader
-          ForEach(0 ..< 4, id: \.self) { _ in
+          HStack(spacing: 10) {
+            TunedInSkeletonBlock(cornerRadius: 5)
+              .frame(width: 72, height: 14)
+            TunedInSkeletonBlock(cornerRadius: 2)
+              .frame(height: 1)
+          }
+          .padding(.bottom, 4)
+
+          ForEach(0 ..< 4, id: \.self) { index in
             HStack(alignment: .top, spacing: 11) {
               TunedInSkeletonBlock(cornerRadius: 21).frame(width: 42, height: 42)
-              VStack(alignment: .leading, spacing: 9) {
-                TunedInSkeletonBlock(cornerRadius: 5).frame(height: 16)
-                TunedInSkeletonBlock(cornerRadius: 12).frame(height: 86)
+              VStack(alignment: .leading, spacing: 10) {
+                TunedInSkeletonBlock(cornerRadius: 5)
+                  .frame(width: index.isMultiple(of: 2) ? 190 : 230, height: 16)
+                TunedInSkeletonBlock(cornerRadius: 16)
+                  .frame(height: index.isMultiple(of: 2) ? 132 : 88)
               }
             }
-            .padding(15)
+            .padding(.vertical, 14)
+
+            if index < 3 {
+              Divider()
+                .overlay(TunedInDesign.cardBorder.opacity(0.45))
+                .padding(.leading, 53)
+            }
           }
         }
         .padding(.horizontal, 20)
@@ -71,14 +87,20 @@ struct FriendsActivityFeedView: View {
             if let errorMessage = model.errorMessage {
               Label(errorMessage, systemImage: "exclamationmark.triangle")
                 .font(.caption)
-                .foregroundStyle(.orange)
+                .foregroundStyle(TunedInDesign.accent)
                 .padding(.bottom, 12)
             }
             if model.activities.isEmpty {
               emptyState
                 .frame(minHeight: 540)
             } else {
-              activityStream(model: model)
+              ActivityStreamView(
+                model: model,
+                viewerID: viewerID,
+                viewerUsername: viewerUsername,
+                concertRepository: concertRepository,
+                socialRepository: socialRepository
+              )
             }
           }
           .padding(.horizontal, 20)
@@ -123,32 +145,94 @@ struct FriendsActivityFeedView: View {
   }
 
   private var feedHeader: some View {
-    VStack(alignment: .leading, spacing: 4) {
-      Text("tunedIn")
-        .font(.caption.weight(.black))
+    VStack(alignment: .leading, spacing: 7) {
+      Text("Your circle")
+        .font(.caption2.weight(.bold))
         .foregroundStyle(TunedInDesign.accent)
         .textCase(.uppercase)
+        .tracking(1.2)
       Text("Activity")
-        .font(.system(size: 31, weight: .bold, design: .serif))
+        .font(.largeTitle.weight(.bold))
         .foregroundStyle(TunedInDesign.primaryText)
+      Text("Concerts and moments shared by your friends.")
+        .font(.subheadline)
+        .foregroundStyle(TunedInDesign.mutedText)
     }
-    .padding(.bottom, 18)
+    .padding(.bottom, 24)
   }
 
-  private func activityStream(model: FriendsActivityFeedModel) -> some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Text(model.activities.count == 1 ? "One moment from your circle" : "From your circle")
-        .font(.subheadline.weight(.semibold))
+  private var emptyState: some View {
+    VStack(spacing: 18) {
+      Spacer()
+
+      Image(systemName: "person.2.fill")
+        .font(.system(.largeTitle, design: .rounded, weight: .medium))
+        .foregroundStyle(TunedInDesign.accent)
+        .frame(width: 72, height: 72)
+        .background(TunedInDesign.raisedSurface, in: Circle())
+
+      VStack(spacing: 6) {
+        Text("Your circle is quiet")
+          .font(.title3.weight(.bold))
+          .foregroundStyle(TunedInDesign.primaryText)
+        Text("Friends’ concerts, photos, and moments will appear here.")
+          .font(.subheadline)
+          .foregroundStyle(TunedInDesign.mutedText)
+          .multilineTextAlignment(.center)
+      }
+
+      Text("Use the plus button to log a concert.")
+        .font(.caption)
         .foregroundStyle(TunedInDesign.mutedText)
 
-      LazyVStack(alignment: .leading, spacing: 18) {
+      Spacer()
+    }
+    .padding(.horizontal, 24)
+  }
+
+  private func failureState(message: String) -> some View {
+    VStack(spacing: 18) {
+      Spacer()
+
+      Image(systemName: "wifi.exclamationmark")
+        .font(.system(.largeTitle, design: .rounded, weight: .medium))
+        .foregroundStyle(TunedInDesign.accent)
+        .frame(width: 72, height: 72)
+        .background(TunedInDesign.raisedSurface, in: Circle())
+
+      VStack(spacing: 6) {
+        Text("Couldn’t refresh activity")
+          .font(.title3.weight(.bold))
+          .foregroundStyle(TunedInDesign.primaryText)
+        Text(message)
+          .font(.subheadline)
+          .foregroundStyle(TunedInDesign.mutedText)
+          .multilineTextAlignment(.center)
+      }
+
+      Button("Try again") { Task { await model.loadInitial() } }
+        .buttonStyle(.borderedProminent)
+        .tint(TunedInDesign.accent)
+
+      Spacer()
+    }
+    .padding(.horizontal, 24)
+  }
+}
+
+private struct ActivityStreamView: View {
+  let model: FriendsActivityFeedModel
+  let viewerID: UUID
+  let viewerUsername: String
+  let concertRepository: any ConcertRepository
+  let socialRepository: any SocialRepository
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 22) {
+      LazyVStack(alignment: .leading, spacing: 26) {
         ForEach(activityGroups) { group in
-          VStack(alignment: .leading, spacing: 9) {
-            Text(group.title.uppercased())
-              .font(.caption2.weight(.black))
-              .tracking(0.8)
-              .foregroundStyle(TunedInDesign.mutedText)
-              .padding(.horizontal, 4)
+          VStack(alignment: .leading, spacing: 0) {
+            dayHeader(group)
 
             ForEach(group.activities) { activity in
               NavigationLink {
@@ -167,41 +251,71 @@ struct FriendsActivityFeedView: View {
                 )
               }
               .buttonStyle(.plain)
-              .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+              .contentShape(Rectangle())
               .accessibilityLabel(activity.accessibilitySummary)
+
+              if activity.id != group.activities.last?.id {
+                Divider()
+                  .overlay(TunedInDesign.cardBorder.opacity(0.45))
+                  .padding(.leading, 53)
+              }
             }
           }
         }
       }
 
-      if model.canLoadMore {
-        Button {
-          Task { await model.loadMore() }
-        } label: {
-          HStack(spacing: 8) {
-            if model.isLoadingMore {
-              ProgressView()
-            }
-            Text(model.isLoadingMore ? "Finding earlier moments…" : "Show earlier moments")
-          }
-          .font(.subheadline.weight(.bold))
-          .foregroundStyle(TunedInDesign.primaryText)
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 14)
-          .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .disabled(model.isLoadingMore)
-      }
+      loadMoreButton
 
-      HStack(spacing: 10) {
-        Image(systemName: "eye.fill")
-          .foregroundStyle(TunedInDesign.accent)
-        Text("Only activity from people you can still see.")
-          .font(.caption)
-          .foregroundStyle(TunedInDesign.mutedText)
+      Label("Only activity from people you can still see.", systemImage: "eye")
+        .font(.caption)
+        .foregroundStyle(TunedInDesign.mutedText)
+        .padding(.top, 2)
+    }
+  }
+
+  private func dayHeader(_ group: ActivityDayGroup) -> some View {
+    HStack(spacing: 10) {
+      Text(group.title)
+        .font(.subheadline.weight(.bold))
+        .foregroundStyle(TunedInDesign.primaryText)
+
+      Rectangle()
+        .fill(TunedInDesign.cardBorder.opacity(0.55))
+        .frame(height: 1)
+
+      Text(group.activities.count.formatted())
+        .font(.caption2.weight(.bold))
+        .monospacedDigit()
+        .foregroundStyle(TunedInDesign.mutedText)
+        .accessibilityLabel(
+          group.activities.count == 1 ? "One activity" : "\(group.activities.count) activities"
+        )
+    }
+    .padding(.bottom, 2)
+  }
+
+  @ViewBuilder
+  private var loadMoreButton: some View {
+    if model.canLoadMore {
+      Button {
+        Task { await model.loadMore() }
+      } label: {
+        HStack(spacing: 8) {
+          if model.isLoadingMore {
+            ProgressView()
+          } else {
+            Image(systemName: "clock.arrow.circlepath")
+          }
+          Text(model.isLoadingMore ? "Finding earlier moments…" : "Show earlier moments")
+        }
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(TunedInDesign.primaryText)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 13)
+        .background(TunedInDesign.raisedSurface, in: Capsule())
       }
-      .padding(.horizontal, 4)
+      .buttonStyle(.plain)
+      .disabled(model.isLoadingMore)
     }
   }
 
@@ -228,35 +342,6 @@ struct FriendsActivityFeedView: View {
     }
     return day.formatted(.dateTime.month(.wide).day())
   }
-
-  private var emptyState: some View {
-    VStack(spacing: 16) {
-      Spacer()
-      ContentUnavailableView {
-        Label("No activity yet", systemImage: "person.2")
-      } description: {
-        Text("Friends’ concerts will appear here.")
-      }
-      Text("Use the plus button to log a concert.")
-        .font(.subheadline)
-        .foregroundStyle(TunedInDesign.mutedText)
-      Spacer()
-    }
-  }
-
-  private func failureState(message: String) -> some View {
-    VStack(spacing: 16) {
-      Spacer()
-      ContentUnavailableView {
-        Label("Couldn’t refresh the room", systemImage: "exclamationmark.triangle")
-      } description: {
-        Text(message)
-      } actions: {
-        Button("Try again") { Task { await model.loadInitial() } }
-      }
-      Spacer()
-    }
-  }
 }
 
 private struct FeedRemoteChangesButton: View {
@@ -265,20 +350,21 @@ private struct FeedRemoteChangesButton: View {
   var body: some View {
     Button(action: action) {
       HStack(spacing: 9) {
-        Image(systemName: "arrow.down.circle.fill")
-        Text("New activity")
+        Image(systemName: "arrow.down")
           .fontWeight(.bold)
+        Text("New activity")
+          .fontWeight(.semibold)
         Spacer()
         Text("Refresh")
           .font(.caption.weight(.semibold))
       }
       .font(.subheadline)
       .foregroundStyle(TunedInDesign.primaryText)
-      .padding(.horizontal, 14)
-      .padding(.vertical, 11)
+      .padding(.horizontal, 15)
+      .padding(.vertical, 12)
       .background(
-        TunedInDesign.accentTint,
-        in: RoundedRectangle(cornerRadius: 15, style: .continuous)
+        TunedInDesign.raisedSurface,
+        in: Capsule()
       )
     }
     .buttonStyle(.plain)
@@ -288,8 +374,8 @@ private struct FeedRemoteChangesButton: View {
 
 private extension Duration {
   var telemetryMilliseconds: Int {
-    let components = self.components
-    return Int(components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000)
+    let components = components
+    return Int(components.seconds * 1000 + components.attoseconds / 1_000_000_000_000_000)
   }
 }
 
@@ -299,43 +385,55 @@ private struct ActivityMomentCard: View {
   let socialRepository: any SocialRepository
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 13) {
+    VStack(alignment: .leading, spacing: 12) {
       HStack(alignment: .top, spacing: 11) {
         FeedActorAvatar(activity: activity, socialRepository: socialRepository)
 
-        (Text(activity.actorDisplayName).fontWeight(.bold)
-          + Text(" \(activity.feedActionTitle.lowercased())"))
-          .font(.body)
-          .foregroundStyle(TunedInDesign.primaryText)
-          .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 4) {
+          ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+              Text(activity.actorDisplayName)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(TunedInDesign.primaryText)
+              Spacer(minLength: 6)
+              relativeDate
+            }
 
-        Spacer()
+            VStack(alignment: .leading, spacing: 2) {
+              Text(activity.actorDisplayName)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(TunedInDesign.primaryText)
+              relativeDate
+            }
+          }
 
-        Text(ConcertDisplay.relativeDate(activity.occurredAt))
-          .font(.caption.weight(.semibold))
-          .foregroundStyle(TunedInDesign.mutedText)
+          Label(activity.feedActionTitle, systemImage: activity.eventIcon)
+            .font(.caption)
+            .foregroundStyle(TunedInDesign.mutedText)
+            .fixedSize(horizontal: false, vertical: true)
+        }
       }
 
       eventDetail
+        .padding(.leading, 53)
     }
-    .padding(15)
-    .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-    .overlay {
-      RoundedRectangle(cornerRadius: 20, style: .continuous)
-        .strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
-    }
-    .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
-    .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    .padding(.vertical, 14)
+    .contentShape(Rectangle())
     .accessibilityElement(children: .combine)
+  }
+
+  private var relativeDate: some View {
+    Text(ConcertDisplay.relativeDate(activity.occurredAt))
+      .font(.caption)
+      .foregroundStyle(TunedInDesign.mutedText)
+      .fixedSize(horizontal: true, vertical: false)
   }
 
   @ViewBuilder
   private var eventDetail: some View {
     switch activity.eventKind {
     case .albumPhotoAdded:
-      VStack(alignment: .leading, spacing: 9) {
-        eventBadge
+      VStack(alignment: .leading, spacing: 11) {
         if let photoID = activity.photoID, let objectPath = activity.photoObjectPath {
           ActivityPhotoPreview(
             activity: activity,
@@ -343,12 +441,10 @@ private struct ActivityMomentCard: View {
             objectPath: objectPath,
             repository: repository
           )
-          .frame(height: 176)
-          .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+          .frame(height: 190)
+          .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
-        Text(activity.primaryArtistName)
-          .font(.headline)
-          .foregroundStyle(TunedInDesign.primaryText)
+        concertIdentity
       }
 
     case .setlistUpdated:
@@ -358,11 +454,8 @@ private struct ActivityMomentCard: View {
       setlistDetail
 
     case .concertUpdated, .visibilityChanged:
-      VStack(alignment: .leading, spacing: 9) {
-        eventBadge
-        Text(activity.primaryArtistName)
-          .font(.headline)
-          .foregroundStyle(TunedInDesign.primaryText)
+      VStack(alignment: .leading, spacing: 7) {
+        concertIdentity
         if activity.changedFields.isEmpty {
           Text("Concert details changed")
             .font(.subheadline)
@@ -375,72 +468,91 @@ private struct ActivityMomentCard: View {
       }
 
     case .commentAdded, .commentUpdated, .commentDeleted:
-      HStack(spacing: 12) {
-        Image(systemName: "text.bubble.fill")
-          .font(.title2)
+      HStack(alignment: .top, spacing: 11) {
+        Image(systemName: "quote.bubble.fill")
+          .font(.body.weight(.semibold))
           .foregroundStyle(TunedInDesign.accent)
-          .frame(width: 48, height: 48)
-          .background(TunedInDesign.accentTint.opacity(0.72), in: Circle())
-        VStack(alignment: .leading, spacing: 3) {
-          eventBadge
-          Text(activity.primaryArtistName)
-            .font(.headline)
-            .foregroundStyle(TunedInDesign.primaryText)
-        }
+          .frame(width: 32, height: 32)
+          .background(TunedInDesign.raisedSurface, in: Circle())
+        concertIdentity
       }
 
     default:
-      HStack(spacing: 12) {
-        VStack(alignment: .leading, spacing: 7) {
-          eventBadge
-          Text(activity.primaryArtistName)
-            .font(.system(size: 19, weight: .bold, design: .serif))
-            .foregroundStyle(TunedInDesign.primaryText)
-          Label(activity.venueName, systemImage: "mappin.and.ellipse")
-            .font(.caption)
-            .foregroundStyle(TunedInDesign.mutedText)
-          Text(ConcertDisplay.longDate(from: activity.concertDate))
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(TunedInDesign.mutedText)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+      ZStack(alignment: .bottomLeading) {
         ConcertArtworkImage(artistName: activity.primaryArtistName)
-          .frame(width: 78, height: 78)
-          .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+          .frame(maxWidth: .infinity)
+          .frame(height: 156)
+          .clipped()
+
+        LinearGradient(
+          colors: [.clear, .black.opacity(0.76)],
+          startPoint: .center,
+          endPoint: .bottom
+        )
+
+        VStack(alignment: .leading, spacing: 4) {
+          Text(activity.primaryArtistName)
+            .font(.system(.title3, design: .serif, weight: .bold))
+            .foregroundStyle(.white)
+            .lineLimit(2)
+          Text(activity.venueName)
+            .font(.caption)
+            .foregroundStyle(.white.opacity(0.86))
+            .lineLimit(1)
+          Text(ConcertDisplay.longDate(from: activity.concertDate))
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(.white.opacity(0.74))
+        }
+        .padding(14)
       }
+      .frame(maxWidth: .infinity)
+      .frame(height: 156)
+      .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
   }
 
   private var setlistDetail: some View {
-    VStack(alignment: .leading, spacing: 9) {
-      eventBadge
-      Text(activity.primaryArtistName)
-        .font(.headline)
-        .foregroundStyle(TunedInDesign.primaryText)
-      ForEach(Array(activity.setlistPreview.prefix(3).enumerated()), id: \.offset) { index, song in
-        HStack(spacing: 9) {
-          Text("\(index + 1)")
-            .font(.caption.weight(.black))
-            .foregroundStyle(TunedInDesign.accent)
-            .frame(width: 17, alignment: .leading)
-          Text(song)
-            .font(.subheadline)
-            .foregroundStyle(TunedInDesign.primaryText)
-            .lineLimit(1)
+    HStack(alignment: .top, spacing: 12) {
+      Capsule()
+        .fill(TunedInDesign.accent)
+        .frame(width: 3)
+
+      VStack(alignment: .leading, spacing: 9) {
+        Text(activity.primaryArtistName)
+          .font(.headline)
+          .foregroundStyle(TunedInDesign.primaryText)
+        ForEach(Array(activity.setlistPreview.prefix(3).enumerated()), id: \.offset) { index, song in
+          HStack(alignment: .firstTextBaseline, spacing: 9) {
+            Text("\(index + 1)")
+              .font(.caption2.weight(.bold))
+              .foregroundStyle(TunedInDesign.mutedText)
+              .frame(width: 17, alignment: .leading)
+            Text(song)
+              .font(.subheadline)
+              .foregroundStyle(TunedInDesign.primaryText)
+              .lineLimit(2)
+          }
+        }
+        if activity.setlistCount > activity.setlistPreview.count {
+          Text("+ \(activity.setlistCount - activity.setlistPreview.count) more songs")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(TunedInDesign.mutedText)
         }
       }
-      if activity.setlistCount > activity.setlistPreview.count {
-        Text("+ \(activity.setlistCount - activity.setlistPreview.count) more songs")
-          .font(.caption.weight(.semibold))
-          .foregroundStyle(TunedInDesign.mutedText)
-      }
+      .frame(maxWidth: .infinity, alignment: .leading)
     }
   }
 
-  private var eventBadge: some View {
-    Label(activity.eventLabel, systemImage: activity.eventIcon)
-      .font(.caption2.weight(.black))
-      .foregroundStyle(TunedInDesign.accent)
+  private var concertIdentity: some View {
+    VStack(alignment: .leading, spacing: 3) {
+      Text(activity.primaryArtistName)
+        .font(.headline)
+        .foregroundStyle(TunedInDesign.primaryText)
+      Text(activity.venueName)
+        .font(.caption)
+        .foregroundStyle(TunedInDesign.mutedText)
+        .lineLimit(2)
+    }
   }
 }
 
@@ -542,20 +654,6 @@ private extension FriendActivity {
     case .collaboratorRemoved: "Removed an editor"
     case .visibilityChanged: "Changed who can see a concert"
     case .ownershipTransferred: "Transferred a concert"
-    }
-  }
-
-  var eventLabel: String {
-    switch eventKind {
-    case .concertCreated: "NEW CONCERT"
-    case .concertUpdated where changedFields.contains("setlist"): "SETLIST"
-    case .concertUpdated: "CONCERT UPDATE"
-    case .setlistUpdated: "SETLIST"
-    case .commentAdded, .commentUpdated, .commentDeleted: "MOMENT"
-    case .albumPhotoAdded: "PHOTO"
-    case .collaboratorTagged, .collaboratorRemoved: "PEOPLE"
-    case .visibilityChanged: "SHARING"
-    case .ownershipTransferred: "OWNERSHIP"
     }
   }
 

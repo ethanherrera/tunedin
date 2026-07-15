@@ -21,6 +21,7 @@ struct ConcertCommentsView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
       pageHeader
+      composer
 
       if model.isLoading {
         loadingState
@@ -31,7 +32,6 @@ struct ConcertCommentsView: View {
       } else {
         commentList
       }
-      composer
     }
     .task { await model.loadComments(policy: .automatic) }
     .confirmationDialog(
@@ -74,7 +74,7 @@ struct ConcertCommentsView: View {
   }
 
   private var commentList: some View {
-    LazyVStack(alignment: .leading, spacing: 12) {
+    LazyVStack(alignment: .leading, spacing: 0) {
       if let loadErrorMessage = model.loadErrorMessage {
         Label(loadErrorMessage, systemImage: "exclamationmark.triangle")
           .font(.caption)
@@ -95,7 +95,8 @@ struct ConcertCommentsView: View {
           .foregroundStyle(TunedInDesign.primaryText)
           .frame(maxWidth: .infinity)
           .padding(.vertical, 12)
-          .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+          .background(TunedInDesign.accentTint, in: Capsule())
+          .padding(.bottom, 8)
         }
         .buttonStyle(.plain)
         .disabled(model.isLoadingOlder)
@@ -107,11 +108,11 @@ struct ConcertCommentsView: View {
   }
 
   private var emptyState: some View {
-    Text("No comments yet. Leave the first one.")
+    Label("No comments yet — start the conversation.", systemImage: "bubble.left")
       .font(.subheadline)
       .foregroundStyle(TunedInDesign.mutedText)
       .padding(.horizontal, 4)
-      .padding(.vertical, 12)
+      .padding(.vertical, 16)
   }
 
   private var composer: some View {
@@ -125,26 +126,27 @@ struct ConcertCommentsView: View {
         TextField("Leave a comment…", text: $draft, axis: .vertical)
           .lineLimit(1 ... 4)
           .textInputAutocapitalization(.sentences)
-          .padding(.horizontal, 14)
-          .padding(.vertical, 11)
-          .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+          .padding(.leading, 14)
+          .padding(.vertical, 10)
 
         Button(action: send) {
           if isSending {
             ProgressView()
               .tint(TunedInDesign.actionForeground)
-              .frame(width: 44, height: 44)
+              .frame(width: 40, height: 40)
           } else {
             Image(systemName: "arrow.up")
               .font(.headline.weight(.black))
               .foregroundStyle(TunedInDesign.actionForeground)
-              .frame(width: 44, height: 44)
+              .frame(width: 40, height: 40)
           }
         }
         .buttonStyle(.plain)
         .background(TunedInDesign.accent, in: Circle())
         .disabled(isSending || ConcertInput.normalizedText(draft).isEmpty)
       }
+      .padding(5)
+      .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 23, style: .continuous))
       .padding(
         .trailing,
         keyboardPresentation.showsDismissControl
@@ -152,9 +154,7 @@ struct ConcertCommentsView: View {
           : 0
       )
     }
-    .padding(.horizontal, 16)
-    .padding(.top, 10)
-    .padding(.bottom, 8)
+    .padding(.vertical, 4)
   }
 
   private func commentCard(_ comment: ConcertComment) -> some View {
@@ -209,11 +209,11 @@ struct ConcertCommentsView: View {
         }
       }
     }
-    .padding(14)
-    .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-    .overlay {
-      RoundedRectangle(cornerRadius: 16, style: .continuous)
-        .strokeBorder(TunedInDesign.cardBorder.opacity(0.7))
+    .padding(.vertical, 14)
+    .overlay(alignment: .bottom) {
+      Divider()
+        .overlay(TunedInDesign.cardBorder.opacity(0.5))
+        .padding(.leading, 51)
     }
   }
 
@@ -373,7 +373,7 @@ final class ConcertCommentsModel {
 
 private extension Duration {
   var commentTelemetryMilliseconds: Int {
-    let components = self.components
-    return Int(components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000)
+    let components = components
+    return Int(components.seconds * 1000 + components.attoseconds / 1_000_000_000_000_000)
   }
 }

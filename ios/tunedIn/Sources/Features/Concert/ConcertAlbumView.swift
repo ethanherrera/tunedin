@@ -26,7 +26,7 @@ struct ConcertAlbumView: View {
   @State private var loadErrorMessage: String?
   @State private var errorMessage: String?
 
-  private let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
+  private let columns = [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)]
 
   var body: some View {
     ScrollView {
@@ -34,7 +34,7 @@ struct ConcertAlbumView: View {
         pageHeader
         HStack(alignment: .firstTextBaseline) {
           VStack(alignment: .leading, spacing: 4) {
-            Text("Photos").font(.system(size: 29, weight: .bold, design: .serif))
+            Text("The album").font(.system(size: 30, weight: .bold, design: .rounded))
             Text(albumContext).font(.subheadline).foregroundStyle(TunedInDesign.mutedText)
           }
           Spacer()
@@ -45,20 +45,28 @@ struct ConcertAlbumView: View {
             Text("Adding photo \(min(uploadProgress + 1, uploadTotal)) of \(uploadTotal)")
               .font(.caption.weight(.semibold))
           }
+          .padding(14)
+          .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         if let errorMessage {
           Text(errorMessage).font(.caption).foregroundStyle(.red)
         }
         if !failedUploads.isEmpty {
-          Button("Retry \(failedUploads.count) failed \(failedUploads.count == 1 ? "photo" : "photos")") {
+          Button {
             Task { await retryFailures() }
+          } label: {
+            Label(
+              "Retry \(failedUploads.count) failed \(failedUploads.count == 1 ? "photo" : "photos")",
+              systemImage: "arrow.clockwise"
+            )
           }
-          .font(.subheadline.weight(.bold)).foregroundStyle(TunedInDesign.accent)
+          .font(.subheadline.weight(.bold))
+          .foregroundStyle(TunedInDesign.accent)
           .disabled(isUploading)
         }
 
         if isLoading {
-          LazyVGrid(columns: columns, spacing: 10) {
+          LazyVGrid(columns: columns, spacing: 6) {
             ForEach(0 ..< 6, id: \.self) { _ in
               TunedInSkeletonBlock()
                 .aspectRatio(1, contentMode: .fit)
@@ -80,15 +88,21 @@ struct ConcertAlbumView: View {
           ContentUnavailableView(
             "No photos yet",
             systemImage: "photo.on.rectangle.angled",
-            description: Text(viewerRole.canEdit ? "Add the first photo from this night." : "The editors haven’t added photos yet.")
+            description: Text(
+              viewerRole.canEdit
+                ? "Add the first photo from this night."
+                : "The editors haven’t added photos yet."
+            )
           )
           .padding(.vertical, 48)
         } else {
-          LazyVGrid(columns: columns, spacing: 10) {
+          LazyVGrid(columns: columns, spacing: 6) {
             ForEach(photos) { photo in
               Button { selectedPhotoID = photo.id } label: {
                 AlbumPhotoTile(photo: photo, repository: concertRepository)
-              }.buttonStyle(.plain)
+              }
+              .buttonStyle(.plain)
+              .accessibilityLabel("Photo added by \(photo.displayName)")
             }
           }
           if canLoadMore {
@@ -97,7 +111,7 @@ struct ConcertAlbumView: View {
           }
         }
       }
-      .padding(.horizontal, 20)
+      .padding(.horizontal, 14)
       .padding(.top, 12)
       .padding(.bottom, TunedInDesign.scrollContentBottomInset)
     }
@@ -260,8 +274,8 @@ struct ConcertAlbumView: View {
 
 private extension Duration {
   var albumTelemetryMilliseconds: Int {
-    let components = self.components
-    return Int(components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000)
+    let components = components
+    return Int(components.seconds * 1000 + components.attoseconds / 1_000_000_000_000_000)
   }
 }
 
@@ -300,9 +314,9 @@ private struct AlbumPhotoTile: View {
         .padding(10)
     }
     .frame(maxWidth: .infinity)
-    .aspectRatio(1, contentMode: .fit)
-    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    .aspectRatio(CGSize(width: 4, height: 5), contentMode: .fit)
+    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
   }
 }
 
@@ -332,9 +346,17 @@ private struct AlbumPhotoImage: View {
       } else {
         fallback
       }
-    }.task(id: "\(photo.id)-\(photo.version)") {
-      do { url = try await repository.albumPhotoURL(photoID: photo.id, objectPath: photo.objectPath, version: photo.version) }
-      catch { failed = true }
+    }
+    .task(id: "\(photo.id)-\(photo.version)") {
+      do {
+        url = try await repository.albumPhotoURL(
+          photoID: photo.id,
+          objectPath: photo.objectPath,
+          version: photo.version
+        )
+      } catch {
+        failed = true
+      }
     }
   }
 
@@ -419,29 +441,63 @@ private struct ConcertAlbumViewer: View {
     }
     .sheet(isPresented: $isEditingCaption) {
       NavigationStack {
-        VStack(alignment: .leading, spacing: 8) {
-          TextEditor(text: $captionDraft)
-            .padding(8)
-            .scrollContentBackground(.hidden)
-            .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14))
-          HStack {
-            if let captionError {
-              Text(captionError).foregroundStyle(.red)
+        ZStack {
+          TunedInDesign.pageBackground
+            .ignoresSafeArea()
+
+          VStack(alignment: .leading, spacing: 10) {
+            Text("Add the detail you want to remember.")
+              .font(.subheadline)
+              .foregroundStyle(TunedInDesign.mutedText)
+            TextEditor(text: $captionDraft)
+              .padding(10)
+              .scrollContentBackground(.hidden)
+              .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 18))
+            HStack {
+              if let captionError {
+                Text(captionError).foregroundStyle(.red)
+              }
+              Spacer()
+              Text("\(captionDraft.count)/300")
             }
-            Spacer()
-            Text("\(captionDraft.count)/300")
+            .font(.caption)
+            .foregroundStyle(TunedInDesign.mutedText)
           }
-          .font(.caption)
-          .foregroundStyle(TunedInDesign.mutedText)
+          .padding(20)
         }
-        .padding()
-        .background(TunedInDesign.pageBackground)
         .navigationTitle("Caption")
-        .toolbar {
-          ToolbarItem(placement: .cancellationAction) { Button("Cancel") { isEditingCaption = false } }
-          ToolbarItem(placement: .confirmationAction) {
-            Button(isSavingCaption ? "Saving…" : "Save") { Task { await saveCaption() } }
+        .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+          TunedInPersistentControlRegion {
+            TunedInGlassTraversalLayout {
+              TunedInGlassIconButton(
+                systemImage: "chevron.backward",
+                accessibilityLabel: "Cancel caption editing"
+              ) {
+                isEditingCaption = false
+              }
+              .disabled(isSavingCaption)
+            } center: {
+              TunedInGlassBottomBar {
+                Text("Caption")
+                  .font(.headline.weight(.bold))
+                  .foregroundStyle(TunedInDesign.primaryText)
+                  .frame(minWidth: 112, minHeight: 48)
+                  .padding(.horizontal, 14)
+              }
+            } trailing: {
+              TunedInFloatingAction(
+                systemImage: isSavingCaption ? "ellipsis" : "checkmark",
+                accessibilityLabel: isSavingCaption ? "Saving caption" : "Save caption"
+              ) {
+                Task { await saveCaption() }
+              }
               .disabled(captionDraft.count > 300 || isSavingCaption)
+              .opacity(captionDraft.count > 300 ? 0.45 : 1)
+            }
+            .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+            .padding(.top, 8)
+            .padding(.bottom, TunedInDesign.bottomControlInset)
           }
         }
       }

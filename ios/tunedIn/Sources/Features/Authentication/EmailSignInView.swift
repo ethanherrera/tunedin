@@ -10,58 +10,76 @@ struct EmailSignInView: View {
 
   var body: some View {
     NavigationStack(path: $path) {
-      VStack(alignment: .leading, spacing: 24) {
-        Spacer()
+      ZStack {
+        TunedInDesign.pageBackground
+          .ignoresSafeArea()
 
-        Image(systemName: "music.note.list")
-          .font(.system(size: 42, weight: .semibold))
-          .foregroundStyle(.tint)
-          .accessibilityHidden(true)
+        ScrollView {
+          VStack(alignment: .leading, spacing: 22) {
+            emailArtwork
 
-        VStack(alignment: .leading, spacing: 8) {
-          Text("Welcome to tunedIn")
-            .font(.largeTitle.bold())
+            VStack(alignment: .leading, spacing: 8) {
+              Text("Welcome to tunedIn")
+                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .foregroundStyle(TunedInDesign.primaryText)
 
-          Text(signInExplanation)
-            .foregroundStyle(.secondary)
-        }
+              Text(signInExplanation)
+                .foregroundStyle(TunedInDesign.mutedText)
+            }
 
-        TextField("Email address", text: $email)
-          .textContentType(.emailAddress)
-          .textInputAutocapitalization(.never)
-          .keyboardType(.emailAddress)
-          .autocorrectionDisabled()
-          .padding(14)
-          .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+            TextField("Email address", text: $email)
+              .textContentType(.emailAddress)
+              .textInputAutocapitalization(.never)
+              .keyboardType(.emailAddress)
+              .autocorrectionDisabled()
+              .padding(.horizontal, 16)
+              .frame(minHeight: 54)
+              .background(
+                TunedInDesign.cardBackground,
+                in: RoundedRectangle(cornerRadius: TunedInDesign.mediumCornerRadius, style: .continuous)
+              )
+              .overlay {
+                RoundedRectangle(cornerRadius: TunedInDesign.mediumCornerRadius, style: .continuous)
+                  .strokeBorder(TunedInDesign.cardBorder.opacity(0.55))
+              }
 
-        if let errorMessage {
-          Text(errorMessage)
-            .font(.footnote)
-            .foregroundStyle(.red)
-        }
+            if let errorMessage {
+              Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                .font(.footnote)
+                .foregroundStyle(.red)
+            }
 
-        Button {
-          sendCode()
-        } label: {
-          if isSubmitting {
-            ProgressView()
+            Button {
+              sendCode()
+            } label: {
+              HStack(spacing: 9) {
+                if isSubmitting {
+                  ProgressView()
+                }
+                Text(isSubmitting ? "Sending…" : submitButtonTitle)
+              }
+              .font(.body.weight(.bold))
+              .foregroundStyle(TunedInDesign.actionForeground)
               .frame(maxWidth: .infinity)
-          } else {
-            Text(submitButtonTitle)
-              .frame(maxWidth: .infinity)
+              .frame(height: 54)
+              .background(TunedInDesign.accent, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(isSubmitting || !isEmailValid)
+            .opacity(isSubmitting || !isEmailValid ? 0.5 : 1)
+
+            if session.allowsLocalSeededSignIn {
+              localSeededAccountSignIn
+            }
+
+            Spacer(minLength: 24)
           }
+          .padding(.horizontal, 22)
+          .padding(.top, 12)
+          .frame(maxWidth: 560)
+          .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .disabled(isSubmitting || !isEmailValid)
-
-        if session.allowsLocalSeededSignIn {
-          localSeededAccountSignIn
-        }
-
-        Spacer()
       }
-      .padding(24)
       .navigationDestination(for: String.self) { email in
         EmailVerificationView(session: session, email: email)
       }
@@ -70,6 +88,41 @@ struct EmailSignInView: View {
 
   private var normalizedEmail: String {
     email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+  }
+
+  private var emailArtwork: some View {
+    ZStack(alignment: .bottomLeading) {
+      LinearGradient(
+        colors: [TunedInDesign.ticketViolet, TunedInDesign.ticketRose, TunedInDesign.ink],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+      )
+
+      Circle()
+        .fill(.white.opacity(0.16))
+        .frame(width: 150, height: 150)
+        .offset(x: 190, y: -54)
+
+      Image(systemName: "waveform")
+        .font(.system(size: 82, weight: .thin))
+        .foregroundStyle(.white.opacity(0.17))
+        .offset(x: 158, y: 18)
+
+      VStack(alignment: .leading, spacing: 4) {
+        Text("tunedIn")
+          .font(.caption.weight(.black))
+          .tracking(1.2)
+          .textCase(.uppercase)
+        Text("Keep the night.")
+          .font(.system(size: 31, weight: .bold, design: .serif))
+      }
+      .foregroundStyle(.white)
+      .padding(20)
+    }
+    .frame(maxWidth: .infinity)
+    .frame(height: 188)
+    .clipShape(RoundedRectangle(cornerRadius: TunedInDesign.largeCornerRadius, style: .continuous))
+    .accessibilityHidden(true)
   }
 
   private var signInExplanation: String {
@@ -99,14 +152,13 @@ struct EmailSignInView: View {
 
   private var localSeededAccountSignIn: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Divider()
-
       Text("Local test accounts")
         .font(.headline)
+        .foregroundStyle(TunedInDesign.primaryText)
 
       Text("Sign in as a seeded account without waiting for an email link.")
         .font(.footnote)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(TunedInDesign.mutedText)
 
       Button {
         signIn(to: .listener)
@@ -132,6 +184,11 @@ struct EmailSignInView: View {
       .controlSize(.large)
       .disabled(isSubmitting)
     }
+    .padding(18)
+    .background(
+      TunedInDesign.cardBackground,
+      in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
+    )
   }
 
   private func sendCode() {

@@ -38,14 +38,14 @@ struct ConcertCreationView: View {
               VStack(alignment: .leading, spacing: 0) {
                 captureHeader
                 quickCaptureCard
-                  .padding(.top, 18)
+                  .padding(.top, 22)
                 detailsPrompt
-                  .padding(.top, 16)
+                  .padding(.top, 12)
               }
-              .padding(.bottom, 18)
+              .padding(.bottom, 24)
             }
             .padding(.horizontal, 20)
-            .padding(.top, 14)
+            .padding(.top, 18)
           }
           .navigationBarTitleDisplayMode(.inline)
           .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -120,28 +120,27 @@ struct ConcertCreationView: View {
   }
 
   private var captureHeader: some View {
-    VStack(alignment: .leading, spacing: 6) {
+    VStack(alignment: .leading, spacing: 8) {
       HStack {
-        Text("tunedIn")
-          .font(.caption.weight(.black))
+        Label("Private by default", systemImage: "lock.fill")
+          .font(.caption.weight(.bold))
           .foregroundStyle(TunedInDesign.accent)
-          .textCase(.uppercase)
         Spacer()
         TunedInPrivacyBadge()
       }
 
-      Text("Log a concert")
-        .font(.system(size: 36, weight: .bold, design: .serif))
+      Text("New concert")
+        .font(.system(size: 38, weight: .bold, design: .rounded))
         .foregroundStyle(TunedInDesign.primaryText)
-      Text("Artist, venue, date.")
-        .font(.subheadline)
+      Text("Start with the night. Add the memories when you want.")
+        .font(.body)
         .foregroundStyle(TunedInDesign.mutedText)
     }
   }
 
   private var quickCaptureCard: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      VStack(spacing: 10) {
+    VStack(alignment: .leading, spacing: 12) {
+      VStack(alignment: .leading, spacing: 10) {
         PhotosPicker(selection: $selectedPhoto, matching: .images) {
           ZStack(alignment: .bottomTrailing) {
             Group {
@@ -154,35 +153,38 @@ struct ConcertCreationView: View {
             .frame(maxWidth: .infinity)
             .aspectRatio(CGSize(width: 3, height: 4), contentMode: .fit)
             .clipped()
-            Label(concertPhotoData == nil ? "Add main photo" : "Change photo", systemImage: "photo")
-              .font(.caption.weight(.bold)).padding(10)
-              .foregroundStyle(.white).background(.black.opacity(0.62), in: Capsule()).padding(10)
+            Label(concertPhotoData == nil ? "Add a photo" : "Change photo", systemImage: "photo")
+              .font(.caption.weight(.bold))
+              .padding(.horizontal, 11)
+              .padding(.vertical, 9)
+              .foregroundStyle(.white)
+              .background(.black.opacity(0.62), in: Capsule())
+              .padding(12)
           }
-          .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+          .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+          .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
         .disabled(isProcessingPhoto)
         if isProcessingPhoto {
-          ProgressView("Optimizing photo…")
+          ProgressView("Preparing photo…")
+            .font(.caption)
+            .foregroundStyle(TunedInDesign.mutedText)
         }
       }
 
-      TunedInTicketCard {
-        Text("PRIVATE CONCERT")
-          .font(.caption.weight(.bold))
-          .foregroundStyle(.white.opacity(0.82))
-
+      VStack(spacing: 0) {
         VStack(alignment: .leading, spacing: 5) {
-          Text("Who did you see?")
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(.white)
+          Text("ARTIST")
+            .font(.caption2.weight(.black))
+            .foregroundStyle(TunedInDesign.accent)
           TextField(
             "",
             text: artistNameBinding(for: draft.artists[0].id),
-            prompt: Text("Artist").foregroundStyle(.white.opacity(0.54))
+            prompt: Text("Who did you see?").foregroundStyle(TunedInDesign.mutedText)
           )
-          .font(.title2.weight(.bold))
-          .foregroundStyle(.white)
-          .tint(.white)
+          .font(.system(size: 28, weight: .bold, design: .serif))
+          .foregroundStyle(TunedInDesign.primaryText)
+          .tint(TunedInDesign.accent)
           .textInputAutocapitalization(.words)
           .submitLabel(.next)
           .accessibilityLabel("Primary artist")
@@ -190,43 +192,59 @@ struct ConcertCreationView: View {
             captureValidationLabel("Enter the artist you saw.")
           }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
 
-        Divider().overlay(.white.opacity(0.24))
+        Divider()
+          .overlay(TunedInDesign.cardBorder.opacity(0.55))
+          .padding(.leading, 18)
 
-        VStack(alignment: .leading, spacing: 5) {
-          Text("Where was it?")
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(.white)
-          TextField(
-            "",
-            text: $draft.venueName,
-            prompt: Text("Venue").foregroundStyle(.white.opacity(0.54))
-          )
-          .font(.title3.weight(.semibold))
-          .foregroundStyle(.white)
-          .tint(.white)
-          .textContentType(.location)
-          .textInputAutocapitalization(.words)
-          .submitLabel(.done)
-          .accessibilityLabel("Venue")
-          if draft.hasAttemptedSave, !ConcertInput.isValidRequiredText(draft.venueName, maximumLength: 160) {
-            captureValidationLabel("Enter the venue.")
+        HStack(alignment: .top, spacing: 12) {
+          Image(systemName: "mappin.and.ellipse")
+            .font(.body.weight(.semibold))
+            .foregroundStyle(TunedInDesign.accent)
+            .frame(width: 24, height: 28)
+          VStack(alignment: .leading, spacing: 5) {
+            TextField(
+              "",
+              text: $draft.venueName,
+              prompt: Text("Venue").foregroundStyle(TunedInDesign.mutedText)
+            )
+            .font(.title3.weight(.semibold))
+            .foregroundStyle(TunedInDesign.primaryText)
+            .tint(TunedInDesign.accent)
+            .textContentType(.location)
+            .textInputAutocapitalization(.words)
+            .submitLabel(.done)
+            .accessibilityLabel("Venue")
+            if draft.hasAttemptedSave, !ConcertInput.isValidRequiredText(draft.venueName, maximumLength: 160) {
+              captureValidationLabel("Enter the venue.")
+            }
           }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
 
-        Divider().overlay(.white.opacity(0.24))
+        Divider()
+          .overlay(TunedInDesign.cardBorder.opacity(0.55))
+          .padding(.leading, 18)
 
         HStack {
           Label("When", systemImage: "calendar")
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(.white)
+            .font(.body.weight(.semibold))
+            .foregroundStyle(TunedInDesign.primaryText)
           Spacer()
           DatePicker("Concert date", selection: $draft.concertDate, displayedComponents: .date)
             .datePickerStyle(.compact)
             .labelsHidden()
-            .tint(.white)
+            .tint(TunedInDesign.accent)
         }
+        .padding(18)
       }
+      .background(
+        TunedInDesign.cardBackground,
+        in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+      )
     }
   }
 
@@ -245,10 +263,10 @@ struct ConcertCreationView: View {
     } label: {
       HStack(spacing: 13) {
         Image(systemName: "sparkles")
-          .font(.title3.weight(.bold))
-          .foregroundStyle(TunedInDesign.actionForeground)
-          .frame(width: 43, height: 43)
-          .background(TunedInDesign.accent, in: Circle())
+          .font(.body.weight(.semibold))
+          .foregroundStyle(TunedInDesign.accent)
+          .frame(width: 36, height: 36)
+          .background(TunedInDesign.accentTint, in: Circle())
         VStack(alignment: .leading, spacing: 2) {
           Text("More details")
             .font(.headline)
@@ -259,16 +277,12 @@ struct ConcertCreationView: View {
             .lineLimit(1)
         }
         Spacer()
-        Image(systemName: "arrow.up.right")
+        Image(systemName: "chevron.forward")
           .font(.subheadline.weight(.bold))
-          .foregroundStyle(TunedInDesign.accent)
+          .foregroundStyle(TunedInDesign.mutedText)
       }
-      .padding(14)
-      .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-      .overlay {
-        RoundedRectangle(cornerRadius: 18, style: .continuous)
-          .strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
-      }
+      .padding(.horizontal, 6)
+      .padding(.vertical, 12)
     }
     .buttonStyle(.plain)
     .accessibilityHint("Add the lineup, context, and setlist")
@@ -285,7 +299,7 @@ struct ConcertCreationView: View {
   private func captureValidationLabel(_ message: String) -> some View {
     Label(message, systemImage: "exclamationmark.circle.fill")
       .font(.caption)
-      .foregroundStyle(.white.opacity(0.92))
+      .foregroundStyle(.red)
   }
 
   private func artistNameBinding(for id: UUID) -> Binding<String> {
@@ -345,8 +359,8 @@ struct ConcertCreationView: View {
 
 private extension Duration {
   var creationTelemetryMilliseconds: Int {
-    let components = self.components
-    return Int(components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000)
+    let components = components
+    return Int(components.seconds * 1000 + components.attoseconds / 1_000_000_000_000_000)
   }
 }
 
@@ -362,14 +376,12 @@ private struct ConcertSavedView: View {
         .ignoresSafeArea()
 
       VStack(alignment: .leading, spacing: 14) {
-        Text("tunedIn")
-          .font(.caption.weight(.black))
-          .foregroundStyle(TunedInDesign.accent)
-          .textCase(.uppercase)
-
         Text("Saved")
-          .font(.system(size: 44, weight: .bold, design: .serif))
+          .font(.system(size: 42, weight: .bold, design: .rounded))
           .foregroundStyle(TunedInDesign.primaryText)
+        Text("Your concert is private until you decide to share it.")
+          .font(.subheadline)
+          .foregroundStyle(TunedInDesign.mutedText)
 
         ZStack(alignment: .bottomLeading) {
           ConcertPhotoView(concert: concert, artistName: primaryArtistName, repository: concertRepository)
@@ -407,7 +419,7 @@ private struct ConcertSavedView: View {
           .foregroundStyle(TunedInDesign.actionForeground)
           .frame(maxWidth: .infinity)
           .padding(.vertical, 16)
-          .background(TunedInDesign.accent, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+          .background(TunedInDesign.accent, in: Capsule())
       }
       .padding(.horizontal, 20)
       .padding(.top, 18)

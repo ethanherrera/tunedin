@@ -12,68 +12,111 @@ struct OnboardingView: View {
   @State private var errorMessage: String?
 
   var body: some View {
-    NavigationStack {
-      Form {
-        Section {
-          Text("Choose how friends will find you. You can update these details later.")
-            .foregroundStyle(.secondary)
-        }
+    ZStack {
+      TunedInDesign.pageBackground
+        .ignoresSafeArea()
 
-        Section("Your profile") {
-          TextField("Username", text: $username)
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled()
-            .onChange(of: username) { _, _ in
-              evaluateUsername()
+      ScrollView {
+        VStack(alignment: .leading, spacing: 22) {
+          VStack(alignment: .leading, spacing: 8) {
+            Text("One last thing")
+              .font(.caption.weight(.black))
+              .tracking(1.1)
+              .foregroundStyle(TunedInDesign.accent)
+              .textCase(.uppercase)
+            Text("Make your concert diary yours.")
+              .font(.system(size: 34, weight: .bold, design: .rounded))
+              .foregroundStyle(TunedInDesign.primaryText)
+            Text("Choose how friends will find you. You can update these details later.")
+              .font(.body)
+              .foregroundStyle(TunedInDesign.mutedText)
+          }
+
+          TunedInFormCard {
+            Text("Your profile")
+              .font(.headline)
+              .foregroundStyle(TunedInDesign.primaryText)
+
+            VStack(alignment: .leading, spacing: 8) {
+              Text("Username")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(TunedInDesign.mutedText)
+              TextField("concert_friend", text: $username)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .padding(.horizontal, 14)
+                .frame(minHeight: 50)
+                .background(
+                  TunedInDesign.raisedSurface,
+                  in: RoundedRectangle(cornerRadius: TunedInDesign.smallCornerRadius, style: .continuous)
+                )
+                .onChange(of: username) { _, _ in
+                  evaluateUsername()
+                }
+
+              usernameStatus
             }
 
-          usernameStatus
+            VStack(alignment: .leading, spacing: 8) {
+              Text("Display name")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(TunedInDesign.mutedText)
+              TextField("Your name", text: $displayName)
+                .textContentType(.name)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 50)
+                .background(
+                  TunedInDesign.raisedSurface,
+                  in: RoundedRectangle(cornerRadius: TunedInDesign.smallCornerRadius, style: .continuous)
+                )
+            }
 
-          TextField("Display name", text: $displayName)
-            .textContentType(.name)
+            Text(
+              "Usernames use 3–24 lowercase letters, numbers, and underscores. "
+                + "Display names can be up to 50 characters."
+            )
+            .font(.footnote)
+            .foregroundStyle(TunedInDesign.mutedText)
+          }
 
-          Text(
-            "Usernames use 3–24 lowercase letters, numbers, and underscores. "
-              + "Display names can be up to 50 characters."
-          )
-          .font(.footnote)
-          .foregroundStyle(.secondary)
-        }
-
-        if let errorMessage {
-          Section {
-            Text(errorMessage)
+          if let errorMessage {
+            Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
               .font(.footnote)
               .foregroundStyle(.red)
           }
-        }
 
-        Section {
           Button {
             completeOnboarding()
           } label: {
-            if isCompleting {
-              ProgressView()
-                .frame(maxWidth: .infinity)
-            } else {
-              Text("Finish setup")
-                .frame(maxWidth: .infinity)
+            HStack(spacing: 9) {
+              if isCompleting {
+                ProgressView()
+              }
+              Text(isCompleting ? "Setting up…" : "Finish setup")
             }
+            .font(.body.weight(.bold))
+            .foregroundStyle(TunedInDesign.actionForeground)
+            .frame(maxWidth: .infinity)
+            .frame(height: 54)
+            .background(TunedInDesign.accent, in: Capsule())
           }
+          .buttonStyle(.plain)
           .disabled(!canComplete)
-        }
-      }
-      .navigationTitle("Set up your profile")
-      .toolbar {
-        ToolbarItem(placement: .topBarTrailing) {
-          Button("Sign Out") {
-            Task {
-              await session.signOut()
-            }
+          .opacity(canComplete ? 1 : 0.5)
+
+          Button("Sign out and start over") {
+            Task { await session.signOut() }
           }
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(TunedInDesign.mutedText)
+          .frame(maxWidth: .infinity)
         }
+        .padding(.horizontal, 20)
+        .padding(.top, 28)
+        .padding(.bottom, 32)
       }
     }
+    .tint(TunedInDesign.accent)
   }
 
   @ViewBuilder

@@ -76,24 +76,28 @@ extension EnvironmentValues {
 }
 
 enum TunedInDesign {
-  static let accent = Color(red: 1.0, green: 0.34, blue: 0.13)
-  static let accentTint = adaptive(light: 0xF8DCCD, dark: 0x3D150B)
-  static let accentWash = adaptive(light: 0xF7A489, dark: 0xFFB899)
-  static let pageBackground = adaptive(light: 0xFCF6EF, dark: 0x0E0C0B)
-  static let cardBackground = adaptive(light: 0xFFFCF8, dark: 0x1D1715)
-  static let raisedSurface = adaptive(light: 0xF1E7DC, dark: 0x2B211D)
-  static let primaryText = adaptive(light: 0x2C1711, dark: 0xFFF8F3)
-  static let mutedText = adaptive(light: 0x715B51, dark: 0xB8A8A0)
-  static let cardBorder = adaptive(light: 0xE9D9CB, dark: 0xFFFFFF)
-  static let ink = Color(red: 0.12, green: 0.045, blue: 0.025)
-  static let actionForeground = adaptive(light: 0x2C1711, dark: 0xFFF8F3)
-  static let ticketViolet = adaptive(light: 0xFC552B, dark: 0xE03317)
-  static let ticketRose = adaptive(light: 0xB52E46, dark: 0x701626)
-  static let cornerRadius: CGFloat = 18
-  static let bottomControlInset: CGFloat = 44
-  static let bottomControlHorizontalInset: CGFloat = 16
-  static let scrollContentBottomInset: CGFloat = 88
-  static let keyboardDismissControlClearance: CGFloat = 76
+  static let accent = Color(red: 1.0, green: 0.31, blue: 0.15)
+  static let accentTint = adaptive(light: 0xFFE2D8, dark: 0x3A1C15)
+  static let accentWash = adaptive(light: 0xF8A188, dark: 0xFFB29D)
+  static let pageBackground = adaptive(light: 0xF7F5F0, dark: 0x10100F)
+  static let cardBackground = adaptive(light: 0xFCFBF8, dark: 0x1A1A18)
+  static let raisedSurface = adaptive(light: 0xECE9E2, dark: 0x252522)
+  static let primaryText = adaptive(light: 0x191815, dark: 0xF7F4EF)
+  static let mutedText = adaptive(light: 0x68645D, dark: 0xAAA59C)
+  static let cardBorder = adaptive(light: 0xDDD8CE, dark: 0x3A3935)
+  static let ink = Color(red: 0.08, green: 0.08, blue: 0.075)
+  static let actionForeground = adaptive(light: 0x24120C, dark: 0xFFF9F5)
+  static let ticketViolet = adaptive(light: 0xF35B3B, dark: 0xD94A30)
+  static let ticketRose = adaptive(light: 0xA82F49, dark: 0x74263A)
+  static let smallCornerRadius: CGFloat = 12
+  static let mediumCornerRadius: CGFloat = 18
+  static let cornerRadius: CGFloat = 22
+  static let largeCornerRadius: CGFloat = 28
+  static let controlSize: CGFloat = 56
+  static let bottomControlInset: CGFloat = 8
+  static let bottomControlHorizontalInset: CGFloat = 14
+  static let scrollContentBottomInset: CGFloat = 24
+  static let keyboardDismissControlClearance: CGFloat = 68
 
   private static func adaptive(light: Int, dark: Int) -> Color {
     Color(
@@ -142,7 +146,7 @@ struct TunedInFloatingAction: View {
         TunedInFloatingActionLabel(systemImage: systemImage)
       }
       .buttonStyle(.plain)
-      .frame(width: 60, height: 60)
+      .frame(width: TunedInDesign.controlSize, height: TunedInDesign.controlSize)
       .contentShape(.interaction, Circle())
       .accessibilityLabel(accessibilityLabel)
       .accessibilityHint(accessibilityHint)
@@ -157,9 +161,9 @@ struct TunedInFloatingActionLabel: View {
   var body: some View {
     if keyboardPresentation.showsPersistentGlass {
       Image(systemName: systemImage)
-        .font(.system(size: 22, weight: .bold))
+        .font(.system(size: 20, weight: .bold))
         .foregroundStyle(TunedInDesign.actionForeground)
-        .frame(width: 60, height: 60)
+        .frame(width: TunedInDesign.controlSize, height: TunedInDesign.controlSize)
         .contentShape(.interaction, Circle())
         .modifier(TunedInLiquidGlassActionSurface())
     }
@@ -184,12 +188,12 @@ struct TunedInGlassIconButton: View {
         Image(systemName: systemImage)
           .font(.body.weight(.bold))
           .foregroundStyle(TunedInDesign.primaryText)
-          .frame(width: 60, height: 60)
+          .frame(width: TunedInDesign.controlSize, height: TunedInDesign.controlSize)
           .contentShape(.interaction, Circle())
           .modifier(TunedInLiquidGlassIconSurface(style: style))
       }
       .buttonStyle(.plain)
-      .frame(width: 60, height: 60)
+      .frame(width: TunedInDesign.controlSize, height: TunedInDesign.controlSize)
       .contentShape(.interaction, Circle())
       .accessibilityLabel(accessibilityLabel)
     }
@@ -197,28 +201,92 @@ struct TunedInGlassIconButton: View {
 }
 
 struct TunedInGlassTraversalLayout<Leading: View, Center: View, Trailing: View>: View {
-  var sideReservation: CGFloat = 74
-  var height: CGFloat = 60
-  @ViewBuilder let leading: Leading
-  @ViewBuilder let center: Center
-  @ViewBuilder let trailing: Trailing
+  let sideReservation: CGFloat
+  let height: CGFloat
+  let glassNamespace: Namespace.ID?
+  let leading: Leading
+  let center: Center
+  let trailing: Trailing
+  @Namespace private var localGlassNamespace
+
+  init(
+    sideReservation: CGFloat = 68,
+    height: CGFloat = TunedInDesign.controlSize,
+    glassNamespace: Namespace.ID? = nil,
+    @ViewBuilder leading: () -> Leading,
+    @ViewBuilder center: () -> Center,
+    @ViewBuilder trailing: () -> Trailing
+  ) {
+    self.sideReservation = sideReservation
+    self.height = height
+    self.glassNamespace = glassNamespace
+    self.leading = leading()
+    self.center = center()
+    self.trailing = trailing()
+  }
 
   var body: some View {
     GeometryReader { proxy in
-      ZStack(alignment: .bottom) {
-        center
-          .frame(maxWidth: max(0, proxy.size.width - (sideReservation * 2)))
-
-        HStack(alignment: .bottom, spacing: 12) {
-          leading
-          Spacer(minLength: 12)
-          trailing
+      if #available(iOS 26.0, *) {
+        GlassEffectContainer(spacing: 12) {
+          controlLayout(proxy: proxy)
         }
+      } else {
+        controlLayout(proxy: proxy)
       }
     }
     .frame(height: height)
     .frame(maxWidth: .infinity)
-    .dynamicTypeSize(DynamicTypeSize.xSmall ... DynamicTypeSize.xxxLarge)
+  }
+
+  private var resolvedGlassNamespace: Namespace.ID {
+    glassNamespace ?? localGlassNamespace
+  }
+
+  private func controlLayout(proxy: GeometryProxy) -> some View {
+    ZStack(alignment: .bottom) {
+      center
+        .frame(maxWidth: max(0, proxy.size.width - (sideReservation * 2)))
+        .modifier(
+          TunedInGlassEffectIdentity(
+            id: "center",
+            namespace: resolvedGlassNamespace
+          )
+        )
+
+      HStack(alignment: .bottom, spacing: 12) {
+        leading
+          .modifier(
+            TunedInGlassEffectIdentity(
+              id: "leading",
+              namespace: resolvedGlassNamespace
+            )
+          )
+        Spacer(minLength: 12)
+        trailing
+          .modifier(
+            TunedInGlassEffectIdentity(
+              id: "trailing",
+              namespace: resolvedGlassNamespace
+            )
+          )
+      }
+    }
+  }
+}
+
+private struct TunedInGlassEffectIdentity: ViewModifier {
+  let id: String
+  let namespace: Namespace.ID
+
+  func body(content: Content) -> some View {
+    if #available(iOS 26.0, *) {
+      content
+        .glassEffectID(id, in: namespace)
+        .glassEffectTransition(.matchedGeometry)
+    } else {
+      content
+    }
   }
 }
 
@@ -239,14 +307,14 @@ private struct TunedInLiquidGlassIconSurface: ViewModifier {
   func body(content: Content) -> some View {
     if #available(iOS 26.0, *) {
       if style == .accent {
-        content.glassEffect(.regular.tint(TunedInDesign.accent.opacity(0.28)).interactive(), in: .circle)
+        content.glassEffect(.regular.tint(TunedInDesign.accent.opacity(0.22)).interactive(), in: .circle)
       } else {
         content.glassEffect(.regular.interactive(), in: .circle)
       }
     } else {
       content
         .background(.ultraThinMaterial, in: Circle())
-        .background(style == .accent ? TunedInDesign.accent.opacity(0.18) : .clear, in: Circle())
+        .background(style == .accent ? TunedInDesign.accent.opacity(0.14) : .clear, in: Circle())
         .overlay { Circle().strokeBorder(.white.opacity(0.42)) }
         .shadow(color: style == .accent ? TunedInDesign.accent.opacity(0.2) : .clear, radius: 10, y: 5)
     }
@@ -257,11 +325,11 @@ private struct TunedInLiquidGlassActionSurface: ViewModifier {
   func body(content: Content) -> some View {
     if #available(iOS 26.0, *) {
       content
-        .glassEffect(.regular.tint(TunedInDesign.accent.opacity(0.28)).interactive(), in: .circle)
+        .glassEffect(.regular.tint(TunedInDesign.accent.opacity(0.22)).interactive(), in: .circle)
     } else {
       content
         .background(.ultraThinMaterial, in: Circle())
-        .background(TunedInDesign.accent.opacity(0.18), in: Circle())
+        .background(TunedInDesign.accent.opacity(0.14), in: Circle())
         .overlay {
           Circle()
             .strokeBorder(.white.opacity(0.52))
@@ -279,14 +347,14 @@ struct TunedInFormCard<Content: View>: View {
       content
     }
     .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(16)
+    .padding(18)
     .background(
       TunedInDesign.cardBackground,
       in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
     )
     .overlay {
       RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
-        .strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
+        .strokeBorder(TunedInDesign.cardBorder.opacity(0.55))
     }
   }
 }
@@ -297,7 +365,7 @@ struct TunedInGlassSection<Content: View>: View {
 
   var body: some View {
     content
-      .padding(16)
+      .padding(18)
       .modifier(
         TunedInLiquidGlassSectionSurface(
           isGlassEnabled: keyboardPresentation.showsPersistentGlass
@@ -374,11 +442,15 @@ struct TunedInSubscreenBackBar: View {
 
   var body: some View {
     TunedInGlassTraversalLayout {
-      TunedInGlassIconButton(systemImage: "chevron.backward", accessibilityLabel: "Back to previous screen", action: action)
+      TunedInGlassIconButton(
+        systemImage: "chevron.backward",
+        accessibilityLabel: "Back to previous screen",
+        action: action
+      )
     } center: {
       TunedInGlassBottomBar {
         Text(title)
-          .font(.subheadline.weight(.bold))
+          .font(.subheadline.weight(.semibold))
           .foregroundStyle(TunedInDesign.primaryText)
           .lineLimit(1)
           .frame(minWidth: 112, minHeight: 48, alignment: .center)
@@ -394,6 +466,7 @@ struct TunedInSkeletonBlock: View {
   var cornerRadius: CGFloat = 16
 
   @State private var isHighlighted = false
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   var body: some View {
     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -408,6 +481,7 @@ struct TunedInSkeletonBlock: View {
         .clipped()
       }
       .onAppear {
+        guard !reduceMotion else { return }
         withAnimation(.easeInOut(duration: 1.05).repeatForever(autoreverses: true)) {
           isHighlighted = true
         }
@@ -515,56 +589,15 @@ private struct TunedInLiquidGlassSectionSurface: ViewModifier {
 
   func body(content: Content) -> some View {
     content
-      .background { surfaceBackground }
-      .overlay { surfaceBorder }
+      .background(TunedInDesign.cardBackground, in: sectionShape)
+      .overlay {
+        sectionShape
+          .strokeBorder(TunedInDesign.cardBorder.opacity(isGlassEnabled ? 0.42 : 0.55))
+      }
   }
 
   private var sectionShape: RoundedRectangle {
     RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
-  }
-
-  @ViewBuilder
-  private var surfaceBackground: some View {
-    if #available(iOS 26.0, *) {
-      ZStack {
-        sectionShape.fill(isGlassEnabled ? .clear : TunedInDesign.cardBackground)
-        sectionShape
-          .fill(.clear)
-          .glassEffect(
-            .regular.tint(TunedInDesign.accent.opacity(0.08)).interactive(),
-            in: sectionShape
-          )
-          .opacity(isGlassEnabled ? 1 : 0)
-      }
-      .allowsHitTesting(false)
-    } else {
-      fallbackBackground
-    }
-  }
-
-  @ViewBuilder
-  private var surfaceBorder: some View {
-    if #available(iOS 26.0, *) {
-      if !isGlassEnabled {
-        sectionShape.strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
-      }
-    } else {
-      sectionShape.strokeBorder(
-        isGlassEnabled ? .white.opacity(0.46) : TunedInDesign.cardBorder.opacity(0.72)
-      )
-    }
-  }
-
-  @ViewBuilder
-  private var fallbackBackground: some View {
-    if isGlassEnabled {
-      ZStack {
-        sectionShape.fill(TunedInDesign.cardBackground.opacity(0.72))
-        sectionShape.fill(.thinMaterial)
-      }
-    } else {
-      sectionShape.fill(TunedInDesign.cardBackground)
-    }
   }
 }
 
@@ -622,11 +655,11 @@ private struct TunedInLiquidGlassSearchSurface: ViewModifier {
   }
 
   private var tint: Color {
-    style == .neutralPopover ? .white.opacity(0.1) : TunedInDesign.accent.opacity(0.05)
+    style == .neutralPopover ? .white.opacity(0.06) : .clear
   }
 
   private var backgroundTint: Color {
-    style == .neutralPopover ? .white.opacity(0.08) : TunedInDesign.cardBackground.opacity(0.8)
+    style == .neutralPopover ? .white.opacity(0.06) : TunedInDesign.cardBackground.opacity(0.84)
   }
 }
 
@@ -650,7 +683,7 @@ private struct TunedInLiquidGlassPopoverSurface: ViewModifier {
         popoverShape.fill(isGlassEnabled ? .clear : TunedInDesign.cardBackground)
         popoverShape
           .fill(.clear)
-          .glassEffect(.regular.tint(.white.opacity(0.08)).interactive(), in: popoverShape)
+          .glassEffect(.regular, in: popoverShape)
           .opacity(isGlassEnabled ? 1 : 0)
       }
       .allowsHitTesting(false)
@@ -683,10 +716,7 @@ private struct TunedInLiquidGlassBottomBarSurface: ViewModifier {
   func body(content: Content) -> some View {
     if #available(iOS 26.0, *) {
       content
-        .glassEffect(
-          .regular.tint(TunedInDesign.accent.opacity(0.06)).interactive(),
-          in: Capsule()
-        )
+        .glassEffect(.regular, in: Capsule())
     } else {
       content
         .background(.ultraThinMaterial, in: Capsule())
@@ -712,7 +742,7 @@ private struct TunedInKeyboardDismissControl: View {
       Image(systemName: "xmark")
         .font(.body.weight(.bold))
         .foregroundStyle(TunedInDesign.primaryText)
-        .frame(width: 60, height: 60)
+        .frame(width: TunedInDesign.controlSize, height: TunedInDesign.controlSize)
         .contentShape(Circle())
         .modifier(TunedInLiquidGlassIconSurface(style: .neutral))
     }

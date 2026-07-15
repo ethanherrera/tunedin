@@ -4,6 +4,7 @@ struct EmailVerificationView: View {
   let session: AppSession
   let email: String
 
+  @Environment(\.dismiss) private var dismiss
   @State private var code = ""
   @State private var isVerifying = false
   @State private var isResending = false
@@ -11,87 +12,127 @@ struct EmailVerificationView: View {
   @State private var resendAvailableAt = Date().addingTimeInterval(60)
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 24) {
-      Spacer()
+    ZStack {
+      TunedInDesign.pageBackground
+        .ignoresSafeArea()
 
-      VStack(alignment: .leading, spacing: 8) {
-        Text("Check your email")
-          .font(.largeTitle.bold())
+      ScrollView {
+        VStack(alignment: .leading, spacing: 24) {
+          Spacer(minLength: 56)
 
-        Text(verificationExplanation)
-          .foregroundStyle(.secondary)
-      }
+          Image(systemName: "envelope.open.fill")
+            .font(.system(size: 32, weight: .semibold))
+            .foregroundStyle(TunedInDesign.accent)
+            .frame(width: 68, height: 68)
+            .background(TunedInDesign.accentTint, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .accessibilityHidden(true)
 
-      if session.authEmailDeliveryMode == .oneTimeCode {
-        TextField("Six-digit code", text: $code)
-          .keyboardType(.numberPad)
-          .textContentType(.oneTimeCode)
-          .font(.title2.monospacedDigit())
-          .multilineTextAlignment(.center)
-          .padding(14)
-          .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
-          .onChange(of: code) { _, newValue in
-            let digits = newValue.filter(\.isNumber).prefix(6)
-            let sanitizedCode = String(digits)
-            if sanitizedCode != newValue {
-              code = sanitizedCode
+          VStack(alignment: .leading, spacing: 8) {
+            Text("Check your email")
+              .font(.system(size: 34, weight: .bold, design: .rounded))
+              .foregroundStyle(TunedInDesign.primaryText)
+
+            Text(verificationExplanation)
+              .foregroundStyle(TunedInDesign.mutedText)
+          }
+
+          if session.authEmailDeliveryMode == .oneTimeCode {
+            TextField("Six-digit code", text: $code)
+              .keyboardType(.numberPad)
+              .textContentType(.oneTimeCode)
+              .font(.title2.monospacedDigit().weight(.semibold))
+              .multilineTextAlignment(.center)
+              .padding(.horizontal, 14)
+              .frame(minHeight: 58)
+              .background(
+                TunedInDesign.cardBackground,
+                in: RoundedRectangle(cornerRadius: TunedInDesign.mediumCornerRadius, style: .continuous)
+              )
+              .overlay {
+                RoundedRectangle(cornerRadius: TunedInDesign.mediumCornerRadius, style: .continuous)
+                  .strokeBorder(TunedInDesign.cardBorder.opacity(0.55))
+              }
+              .onChange(of: code) { _, newValue in
+                let digits = newValue.filter(\.isNumber).prefix(6)
+                let sanitizedCode = String(digits)
+                if sanitizedCode != newValue {
+                  code = sanitizedCode
+                }
+              }
+          } else {
+            Label("Open the link on this iPhone or Simulator to continue.", systemImage: "link.circle")
+              .foregroundStyle(TunedInDesign.mutedText)
+          }
+
+          if let errorMessage {
+            Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+              .font(.footnote)
+              .foregroundStyle(.red)
+          }
+
+          if session.authEmailDeliveryMode == .oneTimeCode {
+            Button {
+              verifyCode()
+            } label: {
+              HStack(spacing: 9) {
+                if isVerifying {
+                  ProgressView()
+                }
+                Text(isVerifying ? "Verifying…" : "Verify code")
+              }
+              .font(.body.weight(.bold))
+              .foregroundStyle(TunedInDesign.actionForeground)
+              .frame(maxWidth: .infinity)
+              .frame(height: 54)
+              .background(TunedInDesign.accent, in: Capsule())
             }
+            .buttonStyle(.plain)
+            .disabled(isVerifying || code.count != 6)
+            .opacity(isVerifying || code.count != 6 ? 0.5 : 1)
           }
-      } else {
-        Label("Open the link on this iPhone or Simulator to continue.", systemImage: "link.circle")
-          .foregroundStyle(.secondary)
-      }
 
-      if let errorMessage {
-        Text(errorMessage)
-          .font(.footnote)
-          .foregroundStyle(.red)
-      }
-
-      if session.authEmailDeliveryMode == .oneTimeCode {
-        Button {
-          verifyCode()
-        } label: {
-          if isVerifying {
-            ProgressView()
-              .frame(maxWidth: .infinity)
-          } else {
-            Text("Verify code")
-              .frame(maxWidth: .infinity)
+          TimelineView(.periodic(from: .now, by: 1)) { context in
+            Button {
+              resendCode()
+            } label: {
+              if isResending {
+                ProgressView()
+              } else if resendAvailableAt > context.date {
+                Text("Resend available in \(remainingSeconds(from: context.date))s")
+              } else {
+                Text(resendButtonTitle)
+              }
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(TunedInDesign.primaryText)
+            .disabled(isResending || resendAvailableAt > context.date)
           }
+
+          if session.authEmailDeliveryMode == .magicLink {
+            Text(
+              "If you read email on your Mac, copy the Sign in link and open it in the Simulator."
+            )
+            .font(.footnote)
+            .foregroundStyle(TunedInDesign.mutedText)
+          }
+
+          Spacer(minLength: 24)
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .disabled(isVerifying || code.count != 6)
+        .padding(.horizontal, 22)
+        .frame(maxWidth: 560)
+        .frame(maxWidth: .infinity)
       }
-
-      TimelineView(.periodic(from: .now, by: 1)) { context in
-        Button {
-          resendCode()
-        } label: {
-          if isResending {
-            ProgressView()
-          } else if resendAvailableAt > context.date {
-            Text("Resend available in \(remainingSeconds(from: context.date))s")
-          } else {
-            Text(resendButtonTitle)
-          }
-        }
-        .disabled(isResending || resendAvailableAt > context.date)
-      }
-
-      if session.authEmailDeliveryMode == .magicLink {
-        Text(
-          "If you read email on your Mac, copy the Sign in link and open it in the Simulator."
-        )
-        .font(.footnote)
-        .foregroundStyle(.secondary)
-      }
-
-      Spacer()
     }
-    .padding(24)
     .navigationBarTitleDisplayMode(.inline)
+    .navigationBarBackButtonHidden()
+    .safeAreaInset(edge: .bottom, spacing: 0) {
+      TunedInPersistentControlRegion {
+        TunedInSubscreenBackBar(title: "Email", action: dismiss.callAsFunction)
+          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+          .padding(.top, 6)
+          .padding(.bottom, TunedInDesign.bottomControlInset)
+      }
+    }
   }
 
   private var verificationExplanation: String {
