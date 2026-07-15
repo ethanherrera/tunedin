@@ -96,7 +96,9 @@ struct ConcertEditView: View {
         }
       }
       .safeAreaInset(edge: .bottom, spacing: 0) {
-        saveBar
+        TunedInPersistentControlRegion {
+          saveBar
+        }
       }
       .toolbar {
         ToolbarItem(placement: .principal) {

@@ -119,11 +119,13 @@ struct PersonProfileView: View {
       floatingControls.resetBackOnly(owner: floatingControlOwner)
     }
     .safeAreaInset(edge: .bottom, spacing: 0) {
-      if let onDismiss {
-        TunedInSubscreenBackBar(title: "Profile", action: onDismiss)
-          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
-          .padding(.top, 8)
-          .padding(.bottom, TunedInDesign.bottomControlInset)
+      TunedInPersistentControlRegion {
+        if let onDismiss {
+          TunedInSubscreenBackBar(title: "Profile", action: onDismiss)
+            .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+            .padding(.top, 8)
+            .padding(.bottom, TunedInDesign.bottomControlInset)
+        }
       }
     }
     .tunedInEdgeSwipeBack {

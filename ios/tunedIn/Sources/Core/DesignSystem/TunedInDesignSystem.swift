@@ -1,10 +1,27 @@
 import Combine
+import Observation
 import SwiftUI
 import UIKit
 
 enum TunedInKeyboardPresentation: Equatable {
   case hidden
   case presented
+
+  func update(to candidate: Self) -> Self? {
+    candidate == self ? nil : candidate
+  }
+
+  static func resolved(endFrame: CGRect, screenBounds: CGRect) -> Self {
+    endFrame.minY < screenBounds.maxY && endFrame.intersects(screenBounds)
+      ? .presented
+      : .hidden
+  }
+
+  static var immediateTransaction: Transaction {
+    var transaction = Transaction(animation: nil)
+    transaction.disablesAnimations = true
+    return transaction
+  }
 
   var showsPersistentGlass: Bool {
     self == .hidden
@@ -19,10 +36,42 @@ private struct TunedInKeyboardPresentationKey: EnvironmentKey {
   static let defaultValue = TunedInKeyboardPresentation.hidden
 }
 
+@MainActor
+@Observable
+final class TunedInKeyboardDismissControlCoordinator {
+  private var owners: [UUID] = []
+
+  var registeredOwnerCount: Int {
+    owners.count
+  }
+
+  func register(_ owner: UUID) {
+    owners.removeAll { $0 == owner }
+    owners.append(owner)
+  }
+
+  func unregister(_ owner: UUID) {
+    owners.removeAll { $0 == owner }
+  }
+
+  func isActive(_ owner: UUID) -> Bool {
+    owners.last == owner
+  }
+}
+
+private struct TunedInKeyboardDismissCoordinatorKey: EnvironmentKey {
+  static let defaultValue: TunedInKeyboardDismissControlCoordinator? = nil
+}
+
 extension EnvironmentValues {
   var tunedInKeyboardPresentation: TunedInKeyboardPresentation {
     get { self[TunedInKeyboardPresentationKey.self] }
     set { self[TunedInKeyboardPresentationKey.self] = newValue }
+  }
+
+  var tunedInKeyboardDismissControlCoordinator: TunedInKeyboardDismissControlCoordinator? {
+    get { self[TunedInKeyboardDismissCoordinatorKey.self] }
+    set { self[TunedInKeyboardDismissCoordinatorKey.self] = newValue }
   }
 }
 
@@ -97,7 +146,6 @@ struct TunedInFloatingAction: View {
       .contentShape(.interaction, Circle())
       .accessibilityLabel(accessibilityLabel)
       .accessibilityHint(accessibilityHint)
-      .transition(.opacity.combined(with: .scale(scale: 0.9)))
     }
   }
 }
@@ -114,7 +162,6 @@ struct TunedInFloatingActionLabel: View {
         .frame(width: 60, height: 60)
         .contentShape(.interaction, Circle())
         .modifier(TunedInLiquidGlassActionSurface())
-        .transition(.opacity.combined(with: .scale(scale: 0.9)))
     }
   }
 }
@@ -145,7 +192,6 @@ struct TunedInGlassIconButton: View {
       .frame(width: 60, height: 60)
       .contentShape(.interaction, Circle())
       .accessibilityLabel(accessibilityLabel)
-      .transition(.opacity.combined(with: .scale(scale: 0.9)))
     }
   }
 }
@@ -173,6 +219,17 @@ struct TunedInGlassTraversalLayout<Leading: View, Center: View, Trailing: View>:
     .frame(height: height)
     .frame(maxWidth: .infinity)
     .dynamicTypeSize(DynamicTypeSize.xSmall ... DynamicTypeSize.xxxLarge)
+  }
+}
+
+struct TunedInPersistentControlRegion<Content: View>: View {
+  @ViewBuilder let content: Content
+  @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
+
+  var body: some View {
+    if keyboardPresentation.showsPersistentGlass {
+      content
+    }
   }
 }
 
@@ -307,7 +364,6 @@ struct TunedInGlassBottomBar<Content: View>: View {
       content
         .padding(6)
         .modifier(TunedInLiquidGlassBottomBarSurface())
-        .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottom)))
     }
   }
 }
@@ -458,36 +514,56 @@ private struct TunedInLiquidGlassSectionSurface: ViewModifier {
   let isGlassEnabled: Bool
 
   func body(content: Content) -> some View {
-    if !isGlassEnabled {
-      content
-        .background(
-          TunedInDesign.cardBackground,
-          in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
-        )
-        .overlay {
-          RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
-            .strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
-        }
-    } else if #available(iOS 26.0, *) {
-      content
-        .glassEffect(
-          .regular.tint(TunedInDesign.accent.opacity(0.08)).interactive(),
-          in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
-        )
+    content
+      .background { surfaceBackground }
+      .overlay { surfaceBorder }
+  }
+
+  private var sectionShape: RoundedRectangle {
+    RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
+  }
+
+  @ViewBuilder
+  private var surfaceBackground: some View {
+    if #available(iOS 26.0, *) {
+      ZStack {
+        sectionShape.fill(isGlassEnabled ? .clear : TunedInDesign.cardBackground)
+        sectionShape
+          .fill(.clear)
+          .glassEffect(
+            .regular.tint(TunedInDesign.accent.opacity(0.08)).interactive(),
+            in: sectionShape
+          )
+          .opacity(isGlassEnabled ? 1 : 0)
+      }
+      .allowsHitTesting(false)
     } else {
-      content
-        .background(
-          .thinMaterial,
-          in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
-        )
-        .background(
-          TunedInDesign.cardBackground.opacity(0.72),
-          in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
-        )
-        .overlay {
-          RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
-            .strokeBorder(.white.opacity(0.46))
-        }
+      fallbackBackground
+    }
+  }
+
+  @ViewBuilder
+  private var surfaceBorder: some View {
+    if #available(iOS 26.0, *) {
+      if !isGlassEnabled {
+        sectionShape.strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
+      }
+    } else {
+      sectionShape.strokeBorder(
+        isGlassEnabled ? .white.opacity(0.46) : TunedInDesign.cardBorder.opacity(0.72)
+      )
+    }
+  }
+
+  @ViewBuilder
+  private var fallbackBackground: some View {
+    if isGlassEnabled {
+      ZStack {
+        sectionShape.fill(TunedInDesign.cardBackground.opacity(0.72))
+        sectionShape.fill(.thinMaterial)
+      }
+    } else {
+      sectionShape.fill(TunedInDesign.cardBackground)
     }
   }
 }
@@ -497,27 +573,51 @@ private struct TunedInLiquidGlassSearchSurface: ViewModifier {
   let isGlassEnabled: Bool
 
   func body(content: Content) -> some View {
-    if !isGlassEnabled {
-      content
-        .background(TunedInDesign.raisedSurface, in: Capsule())
-        .overlay {
-          Capsule()
-            .strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
-        }
-    } else if #available(iOS 26.0, *) {
-      content
-        .glassEffect(
-          .regular.tint(tint).interactive(),
-          in: Capsule()
-        )
+    content
+      .background { surfaceBackground }
+      .overlay { surfaceBorder }
+  }
+
+  @ViewBuilder
+  private var surfaceBackground: some View {
+    if #available(iOS 26.0, *) {
+      ZStack {
+        Capsule().fill(isGlassEnabled ? .clear : TunedInDesign.raisedSurface)
+        Capsule()
+          .fill(.clear)
+          .glassEffect(.regular.tint(tint).interactive(), in: Capsule())
+          .opacity(isGlassEnabled ? 1 : 0)
+      }
+      .allowsHitTesting(false)
     } else {
-      content
-        .background(.ultraThinMaterial, in: Capsule())
-        .background(backgroundTint, in: Capsule())
-        .overlay {
-          Capsule()
-            .strokeBorder(TunedInDesign.cardBorder.opacity(0.85))
-        }
+      fallbackBackground
+    }
+  }
+
+  @ViewBuilder
+  private var surfaceBorder: some View {
+    if #available(iOS 26.0, *) {
+      if !isGlassEnabled {
+        Capsule().strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
+      }
+    } else {
+      Capsule().strokeBorder(
+        isGlassEnabled
+          ? TunedInDesign.cardBorder.opacity(0.85)
+          : TunedInDesign.cardBorder.opacity(0.72)
+      )
+    }
+  }
+
+  @ViewBuilder
+  private var fallbackBackground: some View {
+    if isGlassEnabled {
+      ZStack {
+        Capsule().fill(backgroundTint)
+        Capsule().fill(.ultraThinMaterial)
+      }
+    } else {
+      Capsule().fill(TunedInDesign.raisedSurface)
     }
   }
 
@@ -534,32 +634,47 @@ private struct TunedInLiquidGlassPopoverSurface: ViewModifier {
   let isGlassEnabled: Bool
 
   func body(content: Content) -> some View {
-    if !isGlassEnabled {
-      content
-        .background(
-          TunedInDesign.cardBackground,
-          in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
-        )
-    } else if #available(iOS 26.0, *) {
-      content
-        .glassEffect(
-          .regular.tint(.white.opacity(0.08)).interactive(),
-          in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
-        )
+    content
+      .background { surfaceBackground }
+      .overlay { surfaceBorder }
+  }
+
+  private var popoverShape: RoundedRectangle {
+    RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
+  }
+
+  @ViewBuilder
+  private var surfaceBackground: some View {
+    if #available(iOS 26.0, *) {
+      ZStack {
+        popoverShape.fill(isGlassEnabled ? .clear : TunedInDesign.cardBackground)
+        popoverShape
+          .fill(.clear)
+          .glassEffect(.regular.tint(.white.opacity(0.08)).interactive(), in: popoverShape)
+          .opacity(isGlassEnabled ? 1 : 0)
+      }
+      .allowsHitTesting(false)
     } else {
-      content
-        .background(
-          .ultraThinMaterial,
-          in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
-        )
-        .background(
-          .white.opacity(0.05),
-          in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
-        )
-        .overlay {
-          RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
-            .strokeBorder(.white.opacity(0.34))
-        }
+      fallbackBackground
+    }
+  }
+
+  @ViewBuilder
+  private var fallbackBackground: some View {
+    if isGlassEnabled {
+      ZStack {
+        popoverShape.fill(.white.opacity(0.05))
+        popoverShape.fill(.ultraThinMaterial)
+      }
+    } else {
+      popoverShape.fill(TunedInDesign.cardBackground)
+    }
+  }
+
+  @ViewBuilder
+  private var surfaceBorder: some View {
+    if #unavailable(iOS 26.0), isGlassEnabled {
+      popoverShape.strokeBorder(.white.opacity(0.34))
     }
   }
 }
@@ -608,33 +723,51 @@ private struct TunedInKeyboardDismissControl: View {
 
 private struct TunedInKeyboardPresentationModifier: ViewModifier {
   let showsDismissControl: Bool
+  @Environment(\.tunedInKeyboardDismissControlCoordinator) private var inheritedCoordinator
   @State private var presentation = TunedInKeyboardPresentation.hidden
+  @State private var localCoordinator = TunedInKeyboardDismissControlCoordinator()
+  @State private var dismissControlOwner = UUID()
 
   func body(content: Content) -> some View {
     content
       .environment(\.tunedInKeyboardPresentation, presentation)
+      .environment(\.tunedInKeyboardDismissControlCoordinator, coordinator)
       .safeAreaInset(edge: .bottom, spacing: 0) {
-        if presentation.showsDismissControl && showsDismissControl {
+        if presentation.showsDismissControl
+          && showsDismissControl
+          && coordinator.isActive(dismissControlOwner) {
           HStack {
             Spacer(minLength: 0)
             TunedInKeyboardDismissControl()
           }
           .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
           .padding(.vertical, 8)
-          .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .bottomTrailing)))
         }
       }
-      .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
-        setPresentation(.presented, notification: notification)
+      .onAppear {
+        guard showsDismissControl else { return }
+        coordinator.register(dismissControlOwner)
       }
-      .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { notification in
-        setPresentation(.hidden, notification: notification)
+      .onDisappear {
+        guard showsDismissControl else { return }
+        coordinator.unregister(dismissControlOwner)
+      }
+      .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+        setPresentation(.presented)
+      }
+      .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in
+        setPresentation(.hidden)
       }
       .onReceive(
         NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)
       ) { notification in
-        setPresentation(presentation(for: notification), notification: notification)
+        guard presentation(for: notification) == .presented else { return }
+        setPresentation(.presented)
       }
+  }
+
+  private var coordinator: TunedInKeyboardDismissControlCoordinator {
+    inheritedCoordinator ?? localCoordinator
   }
 
   private func presentation(for notification: Notification) -> TunedInKeyboardPresentation {
@@ -647,18 +780,17 @@ private struct TunedInKeyboardPresentationModifier: ViewModifier {
       return presentation
     }
 
-    return endFrame.minY < screenBounds.maxY && endFrame.intersects(screenBounds)
-      ? .presented
-      : .hidden
+    return TunedInKeyboardPresentation.resolved(
+      endFrame: endFrame,
+      screenBounds: screenBounds
+    )
   }
 
-  private func setPresentation(
-    _ newPresentation: TunedInKeyboardPresentation,
-    notification: Notification
-  ) {
-    let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
-    withAnimation(.easeOut(duration: duration)) {
-      presentation = newPresentation
+  private func setPresentation(_ newPresentation: TunedInKeyboardPresentation) {
+    guard let updatedPresentation = presentation.update(to: newPresentation) else { return }
+
+    withTransaction(TunedInKeyboardPresentation.immediateTransaction) {
+      presentation = updatedPresentation
     }
   }
 }

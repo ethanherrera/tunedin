@@ -233,7 +233,7 @@ struct FriendsListView: View {
 struct FriendSearchView: View {
   enum Presentation: Equatable {
     case page
-    case popover
+    case drawer
   }
 
   let currentUserID: UUID
@@ -274,23 +274,21 @@ struct FriendSearchView: View {
   var body: some View {
     @Bindable var model = model
 
-    Group {
-      if presentation == .page {
-        ZStack {
-          TunedInDesign.pageBackground
-            .ignoresSafeArea()
-          searchContent
+    ZStack {
+      TunedInDesign.pageBackground
+        .ignoresSafeArea()
+      searchContent
+    }
+    .navigationTitle(presentation == .page ? "Search" : "Search people")
+    .navigationBarTitleDisplayMode(.inline)
+    .navigationBarBackButtonHidden()
+    .toolbar {
+      if presentation == .drawer {
+        ToolbarItem(placement: .cancellationAction) {
+          Button("Cancel") { dismiss() }
         }
-      } else {
-        TunedInGlassPopover {
-          searchContent
-        }
-        .padding(8)
       }
     }
-    .navigationTitle(presentation == .page ? "Search" : "")
-    .navigationBarTitleDisplayMode(.inline)
-    .navigationBarBackButtonHidden(presentation == .page)
     .task { model.telemetry = telemetry }
     .task(id: model.query) {
       do {
@@ -318,8 +316,7 @@ struct FriendSearchView: View {
       VStack(alignment: .leading, spacing: 12) {
         TunedInGlassSearchField(
           text: $model.query,
-          prompt: "Search @username",
-          style: presentation == .popover ? .neutralPopover : .standard
+          prompt: "Search @username"
         )
 
         if model.query.isEmpty {

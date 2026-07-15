@@ -49,7 +49,9 @@ struct ConcertCreationView: View {
           }
           .navigationBarTitleDisplayMode(.inline)
           .safeAreaInset(edge: .bottom, spacing: 0) {
-            saveBar
+            TunedInPersistentControlRegion {
+              saveBar
+            }
           }
           .alert("Discard this concert?", isPresented: $isShowingDiscardConfirmation) {
             Button("Keep Editing", role: .cancel) {}

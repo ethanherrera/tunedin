@@ -375,45 +375,47 @@ private struct ConcertAlbumViewer: View {
       }.tabViewStyle(.page(indexDisplayMode: .automatic))
     }
     .safeAreaInset(edge: .bottom, spacing: 0) {
-      TunedInGlassTraversalLayout {
-        TunedInGlassIconButton(
-          systemImage: "chevron.backward",
-          accessibilityLabel: "Back to album"
-        ) {
-          dismiss()
-        }
-      } center: {
-        TunedInGlassBottomBar {
-          Text("Album")
-            .font(.headline.weight(.bold))
-            .foregroundStyle(TunedInDesign.primaryText)
-            .frame(minWidth: 112, minHeight: 48)
-            .padding(.horizontal, 14)
-        }
-      } trailing: {
-        if let photo = selectedPhoto, canEdit(photo) {
-          Menu {
-            if photo.uploaderID == viewerID {
-              Button {
-                captionDraft = photo.caption ?? ""
-                captionError = nil
-                isEditingCaption = true
-              } label: {
-                Label("Edit caption", systemImage: "text.quote")
-              }
-            }
-
-            Button("Delete photo", systemImage: "trash", role: .destructive) {
-              Task { await delete(photo) }
-            }
-          } label: {
-            TunedInFloatingActionLabel(systemImage: "ellipsis")
+      TunedInPersistentControlRegion {
+        TunedInGlassTraversalLayout {
+          TunedInGlassIconButton(
+            systemImage: "chevron.backward",
+            accessibilityLabel: "Back to album"
+          ) {
+            dismiss()
           }
-          .accessibilityLabel("Photo actions")
+        } center: {
+          TunedInGlassBottomBar {
+            Text("Album")
+              .font(.headline.weight(.bold))
+              .foregroundStyle(TunedInDesign.primaryText)
+              .frame(minWidth: 112, minHeight: 48)
+              .padding(.horizontal, 14)
+          }
+        } trailing: {
+          if let photo = selectedPhoto, canEdit(photo) {
+            Menu {
+              if photo.uploaderID == viewerID {
+                Button {
+                  captionDraft = photo.caption ?? ""
+                  captionError = nil
+                  isEditingCaption = true
+                } label: {
+                  Label("Edit caption", systemImage: "text.quote")
+                }
+              }
+
+              Button("Delete photo", systemImage: "trash", role: .destructive) {
+                Task { await delete(photo) }
+              }
+            } label: {
+              TunedInFloatingActionLabel(systemImage: "ellipsis")
+            }
+            .accessibilityLabel("Photo actions")
+          }
         }
+        .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+        .padding(.bottom, TunedInDesign.bottomControlInset)
       }
-      .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
-      .padding(.bottom, TunedInDesign.bottomControlInset)
     }
     .sheet(isPresented: $isEditingCaption) {
       NavigationStack {
