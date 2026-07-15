@@ -23,6 +23,8 @@ struct MainTabView: View {
   @State private var profileNavigationID = UUID()
   @State private var isPresentingConcertEditMenu = false
   @StateObject private var concertFloatingControls = ConcertFloatingControls()
+  @Namespace private var bottomGlassNamespace
+  @Namespace private var tabSelectionNamespace
 
   var body: some View {
     selectedContent
@@ -32,7 +34,7 @@ struct MainTabView: View {
         TunedInPersistentControlRegion {
           bottomControls
             .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
-            .padding(.top, 8)
+            .padding(.top, 6)
             .padding(.bottom, TunedInDesign.bottomControlInset)
         }
       }
@@ -85,6 +87,7 @@ struct MainTabView: View {
         ConcertContextBottomBar(
           controls: concertFloatingControls,
           isPresentingEditMenu: $isPresentingConcertEditMenu,
+          glassNamespace: bottomGlassNamespace,
           fallbackToProfile: { activateTab(.profile) }
         )
         .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
@@ -92,8 +95,13 @@ struct MainTabView: View {
         subscreenBottomBar(title: title)
           .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
       case .none:
-        TunedInGlassTraversalLayout(height: 128) {
-          EmptyView()
+        TunedInGlassTraversalLayout(glassNamespace: bottomGlassNamespace) {
+          TunedInGlassIconButton(
+            systemImage: "magnifyingglass",
+            accessibilityLabel: "Search people"
+          ) {
+            isPresentingPeopleSearch = true
+          }
         } center: {
           TunedInGlassBottomBar {
             HStack(spacing: 2) {
@@ -101,23 +109,14 @@ struct MainTabView: View {
               tabButton(.profile, title: "Profile", icon: "person.crop.circle")
             }
           }
+          .animation(.smooth(duration: 0.24, extraBounce: 0), value: selectedTab)
         } trailing: {
-          VStack(alignment: .trailing, spacing: 8) {
-            TunedInGlassIconButton(
-              systemImage: "magnifyingglass",
-              accessibilityLabel: "Search people",
-              style: .accent
-            ) {
-              isPresentingPeopleSearch = true
-            }
-
-            TunedInGlassIconButton(
-              systemImage: "plus",
-              accessibilityLabel: "Log concert",
-              style: .accent
-            ) {
-              isPresentingConcertCreation = true
-            }
+          TunedInGlassIconButton(
+            systemImage: "plus",
+            accessibilityLabel: "Log concert",
+            style: .accent
+          ) {
+            isPresentingConcertCreation = true
           }
         }
         .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
@@ -203,7 +202,7 @@ struct MainTabView: View {
   }
 
   private func subscreenBottomBar(title: String) -> some View {
-    TunedInGlassTraversalLayout {
+    TunedInGlassTraversalLayout(glassNamespace: bottomGlassNamespace) {
       TunedInGlassIconButton(
         systemImage: "chevron.backward",
         accessibilityLabel: "Back to \(title.lowercased())"
@@ -217,22 +216,29 @@ struct MainTabView: View {
           tabButton(.profile, title: "Profile", icon: "person.crop.circle")
         }
       }
+      .animation(.smooth(duration: 0.24, extraBounce: 0), value: selectedTab)
     } trailing: {
       EmptyView()
     }
   }
 
   private func navigationLabel(title: String, icon: String, isSelected: Bool) -> some View {
-    VStack(spacing: 2) {
+    HStack(spacing: 6) {
       Image(systemName: icon)
-        .font(.subheadline.weight(.bold))
+        .font(.caption.weight(.bold))
       Text(title)
-        .font(.caption2.weight(.bold))
+        .font(.caption.weight(.bold))
     }
     .foregroundStyle(isSelected ? TunedInDesign.actionForeground : TunedInDesign.primaryText)
-    .frame(minWidth: 58, minHeight: 48)
-    .padding(.horizontal, 3)
-    .background(isSelected ? TunedInDesign.accent : .clear, in: Capsule())
+    .frame(minWidth: 78, minHeight: 44)
+    .padding(.horizontal, 2)
+    .background {
+      if isSelected {
+        Capsule()
+          .fill(TunedInDesign.accent)
+          .matchedGeometryEffect(id: "main-tab-selection", in: tabSelectionNamespace)
+      }
+    }
     .contentShape(.interaction, Capsule())
   }
 }
@@ -353,11 +359,12 @@ final class ConcertFloatingControls: ObservableObject {
 private struct ConcertContextBottomBar: View {
   @ObservedObject var controls: ConcertFloatingControls
   @Binding var isPresentingEditMenu: Bool
+  let glassNamespace: Namespace.ID
   let fallbackToProfile: () -> Void
   @Namespace private var selectionNamespace
 
   var body: some View {
-    TunedInGlassTraversalLayout {
+    TunedInGlassTraversalLayout(glassNamespace: glassNamespace) {
       TunedInGlassIconButton(
         systemImage: "chevron.backward",
         accessibilityLabel: "Back to previous screen"
@@ -420,7 +427,7 @@ private struct ConcertContextBottomBar: View {
           )
         } else {
           TunedInFloatingAction(
-            systemImage: "pencil",
+            systemImage: "ellipsis",
             accessibilityLabel: "Edit concert menu",
             accessibilityHint: "Shows concert edit actions"
           ) {
@@ -509,7 +516,7 @@ struct ProfileTabView: View {
           .ignoresSafeArea()
 
         ScrollView {
-          VStack(alignment: .leading, spacing: 24) {
+          VStack(alignment: .leading, spacing: 20) {
             profileHeader
             friendCountLink
             ConcertArchiveView(
@@ -524,7 +531,7 @@ struct ProfileTabView: View {
             )
           }
           .padding(.horizontal, 20)
-          .padding(.top, 18)
+          .padding(.top, 12)
           .padding(.bottom, TunedInDesign.scrollContentBottomInset)
         }
         .refreshable {
@@ -551,18 +558,16 @@ struct ProfileTabView: View {
 
   private var profileHeader: some View {
     ProfileIdentityHeader(profile: currentSocialProfile) {
-      HStack(spacing: 8) {
-        NavigationLink {
-          SettingsView(session: session, user: user, profile: profile)
-        } label: {
-          Image(systemName: "gearshape")
-            .font(.headline.weight(.bold))
-            .foregroundStyle(TunedInDesign.primaryText)
-            .frame(width: 42, height: 42)
-            .background(TunedInDesign.raisedSurface, in: Circle())
-        }
-        .accessibilityLabel("Open settings")
+      NavigationLink {
+        SettingsView(session: session, user: user, profile: profile)
+      } label: {
+        Image(systemName: "slider.horizontal.3")
+          .font(.subheadline.weight(.bold))
+          .foregroundStyle(TunedInDesign.primaryText)
+          .frame(width: 44, height: 44)
+          .background(TunedInDesign.raisedSurface, in: Circle())
       }
+      .accessibilityLabel("Open settings")
     }
   }
 
@@ -599,20 +604,16 @@ struct ProfileIdentityHeader<Trailing: View>: View {
   @ViewBuilder let trailing: Trailing
 
   var body: some View {
-    HStack(alignment: .top, spacing: 12) {
-      ProfileAvatarView(profile: profile, size: 58)
-      VStack(alignment: .leading, spacing: 3) {
-        Text("tunedIn")
-          .font(.caption.weight(.black))
-          .foregroundStyle(TunedInDesign.accent)
-          .textCase(.uppercase)
+    HStack(alignment: .center, spacing: 16) {
+      ProfileAvatarView(profile: profile, size: 72)
+      VStack(alignment: .leading, spacing: 4) {
         Text(profile.displayName)
-          .font(.system(size: 26, weight: .bold, design: .serif))
+          .font(.system(.title2, design: .rounded, weight: .bold))
           .foregroundStyle(TunedInDesign.primaryText)
           .lineLimit(2)
           .minimumScaleFactor(0.82)
         Text("@\(profile.username)")
-          .font(.subheadline)
+          .font(.subheadline.weight(.medium))
           .foregroundStyle(TunedInDesign.mutedText)
       }
       .layoutPriority(1)
@@ -631,27 +632,27 @@ struct ProfileFriendsLink<Destination: View>: View {
       destination()
     } label: {
       HStack(spacing: 10) {
-        Image(systemName: "person.2.fill")
-          .font(.headline)
-          .foregroundStyle(TunedInDesign.accent)
-          .frame(width: 26)
+        Image(systemName: "person.2")
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(TunedInDesign.primaryText)
+          .frame(width: 34, height: 34)
+          .background(TunedInDesign.accentTint, in: Circle())
         Text(friendCountLabel)
-          .font(.headline)
+          .font(.subheadline.weight(.semibold))
           .foregroundStyle(TunedInDesign.primaryText)
         Spacer()
         Image(systemName: "chevron.right")
           .font(.caption.weight(.bold))
           .foregroundStyle(TunedInDesign.mutedText)
       }
-      .padding(.horizontal, 15)
-      .padding(.vertical, 14)
+      .padding(.horizontal, 12)
+      .padding(.vertical, 10)
       .frame(maxWidth: .infinity)
-      .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-      .overlay {
-        RoundedRectangle(cornerRadius: 16, style: .continuous)
-          .strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
-      }
-      .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+      .background(
+        TunedInDesign.cardBackground,
+        in: RoundedRectangle(cornerRadius: TunedInDesign.mediumCornerRadius, style: .continuous)
+      )
+      .contentShape(RoundedRectangle(cornerRadius: TunedInDesign.mediumCornerRadius, style: .continuous))
     }
     .buttonStyle(.plain)
     .accessibilityLabel("Open \(friendCountLabel)")
@@ -683,14 +684,18 @@ struct SettingsView: View {
         .ignoresSafeArea()
 
       ScrollView {
-        VStack(alignment: .leading, spacing: 24) {
+        VStack(alignment: .leading, spacing: 18) {
+          Text("Make tunedIn yours")
+            .font(.title2.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
           profilePhotoSection
           AppearancePicker()
           TelemetrySettingsSection(telemetry: session.telemetry)
           feedbackSection
           accountSection
         }
-        .padding(20)
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
         .padding(.bottom, TunedInDesign.scrollContentBottomInset)
       }
       .refreshable {
@@ -734,26 +739,30 @@ struct SettingsView: View {
   }
 
   private var profilePhotoSection: some View {
-    TunedInFormCard {
-      Text("Profile Photo").font(.headline).foregroundStyle(TunedInDesign.primaryText)
+    let currentProfile = displayedProfile
+
+    return TunedInFormCard {
+      Label("Profile photo", systemImage: "person.crop.circle")
+        .font(.headline)
+        .foregroundStyle(TunedInDesign.primaryText)
       HStack(spacing: 16) {
         ProfileAvatarView(
           profile: SocialProfile(
-            id: displayedProfile.id,
-            username: displayedProfile.username ?? "listener",
-            displayName: displayedProfile.displayName ?? "Listener",
+            id: currentProfile.id,
+            username: currentProfile.username ?? "listener",
+            displayName: currentProfile.displayName ?? "Listener",
             relationship: .friends,
-            avatarObjectPath: displayedProfile.avatarObjectPath,
-            avatarVersion: displayedProfile.avatarVersion
+            avatarObjectPath: currentProfile.avatarObjectPath,
+            avatarVersion: currentProfile.avatarVersion
           ),
           size: 72
         )
         VStack(alignment: .leading, spacing: 8) {
           PhotosPicker(selection: $selectedPhoto, matching: .images) {
-            Text(displayedProfile.avatarObjectPath == nil ? "Choose photo" : "Change photo")
+            Text(currentProfile.avatarObjectPath == nil ? "Choose photo" : "Change photo")
           }
           .disabled(isChangingPhoto)
-          if displayedProfile.avatarObjectPath != nil {
+          if currentProfile.avatarObjectPath != nil {
             Button("Remove photo", role: .destructive) { isConfirmingRemoval = true }
               .disabled(isChangingPhoto)
           }
@@ -806,7 +815,7 @@ struct SettingsView: View {
 
   private var accountSection: some View {
     TunedInFormCard {
-      Text("Account")
+      Label("Account", systemImage: "person.text.rectangle")
         .font(.headline)
         .foregroundStyle(TunedInDesign.primaryText)
       Text(user.email ?? "Unavailable")
@@ -824,7 +833,7 @@ struct SettingsView: View {
 
   private var feedbackSection: some View {
     TunedInFormCard {
-      Text("Help improve tunedIn")
+      Label("Help improve tunedIn", systemImage: "bubble.left.and.bubble.right")
         .font(.headline)
         .foregroundStyle(TunedInDesign.primaryText)
       Text("Report a problem or share an idea directly with the team.")
@@ -839,7 +848,8 @@ struct SettingsView: View {
 }
 
 private struct AppearancePicker: View {
-  @AppStorage(TunedInAppearance.storageKey) private var appearanceRawValue = TunedInAppearance.light.rawValue
+  @AppStorage(TunedInAppearance.storageKey)
+  private var appearanceRawValue = TunedInAppearance.defaultAppearance.rawValue
 
   private var appearance: TunedInAppearance {
     TunedInAppearance(rawValue: appearanceRawValue) ?? .system
@@ -847,7 +857,7 @@ private struct AppearancePicker: View {
 
   var body: some View {
     TunedInFormCard {
-      Text("Appearance")
+      Label("Appearance", systemImage: "circle.lefthalf.filled")
         .font(.headline)
         .foregroundStyle(TunedInDesign.primaryText)
 

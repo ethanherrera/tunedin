@@ -14,86 +14,32 @@ struct ConcertArchiveView: View {
   let model: ConcertArchiveModel
   let refreshToken: Int
 
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
   var body: some View {
     @Bindable var model = model
 
-    VStack(alignment: .leading, spacing: 14) {
-      HStack(alignment: .firstTextBaseline) {
-        VStack(alignment: .leading, spacing: 3) {
-          Text(isOwner ? "Kept" : "Concerts")
-            .font(.title2.weight(.bold))
-            .foregroundStyle(TunedInDesign.primaryText)
-          Text(isOwner ? "Your saved concerts" : "Shared concerts")
-            .font(.subheadline)
-            .foregroundStyle(TunedInDesign.mutedText)
+    VStack(alignment: .leading, spacing: 16) {
+      ViewThatFits(in: .horizontal) {
+        HStack(alignment: .top, spacing: 16) {
+          archiveHeading
+          Spacer(minLength: 4)
+          archiveFilterMenu
         }
 
-        Spacer()
-
-        Menu {
-          Menu("Visibility") {
-            Button("All visibility") {
-              setVisibilityFilter(nil)
-            }
-            if isOwner {
-              Button("Private") {
-                setVisibilityFilter(.private)
-              }
-            }
-            Button("Collaborators") {
-              setVisibilityFilter(.collaborators)
-            }
-            Button("With friends") {
-              setVisibilityFilter(.friends)
-            }
-          }
-
-          Menu("Year") {
-            Button("All years") {
-              setYearFilter(nil)
-            }
-            ForEach(yearOptions, id: \.self) { year in
-              Button(String(year)) {
-                setYearFilter(year)
-              }
-            }
-          }
-
-          Section("Sort") {
-            ForEach(ConcertHistorySort.allCases, id: \.self) { sort in
-              Button {
-                setSort(sort)
-              } label: {
-                if model.query.sort == sort {
-                  Label(sort.displayTitle, systemImage: "checkmark")
-                } else {
-                  Text(sort.displayTitle)
-                }
-              }
-            }
-          }
-        } label: {
-          HStack(spacing: 5) {
-            Image(systemName: "line.3.horizontal.decrease.circle")
-            Text(archiveMenuLabel)
-              .lineLimit(1)
-          }
-          .font(.caption.weight(.bold))
-          .foregroundStyle(TunedInDesign.primaryText)
-          .padding(.horizontal, 10)
-          .padding(.vertical, 8)
-          .background(TunedInDesign.raisedSurface, in: Capsule())
+        VStack(alignment: .leading, spacing: 12) {
+          archiveHeading
+          archiveFilterMenu
         }
-        .accessibilityLabel("Filter archive")
       }
 
       TunedInGlassSearchField(text: $model.query.searchText, prompt: "Search artists, venues, cities")
 
       if model.isLoading, model.concerts.isEmpty {
-        VStack(spacing: 10) {
-          ForEach(0 ..< 3, id: \.self) { _ in
+        LazyVGrid(columns: archiveColumns, spacing: 12) {
+          ForEach(0 ..< (dynamicTypeSize.isAccessibilitySize ? 3 : 4), id: \.self) { _ in
             TunedInSkeletonBlock(cornerRadius: 20)
-              .frame(height: 142)
+              .frame(height: dynamicTypeSize.isAccessibilitySize ? 230 : 216)
           }
         }
         .accessibilityLabel("Loading concerts")
@@ -112,7 +58,7 @@ struct ConcertArchiveView: View {
       } else if model.concerts.isEmpty {
         archiveEmptyState
       } else {
-        LazyVStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
           if let errorMessage = model.errorMessage {
             Label(errorMessage, systemImage: "exclamationmark.triangle")
               .font(.caption)
@@ -120,21 +66,23 @@ struct ConcertArchiveView: View {
               .frame(maxWidth: .infinity, alignment: .leading)
           }
 
-          ForEach(model.concerts) { preview in
-            NavigationLink {
-              ConcertDetailView(
-                concertID: preview.id,
-                viewerID: viewerID,
-                viewerUsername: viewerUsername,
-                concertRepository: concertRepository,
-                socialRepository: socialRepository
-              )
-            } label: {
-              ConcertArchiveRow(preview: preview, repository: concertRepository)
+          LazyVGrid(columns: archiveColumns, spacing: 12) {
+            ForEach(model.concerts) { preview in
+              NavigationLink {
+                ConcertDetailView(
+                  concertID: preview.id,
+                  viewerID: viewerID,
+                  viewerUsername: viewerUsername,
+                  concertRepository: concertRepository,
+                  socialRepository: socialRepository
+                )
+              } label: {
+                ConcertArchiveRow(preview: preview, repository: concertRepository)
+              }
+              .buttonStyle(.plain)
+              .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+              .accessibilityLabel("Open \(preview.primaryArtistName)")
             }
-            .buttonStyle(.plain)
-            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .accessibilityLabel("Open \(preview.primaryArtistName)")
           }
 
           if model.canLoadMore {
@@ -151,7 +99,7 @@ struct ConcertArchiveView: View {
               .foregroundStyle(TunedInDesign.primaryText)
               .frame(maxWidth: .infinity)
               .padding(.vertical, 14)
-              .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+              .background(TunedInDesign.raisedSurface, in: Capsule())
             }
             .buttonStyle(.plain)
             .disabled(model.isLoadingMore)
@@ -169,6 +117,84 @@ struct ConcertArchiveView: View {
         await model.reload()
       }
     }
+  }
+
+  private var archiveHeading: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text(isOwner ? "Kept" : "Concerts")
+        .font(.largeTitle.weight(.bold))
+        .foregroundStyle(TunedInDesign.primaryText)
+      Text(isOwner ? "Your nights, remembered." : "Nights shared with you.")
+        .font(.subheadline)
+        .foregroundStyle(TunedInDesign.mutedText)
+    }
+    .accessibilityElement(children: .combine)
+  }
+
+  private var archiveFilterMenu: some View {
+    Menu {
+      Menu("Visibility") {
+        Button("All visibility") {
+          setVisibilityFilter(nil)
+        }
+        if isOwner {
+          Button("Private") {
+            setVisibilityFilter(.private)
+          }
+        }
+        Button("Collaborators") {
+          setVisibilityFilter(.collaborators)
+        }
+        Button("With friends") {
+          setVisibilityFilter(.friends)
+        }
+      }
+
+      Menu("Year") {
+        Button("All years") {
+          setYearFilter(nil)
+        }
+        ForEach(yearOptions, id: \.self) { year in
+          Button(String(year)) {
+            setYearFilter(year)
+          }
+        }
+      }
+
+      Section("Sort") {
+        ForEach(ConcertHistorySort.allCases, id: \.self) { sort in
+          Button {
+            setSort(sort)
+          } label: {
+            if model.query.sort == sort {
+              Label(sort.displayTitle, systemImage: "checkmark")
+            } else {
+              Text(sort.displayTitle)
+            }
+          }
+        }
+      }
+    } label: {
+      HStack(spacing: 7) {
+        Image(systemName: "slider.horizontal.3")
+        Text(archiveMenuLabel)
+          .lineLimit(1)
+      }
+      .font(.subheadline.weight(.semibold))
+      .foregroundStyle(TunedInDesign.primaryText)
+      .padding(.horizontal, 13)
+      .frame(minHeight: 40)
+      .background(TunedInDesign.raisedSurface, in: Capsule())
+    }
+    .accessibilityLabel("Filter archive, \(archiveMenuLabel)")
+  }
+
+  private var archiveColumns: [GridItem] {
+    let count = dynamicTypeSize.isAccessibilitySize ? 1 : 2
+    return Array(
+      repeating: GridItem(.flexible(minimum: 0), spacing: 12, alignment: .top),
+      count: count
+    )
   }
 
   private var archiveMenuLabel: String {
@@ -190,21 +216,20 @@ struct ConcertArchiveView: View {
   }
 
   private var archiveEmptyState: some View {
-    TunedInFormCard {
-      Image(systemName: "music.quarternote.3")
-        .font(.title2)
-        .foregroundStyle(TunedInDesign.accent)
-      Text(model.query.searchText.isEmpty ? "No concerts yet." : "No concerts match that search.")
-        .font(.headline)
-        .foregroundStyle(TunedInDesign.primaryText)
+    ContentUnavailableView {
+      Label(
+        model.query.searchText.isEmpty ? "No concerts yet" : "No matches",
+        systemImage: model.query.searchText.isEmpty ? "music.quarternote.3" : "magnifyingglass"
+      )
+    } description: {
       Text(
         model.query.searchText.isEmpty
-          ? "Use the plus button to log one."
+          ? "Use the plus button to remember your first night."
           : "Try an artist, venue, or city."
       )
-      .font(.subheadline)
-      .foregroundStyle(TunedInDesign.mutedText)
     }
+    .frame(maxWidth: .infinity)
+    .padding(.vertical, 28)
   }
 
   private func setVisibilityFilter(_ visibility: ConcertVisibility?) {
@@ -309,64 +334,77 @@ private struct ConcertArchiveRow: View {
   let preview: ConcertPreview
   let repository: any ConcertRepository
 
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
   var body: some View {
     ZStack(alignment: .bottomLeading) {
       ConcertPhotoView(concert: preview.concert, artistName: preview.primaryArtistName, repository: repository)
         .frame(maxWidth: .infinity)
-        .frame(height: 136)
+        .frame(height: cardHeight)
         .overlay {
           LinearGradient(
-            colors: [.clear, .black.opacity(0.14), .black.opacity(0.78)],
+            stops: [
+              .init(color: .black.opacity(0.08), location: 0),
+              .init(color: .clear, location: 0.34),
+              .init(color: .black.opacity(0.82), location: 1)
+            ],
             startPoint: .top,
             endPoint: .bottom
           )
         }
 
-      VStack(alignment: .leading, spacing: 4) {
-        Text(ConcertDisplay.longDate(from: preview.concert.concertDate).uppercased())
-          .font(.caption.weight(.bold))
-          .foregroundStyle(.white.opacity(0.8))
+      VStack(alignment: .leading, spacing: 5) {
         Text(preview.primaryArtistName)
-          .font(.system(size: 24, weight: .bold, design: .serif))
+          .font(.title3.weight(.bold))
           .foregroundStyle(.white)
+          .lineLimit(2)
+        Text(ConcertDisplay.longDate(from: preview.concert.concertDate))
+          .font(.caption.weight(.semibold))
+          .foregroundStyle(.white.opacity(0.82))
           .lineLimit(1)
         Text([preview.concert.venueName, preview.concert.city].compactMap(\.self).joined(separator: " · "))
-          .font(.subheadline.weight(.medium))
-          .foregroundStyle(.white.opacity(0.9))
-          .lineLimit(1)
+          .font(.caption)
+          .foregroundStyle(.white.opacity(0.78))
+          .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
       }
-      .padding(15)
+      .padding(14)
 
       visibilityMark
-        .padding(14)
+        .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
     }
-    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-    .overlay {
-      RoundedRectangle(cornerRadius: 20, style: .continuous)
-        .strokeBorder(.white.opacity(0.18))
-    }
+    .frame(height: cardHeight)
+    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+    .shadow(color: .black.opacity(0.12), radius: 12, y: 6)
     .frame(maxWidth: .infinity)
-    .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     .accessibilityElement(children: .combine)
   }
 
-  @ViewBuilder
+  private var cardHeight: CGFloat {
+    dynamicTypeSize.isAccessibilitySize ? 236 : 224
+  }
+
   private var visibilityMark: some View {
-    switch preview.concert.visibility {
-    case .private:
-      Image(systemName: "lock.fill")
-        .foregroundStyle(TunedInDesign.mutedText)
-        .accessibilityLabel("Private")
-    case .collaborators:
-      Image(systemName: "person.2.fill")
-        .foregroundStyle(TunedInDesign.mutedText)
-        .accessibilityLabel("Collaborators")
-    case .friends:
-      Image(systemName: "heart.fill")
-        .foregroundStyle(TunedInDesign.accent)
-        .accessibilityLabel("Friends")
+    Group {
+      switch preview.concert.visibility {
+      case .private:
+        Image(systemName: "lock.fill")
+          .foregroundStyle(.white)
+          .accessibilityLabel("Private")
+      case .collaborators:
+        Image(systemName: "person.2.fill")
+          .foregroundStyle(.white)
+          .accessibilityLabel("Collaborators")
+      case .friends:
+        Image(systemName: "heart.fill")
+          .foregroundStyle(.white)
+          .accessibilityLabel("Friends")
+      }
     }
+    .font(.caption.weight(.bold))
+    .frame(width: 30, height: 30)
+    .background(.black.opacity(0.34), in: Circle())
   }
 }
 
@@ -489,14 +527,13 @@ struct ConcertDetailView: View {
         ScrollView {
           VStack(alignment: .leading, spacing: 18) {
             TunedInSkeletonBlock(cornerRadius: 24)
-              .aspectRatio(CGSize(width: 3, height: 4), contentMode: .fit)
+              .aspectRatio(CGSize(width: 4, height: 5), contentMode: .fit)
             TunedInSkeletonBlock(cornerRadius: 7).frame(width: 150, height: 20)
             TunedInSkeletonBlock(cornerRadius: 18).frame(height: 140)
             TunedInSkeletonBlock(cornerRadius: 18).frame(height: 110)
           }
           .padding(.horizontal, 20)
-          .padding(.top, 14)
-          .padding(.bottom, TunedInDesign.scrollContentBottomInset)
+          .padding(.bottom, TunedInDesign.scrollContentBottomInset + 24)
         }
         .accessibilityLabel("Opening concert")
       }
@@ -569,30 +606,41 @@ struct ConcertDetailView: View {
     return ZStack(alignment: .bottomLeading) {
       ConcertPhotoView(concert: detail.concert, artistName: artistName, repository: concertRepository)
         .frame(maxWidth: .infinity)
-        .aspectRatio(CGSize(width: 3, height: 4), contentMode: .fit)
+        .aspectRatio(CGSize(width: 4, height: 5), contentMode: .fit)
         .overlay {
           LinearGradient(
-            colors: [.clear, .black.opacity(0.14), .black.opacity(0.76)],
+            stops: [
+              .init(color: .black.opacity(0.12), location: 0),
+              .init(color: .clear, location: 0.36),
+              .init(color: .black.opacity(0.86), location: 1)
+            ],
             startPoint: .top,
             endPoint: .bottom
           )
         }
 
-      VStack(alignment: .leading, spacing: 7) {
-        Text(ConcertDisplay.longDate(from: detail.concert.concertDate).uppercased())
-          .font(.caption.weight(.bold))
+      VStack(alignment: .leading, spacing: 8) {
+        Text(ConcertDisplay.longDate(from: detail.concert.concertDate))
+          .font(.subheadline.weight(.semibold))
           .foregroundStyle(.white.opacity(0.84))
         Text(artistName)
-          .font(.system(size: 39, weight: .bold, design: .serif))
+          .font(.system(.largeTitle, design: .serif).weight(.bold))
           .foregroundStyle(.white)
           .lineLimit(2)
-        Text(detail.concert.venueName)
-          .font(.title3.weight(.semibold))
-          .foregroundStyle(.white.opacity(0.94))
+
+        HStack(spacing: 7) {
+          Image(systemName: "mappin")
+            .font(.caption.weight(.bold))
+          Text([detail.concert.venueName, detail.concert.city].compactMap(\.self).joined(separator: " · "))
+            .lineLimit(2)
+        }
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(.white.opacity(0.9))
       }
-      .padding(20)
+      .padding(.horizontal, 20)
+      .padding(.bottom, 24)
     }
-    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    .accessibilityElement(children: .combine)
   }
 
   private func concertPreview(_ detail: ConcertDetail) -> some View {
@@ -601,10 +649,10 @@ struct ConcertDetailView: View {
     return ZStack(alignment: .bottomLeading) {
       ConcertPhotoView(concert: detail.concert, artistName: artistName, repository: concertRepository)
         .frame(maxWidth: .infinity)
-        .frame(height: 148)
+        .frame(height: 160)
         .overlay {
           LinearGradient(
-            colors: [.clear, .black.opacity(0.72)],
+            colors: [.clear, .black.opacity(0.82)],
             startPoint: .top,
             endPoint: .bottom
           )
@@ -615,7 +663,7 @@ struct ConcertDetailView: View {
           .font(.caption2.weight(.bold))
           .foregroundStyle(.white.opacity(0.84))
         Text(artistName)
-          .font(.title2.weight(.bold))
+          .font(.system(.title2, design: .serif).weight(.bold))
           .foregroundStyle(.white)
           .lineLimit(1)
         Text(detail.concert.venueName)
@@ -625,92 +673,136 @@ struct ConcertDetailView: View {
       }
       .padding(16)
     }
-    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    .frame(height: 160)
+    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+    .accessibilityElement(children: .combine)
   }
 
   private func concertContent(_ detail: ConcertDetail) -> some View {
     ScrollView {
-      VStack(alignment: .leading, spacing: 18) {
+      LazyVStack(alignment: .leading, spacing: 0) {
         concertHeader(detail, artworkStyle: .full)
-
-        if let tour = detail.concert.tour {
-          Label(tour, systemImage: "sparkles")
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(TunedInDesign.accent)
-            .padding(.horizontal, 4)
-        }
-
-        if detail.artists.count > 1 {
-          detailSection(title: "Lineup") {
-            ForEach(detail.artists) { artist in
-              HStack {
-                Text(artist.isPrimary ? "Headliner" : "With")
-                  .font(.caption.weight(.bold))
-                  .foregroundStyle(artist.isPrimary ? TunedInDesign.accent : TunedInDesign.mutedText)
-                  .frame(width: 66, alignment: .leading)
-                Text(artist.name)
-                  .font(.body.weight(.semibold))
-                  .foregroundStyle(TunedInDesign.primaryText)
-              }
-            }
-          }
-        }
-
-        detailSection(title: "Setlist") {
-          if detail.setlist.isEmpty {
-            Text("No setlist saved for this night yet.")
-              .font(.subheadline)
-              .foregroundStyle(TunedInDesign.mutedText)
-          } else {
-            ForEach(detail.setlist) { entry in
-              HStack(alignment: .top, spacing: 12) {
-                Text("\(entry.position)")
-                  .font(.caption.weight(.bold))
-                  .foregroundStyle(TunedInDesign.accent)
-                  .frame(width: 22, alignment: .leading)
-                Text(entry.title)
-                  .foregroundStyle(TunedInDesign.primaryText)
-              }
-            }
-          }
-        }
-
-        detailSection(title: "Venue") {
-          Label(detail.concert.venueName, systemImage: "mappin.and.ellipse")
-            .font(.headline)
-            .foregroundStyle(TunedInDesign.primaryText)
-          if let city = detail.concert.city {
-            Text(city)
-              .font(.subheadline)
-              .foregroundStyle(TunedInDesign.mutedText)
-          }
-        }
-
-        VStack(alignment: .leading, spacing: 12) {
-          Text("Moments")
-            .font(.title2.weight(.bold))
-            .foregroundStyle(TunedInDesign.primaryText)
-          ConcertCommentsView(
-            concertID: concertID,
-            viewerID: viewerID,
-            concertRepository: concertRepository,
-            pageHeader: AnyView(EmptyView()),
-            model: commentsModel
-          )
-        }
-        .padding(.top, 4)
+        concertEditorialSections(detail)
+          .padding(.horizontal, 20)
+          .padding(.top, 24)
+          .padding(.bottom, TunedInDesign.scrollContentBottomInset + 28)
       }
       .frame(maxWidth: .infinity, alignment: .leading)
-      .padding(.horizontal, 20)
-      .padding(.top, 10)
-      .padding(.bottom, 36)
     }
+    .ignoresSafeArea(edges: .top)
     .refreshable {
       await loadDetail(policy: .refresh)
       await commentsModel.loadComments(policy: .refresh)
       if errorMessage == nil, commentsModel.loadErrorMessage == nil {
         hasRemoteChanges = false
       }
+    }
+  }
+
+  private func concertEditorialSections(_ detail: ConcertDetail) -> some View {
+    VStack(alignment: .leading, spacing: 26) {
+      if let tour = detail.concert.tour {
+        HStack(spacing: 8) {
+          Image(systemName: "sparkles")
+          Text(tour)
+            .lineLimit(2)
+        }
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(TunedInDesign.accent)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(TunedInDesign.accentTint, in: Capsule())
+      }
+
+      if detail.artists.count > 1 {
+        detailSection(title: "Lineup") {
+          ForEach(detail.artists) { artist in
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+              Text(artist.isPrimary ? "HEADLINER" : "WITH")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(artist.isPrimary ? TunedInDesign.accent : TunedInDesign.mutedText)
+                .frame(width: 72, alignment: .leading)
+              Text(artist.name)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(TunedInDesign.primaryText)
+            }
+          }
+        }
+      }
+
+      detailSection(title: "Setlist") {
+        if detail.setlist.isEmpty {
+          Text("No setlist saved for this night yet.")
+            .font(.subheadline)
+            .foregroundStyle(TunedInDesign.mutedText)
+        } else {
+          ForEach(detail.setlist) { entry in
+            setlistRow(entry)
+          }
+        }
+      }
+
+      detailSection(title: "Venue") {
+        venueRow(detail)
+      }
+
+      commentsSection
+    }
+  }
+
+  private func setlistRow(_ entry: SetlistEntry) -> some View {
+    VStack(spacing: 11) {
+      HStack(alignment: .firstTextBaseline, spacing: 12) {
+        Text("\(entry.position)")
+          .font(.caption.weight(.bold).monospacedDigit())
+          .foregroundStyle(TunedInDesign.accent)
+          .frame(width: 24, alignment: .leading)
+        Text(entry.title)
+          .font(.body.weight(.medium))
+          .foregroundStyle(TunedInDesign.primaryText)
+        Spacer(minLength: 0)
+      }
+      Divider()
+        .overlay(TunedInDesign.cardBorder.opacity(0.45))
+    }
+  }
+
+  private func venueRow(_ detail: ConcertDetail) -> some View {
+    HStack(alignment: .center, spacing: 13) {
+      Image(systemName: "mappin.and.ellipse")
+        .font(.headline)
+        .foregroundStyle(TunedInDesign.accent)
+        .frame(width: 42, height: 42)
+        .background(TunedInDesign.accentTint, in: Circle())
+
+      VStack(alignment: .leading, spacing: 3) {
+        Text(detail.concert.venueName)
+          .font(.headline)
+          .foregroundStyle(TunedInDesign.primaryText)
+        if let city = detail.concert.city {
+          Text(city)
+            .font(.subheadline)
+            .foregroundStyle(TunedInDesign.mutedText)
+        }
+      }
+      Spacer(minLength: 0)
+    }
+  }
+
+  private var commentsSection: some View {
+    VStack(alignment: .leading, spacing: 14) {
+      Divider()
+        .overlay(TunedInDesign.cardBorder.opacity(0.55))
+      Text("Moments")
+        .font(.title2.weight(.bold))
+        .foregroundStyle(TunedInDesign.primaryText)
+      ConcertCommentsView(
+        concertID: concertID,
+        viewerID: viewerID,
+        concertRepository: concertRepository,
+        pageHeader: AnyView(EmptyView()),
+        model: commentsModel
+      )
     }
   }
 
@@ -752,9 +844,11 @@ struct ConcertDetailView: View {
     subtitle: String? = nil,
     @ViewBuilder content: () -> some View
   ) -> some View {
-    TunedInFormCard {
+    VStack(alignment: .leading, spacing: 14) {
+      Divider()
+        .overlay(TunedInDesign.cardBorder.opacity(0.55))
       Text(title)
-        .font(.headline)
+        .font(.title2.weight(.bold))
         .foregroundStyle(TunedInDesign.primaryText)
       if let subtitle {
         Text(subtitle)
@@ -892,8 +986,8 @@ struct ConcertDetailView: View {
 
 private extension Duration {
   var concertTelemetryMilliseconds: Int {
-    let components = self.components
-    return Int(components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000)
+    let components = components
+    return Int(components.seconds * 1000 + components.attoseconds / 1_000_000_000_000_000)
   }
 }
 

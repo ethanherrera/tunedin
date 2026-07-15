@@ -30,6 +30,7 @@ struct ConcertCreationDetailsView: View {
   @Binding var draft: ConcertDraft
   @Environment(\.dismiss) private var dismiss
   @State private var page: DetailPage = .lineup
+  @Namespace private var detailSelectionNamespace
 
   var body: some View {
     NavigationStack {
@@ -37,15 +38,12 @@ struct ConcertCreationDetailsView: View {
         TunedInDesign.pageBackground
           .ignoresSafeArea()
 
-        VStack(spacing: 0) {
-          pagePicker
-          TabView(selection: $page) {
-            lineupPage.tag(DetailPage.lineup)
-            contextPage.tag(DetailPage.context)
-            setlistPage.tag(DetailPage.setlist)
-          }
-          .tabViewStyle(.page(indexDisplayMode: .never))
+        TabView(selection: $page) {
+          lineupPage.tag(DetailPage.lineup)
+          contextPage.tag(DetailPage.context)
+          setlistPage.tag(DetailPage.setlist)
         }
+        .tabViewStyle(.page(indexDisplayMode: .never))
       }
       .toolbar {
         ToolbarItem(placement: .principal) {
@@ -56,12 +54,7 @@ struct ConcertCreationDetailsView: View {
       }
       .safeAreaInset(edge: .bottom, spacing: 0) {
         TunedInPersistentControlRegion {
-          TunedInSubscreenBackBar(title: "Concert details") {
-            dismiss()
-          }
-          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
-          .padding(.top, 8)
-          .padding(.bottom, TunedInDesign.bottomControlInset)
+          detailsBar
         }
       }
     }
@@ -69,25 +62,53 @@ struct ConcertCreationDetailsView: View {
     .tunedInKeyboardManaged()
   }
 
-  private var pagePicker: some View {
-    HStack(spacing: 8) {
-      ForEach(DetailPage.allCases) { item in
-        Button {
-          withAnimation(.snappy) { page = item }
-        } label: {
-          Label(item.title, systemImage: item.icon)
-            .font(.caption.weight(.bold))
-            .lineLimit(1)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 11)
-            .foregroundStyle(page == item ? TunedInDesign.actionForeground : TunedInDesign.primaryText)
-            .background(page == item ? TunedInDesign.accent : TunedInDesign.raisedSurface, in: Capsule())
-        }
-        .buttonStyle(.plain)
+  private var detailsBar: some View {
+    TunedInGlassTraversalLayout {
+      TunedInGlassIconButton(
+        systemImage: "chevron.backward",
+        accessibilityLabel: "Back to new concert"
+      ) {
+        dismiss()
       }
+    } center: {
+      TunedInGlassBottomBar {
+        HStack(spacing: 2) {
+          ForEach(DetailPage.allCases) { item in
+            Button {
+              withAnimation(.smooth(duration: 0.24, extraBounce: 0)) { page = item }
+            } label: {
+              VStack(spacing: 2) {
+                Image(systemName: item.icon)
+                  .font(.subheadline.weight(.bold))
+                Text(item.title)
+                  .font(.caption2.weight(.bold))
+                  .lineLimit(1)
+                  .minimumScaleFactor(0.7)
+              }
+              .foregroundStyle(page == item ? TunedInDesign.actionForeground : TunedInDesign.primaryText)
+              .frame(maxWidth: .infinity)
+              .frame(height: 48)
+              .background {
+                if page == item {
+                  Capsule()
+                    .fill(TunedInDesign.accent)
+                    .matchedGeometryEffect(id: "detail-page", in: detailSelectionNamespace)
+                }
+              }
+              .contentShape(.interaction, Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Show \(item.title.lowercased())")
+          }
+        }
+      }
+      .frame(maxWidth: 252)
+    } trailing: {
+      EmptyView()
     }
-    .padding(.horizontal, 20)
-    .padding(.vertical, 12)
+    .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+    .padding(.top, 8)
+    .padding(.bottom, TunedInDesign.bottomControlInset)
   }
 
   private var lineupPage: some View {
@@ -121,7 +142,8 @@ struct ConcertCreationDetailsView: View {
               }
             }
           }
-          .listRowBackground(TunedInDesign.cardBackground)
+          .padding(.vertical, 6)
+          .listRowBackground(Color.clear)
         }
         .onMove { source, destination in
           draft.moveArtists(from: source, to: destination)
@@ -135,9 +157,11 @@ struct ConcertCreationDetailsView: View {
             .foregroundStyle(TunedInDesign.accent)
         }
         .disabled(draft.artists.count == 10)
-        .listRowBackground(TunedInDesign.raisedSurface)
+        .padding(.vertical, 8)
+        .listRowBackground(Color.clear)
       }
-      .listStyle(.insetGrouped)
+      .listStyle(.plain)
+      .contentMargins(.horizontal, 20, for: .scrollContent)
       .scrollContentBackground(.hidden)
       .background(TunedInDesign.pageBackground)
     }
@@ -204,7 +228,8 @@ struct ConcertCreationDetailsView: View {
               Label("Remove", systemImage: "trash")
             }
           }
-          .listRowBackground(TunedInDesign.cardBackground)
+          .padding(.vertical, 6)
+          .listRowBackground(Color.clear)
         }
         .onMove { source, destination in
           draft.moveSetlist(from: source, to: destination)
@@ -218,9 +243,11 @@ struct ConcertCreationDetailsView: View {
             .foregroundStyle(TunedInDesign.accent)
         }
         .disabled(draft.setlist.count == 50)
-        .listRowBackground(TunedInDesign.raisedSurface)
+        .padding(.vertical, 8)
+        .listRowBackground(Color.clear)
       }
-      .listStyle(.insetGrouped)
+      .listStyle(.plain)
+      .contentMargins(.horizontal, 20, for: .scrollContent)
       .scrollContentBackground(.hidden)
       .background(TunedInDesign.pageBackground)
       .environment(\.editMode, .constant(.active))
@@ -230,7 +257,7 @@ struct ConcertCreationDetailsView: View {
   private func pageHeading(title: String, subtitle: String) -> some View {
     VStack(alignment: .leading, spacing: 4) {
       Text(title)
-        .font(.system(size: 29, weight: .bold, design: .serif))
+        .font(.system(size: 30, weight: .bold, design: .rounded))
         .foregroundStyle(TunedInDesign.primaryText)
       Text(subtitle)
         .font(.subheadline)
