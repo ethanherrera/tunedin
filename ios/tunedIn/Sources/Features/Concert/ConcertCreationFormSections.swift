@@ -55,12 +55,14 @@ struct ConcertCreationDetailsView: View {
         }
       }
       .safeAreaInset(edge: .bottom, spacing: 0) {
-        TunedInSubscreenBackBar(title: "Concert details") {
-          dismiss()
+        TunedInPersistentControlRegion {
+          TunedInSubscreenBackBar(title: "Concert details") {
+            dismiss()
+          }
+          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+          .padding(.top, 8)
+          .padding(.bottom, TunedInDesign.bottomControlInset)
         }
-        .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
-        .padding(.top, 8)
-        .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
     .tint(TunedInDesign.accent)

@@ -65,9 +65,11 @@ struct FeedbackView: View {
       }
     }
     .safeAreaInset(edge: .bottom, spacing: 0) {
-      feedbackControls
-        .padding(.horizontal, 18)
-        .padding(.bottom, 10)
+      TunedInPersistentControlRegion {
+        feedbackControls
+          .padding(.horizontal, 18)
+          .padding(.bottom, 10)
+      }
     }
     .interactiveDismissDisabled(isSubmitting)
     .tunedInKeyboardManaged()

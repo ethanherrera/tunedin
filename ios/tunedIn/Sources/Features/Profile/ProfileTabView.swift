@@ -25,16 +25,34 @@ struct MainTabView: View {
   @StateObject private var concertFloatingControls = ConcertFloatingControls()
 
   var body: some View {
-    GeometryReader { _ in
-      selectedContent
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .environmentObject(concertFloatingControls)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-          bottomControls
-            .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
-            .padding(.top, 8)
-            .padding(.bottom, TunedInDesign.bottomControlInset)
-        }
+    GeometryReader { proxy in
+      ZStack {
+        selectedContent
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .environmentObject(concertFloatingControls)
+          .safeAreaInset(edge: .bottom, spacing: 0) {
+            TunedInPersistentControlRegion {
+              bottomControls
+                .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+                .padding(.top, 8)
+                .padding(.bottom, TunedInDesign.bottomControlInset)
+            }
+          }
+
+        Color.clear
+          .frame(width: 1, height: 1)
+          .popover(
+            isPresented: $isPresentingPeopleSearch,
+            attachmentAnchor: .point(.center),
+            arrowEdge: .bottom
+          ) {
+            peopleSearchPopover
+          }
+          .position(
+            x: proxy.size.width - (TunedInDesign.bottomControlHorizontalInset + 30),
+            y: proxy.size.height - (TunedInDesign.bottomControlInset + 128)
+          )
+      }
     }
     .tunedInEdgeSwipeBack(
       isEnabled: concertFloatingControls.navigationContext != .none
@@ -109,29 +127,6 @@ struct MainTabView: View {
             ) {
               isPresentingPeopleSearch = true
             }
-            .popover(
-              isPresented: $isPresentingPeopleSearch,
-              attachmentAnchor: .point(.top),
-              arrowEdge: .bottom
-            ) {
-              NavigationStack {
-                FriendSearchView(
-                  currentUserID: profile.id,
-                  currentUsername: profile.username ?? "",
-                  socialRepository: socialRepository,
-                  concertRepository: concertRepository,
-                  presentation: .popover,
-                  onSelectProfile: { searchedProfile in
-                    pendingSearchedProfile = searchedProfile
-                    isPresentingPeopleSearch = false
-                  }
-                )
-              }
-              .frame(width: 330, height: 260)
-              .presentationCompactAdaptation(.popover)
-              .presentationBackground(.clear)
-              .tunedInKeyboardManaged(showsDismissControl: false)
-            }
 
             TunedInGlassIconButton(
               systemImage: "plus",
@@ -147,6 +142,26 @@ struct MainTabView: View {
     }
     .frame(maxWidth: .infinity, alignment: .center)
     .animation(.smooth(duration: 0.28, extraBounce: 0), value: concertFloatingControls.navigationContext)
+  }
+
+  private var peopleSearchPopover: some View {
+    NavigationStack {
+      FriendSearchView(
+        currentUserID: profile.id,
+        currentUsername: profile.username ?? "",
+        socialRepository: socialRepository,
+        concertRepository: concertRepository,
+        presentation: .popover,
+        onSelectProfile: { searchedProfile in
+          pendingSearchedProfile = searchedProfile
+          isPresentingPeopleSearch = false
+        }
+      )
+    }
+    .tunedInKeyboardManaged()
+    .frame(width: 330, height: 260)
+    .presentationCompactAdaptation(.popover)
+    .presentationBackground(.clear)
   }
 
   @ViewBuilder
