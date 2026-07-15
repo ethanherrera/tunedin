@@ -25,74 +25,57 @@ struct MainTabView: View {
   @StateObject private var concertFloatingControls = ConcertFloatingControls()
 
   var body: some View {
-    GeometryReader { proxy in
-      ZStack {
-        selectedContent
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .environmentObject(concertFloatingControls)
-          .safeAreaInset(edge: .bottom, spacing: 0) {
-            TunedInPersistentControlRegion {
-              bottomControls
-                .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
-                .padding(.top, 8)
-                .padding(.bottom, TunedInDesign.bottomControlInset)
-            }
-          }
-
-        Color.clear
-          .frame(width: 1, height: 1)
-          .popover(
-            isPresented: $isPresentingPeopleSearch,
-            attachmentAnchor: .point(.center),
-            arrowEdge: .bottom
-          ) {
-            peopleSearchPopover
-          }
-          .position(
-            x: proxy.size.width - (TunedInDesign.bottomControlHorizontalInset + 30),
-            y: proxy.size.height - (TunedInDesign.bottomControlInset + 128)
-          )
-      }
-    }
-    .tunedInEdgeSwipeBack(
-      isEnabled: concertFloatingControls.navigationContext != .none
-        && !concertFloatingControls.isInteractionLocked
-    ) {
-      concertFloatingControls.back(or: { activateTab(.profile) })
-    }
-    .fullScreenCover(
-      isPresented: $isPresentingConcertCreation,
-      onDismiss: { archiveRefreshToken += 1 },
-      content: { ConcertCreationView(concertRepository: concertRepository) }
-    )
-    .fullScreenCover(item: $presentedSearchedProfile) { searchedProfile in
-      NavigationStack {
-        PersonProfileView(
-          profile: searchedProfile,
-          currentUserID: profile.id,
-          currentUsername: profile.username ?? "",
-          socialRepository: socialRepository,
-          concertRepository: concertRepository,
-          onDismiss: { presentedSearchedProfile = nil }
-        )
-      }
+    selectedContent
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
       .environmentObject(concertFloatingControls)
-      .tunedInKeyboardManaged()
-    }
-    .onChange(of: isPresentingPeopleSearch) { _, isPresented in
-      guard !isPresented, let pendingSearchedProfile else { return }
-      self.pendingSearchedProfile = nil
-      presentedSearchedProfile = pendingSearchedProfile
-    }
-    .onChange(of: concertFloatingControls.isShowingEditMenu) { _, isShowingEditMenu in
-      if !isShowingEditMenu {
-        isPresentingConcertEditMenu = false
+      .safeAreaInset(edge: .bottom, spacing: 0) {
+        TunedInPersistentControlRegion {
+          bottomControls
+            .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+            .padding(.top, 8)
+            .padding(.bottom, TunedInDesign.bottomControlInset)
+        }
       }
-    }
-    .tint(TunedInDesign.accent)
-    .task {
-      session.telemetry.captureAppBecameUsable(destination: "main_tabs")
-    }
+      .tunedInEdgeSwipeBack(
+        isEnabled: concertFloatingControls.navigationContext != .none
+          && !concertFloatingControls.isInteractionLocked
+      ) {
+        concertFloatingControls.back(or: { activateTab(.profile) })
+      }
+      .fullScreenCover(
+        isPresented: $isPresentingConcertCreation,
+        onDismiss: { archiveRefreshToken += 1 },
+        content: { ConcertCreationView(concertRepository: concertRepository) }
+      )
+      .sheet(
+        isPresented: $isPresentingPeopleSearch,
+        onDismiss: presentPendingSearchedProfile
+      ) {
+        peopleSearchDrawer
+      }
+      .fullScreenCover(item: $presentedSearchedProfile) { searchedProfile in
+        NavigationStack {
+          PersonProfileView(
+            profile: searchedProfile,
+            currentUserID: profile.id,
+            currentUsername: profile.username ?? "",
+            socialRepository: socialRepository,
+            concertRepository: concertRepository,
+            onDismiss: { presentedSearchedProfile = nil }
+          )
+        }
+        .environmentObject(concertFloatingControls)
+        .tunedInKeyboardManaged()
+      }
+      .onChange(of: concertFloatingControls.isShowingEditMenu) { _, isShowingEditMenu in
+        if !isShowingEditMenu {
+          isPresentingConcertEditMenu = false
+        }
+      }
+      .tint(TunedInDesign.accent)
+      .task {
+        session.telemetry.captureAppBecameUsable(destination: "main_tabs")
+      }
   }
 
   private var bottomControls: some View {
@@ -144,24 +127,30 @@ struct MainTabView: View {
     .animation(.smooth(duration: 0.28, extraBounce: 0), value: concertFloatingControls.navigationContext)
   }
 
-  private var peopleSearchPopover: some View {
+  private var peopleSearchDrawer: some View {
     NavigationStack {
       FriendSearchView(
         currentUserID: profile.id,
         currentUsername: profile.username ?? "",
         socialRepository: socialRepository,
         concertRepository: concertRepository,
-        presentation: .popover,
+        presentation: .drawer,
         onSelectProfile: { searchedProfile in
           pendingSearchedProfile = searchedProfile
           isPresentingPeopleSearch = false
         }
       )
     }
+    .environmentObject(concertFloatingControls)
     .tunedInKeyboardManaged()
-    .frame(width: 330, height: 260)
-    .presentationCompactAdaptation(.popover)
-    .presentationBackground(.clear)
+    .presentationDetents([.medium, .large])
+    .presentationDragIndicator(.visible)
+  }
+
+  private func presentPendingSearchedProfile() {
+    guard let pendingSearchedProfile else { return }
+    self.pendingSearchedProfile = nil
+    presentedSearchedProfile = pendingSearchedProfile
   }
 
   @ViewBuilder
