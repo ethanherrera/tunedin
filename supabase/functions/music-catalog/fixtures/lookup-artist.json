@@ -1,0 +1,13 @@
+{
+  "id": "a74b1b7f-71a5-4011-9441-d0b5e4122711",
+  "type": "Group",
+  "name": "Radiohead",
+  "sort-name": "Radiohead",
+  "country": "GB",
+  "area": {
+    "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+    "name": "United Kingdom",
+    "sort-name": "United Kingdom"
+  },
+  "life-span": { "begin": "1991", "ended": false }
+}

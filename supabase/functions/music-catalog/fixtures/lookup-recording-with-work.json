@@ -1,0 +1,34 @@
+{
+  "id": "66666666-6666-4666-8666-666666666666",
+  "title": "Creep",
+  "length": 238000,
+  "first-release-date": "1992-09-21",
+  "artist-credit": [
+    {
+      "name": "Radio Head",
+      "artist": {
+        "id": "a74b1b7f-71a5-4011-9441-d0b5e4122711",
+        "name": "Radiohead",
+        "sort-name": "Radiohead"
+      }
+    }
+  ],
+  "relations": [
+    {
+      "type": "parts",
+      "direction": "forward",
+      "work": {
+        "id": "55555555-5555-4555-8555-555555555555",
+        "title": "Unrelated fixture work"
+      }
+    },
+    {
+      "type": "performance",
+      "direction": "forward",
+      "work": {
+        "id": "99999999-9999-4999-8999-999999999999",
+        "title": "Creep"
+      }
+    }
+  ]
+}

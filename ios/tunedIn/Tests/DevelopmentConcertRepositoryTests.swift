@@ -46,14 +46,15 @@
         ConcertUpdateInput(
           concertID: original.concert.id,
           expectedVersion: afterTag.concert.version,
-          artists: [ConcertArtistInput(name: "Mitski", isPrimary: true)],
-          venueName: "The Greek Theatre",
+          artists: original.artists.map {
+            ConcertArtistInput(catalogArtistID: $0.catalogArtistID, isPrimary: $0.isPrimary)
+          },
+          catalogPlaceID: original.concert.catalogPlaceID,
           concertDate: "2025-09-18",
-          city: "Berkeley",
-          tour: "The Land Is Inhospitable Tour",
+          catalogTourID: original.concert.catalogTourID,
           startsAt: nil,
           venueTimeZone: nil,
-          setlist: ["First Love / Late Spring", "My Love Mine All Mine", "Heaven"],
+          setlist: Array(original.setlist.prefix(2).map(\.catalogSongID)) + [DevelopmentMusicCatalogFixture.heavenID],
           visibility: .friends
         )
       )
@@ -86,14 +87,15 @@
         ConcertUpdateInput(
           concertID: original.concert.id,
           expectedVersion: original.concert.version,
-          artists: [ConcertArtistInput(name: "Mitski", isPrimary: true)],
-          venueName: "The Greek Theatre",
+          artists: original.artists.map {
+            ConcertArtistInput(catalogArtistID: $0.catalogArtistID, isPrimary: $0.isPrimary)
+          },
+          catalogPlaceID: original.concert.catalogPlaceID,
           concertDate: "2025-09-18",
-          city: "Berkeley",
-          tour: "The Land Is Inhospitable Tour",
+          catalogTourID: original.concert.catalogTourID,
           startsAt: nil,
           venueTimeZone: nil,
-          setlist: ["First Love / Late Spring", "My Love Mine All Mine", "I Bet on Losing Dogs"],
+          setlist: original.setlist.map(\.catalogSongID),
           visibility: .private
         )
       )

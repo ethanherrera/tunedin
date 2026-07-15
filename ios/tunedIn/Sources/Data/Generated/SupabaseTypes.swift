@@ -2,6 +2,25 @@ import Foundation
 import Supabase
 
 public enum PublicSchema {
+  public enum CatalogEntityKind: String, Codable, Hashable, Sendable {
+    case artist = "artist"
+    case area = "area"
+    case place = "place"
+    case song = "song"
+    case tour = "tour"
+  }
+  public enum CatalogEntityOrigin: String, Codable, Hashable, Sendable {
+    case musicbrainz = "musicbrainz"
+    case tunedinCustom = "tunedin_custom"
+    case legacyImport = "legacy_import"
+    case legacyClient = "legacy_client"
+  }
+  public enum CatalogEntityStatus: String, Codable, Hashable, Sendable {
+    case active = "active"
+    case needsReview = "needs_review"
+    case merged = "merged"
+    case retired = "retired"
+  }
   public enum ConcertEventType: String, Codable, Hashable, Sendable {
     case concertCreated = "concert_created"
     case concertUpdated = "concert_updated"
@@ -35,6 +54,408 @@ public enum PublicSchema {
     case accepted = "accepted"
     case declined = "declined"
     case blocked = "blocked"
+  }
+  public struct CatalogAreasSelect: Codable, Hashable, Sendable {
+    public let areaType: String?
+    public let countryCode: String?
+    public let id: UUID
+    public let kind: CatalogEntityKind
+    public let parentAreaId: UUID?
+    public let subdivisionCode: String?
+    public enum CodingKeys: String, CodingKey {
+      case areaType = "area_type"
+      case countryCode = "country_code"
+      case id = "id"
+      case kind = "kind"
+      case parentAreaId = "parent_area_id"
+      case subdivisionCode = "subdivision_code"
+    }
+  }
+  public struct CatalogAreasInsert: Codable, Hashable, Sendable {
+    public let areaType: String?
+    public let countryCode: String?
+    public let id: UUID
+    public let kind: CatalogEntityKind?
+    public let parentAreaId: UUID?
+    public let subdivisionCode: String?
+    public enum CodingKeys: String, CodingKey {
+      case areaType = "area_type"
+      case countryCode = "country_code"
+      case id = "id"
+      case kind = "kind"
+      case parentAreaId = "parent_area_id"
+      case subdivisionCode = "subdivision_code"
+    }
+  }
+  public struct CatalogAreasUpdate: Codable, Hashable, Sendable {
+    public let areaType: String?
+    public let countryCode: String?
+    public let id: UUID?
+    public let kind: CatalogEntityKind?
+    public let parentAreaId: UUID?
+    public let subdivisionCode: String?
+    public enum CodingKeys: String, CodingKey {
+      case areaType = "area_type"
+      case countryCode = "country_code"
+      case id = "id"
+      case kind = "kind"
+      case parentAreaId = "parent_area_id"
+      case subdivisionCode = "subdivision_code"
+    }
+  }
+  public struct CatalogArtistsSelect: Codable, Hashable, Sendable {
+    public let areaId: UUID?
+    public let areaName: String?
+    public let artistType: String?
+    public let countryCode: String?
+    public let ended: Bool?
+    public let id: UUID
+    public let kind: CatalogEntityKind
+    public let lifeSpanBegin: String?
+    public let lifeSpanEnd: String?
+    public enum CodingKeys: String, CodingKey {
+      case areaId = "area_id"
+      case areaName = "area_name"
+      case artistType = "artist_type"
+      case countryCode = "country_code"
+      case ended = "ended"
+      case id = "id"
+      case kind = "kind"
+      case lifeSpanBegin = "life_span_begin"
+      case lifeSpanEnd = "life_span_end"
+    }
+  }
+  public struct CatalogArtistsInsert: Codable, Hashable, Sendable {
+    public let areaId: UUID?
+    public let areaName: String?
+    public let artistType: String?
+    public let countryCode: String?
+    public let ended: Bool?
+    public let id: UUID
+    public let kind: CatalogEntityKind?
+    public let lifeSpanBegin: String?
+    public let lifeSpanEnd: String?
+    public enum CodingKeys: String, CodingKey {
+      case areaId = "area_id"
+      case areaName = "area_name"
+      case artistType = "artist_type"
+      case countryCode = "country_code"
+      case ended = "ended"
+      case id = "id"
+      case kind = "kind"
+      case lifeSpanBegin = "life_span_begin"
+      case lifeSpanEnd = "life_span_end"
+    }
+  }
+  public struct CatalogArtistsUpdate: Codable, Hashable, Sendable {
+    public let areaId: UUID?
+    public let areaName: String?
+    public let artistType: String?
+    public let countryCode: String?
+    public let ended: Bool?
+    public let id: UUID?
+    public let kind: CatalogEntityKind?
+    public let lifeSpanBegin: String?
+    public let lifeSpanEnd: String?
+    public enum CodingKeys: String, CodingKey {
+      case areaId = "area_id"
+      case areaName = "area_name"
+      case artistType = "artist_type"
+      case countryCode = "country_code"
+      case ended = "ended"
+      case id = "id"
+      case kind = "kind"
+      case lifeSpanBegin = "life_span_begin"
+      case lifeSpanEnd = "life_span_end"
+    }
+  }
+  public struct CatalogEntitiesSelect: Codable, Hashable, Sendable {
+    public let createdAt: String
+    public let disambiguation: String?
+    public let displayName: String
+    public let id: UUID
+    public let kind: CatalogEntityKind
+    public let mergedIntoId: UUID?
+    public let musicbrainzMbid: UUID?
+    public let origin: CatalogEntityOrigin
+    public let sortName: String
+    public let status: CatalogEntityStatus
+    public let updatedAt: String
+    public enum CodingKeys: String, CodingKey {
+      case createdAt = "created_at"
+      case disambiguation = "disambiguation"
+      case displayName = "display_name"
+      case id = "id"
+      case kind = "kind"
+      case mergedIntoId = "merged_into_id"
+      case musicbrainzMbid = "musicbrainz_mbid"
+      case origin = "origin"
+      case sortName = "sort_name"
+      case status = "status"
+      case updatedAt = "updated_at"
+    }
+  }
+  public struct CatalogEntitiesInsert: Codable, Hashable, Sendable {
+    public let createdAt: String?
+    public let disambiguation: String?
+    public let displayName: String
+    public let id: UUID?
+    public let kind: CatalogEntityKind
+    public let mergedIntoId: UUID?
+    public let musicbrainzMbid: UUID?
+    public let origin: CatalogEntityOrigin
+    public let sortName: String
+    public let status: CatalogEntityStatus?
+    public let updatedAt: String?
+    public enum CodingKeys: String, CodingKey {
+      case createdAt = "created_at"
+      case disambiguation = "disambiguation"
+      case displayName = "display_name"
+      case id = "id"
+      case kind = "kind"
+      case mergedIntoId = "merged_into_id"
+      case musicbrainzMbid = "musicbrainz_mbid"
+      case origin = "origin"
+      case sortName = "sort_name"
+      case status = "status"
+      case updatedAt = "updated_at"
+    }
+  }
+  public struct CatalogEntitiesUpdate: Codable, Hashable, Sendable {
+    public let createdAt: String?
+    public let disambiguation: String?
+    public let displayName: String?
+    public let id: UUID?
+    public let kind: CatalogEntityKind?
+    public let mergedIntoId: UUID?
+    public let musicbrainzMbid: UUID?
+    public let origin: CatalogEntityOrigin?
+    public let sortName: String?
+    public let status: CatalogEntityStatus?
+    public let updatedAt: String?
+    public enum CodingKeys: String, CodingKey {
+      case createdAt = "created_at"
+      case disambiguation = "disambiguation"
+      case displayName = "display_name"
+      case id = "id"
+      case kind = "kind"
+      case mergedIntoId = "merged_into_id"
+      case musicbrainzMbid = "musicbrainz_mbid"
+      case origin = "origin"
+      case sortName = "sort_name"
+      case status = "status"
+      case updatedAt = "updated_at"
+    }
+  }
+  public struct CatalogPlacesSelect: Codable, Hashable, Sendable {
+    public let address: String?
+    public let areaId: UUID?
+    public let ended: Bool?
+    public let id: UUID
+    public let kind: CatalogEntityKind
+    public let latitude: Decimal?
+    public let longitude: Decimal?
+    public let placeType: String?
+    public enum CodingKeys: String, CodingKey {
+      case address = "address"
+      case areaId = "area_id"
+      case ended = "ended"
+      case id = "id"
+      case kind = "kind"
+      case latitude = "latitude"
+      case longitude = "longitude"
+      case placeType = "place_type"
+    }
+  }
+  public struct CatalogPlacesInsert: Codable, Hashable, Sendable {
+    public let address: String?
+    public let areaId: UUID?
+    public let ended: Bool?
+    public let id: UUID
+    public let kind: CatalogEntityKind?
+    public let latitude: Decimal?
+    public let longitude: Decimal?
+    public let placeType: String?
+    public enum CodingKeys: String, CodingKey {
+      case address = "address"
+      case areaId = "area_id"
+      case ended = "ended"
+      case id = "id"
+      case kind = "kind"
+      case latitude = "latitude"
+      case longitude = "longitude"
+      case placeType = "place_type"
+    }
+  }
+  public struct CatalogPlacesUpdate: Codable, Hashable, Sendable {
+    public let address: String?
+    public let areaId: UUID?
+    public let ended: Bool?
+    public let id: UUID?
+    public let kind: CatalogEntityKind?
+    public let latitude: Decimal?
+    public let longitude: Decimal?
+    public let placeType: String?
+    public enum CodingKeys: String, CodingKey {
+      case address = "address"
+      case areaId = "area_id"
+      case ended = "ended"
+      case id = "id"
+      case kind = "kind"
+      case latitude = "latitude"
+      case longitude = "longitude"
+      case placeType = "place_type"
+    }
+  }
+  public struct CatalogSongArtistsSelect: Codable, Hashable, Sendable {
+    public let artistId: UUID
+    public let creditName: String?
+    public let creditPosition: Int16
+    public let joinPhrase: String
+    public let songId: UUID
+    public enum CodingKeys: String, CodingKey {
+      case artistId = "artist_id"
+      case creditName = "credit_name"
+      case creditPosition = "credit_position"
+      case joinPhrase = "join_phrase"
+      case songId = "song_id"
+    }
+  }
+  public struct CatalogSongArtistsInsert: Codable, Hashable, Sendable {
+    public let artistId: UUID
+    public let creditName: String?
+    public let creditPosition: Int16
+    public let joinPhrase: String?
+    public let songId: UUID
+    public enum CodingKeys: String, CodingKey {
+      case artistId = "artist_id"
+      case creditName = "credit_name"
+      case creditPosition = "credit_position"
+      case joinPhrase = "join_phrase"
+      case songId = "song_id"
+    }
+  }
+  public struct CatalogSongArtistsUpdate: Codable, Hashable, Sendable {
+    public let artistId: UUID?
+    public let creditName: String?
+    public let creditPosition: Int16?
+    public let joinPhrase: String?
+    public let songId: UUID?
+    public enum CodingKeys: String, CodingKey {
+      case artistId = "artist_id"
+      case creditName = "credit_name"
+      case creditPosition = "credit_position"
+      case joinPhrase = "join_phrase"
+      case songId = "song_id"
+    }
+  }
+  public struct CatalogSongsSelect: Codable, Hashable, Sendable {
+    public let artistCredit: String?
+    public let durationMs: Int32?
+    public let firstReleaseDate: String?
+    public let id: UUID
+    public let kind: CatalogEntityKind
+    public let workMbid: UUID?
+    public enum CodingKeys: String, CodingKey {
+      case artistCredit = "artist_credit"
+      case durationMs = "duration_ms"
+      case firstReleaseDate = "first_release_date"
+      case id = "id"
+      case kind = "kind"
+      case workMbid = "work_mbid"
+    }
+  }
+  public struct CatalogSongsInsert: Codable, Hashable, Sendable {
+    public let artistCredit: String?
+    public let durationMs: Int32?
+    public let firstReleaseDate: String?
+    public let id: UUID
+    public let kind: CatalogEntityKind?
+    public let workMbid: UUID?
+    public enum CodingKeys: String, CodingKey {
+      case artistCredit = "artist_credit"
+      case durationMs = "duration_ms"
+      case firstReleaseDate = "first_release_date"
+      case id = "id"
+      case kind = "kind"
+      case workMbid = "work_mbid"
+    }
+  }
+  public struct CatalogSongsUpdate: Codable, Hashable, Sendable {
+    public let artistCredit: String?
+    public let durationMs: Int32?
+    public let firstReleaseDate: String?
+    public let id: UUID?
+    public let kind: CatalogEntityKind?
+    public let workMbid: UUID?
+    public enum CodingKeys: String, CodingKey {
+      case artistCredit = "artist_credit"
+      case durationMs = "duration_ms"
+      case firstReleaseDate = "first_release_date"
+      case id = "id"
+      case kind = "kind"
+      case workMbid = "work_mbid"
+    }
+  }
+  public struct CatalogTourArtistsSelect: Codable, Hashable, Sendable {
+    public let artistId: UUID
+    public let creditPosition: Int16
+    public let tourId: UUID
+    public enum CodingKeys: String, CodingKey {
+      case artistId = "artist_id"
+      case creditPosition = "credit_position"
+      case tourId = "tour_id"
+    }
+  }
+  public struct CatalogTourArtistsInsert: Codable, Hashable, Sendable {
+    public let artistId: UUID
+    public let creditPosition: Int16
+    public let tourId: UUID
+    public enum CodingKeys: String, CodingKey {
+      case artistId = "artist_id"
+      case creditPosition = "credit_position"
+      case tourId = "tour_id"
+    }
+  }
+  public struct CatalogTourArtistsUpdate: Codable, Hashable, Sendable {
+    public let artistId: UUID?
+    public let creditPosition: Int16?
+    public let tourId: UUID?
+    public enum CodingKeys: String, CodingKey {
+      case artistId = "artist_id"
+      case creditPosition = "credit_position"
+      case tourId = "tour_id"
+    }
+  }
+  public struct CatalogToursSelect: Codable, Hashable, Sendable {
+    public let id: UUID
+    public let kind: CatalogEntityKind
+    public let seriesType: String
+    public enum CodingKeys: String, CodingKey {
+      case id = "id"
+      case kind = "kind"
+      case seriesType = "series_type"
+    }
+  }
+  public struct CatalogToursInsert: Codable, Hashable, Sendable {
+    public let id: UUID
+    public let kind: CatalogEntityKind?
+    public let seriesType: String?
+    public enum CodingKeys: String, CodingKey {
+      case id = "id"
+      case kind = "kind"
+      case seriesType = "series_type"
+    }
+  }
+  public struct CatalogToursUpdate: Codable, Hashable, Sendable {
+    public let id: UUID?
+    public let kind: CatalogEntityKind?
+    public let seriesType: String?
+    public enum CodingKeys: String, CodingKey {
+      case id = "id"
+      case kind = "kind"
+      case seriesType = "series_type"
+    }
   }
   public struct CommentsSelect: Codable, Hashable, Sendable {
     public let authorId: UUID
@@ -92,6 +513,7 @@ public enum PublicSchema {
   }
   public struct ConcertArtistsSelect: Codable, Hashable, Sendable {
     public let artistName: String
+    public let catalogArtistId: UUID
     public let concertId: UUID
     public let createdAt: String
     public let id: UUID
@@ -100,6 +522,7 @@ public enum PublicSchema {
     public let updatedAt: String
     public enum CodingKeys: String, CodingKey {
       case artistName = "artist_name"
+      case catalogArtistId = "catalog_artist_id"
       case concertId = "concert_id"
       case createdAt = "created_at"
       case id = "id"
@@ -110,6 +533,7 @@ public enum PublicSchema {
   }
   public struct ConcertArtistsInsert: Codable, Hashable, Sendable {
     public let artistName: String
+    public let catalogArtistId: UUID
     public let concertId: UUID
     public let createdAt: String?
     public let id: UUID?
@@ -118,6 +542,7 @@ public enum PublicSchema {
     public let updatedAt: String?
     public enum CodingKeys: String, CodingKey {
       case artistName = "artist_name"
+      case catalogArtistId = "catalog_artist_id"
       case concertId = "concert_id"
       case createdAt = "created_at"
       case id = "id"
@@ -128,6 +553,7 @@ public enum PublicSchema {
   }
   public struct ConcertArtistsUpdate: Codable, Hashable, Sendable {
     public let artistName: String?
+    public let catalogArtistId: UUID?
     public let concertId: UUID?
     public let createdAt: String?
     public let id: UUID?
@@ -136,6 +562,7 @@ public enum PublicSchema {
     public let updatedAt: String?
     public enum CodingKeys: String, CodingKey {
       case artistName = "artist_name"
+      case catalogArtistId = "catalog_artist_id"
       case concertId = "concert_id"
       case createdAt = "created_at"
       case id = "id"
@@ -325,6 +752,9 @@ public enum PublicSchema {
     }
   }
   public struct ConcertsSelect: Codable, Hashable, Sendable {
+    public let catalogAreaId: UUID?
+    public let catalogPlaceId: UUID
+    public let catalogTourId: UUID?
     public let city: String?
     public let concertDate: String
     public let createdAt: String
@@ -343,6 +773,9 @@ public enum PublicSchema {
     public let version: Int64
     public let visibility: ConcertVisibility
     public enum CodingKeys: String, CodingKey {
+      case catalogAreaId = "catalog_area_id"
+      case catalogPlaceId = "catalog_place_id"
+      case catalogTourId = "catalog_tour_id"
       case city = "city"
       case concertDate = "concert_date"
       case createdAt = "created_at"
@@ -363,6 +796,9 @@ public enum PublicSchema {
     }
   }
   public struct ConcertsInsert: Codable, Hashable, Sendable {
+    public let catalogAreaId: UUID?
+    public let catalogPlaceId: UUID
+    public let catalogTourId: UUID?
     public let city: String?
     public let concertDate: String
     public let createdAt: String?
@@ -381,6 +817,9 @@ public enum PublicSchema {
     public let version: Int64?
     public let visibility: ConcertVisibility?
     public enum CodingKeys: String, CodingKey {
+      case catalogAreaId = "catalog_area_id"
+      case catalogPlaceId = "catalog_place_id"
+      case catalogTourId = "catalog_tour_id"
       case city = "city"
       case concertDate = "concert_date"
       case createdAt = "created_at"
@@ -401,6 +840,9 @@ public enum PublicSchema {
     }
   }
   public struct ConcertsUpdate: Codable, Hashable, Sendable {
+    public let catalogAreaId: UUID?
+    public let catalogPlaceId: UUID?
+    public let catalogTourId: UUID?
     public let city: String?
     public let concertDate: String?
     public let createdAt: String?
@@ -419,6 +861,9 @@ public enum PublicSchema {
     public let version: Int64?
     public let visibility: ConcertVisibility?
     public enum CodingKeys: String, CodingKey {
+      case catalogAreaId = "catalog_area_id"
+      case catalogPlaceId = "catalog_place_id"
+      case catalogTourId = "catalog_tour_id"
       case city = "city"
       case concertDate = "concert_date"
       case createdAt = "created_at"
@@ -727,6 +1172,7 @@ public enum PublicSchema {
     }
   }
   public struct SetlistItemsSelect: Codable, Hashable, Sendable {
+    public let catalogSongId: UUID
     public let concertId: UUID
     public let createdAt: String
     public let id: UUID
@@ -734,6 +1180,7 @@ public enum PublicSchema {
     public let songTitle: String
     public let updatedAt: String
     public enum CodingKeys: String, CodingKey {
+      case catalogSongId = "catalog_song_id"
       case concertId = "concert_id"
       case createdAt = "created_at"
       case id = "id"
@@ -743,6 +1190,7 @@ public enum PublicSchema {
     }
   }
   public struct SetlistItemsInsert: Codable, Hashable, Sendable {
+    public let catalogSongId: UUID
     public let concertId: UUID
     public let createdAt: String?
     public let id: UUID?
@@ -750,6 +1198,7 @@ public enum PublicSchema {
     public let songTitle: String
     public let updatedAt: String?
     public enum CodingKeys: String, CodingKey {
+      case catalogSongId = "catalog_song_id"
       case concertId = "concert_id"
       case createdAt = "created_at"
       case id = "id"
@@ -759,6 +1208,7 @@ public enum PublicSchema {
     }
   }
   public struct SetlistItemsUpdate: Codable, Hashable, Sendable {
+    public let catalogSongId: UUID?
     public let concertId: UUID?
     public let createdAt: String?
     public let id: UUID?
@@ -766,6 +1216,7 @@ public enum PublicSchema {
     public let songTitle: String?
     public let updatedAt: String?
     public enum CodingKeys: String, CodingKey {
+      case catalogSongId = "catalog_song_id"
       case concertId = "concert_id"
       case createdAt = "created_at"
       case id = "id"

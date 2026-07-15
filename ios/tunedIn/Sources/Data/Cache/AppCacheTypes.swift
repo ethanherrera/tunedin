@@ -50,7 +50,7 @@ struct AppCacheBudget: Equatable, Sendable {
 
   static let structured = Self(
     maximumEntryCount: 250,
-    maximumPayloadBytes: 8 * 1_024 * 1_024
+    maximumPayloadBytes: 8 * 1024 * 1024
   )
 }
 
@@ -126,13 +126,18 @@ enum AppCacheResources {
       query.visibility?.rawValue ?? "all-visibility",
       query.sort.rawValue
     ]
-    return AppCacheResource(name: concertArchiveName, variant: components.joined(separator: "|"))
+    return AppCacheResource(
+      name: concertArchiveName,
+      variant: components.joined(separator: "|"),
+      payloadVersion: 2
+    )
   }
 
   static func concertDetail(concertID: UUID, viewerID: UUID) -> AppCacheResource {
     AppCacheResource(
       name: concertDetailName,
-      variant: "\(concertID.uuidString.lowercased())|\(viewerID.uuidString.lowercased())"
+      variant: "\(concertID.uuidString.lowercased())|\(viewerID.uuidString.lowercased())",
+      payloadVersion: 2
     )
   }
 

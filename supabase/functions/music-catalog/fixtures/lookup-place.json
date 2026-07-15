@@ -1,0 +1,13 @@
+{
+  "id": "44444444-4444-4444-8444-444444444444",
+  "type": "Indoor arena",
+  "name": "The Fillmore",
+  "address": "1805 Geary Blvd",
+  "coordinates": { "latitude": "37.7841", "longitude": "-122.4332" },
+  "area": {
+    "id": "33333333-3333-4333-8333-333333333333",
+    "name": "San Francisco",
+    "sort-name": "San Francisco"
+  },
+  "life-span": { "ended": false }
+}

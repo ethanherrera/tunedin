@@ -1,11 +1,13 @@
 import PhotosUI
 import SwiftUI
 
+// swiftlint:disable:next type_body_length
 struct ConcertCreationView: View {
   let concertRepository: any ConcertRepository
 
   @Environment(\.dismiss) private var dismiss
   @Environment(\.telemetry) private var telemetry
+  @Environment(\.musicCatalogRepository) private var musicCatalogRepository
 
   @State var draft = ConcertDraft()
   @State private var isSaving = false
@@ -17,6 +19,7 @@ struct ConcertCreationView: View {
   @State private var selectedPhoto: PhotosPickerItem?
   @State private var concertPhotoData: Data?
   @State private var isProcessingPhoto = false
+  @State private var catalogPickerTarget: ConcertCatalogPickerTarget?
 
   var body: some View {
     Group {
@@ -68,6 +71,9 @@ struct ConcertCreationView: View {
           }
           .sheet(isPresented: $isShowingDetails) {
             ConcertCreationDetailsView(draft: $draft)
+          }
+          .fullScreenCover(item: $catalogPickerTarget) { target in
+            catalogPicker(for: target)
           }
           .onChange(of: selectedPhoto) { _, item in
             guard let item else { return }
@@ -147,7 +153,7 @@ struct ConcertCreationView: View {
               if let concertPhotoData, let image = UIImage(data: concertPhotoData) {
                 Image(uiImage: image).resizable().scaledToFill()
               } else {
-                ConcertArtworkImage(artistName: draft.artists[0].name)
+                ConcertArtworkImage(artistName: draft.primaryArtist?.displayName ?? "Concert")
               }
             }
             .frame(maxWidth: .infinity)
@@ -177,19 +183,16 @@ struct ConcertCreationView: View {
           Text("ARTIST")
             .font(.caption2.weight(.black))
             .foregroundStyle(TunedInDesign.accent)
-          TextField(
-            "",
-            text: artistNameBinding(for: draft.artists[0].id),
-            prompt: Text("Who did you see?").foregroundStyle(TunedInDesign.mutedText)
-          )
-          .font(.system(size: 28, weight: .bold, design: .serif))
-          .foregroundStyle(TunedInDesign.primaryText)
-          .tint(TunedInDesign.accent)
-          .textInputAutocapitalization(.words)
-          .submitLabel(.next)
+          catalogSelectionButton(
+            value: draft.artists[0].selection?.displayName,
+            placeholder: "Who did you see?",
+            font: .system(size: 28, weight: .bold, design: .serif)
+          ) {
+            catalogPickerTarget = .artist(draft.artists[0].id)
+          }
           .accessibilityLabel("Primary artist")
-          if draft.hasAttemptedSave, !ConcertInput.isValidRequiredText(draft.artists[0].name, maximumLength: 160) {
-            captureValidationLabel("Enter the artist you saw.")
+          if draft.hasAttemptedSave, draft.artists[0].selection == nil {
+            captureValidationLabel("Choose the artist you saw.")
           }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -205,20 +208,21 @@ struct ConcertCreationView: View {
             .foregroundStyle(TunedInDesign.accent)
             .frame(width: 24, height: 28)
           VStack(alignment: .leading, spacing: 5) {
-            TextField(
-              "",
-              text: $draft.venueName,
-              prompt: Text("Venue").foregroundStyle(TunedInDesign.mutedText)
-            )
-            .font(.title3.weight(.semibold))
-            .foregroundStyle(TunedInDesign.primaryText)
-            .tint(TunedInDesign.accent)
-            .textContentType(.location)
-            .textInputAutocapitalization(.words)
-            .submitLabel(.done)
+            catalogSelectionButton(
+              value: draft.place?.displayName,
+              placeholder: "Venue",
+              font: .title3.weight(.semibold)
+            ) {
+              catalogPickerTarget = .place
+            }
             .accessibilityLabel("Venue")
-            if draft.hasAttemptedSave, !ConcertInput.isValidRequiredText(draft.venueName, maximumLength: 160) {
-              captureValidationLabel("Enter the venue.")
+            if let areaName = draft.place?.areaName {
+              Text(areaName)
+                .font(.caption)
+                .foregroundStyle(TunedInDesign.mutedText)
+            }
+            if draft.hasAttemptedSave, draft.place == nil {
+              captureValidationLabel("Choose the venue.")
             }
           }
         }
@@ -290,7 +294,7 @@ struct ConcertCreationView: View {
 
   private var detailsSummary: String {
     let additions = (draft.artists.count - 1) + draft.setlist.count
-    if additions == 0, draft.city.isEmpty, draft.tour.isEmpty, !draft.hasStartTime {
+    if additions == 0, draft.tour == nil, !draft.hasStartTime {
       return "Lineup, setlist, time, and more"
     }
     return "\(additions) added detail\(additions == 1 ? "" : "s")"
@@ -300,16 +304,6 @@ struct ConcertCreationView: View {
     Label(message, systemImage: "exclamationmark.circle.fill")
       .font(.caption)
       .foregroundStyle(.red)
-  }
-
-  private func artistNameBinding(for id: UUID) -> Binding<String> {
-    Binding(
-      get: { draft.artists.first(where: { $0.id == id })?.name ?? "" },
-      set: { value in
-        guard let index = draft.artists.firstIndex(where: { $0.id == id }) else { return }
-        draft.artists[index].name = value
-      }
-    )
   }
 
   private func requestDismissal() {
@@ -333,7 +327,7 @@ struct ConcertCreationView: View {
         if let concertPhotoData {
           concert = try await concertRepository.setConcertPhoto(concertPhotoData, concertID: concert.id)
         }
-        savedPrimaryArtistName = input.artists.first(where: \.isPrimary)?.name ?? input.artists[0].name
+        savedPrimaryArtistName = draft.primaryArtist?.displayName ?? "Concert"
         savedConcert = concert
         telemetry?.capture(
           .concertCreated,
@@ -353,6 +347,61 @@ struct ConcertCreationView: View {
         isSaving = false
         saveError = error.localizedDescription
       }
+    }
+  }
+
+  private func catalogSelectionButton(
+    value: String?,
+    placeholder: String,
+    font: Font,
+    action: @escaping () -> Void
+  ) -> some View {
+    Button(action: action) {
+      HStack {
+        Text(value ?? placeholder)
+          .font(font)
+          .foregroundStyle(value == nil ? TunedInDesign.mutedText : TunedInDesign.primaryText)
+          .multilineTextAlignment(.leading)
+        Spacer()
+        Image(systemName: "magnifyingglass")
+          .foregroundStyle(TunedInDesign.accent)
+      }
+      .contentShape(.interaction, Rectangle())
+    }
+    .buttonStyle(.plain)
+  }
+
+  @ViewBuilder
+  private func catalogPicker(for target: ConcertCatalogPickerTarget) -> some View {
+    switch target {
+    case let .artist(id):
+      CatalogPickerView(
+        repository: musicCatalogRepository,
+        configuration: CatalogPickerConfiguration(
+          kind: .artist,
+          title: "Choose headliner",
+          currentSelectionName: draft.artists.first(where: { $0.id == id })?.selection?.displayName
+        )
+      ) { entity in
+        guard case let .artist(artist) = entity else { return }
+        draft.setArtist(artist, for: id)
+        catalogPickerTarget = nil
+      }
+    case .place:
+      CatalogPickerView(
+        repository: musicCatalogRepository,
+        configuration: CatalogPickerConfiguration(
+          kind: .place,
+          title: "Choose venue",
+          currentSelectionName: draft.place?.displayName
+        )
+      ) { entity in
+        guard case let .place(place) = entity else { return }
+        draft.place = place
+        catalogPickerTarget = nil
+      }
+    case .song, .tour:
+      EmptyView()
     }
   }
 }

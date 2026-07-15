@@ -1,0 +1,40 @@
+{
+  "created": "2026-07-15T00:00:00Z",
+  "count": 2,
+  "offset": 0,
+  "recordings": [
+    {
+      "id": "66666666-6666-4666-8666-666666666666",
+      "title": "Creep",
+      "length": 238000,
+      "first-release-date": "1992-09-21",
+      "artist-credit": [
+        {
+          "name": "Radiohead",
+          "artist": {
+            "id": "a74b1b7f-71a5-4011-9441-d0b5e4122711",
+            "name": "Radiohead",
+            "sort-name": "Radiohead"
+          }
+        }
+      ]
+    },
+    {
+      "id": "77777777-7777-4777-8777-777777777777",
+      "title": "Creep",
+      "length": 215000,
+      "first-release-date": "2009",
+      "disambiguation": "fixture cover",
+      "artist-credit": [
+        {
+          "name": "Fixture Singer",
+          "artist": {
+            "id": "88888888-8888-4888-8888-888888888888",
+            "name": "Fixture Singer",
+            "sort-name": "Singer, Fixture"
+          }
+        }
+      ]
+    }
+  ]
+}

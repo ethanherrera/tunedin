@@ -3,6 +3,9 @@ import Foundation
 struct Concert: Codable, Equatable, Identifiable, Sendable {
   let id: UUID
   let ownerID: UUID
+  let catalogPlaceID: UUID
+  let catalogAreaID: UUID?
+  let catalogTourID: UUID?
   let venueName: String
   let city: String?
   let concertDate: String
@@ -20,6 +23,9 @@ struct Concert: Codable, Equatable, Identifiable, Sendable {
   init(
     id: UUID,
     ownerID: UUID,
+    catalogPlaceID: UUID,
+    catalogAreaID: UUID? = nil,
+    catalogTourID: UUID? = nil,
     venueName: String,
     city: String?,
     concertDate: String,
@@ -36,6 +42,9 @@ struct Concert: Codable, Equatable, Identifiable, Sendable {
   ) {
     self.id = id
     self.ownerID = ownerID
+    self.catalogPlaceID = catalogPlaceID
+    self.catalogAreaID = catalogAreaID
+    self.catalogTourID = catalogTourID
     self.venueName = venueName
     self.city = city
     self.concertDate = concertDate
@@ -123,6 +132,7 @@ struct ConcertPreview: Codable, Equatable, Identifiable, Sendable {
 
 struct ConcertArtist: Codable, Equatable, Identifiable, Sendable {
   let id: UUID
+  let catalogArtistID: UUID
   let name: String
   let lineupPosition: Int
   let isPrimary: Bool
@@ -130,6 +140,7 @@ struct ConcertArtist: Codable, Equatable, Identifiable, Sendable {
 
 struct SetlistEntry: Codable, Equatable, Identifiable, Sendable {
   let id: UUID
+  let catalogSongID: UUID
   let position: Int
   let title: String
 }
@@ -316,13 +327,12 @@ struct ConcertUpdateInput: Equatable, Sendable {
   let concertID: UUID
   let expectedVersion: Int64
   let artists: [ConcertArtistInput]
-  let venueName: String
+  let catalogPlaceID: UUID
   let concertDate: String
-  let city: String?
-  let tour: String?
+  let catalogTourID: UUID?
   let startsAt: Date?
   let venueTimeZone: String?
-  let setlist: [String]
+  let setlist: [UUID]
   let visibility: ConcertVisibility
 }
 
@@ -373,17 +383,16 @@ struct FriendActivity: Codable, Equatable, Identifiable, Sendable {
 
 struct ConcertCreationInput: Equatable, Sendable {
   let artists: [ConcertArtistInput]
-  let venueName: String
+  let catalogPlaceID: UUID
   let concertDate: String
-  let city: String?
-  let tour: String?
+  let catalogTourID: UUID?
   let startsAt: Date?
   let venueTimeZone: String?
-  let setlist: [String]
+  let setlist: [UUID]
 }
 
 struct ConcertArtistInput: Equatable, Sendable {
-  let name: String
+  let catalogArtistID: UUID
   let isPrimary: Bool
 }
 

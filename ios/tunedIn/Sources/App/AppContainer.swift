@@ -5,6 +5,7 @@ import Supabase
 final class AppContainer {
   let appSession: AppSession
   let concertRepository: any ConcertRepository
+  let musicCatalogRepository: any MusicCatalogRepository
   let socialRepository: any SocialRepository
   let profileRepository: any ProfileRepository
   let telemetry: AppTelemetryClient
@@ -13,10 +14,12 @@ final class AppContainer {
   private init(
     appSession: AppSession,
     concertRepository: any ConcertRepository,
+    musicCatalogRepository: any MusicCatalogRepository,
     socialRepository: any SocialRepository
   ) {
     self.appSession = appSession
     self.concertRepository = concertRepository
+    self.musicCatalogRepository = musicCatalogRepository
     self.socialRepository = socialRepository
     telemetry = appSession.telemetry
     profileRepository = appSession.profileRepositoryForViews
@@ -61,6 +64,7 @@ final class AppContainer {
       ),
       cache: dataCache
     )
+    musicCatalogRepository = SupabaseMusicCatalogRepository(client: client)
     socialRepository = CachingSocialRepository(
       remote: SupabaseSocialRepository(client: client),
       cache: dataCache
@@ -111,6 +115,7 @@ final class AppContainer {
       #if DEBUG
         if configuration.environment == .development {
           if let scenario = DevelopmentScenario.requested(), scenario != .live {
+            let catalogRepository = DevelopmentMusicCatalogRepository()
             return AppContainer(
               appSession: scenario.makeAppSession(
                 authEmailDeliveryMode: configuration.authEmailDeliveryMode,
@@ -119,7 +124,8 @@ final class AppContainer {
                   release: configuration.release
                 )
               ),
-              concertRepository: DevelopmentConcertRepository(),
+              concertRepository: DevelopmentConcertRepository(catalogRepository: catalogRepository),
+              musicCatalogRepository: catalogRepository,
               socialRepository: DevelopmentSocialRepository()
             )
           }
