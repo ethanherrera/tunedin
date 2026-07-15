@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "lib": ["deno.window", "deno.unstable"],
+    "strict": true
+  },
+  "fmt": {
+    "exclude": ["music-catalog/fixtures/malformed.json"],
+    "lineWidth": 100,
+    "semiColons": true,
+    "singleQuote": false
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "tasks": {
+    "check": "deno fmt --check . ../../scripts/musicbrainz-stub.ts ../../scripts/verify-local-music-catalog.ts ../../scripts/musicbrainz-smoke.ts ../../scripts/validate-musicbrainz-runtime.ts ../../scripts/verify-deployed-function.ts ../../scripts/tests/verify-deployed-function_test.ts && deno lint . ../../scripts/musicbrainz-stub.ts ../../scripts/verify-local-music-catalog.ts ../../scripts/musicbrainz-smoke.ts ../../scripts/validate-musicbrainz-runtime.ts ../../scripts/verify-deployed-function.ts ../../scripts/tests/verify-deployed-function_test.ts && deno check music-catalog/index.ts ../../scripts/musicbrainz-stub.ts ../../scripts/verify-local-music-catalog.ts ../../scripts/musicbrainz-smoke.ts ../../scripts/validate-musicbrainz-runtime.ts ../../scripts/verify-deployed-function.ts ../../scripts/tests/verify-deployed-function_test.ts",
+    "test": "deno task check && deno test --allow-read=music-catalog/fixtures music-catalog/tests ../../scripts/tests/verify-deployed-function_test.ts"
+  }
+}

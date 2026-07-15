@@ -2,6 +2,7 @@
 set -euo pipefail
 
 readonly development_project_ref="dmrlpyxhqhunfndihvai"
+readonly function_name="music-catalog"
 readonly keychain_service="tunedin/supabase/staging/database"
 
 usage() {
@@ -84,12 +85,39 @@ show_status() {
 
 deploy_functions() {
   local project_ref="$1"
-  if find supabase/functions -mindepth 1 -maxdepth 1 -type d -not -name '.*' -print -quit | grep -q .; then
-    printf 'Deploying tracked Staging Edge Functions.\n'
-    supabase functions deploy --project-ref "$project_ref" --use-api
-  else
-    printf 'No Edge Functions are currently tracked; skipping function deployment.\n'
+  local temporary_file
+  umask 077
+  temporary_file="$(mktemp)"
+  trap "rm -f '$temporary_file'" EXIT
+  {
+    printf 'TUNEDIN_ENVIRONMENT=Staging\n'
+    printf 'MUSICBRAINZ_USER_AGENT=%s\n' "$MUSICBRAINZ_USER_AGENT"
+  } >"$temporary_file"
+  supabase secrets set --project-ref "$project_ref" --env-file "$temporary_file" >/dev/null
+  rm -f "$temporary_file"
+  trap - EXIT
+
+  printf 'Deploying the allow-listed Staging %s Edge Function.\n' "$function_name"
+  supabase functions deploy "$function_name" --project-ref "$project_ref" --use-api
+  local deployed_version
+  if ! deployed_version="$(
+    supabase functions list --project-ref "$project_ref" --output json |
+      deno run scripts/verify-deployed-function.ts "$function_name"
+  )"; then
+    printf 'Staging music-catalog deployment verification failed.\n' >&2
+    exit 1
   fi
+  printf 'Verified Staging %s is active at deployed version %s.\n' \
+    "$function_name" "$deployed_version"
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    printf 'version=%s\n' "$deployed_version" >>"$GITHUB_OUTPUT"
+  fi
+}
+
+validate_musicbrainz_runtime() {
+  MUSICBRAINZ_USER_AGENT="${MUSICBRAINZ_USER_AGENT:-}" \
+    deno run --allow-env=MUSICBRAINZ_USER_AGENT \
+      scripts/validate-musicbrainz-runtime.ts Staging >/dev/null
 }
 
 command="${1:-}"
@@ -113,6 +141,8 @@ plan)
   ;;
 apply)
   require_protected_workflow
+  require_command deno
+  validate_musicbrainz_runtime
   link_project "$project_ref" "$password"
   printf 'Checking the Staging migration plan before applying it.\n'
   supabase db push --linked --password "$password" --dry-run

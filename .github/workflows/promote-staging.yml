@@ -29,8 +29,23 @@ jobs:
         with:
           version: 2.109.1
 
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Verify deterministic Edge Function fixtures
+        run: make functions-test
+
       - name: Verify disposable schema, authorization, and Storage
         run: make backend-verify
+
+      - name: Exercise the authenticated Local fixture gateway
+        run: make local-catalog-verify
+
+      - name: Stop Local catalog processes
+        if: always()
+        run: make local-catalog-stop
 
   verify-ios:
     if: github.ref == 'refs/heads/main' && inputs.confirm == 'promote-staging'
@@ -93,9 +108,15 @@ jobs:
       GOOGLE_REVERSED_CLIENT_ID: ${{ vars.GOOGLE_REVERSED_CLIENT_ID }}
       GOOGLE_SERVER_CLIENT_SECRET: ${{ secrets.GOOGLE_SERVER_CLIENT_SECRET }}
       TUNEDIN_PROMOTION_ENVIRONMENT: Staging
+      MUSICBRAINZ_USER_AGENT: ${{ vars.MUSICBRAINZ_USER_AGENT }}
     steps:
       - name: Check out the verified main commit
         uses: actions/checkout@v7
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
 
       - name: Install project and PostHog tooling
         run: |
@@ -128,6 +149,7 @@ jobs:
             GOOGLE_SERVER_CLIENT_ID
             GOOGLE_REVERSED_CLIENT_ID
             GOOGLE_SERVER_CLIENT_SECRET
+            MUSICBRAINZ_USER_AGENT
           )
           for name in "${required_values[@]}"; do
             if [[ -z "${!name:-}" ]]; then
@@ -139,6 +161,9 @@ jobs:
             printf 'POSTHOG_PROJECT_ID must be the approved Staging project 507318.\n' >&2
             exit 1
           fi
+
+      - name: Validate protected MusicBrainz runtime configuration
+        run: deno run --allow-env=MUSICBRAINZ_USER_AGENT scripts/validate-musicbrainz-runtime.ts Staging
 
       - name: Create ephemeral Staging app configuration
         shell: bash
@@ -286,6 +311,7 @@ jobs:
         run: ./scripts/staging-environment.sh plan
 
       - name: Apply Staging backend and Edge Functions
+        id: promote_backend
         run: ./scripts/staging-environment.sh apply
 
       - name: Upload the verified Staging IPA to TestFlight
@@ -308,7 +334,9 @@ jobs:
           {
             printf '## tunedIn Staging promotion\n\n'
             printf -- '- Commit: %c%s%c\n' 96 "$GITHUB_SHA" 96
-            printf -- '- Backend: %ctunedin-staging%c migrations and tracked Edge Functions\n' 96 96
+            printf -- '- Backend: %ctunedin-staging%c migrations\n' 96 96
+            printf -- '- Edge Function: %cmusic-catalog%c version %c%s%c (active deployment verified)\n' \
+              96 96 96 '${{ steps.promote_backend.outputs.version }}' 96
             printf -- '- Observability: PostHog Staging project %c507318%c and uploaded dSYMs\n' 96 96
             printf -- '- Authentication: native Apple and Google; email and phone sign-up disabled\n'
             printf -- '- Apple Sign In: primary App ID and signed distribution profile verified\n'

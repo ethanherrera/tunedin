@@ -1,0 +1,76 @@
+name: Deploy Development Functions
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type deploy-development-functions to deploy music-catalog to tunedin-dev.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tunedin-development-functions
+  cancel-in-progress: false
+
+jobs:
+  verify-and-deploy:
+    if: github.ref == 'refs/heads/main' && inputs.confirm == 'deploy-development-functions'
+    name: Verify and deploy Development music-catalog
+    runs-on: ubuntu-latest
+    environment:
+      name: Development
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      MUSICBRAINZ_USER_AGENT: ${{ vars.MUSICBRAINZ_USER_AGENT }}
+      TUNEDIN_DEPLOYMENT_ENVIRONMENT: Development
+    steps:
+      - name: Check out the reviewed main commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: 2.109.1
+
+      - name: Verify Edge Function formatting, types, and fixtures
+        run: make functions-test
+
+      - name: Verify disposable database authorization and generated types
+        run: make backend-verify
+
+      - name: Exercise the authenticated Local fixture gateway
+        run: make local-catalog-verify
+
+      - name: Stop Local catalog processes
+        if: always()
+        run: make local-catalog-stop
+
+      - name: Validate protected MusicBrainz runtime configuration
+        run: deno run --allow-env=MUSICBRAINZ_USER_AGENT scripts/validate-musicbrainz-runtime.ts Development
+
+      - name: Deploy only the allow-listed Development function
+        id: deploy
+        run: ./scripts/development-functions.sh apply
+
+      - name: Record deployed revision
+        shell: bash
+        run: |
+          {
+            echo '## Development Function deployment'
+            echo
+            printf -- '- Commit: %c%s%c\n' 96 "$GITHUB_SHA" 96
+            printf -- '- Function: %cmusic-catalog%c version %c%s%c (active deployment verified)\n' \
+              96 96 96 '${{ steps.deploy.outputs.version }}' 96
+            echo '- Runtime: protected Development MusicBrainz configuration reconciled'
+            echo '- Hosted database, seed data, Supabase configuration, and unrelated Functions were not changed.'
+          } >> "$GITHUB_STEP_SUMMARY"

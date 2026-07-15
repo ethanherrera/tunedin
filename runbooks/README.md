@@ -2,6 +2,7 @@
 
 - [Supabase Development](./supabase-development.md) — provision and operate the shared hosted Development project.
 - [Development Database Deployment](./development-database-deployment.md) — verify and explicitly deploy reviewed migrations to `tunedin-dev`.
+- [MusicBrainz Catalog Gateway](./musicbrainz-catalog.md) — verify the fixture gateway and deploy the protected `music-catalog` Function separately from migrations.
 - [Staging Promotion](./staging-promotion.md) — promote a reviewed `main` commit to the isolated Staging backend and `tunedIn Staging` TestFlight app.
 - [Local Supabase iOS](./local-supabase-ios.md) — run the full disposable local iOS journey without touching `tunedin-dev`.
 - [Simulator Cache Reset](./cache-reset.md) — clear only the app-owned cache for cold-cache diagnosis in a booted Simulator.

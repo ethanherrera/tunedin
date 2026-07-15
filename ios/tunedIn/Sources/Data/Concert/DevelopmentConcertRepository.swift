@@ -7,8 +7,10 @@
     private var details: [UUID: ConcertDetail]
     private var commentsByConcert: [UUID: [ConcertComment]] = [:]
     private var albumPhotosByConcert: [UUID: [ConcertAlbumPhoto]] = [:]
+    private let catalogRepository: DevelopmentMusicCatalogRepository
 
-    init() {
+    init(catalogRepository: DevelopmentMusicCatalogRepository = DevelopmentMusicCatalogRepository()) {
+      self.catalogRepository = catalogRepository
       details = Dictionary(uniqueKeysWithValues: Self.seededDetails.map { ($0.concert.id, $0) })
       commentsByConcert[Self.mitskiID] = [
         ConcertComment(
@@ -26,16 +28,45 @@
     }
 
     func createPrivateConcert(_ input: ConcertCreationInput) async throws -> Concert {
+      guard case let .place(place)? = await catalogRepository.entity(id: input.catalogPlaceID) else {
+        throw DevelopmentConcertRepositoryError.notFound
+      }
+      let tour: CatalogTour?
+      if let catalogTourID = input.catalogTourID {
+        guard case let .tour(value)? = await catalogRepository.entity(id: catalogTourID) else {
+          throw DevelopmentConcertRepositoryError.notFound
+        }
+        tour = value
+      } else {
+        tour = nil
+      }
+      var catalogArtists: [CatalogArtist] = []
+      for inputArtist in input.artists {
+        guard case let .artist(value)? = await catalogRepository.entity(id: inputArtist.catalogArtistID) else {
+          throw DevelopmentConcertRepositoryError.notFound
+        }
+        catalogArtists.append(value)
+      }
+      var catalogSongs: [CatalogSong] = []
+      for id in input.setlist {
+        guard case let .song(value)? = await catalogRepository.entity(id: id) else {
+          throw DevelopmentConcertRepositoryError.notFound
+        }
+        catalogSongs.append(value)
+      }
       let now = Date()
       let concert = Concert(
         id: UUID(),
         ownerID: DevelopmentSocialFixture.currentUserID,
-        venueName: input.venueName,
-        city: input.city,
+        catalogPlaceID: place.id,
+        catalogAreaID: place.areaID,
+        catalogTourID: tour?.id,
+        venueName: place.displayName,
+        city: place.areaName,
         concertDate: input.concertDate,
         startsAt: input.startsAt,
         venueTimeZone: input.venueTimeZone,
-        tour: input.tour,
+        tour: tour?.displayName,
         visibility: .private,
         createdAt: now,
         updatedAt: now,
@@ -44,13 +75,19 @@
       let artists = input.artists.enumerated().map { index, artist in
         ConcertArtist(
           id: UUID(),
-          name: artist.name,
+          catalogArtistID: artist.catalogArtistID,
+          name: catalogArtists[index].displayName,
           lineupPosition: index + 1,
           isPrimary: artist.isPrimary
         )
       }
-      let setlist = input.setlist.enumerated().map { index, title in
-        SetlistEntry(id: UUID(), position: index + 1, title: title)
+      let setlist = input.setlist.enumerated().map { index, catalogSongID in
+        SetlistEntry(
+          id: UUID(),
+          catalogSongID: catalogSongID,
+          position: index + 1,
+          title: catalogSongs[index].displayName
+        )
       }
       details[concert.id] = ConcertDetail(
         concert: concert,
@@ -169,16 +206,30 @@
         throw DevelopmentConcertRepositoryError.ownerRequired
       }
 
+      let place = try await placeSnapshot(id: input.catalogPlaceID, current: detail)
+      let tour = try await tourSnapshot(id: input.catalogTourID, current: detail)
+      var artistNames: [String] = []
+      for artist in input.artists {
+        try await artistNames.append(artistSnapshot(id: artist.catalogArtistID, current: detail))
+      }
+      var songTitles: [String] = []
+      for id in input.setlist {
+        try await songTitles.append(songSnapshot(id: id, current: detail))
+      }
+
       let now = Date()
       let updatedConcert = Concert(
         id: detail.concert.id,
         ownerID: detail.concert.ownerID,
-        venueName: input.venueName,
-        city: input.city,
+        catalogPlaceID: input.catalogPlaceID,
+        catalogAreaID: place.areaID,
+        catalogTourID: input.catalogTourID,
+        venueName: place.name,
+        city: place.areaName,
         concertDate: input.concertDate,
         startsAt: input.startsAt,
         venueTimeZone: input.venueTimeZone,
-        tour: input.tour,
+        tour: tour,
         visibility: input.visibility,
         createdAt: detail.concert.createdAt,
         updatedAt: now,
@@ -188,15 +239,21 @@
       let artists = input.artists.enumerated().map { index, artist in
         ConcertArtist(
           id: detail.artists[safe: index]?.id ?? UUID(),
-          name: artist.name,
+          catalogArtistID: artist.catalogArtistID,
+          name: artistNames[index],
           lineupPosition: index + 1,
           isPrimary: artist.isPrimary
         )
       }
-      let setlist = input.setlist.enumerated().map { index, title in
-        SetlistEntry(id: detail.setlist[safe: index]?.id ?? UUID(), position: index + 1, title: title)
+      let setlist = input.setlist.enumerated().map { index, catalogSongID in
+        SetlistEntry(
+          id: detail.setlist[safe: index]?.id ?? UUID(),
+          catalogSongID: catalogSongID,
+          position: index + 1,
+          title: songTitles[index]
+        )
       }
-      let kind: ConcertEventKind = input.setlist != detail.setlist.map(\.title)
+      let kind: ConcertEventKind = input.setlist != detail.setlist.compactMap(\.catalogSongID)
         ? .setlistUpdated
         : .concertUpdated
       detail = ConcertDetail(
@@ -288,6 +345,9 @@
       let concert = Concert(
         id: detail.concert.id,
         ownerID: newOwnerID,
+        catalogPlaceID: detail.concert.catalogPlaceID,
+        catalogAreaID: detail.concert.catalogAreaID,
+        catalogTourID: detail.concert.catalogTourID,
         venueName: detail.concert.venueName,
         city: detail.concert.city,
         concertDate: detail.concert.concertDate,
@@ -515,6 +575,50 @@
       return detail
     }
 
+    private func placeSnapshot(
+      id: UUID,
+      current detail: ConcertDetail
+    ) async throws -> (name: String, areaID: UUID?, areaName: String?) {
+      if case let .place(place)? = await catalogRepository.entity(id: id) {
+        return (place.displayName, place.areaID, place.areaName)
+      }
+      if detail.concert.catalogPlaceID == id {
+        return (detail.concert.venueName, detail.concert.catalogAreaID, detail.concert.city)
+      }
+      throw DevelopmentConcertRepositoryError.notFound
+    }
+
+    private func tourSnapshot(id: UUID?, current detail: ConcertDetail) async throws -> String? {
+      guard let id else { return nil }
+      if case let .tour(tour)? = await catalogRepository.entity(id: id) {
+        return tour.displayName
+      }
+      if detail.concert.catalogTourID == id {
+        return detail.concert.tour
+      }
+      throw DevelopmentConcertRepositoryError.notFound
+    }
+
+    private func artistSnapshot(id: UUID, current detail: ConcertDetail) async throws -> String {
+      if case let .artist(artist)? = await catalogRepository.entity(id: id) {
+        return artist.displayName
+      }
+      if let artist = detail.artists.first(where: { $0.catalogArtistID == id }) {
+        return artist.name
+      }
+      throw DevelopmentConcertRepositoryError.notFound
+    }
+
+    private func songSnapshot(id: UUID, current detail: ConcertDetail) async throws -> String {
+      if case let .song(song)? = await catalogRepository.entity(id: id) {
+        return song.displayName
+      }
+      if let song = detail.setlist.first(where: { $0.catalogSongID == id }) {
+        return song.title
+      }
+      throw DevelopmentConcertRepositoryError.notFound
+    }
+
     private func currentRole(in detail: ConcertDetail) -> ConcertViewerRole {
       if detail.concert.ownerID == DevelopmentSocialFixture.currentUserID {
         return .owner
@@ -539,6 +643,9 @@
       Concert(
         id: concert.id,
         ownerID: concert.ownerID,
+        catalogPlaceID: concert.catalogPlaceID,
+        catalogAreaID: concert.catalogAreaID,
+        catalogTourID: concert.catalogTourID,
         venueName: concert.venueName,
         city: concert.city,
         concertDate: concert.concertDate,
@@ -675,6 +782,33 @@
       collaborators: [ConcertCollaborator] = []
     ) -> ConcertDetail {
       let id = UUID(uuidString: rawID)!
+      let fixtureOrdinal = Int(rawID.suffix(1)) ?? 0
+      let catalogArtistID: UUID = switch artist {
+      case "Mitski": DevelopmentMusicCatalogFixture.mitskiID
+      case "Vampire Weekend": DevelopmentMusicCatalogFixture.vampireWeekendID
+      case "Big Thief": DevelopmentMusicCatalogFixture.bigThiefID
+      default:
+        UUID(uuidString: String(format: "11000000-0000-0000-0000-%012d", fixtureOrdinal))!
+      }
+      let catalogPlaceID: UUID
+      let catalogAreaID: UUID?
+      switch venue {
+      case "The Greek Theatre":
+        catalogPlaceID = DevelopmentMusicCatalogFixture.greekTheatreBerkeleyID
+        catalogAreaID = DevelopmentMusicCatalogFixture.berkeleyAreaID
+      case "The Masonic":
+        catalogPlaceID = DevelopmentMusicCatalogFixture.masonicID
+        catalogAreaID = DevelopmentMusicCatalogFixture.sanFranciscoAreaID
+      default:
+        catalogPlaceID = UUID(uuidString: String(format: "21000000-0000-0000-0000-%012d", fixtureOrdinal))!
+        catalogAreaID = UUID(uuidString: String(format: "31000000-0000-0000-0000-%012d", fixtureOrdinal))!
+      }
+      let catalogTourID = tour.map { _ in
+        if artist == "Mitski" {
+          return DevelopmentMusicCatalogFixture.landTourID
+        }
+        return UUID(uuidString: String(format: "51000000-0000-0000-0000-%012d", fixtureOrdinal))!
+      }
       guard let concertDay = ISO8601DateFormatter().date(from: "\(date)T12:00:00Z") else {
         fatalError("Development fixture has an invalid concert date: \(date)")
       }
@@ -682,6 +816,9 @@
       let concert = Concert(
         id: id,
         ownerID: ownerID,
+        catalogPlaceID: catalogPlaceID,
+        catalogAreaID: catalogAreaID,
+        catalogTourID: catalogTourID,
         venueName: venue,
         city: city,
         concertDate: date,
@@ -695,9 +832,33 @@
       )
       return ConcertDetail(
         concert: concert,
-        artists: [ConcertArtist(id: UUID(), name: artist, lineupPosition: 1, isPrimary: true)],
+        artists: [
+          ConcertArtist(
+            id: UUID(),
+            catalogArtistID: catalogArtistID,
+            name: artist,
+            lineupPosition: 1,
+            isPrimary: true
+          )
+        ],
         setlist: setlist.enumerated().map { index, title in
-          SetlistEntry(id: UUID(), position: index + 1, title: title)
+          let knownID: UUID? = switch title {
+          case "First Love / Late Spring": DevelopmentMusicCatalogFixture.firstLoveID
+          case "My Love Mine All Mine": DevelopmentMusicCatalogFixture.myLoveID
+          case "Heaven": DevelopmentMusicCatalogFixture.heavenID
+          default: nil
+          }
+          return SetlistEntry(
+            id: UUID(),
+            catalogSongID: knownID ?? UUID(
+              uuidString: String(
+                format: "41000000-0000-0000-0000-%012d",
+                fixtureOrdinal * 100 + index + 1
+              )
+            )!,
+            position: index + 1,
+            title: title
+          )
         },
         history: [
           ConcertTimelineEvent(

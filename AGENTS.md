@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-This repository contains the native tunedIn MVP: a SwiftUI iOS client and its Supabase backend. The source of product truth is the reference plan at `/Users/ethan/Work/tunedIn/tunedIn MVP Design.md`.
+This repository contains the native tunedIn MVP: a SwiftUI iOS client and its Supabase backend. The external MVP design is reference-only. For structured artist, place, area, song, tour, and concert-entry behavior, the checked-in `docs/musicbrainz-catalog-implementation-plan.md` is the product and implementation source of truth.
 
 ## Boundaries
 

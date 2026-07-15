@@ -1,0 +1,4 @@
+{
+  "status": 503,
+  "body": { "error": "fixture service unavailable" }
+}

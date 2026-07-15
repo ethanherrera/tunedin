@@ -18,7 +18,7 @@ struct SupabaseConcertRepository: ConcertRepository {
   func createPrivateConcert(_ input: ConcertCreationInput) async throws -> Concert {
     do {
       let response: PostgrestResponse<PublicSchema.ConcertsSelect> = try await client
-        .rpc("create_private_concert", params: CreatePrivateConcertParameters(input: input))
+        .rpc("create_private_concert_v2", params: CreatePrivateConcertParameters(input: input))
         .single()
         .execute()
       return try Concert(databaseRecord: response.value)
@@ -30,7 +30,7 @@ struct SupabaseConcertRepository: ConcertRepository {
   func updateConcert(_ input: ConcertUpdateInput) async throws -> Concert {
     do {
       let response: PostgrestResponse<PublicSchema.ConcertsSelect> = try await client
-        .rpc("update_concert", params: UpdateConcertParameters(input: input))
+        .rpc("update_concert_v2", params: UpdateConcertParameters(input: input))
         .single()
         .execute()
       return try Concert(databaseRecord: response.value)
@@ -458,63 +458,62 @@ struct SupabaseConcertRepository: ConcertRepository {
   }
 }
 
-private struct CreatePrivateConcertParameters: Encodable, Sendable {
+struct CreatePrivateConcertParameters: Encodable, Sendable {
   private let artists: [CreatePrivateConcertArtist]
-  private let venueName: String
+  private let catalogPlaceID: UUID
   private let concertDate: String
-  private let city: String?
-  private let tour: String?
+  private let catalogTourID: UUID?
   private let startsAt: String?
   private let venueTimeZone: String?
-  private let setlist: [String]
+  private let setlist: [CreatePrivateConcertSetlistItem]
 
   init(input: ConcertCreationInput) {
-    artists = input.artists.map { CreatePrivateConcertArtist(name: $0.name, isPrimary: $0.isPrimary) }
-    venueName = input.venueName
+    artists = input.artists.map {
+      CreatePrivateConcertArtist(catalogArtistID: $0.catalogArtistID, isPrimary: $0.isPrimary)
+    }
+    catalogPlaceID = input.catalogPlaceID
     concertDate = input.concertDate
-    city = input.city
-    tour = input.tour
+    catalogTourID = input.catalogTourID
     startsAt = input.startsAt.map(ConcertDateCoding.dateTimeString)
     venueTimeZone = input.venueTimeZone
-    setlist = input.setlist
+    setlist = input.setlist.map(CreatePrivateConcertSetlistItem.init(catalogSongID:))
   }
 
   enum CodingKeys: String, CodingKey {
     case artists = "p_artists"
-    case venueName = "p_venue_name"
+    case catalogPlaceID = "p_catalog_place_id"
     case concertDate = "p_concert_date"
-    case city = "p_city"
-    case tour = "p_tour"
+    case catalogTourID = "p_catalog_tour_id"
     case startsAt = "p_starts_at"
     case venueTimeZone = "p_venue_time_zone"
     case setlist = "p_setlist"
   }
 }
 
-private struct UpdateConcertParameters: Encodable, Sendable {
+struct UpdateConcertParameters: Encodable, Sendable {
   private let concertID: UUID
   private let expectedVersion: Int64
   private let artists: [CreatePrivateConcertArtist]
-  private let venueName: String
+  private let catalogPlaceID: UUID
   private let concertDate: String
-  private let city: String?
-  private let tour: String?
+  private let catalogTourID: UUID?
   private let startsAt: String?
   private let venueTimeZone: String?
-  private let setlist: [String]
+  private let setlist: [CreatePrivateConcertSetlistItem]
   private let visibility: ConcertVisibility
 
   init(input: ConcertUpdateInput) {
     concertID = input.concertID
     expectedVersion = input.expectedVersion
-    artists = input.artists.map { CreatePrivateConcertArtist(name: $0.name, isPrimary: $0.isPrimary) }
-    venueName = input.venueName
+    artists = input.artists.map {
+      CreatePrivateConcertArtist(catalogArtistID: $0.catalogArtistID, isPrimary: $0.isPrimary)
+    }
+    catalogPlaceID = input.catalogPlaceID
     concertDate = input.concertDate
-    city = input.city
-    tour = input.tour
+    catalogTourID = input.catalogTourID
     startsAt = input.startsAt.map(ConcertDateCoding.dateTimeString)
     venueTimeZone = input.venueTimeZone
-    setlist = input.setlist
+    setlist = input.setlist.map(CreatePrivateConcertSetlistItem.init(catalogSongID:))
     visibility = input.visibility
   }
 
@@ -522,10 +521,9 @@ private struct UpdateConcertParameters: Encodable, Sendable {
     case concertID = "p_concert_id"
     case expectedVersion = "p_expected_version"
     case artists = "p_artists"
-    case venueName = "p_venue_name"
+    case catalogPlaceID = "p_catalog_place_id"
     case concertDate = "p_concert_date"
-    case city = "p_city"
-    case tour = "p_tour"
+    case catalogTourID = "p_catalog_tour_id"
     case startsAt = "p_starts_at"
     case venueTimeZone = "p_venue_time_zone"
     case setlist = "p_setlist"
@@ -534,17 +532,29 @@ private struct UpdateConcertParameters: Encodable, Sendable {
 }
 
 private struct CreatePrivateConcertArtist: Encodable, Sendable {
-  private let name: String
+  private let catalogArtistID: UUID
   private let isPrimary: Bool
 
-  init(name: String, isPrimary: Bool) {
-    self.name = name
+  init(catalogArtistID: UUID, isPrimary: Bool) {
+    self.catalogArtistID = catalogArtistID
     self.isPrimary = isPrimary
   }
 
   enum CodingKeys: String, CodingKey {
-    case name
+    case catalogArtistID = "catalog_artist_id"
     case isPrimary = "is_primary"
+  }
+}
+
+private struct CreatePrivateConcertSetlistItem: Encodable, Sendable {
+  private let catalogSongID: UUID
+
+  init(catalogSongID: UUID) {
+    self.catalogSongID = catalogSongID
+  }
+
+  enum CodingKeys: String, CodingKey {
+    case catalogSongID = "catalog_song_id"
   }
 }
 
@@ -855,6 +865,9 @@ private struct FriendActivityRecord: Decodable, Sendable {
 private struct ProfileConcertHistoryRecord: Decodable, Sendable {
   let id: UUID
   let ownerID: UUID
+  let catalogPlaceID: UUID
+  let catalogAreaID: UUID?
+  let catalogTourID: UUID?
   let venueName: String
   let city: String?
   let concertDate: String
@@ -872,6 +885,9 @@ private struct ProfileConcertHistoryRecord: Decodable, Sendable {
   enum CodingKeys: String, CodingKey {
     case id
     case ownerID = "owner_id"
+    case catalogPlaceID = "catalog_place_id"
+    case catalogAreaID = "catalog_area_id"
+    case catalogTourID = "catalog_tour_id"
     case venueName = "venue_name"
     case city
     case concertDate = "concert_date"
@@ -913,6 +929,9 @@ private extension Concert {
     self.init(
       id: databaseRecord.id,
       ownerID: databaseRecord.ownerId,
+      catalogPlaceID: databaseRecord.catalogPlaceId,
+      catalogAreaID: databaseRecord.catalogAreaId,
+      catalogTourID: databaseRecord.catalogTourId,
       venueName: databaseRecord.venueName,
       city: databaseRecord.city,
       concertDate: databaseRecord.concertDate,
@@ -950,6 +969,9 @@ private extension ConcertPreview {
       concert: Concert(
         id: databaseRecord.id,
         ownerID: databaseRecord.ownerID,
+        catalogPlaceID: databaseRecord.catalogPlaceID,
+        catalogAreaID: databaseRecord.catalogAreaID,
+        catalogTourID: databaseRecord.catalogTourID,
         venueName: databaseRecord.venueName,
         city: databaseRecord.city,
         concertDate: databaseRecord.concertDate,
@@ -972,6 +994,7 @@ private extension ConcertArtist {
   init(databaseRecord: PublicSchema.ConcertArtistsSelect) {
     self.init(
       id: databaseRecord.id,
+      catalogArtistID: databaseRecord.catalogArtistId,
       name: databaseRecord.artistName,
       lineupPosition: Int(databaseRecord.lineupPosition),
       isPrimary: databaseRecord.isPrimary
@@ -983,6 +1006,7 @@ private extension SetlistEntry {
   init(databaseRecord: PublicSchema.SetlistItemsSelect) {
     self.init(
       id: databaseRecord.id,
+      catalogSongID: databaseRecord.catalogSongId,
       position: Int(databaseRecord.setPosition),
       title: databaseRecord.songTitle
     )

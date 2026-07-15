@@ -1,0 +1,36 @@
+{
+  "created": "2026-07-15T00:00:00Z",
+  "count": 2,
+  "offset": 0,
+  "artists": [
+    {
+      "id": "a74b1b7f-71a5-4011-9441-d0b5e4122711",
+      "type": "Group",
+      "score": 100,
+      "name": "Radiohead",
+      "sort-name": "Radiohead",
+      "country": "GB",
+      "area": {
+        "id": "8a754a16-0027-3a29-b6d7-2b40ea0481ed",
+        "name": "United Kingdom",
+        "sort-name": "United Kingdom"
+      },
+      "life-span": { "begin": "1991", "ended": false }
+    },
+    {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "type": "Person",
+      "score": 72,
+      "name": "Radiohead",
+      "sort-name": "Radiohead",
+      "disambiguation": "fixture tribute artist",
+      "country": "US",
+      "area": {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "name": "California",
+        "sort-name": "California"
+      },
+      "life-span": { "begin": "2020", "ended": false }
+    }
+  ]
+}

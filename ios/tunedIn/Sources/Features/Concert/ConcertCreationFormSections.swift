@@ -1,36 +1,38 @@
 import SwiftUI
 
-struct ConcertCreationDetailsView: View {
-  private enum DetailPage: Int, CaseIterable, Identifiable {
-    case lineup
-    case context
-    case setlist
+private enum ConcertCreationDetailPage: Int, CaseIterable, Identifiable {
+  case lineup
+  case context
+  case setlist
 
-    var id: Int {
-      rawValue
-    }
+  var id: Int {
+    rawValue
+  }
 
-    var title: String {
-      switch self {
-      case .lineup: "Lineup"
-      case .context: "Context"
-      case .setlist: "Setlist"
-      }
-    }
-
-    var icon: String {
-      switch self {
-      case .lineup: "person.2.fill"
-      case .context: "sparkles"
-      case .setlist: "music.note.list"
-      }
+  var title: String {
+    switch self {
+    case .lineup: "Lineup"
+    case .context: "Context"
+    case .setlist: "Setlist"
     }
   }
 
+  var icon: String {
+    switch self {
+    case .lineup: "person.2.fill"
+    case .context: "sparkles"
+    case .setlist: "music.note.list"
+    }
+  }
+}
+
+struct ConcertCreationDetailsView: View {
   @Binding var draft: ConcertDraft
   @Environment(\.dismiss) private var dismiss
-  @State private var page: DetailPage = .lineup
+  @Environment(\.musicCatalogRepository) private var musicCatalogRepository
+  @State private var page: ConcertCreationDetailPage = .lineup
   @Namespace private var detailSelectionNamespace
+  @State private var catalogPickerTarget: ConcertCatalogPickerTarget?
 
   var body: some View {
     NavigationStack {
@@ -39,9 +41,9 @@ struct ConcertCreationDetailsView: View {
           .ignoresSafeArea()
 
         TabView(selection: $page) {
-          lineupPage.tag(DetailPage.lineup)
-          contextPage.tag(DetailPage.context)
-          setlistPage.tag(DetailPage.setlist)
+          lineupPage.tag(ConcertCreationDetailPage.lineup)
+          contextPage.tag(ConcertCreationDetailPage.context)
+          setlistPage.tag(ConcertCreationDetailPage.setlist)
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
       }
@@ -60,6 +62,9 @@ struct ConcertCreationDetailsView: View {
     }
     .tint(TunedInDesign.accent)
     .tunedInKeyboardManaged()
+    .fullScreenCover(item: $catalogPickerTarget) { target in
+      catalogPicker(for: target)
+    }
   }
 
   private var detailsBar: some View {
@@ -73,7 +78,7 @@ struct ConcertCreationDetailsView: View {
     } center: {
       TunedInGlassBottomBar {
         HStack(spacing: 2) {
-          ForEach(DetailPage.allCases) { item in
+          ForEach(ConcertCreationDetailPage.allCases) { item in
             Button {
               withAnimation(.smooth(duration: 0.24, extraBounce: 0)) { page = item }
             } label: {
@@ -122,8 +127,20 @@ struct ConcertCreationDetailsView: View {
         ForEach(draft.artists) { artist in
           HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-              TextField(artist.isPrimary ? "Headliner" : "Artist", text: artistBinding(for: artist.id))
-                .textInputAutocapitalization(.words)
+              Button {
+                catalogPickerTarget = .artist(artist.id)
+              } label: {
+                HStack {
+                  Text(artist.name.isEmpty ? "Choose artist" : artist.name)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(artist.name.isEmpty ? TunedInDesign.mutedText : TunedInDesign.primaryText)
+                  Spacer()
+                  Image(systemName: "magnifyingglass")
+                    .foregroundStyle(TunedInDesign.accent)
+                }
+                .contentShape(.interaction, Rectangle())
+              }
+              .buttonStyle(.plain)
               if artist.isPrimary {
                 Text("HEADLINER")
                   .font(.caption2.weight(.black))
@@ -150,7 +167,7 @@ struct ConcertCreationDetailsView: View {
         }
 
         Button {
-          draft.addArtist()
+          catalogPickerTarget = .artist(UUID())
         } label: {
           Label("Add another artist", systemImage: "plus")
             .font(.headline)
@@ -179,11 +196,41 @@ struct ConcertCreationDetailsView: View {
           Text("Place and tour")
             .font(.headline)
             .foregroundStyle(TunedInDesign.primaryText)
-          TextField("City", text: $draft.city)
-            .textContentType(.addressCity)
-            .textInputAutocapitalization(.words)
-          TextField("Tour", text: $draft.tour)
-            .textInputAutocapitalization(.words)
+          HStack {
+            VStack(alignment: .leading, spacing: 2) {
+              Text("City or area")
+                .font(.caption)
+                .foregroundStyle(TunedInDesign.mutedText)
+              Text(draft.city.isEmpty ? "Derived from venue" : draft.city)
+                .foregroundStyle(draft.city.isEmpty ? TunedInDesign.mutedText : TunedInDesign.primaryText)
+            }
+            Spacer()
+            Image(systemName: "lock.fill")
+              .font(.caption)
+              .foregroundStyle(TunedInDesign.mutedText)
+          }
+          Button {
+            catalogPickerTarget = .tour
+          } label: {
+            HStack {
+              VStack(alignment: .leading, spacing: 2) {
+                Text("Tour (optional)")
+                  .font(.caption)
+                  .foregroundStyle(TunedInDesign.mutedText)
+                Text(draft.tour?.displayName ?? "Choose tour")
+                  .foregroundStyle(draft.tour == nil ? TunedInDesign.mutedText : TunedInDesign.primaryText)
+              }
+              Spacer()
+              Image(systemName: "magnifyingglass")
+                .foregroundStyle(TunedInDesign.accent)
+            }
+            .contentShape(.interaction, Rectangle())
+          }
+          .buttonStyle(.plain)
+          if draft.tour != nil {
+            Button("Remove tour", role: .destructive) { draft.tour = nil }
+              .font(.caption.weight(.semibold))
+          }
         }
 
         TunedInFormCard {
@@ -220,8 +267,19 @@ struct ConcertCreationDetailsView: View {
       List {
         ForEach(draft.setlist) { item in
           HStack {
-            TextField("Song title", text: setlistBinding(for: item.id))
-              .textInputAutocapitalization(.words)
+            Button {
+              catalogPickerTarget = .song(item.id)
+            } label: {
+              HStack {
+                Text(item.title)
+                  .foregroundStyle(TunedInDesign.primaryText)
+                Spacer()
+                Image(systemName: "magnifyingglass")
+                  .foregroundStyle(TunedInDesign.accent)
+              }
+              .contentShape(.interaction, Rectangle())
+            }
+            .buttonStyle(.plain)
           }
           .swipeActions {
             Button(role: .destructive) { draft.removeSetlistItem(item.id) } label: {
@@ -236,7 +294,7 @@ struct ConcertCreationDetailsView: View {
         }
 
         Button {
-          draft.addSetlistItem()
+          catalogPickerTarget = .song(nil)
         } label: {
           Label("Add a song", systemImage: "plus")
             .font(.headline)
@@ -267,23 +325,62 @@ struct ConcertCreationDetailsView: View {
     .padding(.top, 10)
   }
 
-  private func artistBinding(for id: UUID) -> Binding<String> {
-    Binding(
-      get: { draft.artists.first(where: { $0.id == id })?.name ?? "" },
-      set: { value in
-        guard let index = draft.artists.firstIndex(where: { $0.id == id }) else { return }
-        draft.artists[index].name = value
+  @ViewBuilder
+  private func catalogPicker(for target: ConcertCatalogPickerTarget) -> some View {
+    switch target {
+    case let .artist(id):
+      CatalogPickerView(
+        repository: musicCatalogRepository,
+        configuration: CatalogPickerConfiguration(
+          kind: .artist,
+          title: draft.artists.contains(where: { $0.id == id }) ? "Replace artist" : "Add artist",
+          currentSelectionName: draft.artists.first(where: { $0.id == id })?.selection?.displayName
+        )
+      ) { entity in
+        guard case let .artist(artist) = entity else { return }
+        if draft.artists.contains(where: { $0.id == id }) {
+          draft.setArtist(artist, for: id)
+        } else {
+          draft.addArtist(artist)
+        }
+        catalogPickerTarget = nil
       }
-    )
-  }
-
-  private func setlistBinding(for id: UUID) -> Binding<String> {
-    Binding(
-      get: { draft.setlist.first(where: { $0.id == id })?.title ?? "" },
-      set: { value in
-        guard let index = draft.setlist.firstIndex(where: { $0.id == id }) else { return }
-        draft.setlist[index].title = value
+    case .place:
+      EmptyView()
+    case let .song(id):
+      CatalogPickerView(
+        repository: musicCatalogRepository,
+        configuration: CatalogPickerConfiguration(
+          kind: .song,
+          title: id == nil ? "Add song" : "Replace song",
+          artistContext: draft.selectedCatalogArtists,
+          currentSelectionName: id.flatMap { selectedID in
+            draft.setlist.first(where: { $0.id == selectedID })?.title
+          }
+        )
+      ) { entity in
+        guard case let .song(song) = entity else { return }
+        if let id {
+          draft.replaceSetlistItem(id, with: song)
+        } else {
+          draft.addSetlistItem(song)
+        }
+        catalogPickerTarget = nil
       }
-    )
+    case .tour:
+      CatalogPickerView(
+        repository: musicCatalogRepository,
+        configuration: CatalogPickerConfiguration(
+          kind: .tour,
+          title: "Choose tour",
+          artistContext: draft.selectedCatalogArtists,
+          currentSelectionName: draft.tour?.displayName
+        )
+      ) { entity in
+        guard case let .tour(tour) = entity else { return }
+        draft.tour = tour
+        catalogPickerTarget = nil
+      }
+    }
   }
 }

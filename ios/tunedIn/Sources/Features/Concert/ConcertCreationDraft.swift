@@ -1,24 +1,47 @@
 import Foundation
 
+enum ConcertCatalogPickerTarget: Identifiable, Equatable {
+  case artist(UUID)
+  case place
+  case song(UUID?)
+  case tour
+
+  var id: String {
+    switch self {
+    case let .artist(id): "artist-\(id.uuidString)"
+    case .place: "place"
+    case let .song(id): "song-\(id?.uuidString ?? "new")"
+    case .tour: "tour"
+    }
+  }
+}
+
 @MainActor
 struct ConcertDraft {
   struct Artist: Identifiable, Equatable {
     let id: UUID
-    var name: String
+    var selection: CatalogArtist?
     var isPrimary: Bool
+
+    var name: String {
+      selection?.displayName ?? ""
+    }
   }
 
   struct SetlistItem: Identifiable, Equatable {
     let id: UUID
-    var title: String
+    var selection: CatalogSong
+
+    var title: String {
+      selection.displayName
+    }
   }
 
-  var artists = [Artist(id: UUID(), name: "", isPrimary: true)]
-  var venueName = ""
+  var artists = [Artist(id: UUID(), selection: nil, isPrimary: true)]
+  var place: CatalogPlace?
   var concertDate = Date()
-  var city = ""
   var isTourExpanded = false
-  var tour = ""
+  var tour: CatalogTour?
   var hasStartTime = false
   var startTime = Date()
   var venueTimeZoneIdentifier = ConcertDraft.defaultTimeZoneIdentifier
@@ -28,27 +51,107 @@ struct ConcertDraft {
   init() {}
 
   init(detail: ConcertDetail) {
-    artists = detail.artists.map {
-      Artist(id: $0.id, name: $0.name, isPrimary: $0.isPrimary)
+    artists = detail.artists.map { artist in
+      Artist(
+        id: artist.id,
+        selection: CatalogArtist(
+          id: artist.catalogArtistID,
+          origin: .legacyImport,
+          musicBrainzID: nil,
+          displayName: artist.name,
+          sortName: nil,
+          disambiguation: nil,
+          subtitle: nil,
+          artistType: nil,
+          areaID: nil,
+          areaName: nil
+        ),
+        isPrimary: artist.isPrimary
+      )
     }
-    venueName = detail.concert.venueName
+    if artists.isEmpty {
+      artists = [Artist(id: UUID(), selection: nil, isPrimary: true)]
+    } else if let primaryIndex = artists.firstIndex(where: \.isPrimary), primaryIndex != 0 {
+      artists.insert(artists.remove(at: primaryIndex), at: 0)
+    }
+
+    place = CatalogPlace(
+      id: detail.concert.catalogPlaceID,
+      origin: .legacyImport,
+      musicBrainzID: nil,
+      displayName: detail.concert.venueName,
+      sortName: nil,
+      disambiguation: nil,
+      subtitle: detail.concert.city,
+      placeType: nil,
+      address: nil,
+      areaID: detail.concert.catalogAreaID,
+      areaName: detail.concert.city
+    )
     concertDate = Self.date(from: detail.concert.concertDate) ?? Date()
-    city = detail.concert.city ?? ""
-    isTourExpanded = detail.concert.tour != nil
-    tour = detail.concert.tour ?? ""
+    if let catalogTourID = detail.concert.catalogTourID, let tourName = detail.concert.tour {
+      tour = CatalogTour(
+        id: catalogTourID,
+        origin: .legacyImport,
+        musicBrainzID: nil,
+        displayName: tourName,
+        sortName: nil,
+        disambiguation: nil,
+        subtitle: nil,
+        artistCredit: nil,
+        artistIDs: artists.compactMap { $0.selection?.id }
+      )
+    }
+    isTourExpanded = tour != nil
     hasStartTime = detail.concert.startsAt != nil
     startTime = detail.concert.startsAt ?? Date()
     venueTimeZoneIdentifier = detail.concert.venueTimeZone ?? Self.defaultTimeZoneIdentifier
-    setlist = detail.setlist.map { SetlistItem(id: $0.id, title: $0.title) }
+    setlist = detail.setlist.map { item in
+      SetlistItem(
+        id: item.id,
+        selection: CatalogSong(
+          id: item.catalogSongID,
+          origin: .legacyImport,
+          musicBrainzID: nil,
+          displayName: item.title,
+          sortName: nil,
+          disambiguation: nil,
+          subtitle: nil,
+          artistCredit: nil,
+          artistIDs: artists.compactMap { $0.selection?.id },
+          firstReleaseDate: nil,
+          workMusicBrainzID: nil
+        )
+      )
+    }
+  }
+
+  var venueName: String {
+    place?.displayName ?? ""
+  }
+
+  var city: String {
+    place?.areaName ?? ""
+  }
+
+  var tourName: String {
+    tour?.displayName ?? ""
+  }
+
+  var selectedCatalogArtists: [CatalogArtist] {
+    artists.compactMap(\.selection)
+  }
+
+  var primaryArtist: CatalogArtist? {
+    artists.first(where: \.isPrimary)?.selection
   }
 
   var hasEnteredContent: Bool {
-    artists.contains { !ConcertInput.normalizedText($0.name).isEmpty }
-      || !ConcertInput.normalizedText(venueName).isEmpty
-      || !ConcertInput.normalizedText(city).isEmpty
-      || !ConcertInput.normalizedText(tour).isEmpty
+    artists.contains { $0.selection != nil }
+      || place != nil
+      || tour != nil
       || hasStartTime
-      || setlist.contains { !ConcertInput.normalizedText($0.title).isEmpty }
+      || !setlist.isEmpty
   }
 
   var canSave: Bool {
@@ -56,36 +159,30 @@ struct ConcertDraft {
       !artists.isEmpty,
       artists.count <= 10,
       artists.filter(\.isPrimary).count == 1,
-      artists.allSatisfy({ ConcertInput.isValidRequiredText($0.name, maximumLength: 160) }),
-      ConcertInput.isValidRequiredText(venueName, maximumLength: 160),
-      ConcertInput.isValidOptionalText(city, maximumLength: 100),
-      ConcertInput.isValidOptionalText(tour, maximumLength: 160),
-      setlist.count <= 50,
-      setlist.allSatisfy({ ConcertInput.isValidRequiredText($0.title, maximumLength: 160) })
+      artists.allSatisfy({ $0.selection != nil }),
+      Set(artists.compactMap { $0.selection?.id }).count == artists.count,
+      place != nil,
+      setlist.count <= 50
     else {
       return false
     }
-
     return !hasStartTime || TimeZone(identifier: venueTimeZoneIdentifier) != nil
   }
 
   var creationInput: ConcertCreationInput? {
-    guard canSave else { return nil }
-
+    guard canSave, let place else { return nil }
     return ConcertCreationInput(
-      artists: artists.map {
-        ConcertArtistInput(
-          name: ConcertInput.normalizedText($0.name),
-          isPrimary: $0.isPrimary
-        )
+      artists: artists.compactMap { artist in
+        artist.selection.map {
+          ConcertArtistInput(catalogArtistID: $0.id, isPrimary: artist.isPrimary)
+        }
       },
-      venueName: ConcertInput.normalizedText(venueName),
+      catalogPlaceID: place.id,
       concertDate: Self.concertDateString(for: concertDate),
-      city: Self.optionalNormalizedText(city),
-      tour: Self.optionalNormalizedText(tour),
+      catalogTourID: tour?.id,
       startsAt: hasStartTime ? venueStartDate() : nil,
       venueTimeZone: hasStartTime ? venueTimeZoneIdentifier : nil,
-      setlist: setlist.map { ConcertInput.normalizedText($0.title) }
+      setlist: setlist.map(\.selection.id)
     )
   }
 
@@ -99,10 +196,9 @@ struct ConcertDraft {
       concertID: concertID,
       expectedVersion: expectedVersion,
       artists: input.artists,
-      venueName: input.venueName,
+      catalogPlaceID: input.catalogPlaceID,
       concertDate: input.concertDate,
-      city: input.city,
-      tour: input.tour,
+      catalogTourID: input.catalogTourID,
       startsAt: input.startsAt,
       venueTimeZone: input.venueTimeZone,
       setlist: input.setlist,
@@ -110,9 +206,23 @@ struct ConcertDraft {
     )
   }
 
+  mutating func setArtist(_ artist: CatalogArtist, for id: UUID) {
+    guard !artists.contains(where: { $0.id != id && $0.selection?.id == artist.id }) else { return }
+    guard let index = artists.firstIndex(where: { $0.id == id }) else { return }
+    artists[index].selection = artist
+  }
+
+  mutating func addArtist(_ artist: CatalogArtist) {
+    guard artists.count < 10, !artists.contains(where: { $0.selection?.id == artist.id }) else { return }
+    if artists.count == 1, artists[0].selection == nil {
+      artists[0].selection = artist
+    } else {
+      artists.append(Artist(id: UUID(), selection: artist, isPrimary: false))
+    }
+  }
+
   mutating func makePrimary(_ id: UUID) {
     guard let selectedIndex = artists.firstIndex(where: { $0.id == id }) else { return }
-
     var selectedArtist = artists.remove(at: selectedIndex)
     selectedArtist.isPrimary = true
     artists = artists.map { artist in
@@ -123,16 +233,10 @@ struct ConcertDraft {
     artists.insert(selectedArtist, at: 0)
   }
 
-  mutating func addArtist() {
-    guard artists.count < 10 else { return }
-    artists.append(Artist(id: UUID(), name: "", isPrimary: false))
-  }
-
   mutating func removeArtist(_ id: UUID) {
     guard artists.count > 1, let index = artists.firstIndex(where: { $0.id == id }) else { return }
     let removedPrimary = artists[index].isPrimary
     artists.remove(at: index)
-
     if removedPrimary, let firstIndex = artists.indices.first {
       artists[firstIndex].isPrimary = true
     }
@@ -140,11 +244,19 @@ struct ConcertDraft {
 
   mutating func moveArtists(from source: IndexSet, to destination: Int) {
     artists.move(fromOffsets: source, toOffset: destination)
+    if let primaryIndex = artists.firstIndex(where: \.isPrimary), primaryIndex != 0 {
+      artists.insert(artists.remove(at: primaryIndex), at: 0)
+    }
   }
 
-  mutating func addSetlistItem() {
+  mutating func addSetlistItem(_ song: CatalogSong) {
     guard setlist.count < 50 else { return }
-    setlist.append(SetlistItem(id: UUID(), title: ""))
+    setlist.append(SetlistItem(id: UUID(), selection: song))
+  }
+
+  mutating func replaceSetlistItem(_ id: UUID, with song: CatalogSong) {
+    guard let index = setlist.firstIndex(where: { $0.id == id }) else { return }
+    setlist[index].selection = song
   }
 
   mutating func removeSetlistItem(_ id: UUID) {
@@ -157,12 +269,10 @@ struct ConcertDraft {
 
   private func venueStartDate() -> Date? {
     guard let timeZone = TimeZone(identifier: venueTimeZoneIdentifier) else { return nil }
-
     let dayComponents = Calendar.current.dateComponents([.year, .month, .day], from: concertDate)
     let timeComponents = Calendar.current.dateComponents([.hour, .minute], from: startTime)
     var calendar = Calendar(identifier: .gregorian)
     calendar.timeZone = timeZone
-
     return calendar.date(
       from: DateComponents(
         timeZone: timeZone,
@@ -175,14 +285,7 @@ struct ConcertDraft {
     )
   }
 
-  private static func optionalNormalizedText(_ value: String) -> String? {
-    let normalized = ConcertInput.normalizedText(value)
-    return normalized.isEmpty ? nil : normalized
-  }
-
   /// A concert date is a venue-local calendar day, not an instant in UTC.
-  /// Keep picker values at midnight in the user's calendar so an edit does not
-  /// move the selected day west of UTC before it is saved again.
   static func concertDateString(for date: Date, timeZone: TimeZone = .current) -> String {
     let formatter = DateFormatter()
     formatter.calendar = Calendar(identifier: .gregorian)

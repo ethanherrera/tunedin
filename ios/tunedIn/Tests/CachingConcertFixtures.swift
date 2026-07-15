@@ -8,6 +8,9 @@ enum ConcertCacheFixtures {
   static let profileID = UUID(uuidString: "42000000-0000-0000-0000-000000000001")!
   static let commentID = UUID(uuidString: "43000000-0000-0000-0000-000000000001")!
   static let photoID = UUID(uuidString: "44000000-0000-0000-0000-000000000001")!
+  static let catalogArtistID = UUID(uuidString: "47000000-0000-0000-0000-000000000001")!
+  static let catalogPlaceID = UUID(uuidString: "48000000-0000-0000-0000-000000000001")!
+  static let catalogAreaID = UUID(uuidString: "49000000-0000-0000-0000-000000000001")!
 
   static let query = ConcertHistoryQuery(
     searchText: "mitski",
@@ -20,6 +23,8 @@ enum ConcertCacheFixtures {
     Concert(
       id: concertID,
       ownerID: viewerID,
+      catalogPlaceID: catalogPlaceID,
+      catalogAreaID: catalogAreaID,
       venueName: version == 1 ? "The Greek" : "The Greek Theatre",
       city: "Los Angeles",
       concertDate: "2026-06-01",
@@ -40,6 +45,7 @@ enum ConcertCacheFixtures {
       artists: [
         ConcertArtist(
           id: UUID(uuidString: "45000000-0000-0000-0000-000000000001")!,
+          catalogArtistID: catalogArtistID,
           name: "Mitski",
           lineupPosition: 0,
           isPrimary: true
@@ -98,7 +104,7 @@ enum ConcertCacheFixtures {
     pickerBatchLimit: 10,
     captionCharacterLimit: 300,
     attachedFileByteLimit: 2_097_152,
-    pendingReservationLifetimeSeconds: 3_600
+    pendingReservationLifetimeSeconds: 3600
   )
 
   static func activity(version: Int = 1) -> FriendActivity {
@@ -117,11 +123,10 @@ enum ConcertCacheFixtures {
   }
 
   static let creationInput = ConcertCreationInput(
-    artists: [ConcertArtistInput(name: "Mitski", isPrimary: true)],
-    venueName: "The Greek",
+    artists: [ConcertArtistInput(catalogArtistID: catalogArtistID, isPrimary: true)],
+    catalogPlaceID: catalogPlaceID,
     concertDate: "2026-06-01",
-    city: "Los Angeles",
-    tour: nil,
+    catalogTourID: nil,
     startsAt: nil,
     venueTimeZone: "America/Los_Angeles",
     setlist: []
@@ -130,11 +135,10 @@ enum ConcertCacheFixtures {
   static let updateInput = ConcertUpdateInput(
     concertID: concertID,
     expectedVersion: 1,
-    artists: [ConcertArtistInput(name: "Mitski", isPrimary: true)],
-    venueName: "The Greek Theatre",
+    artists: [ConcertArtistInput(catalogArtistID: catalogArtistID, isPrimary: true)],
+    catalogPlaceID: catalogPlaceID,
     concertDate: "2026-06-01",
-    city: "Los Angeles",
-    tour: nil,
+    catalogTourID: nil,
     startsAt: nil,
     venueTimeZone: "America/Los_Angeles",
     setlist: [],

@@ -138,6 +138,92 @@ from (
 where profile.id = account.id
 ;
 
+-- Fixed catalog fixtures prove all three durable origins without contacting the
+-- live MusicBrainz service. The custom Fillmore place is reused by two seeded
+-- concerts below; the remaining entries make every custom form searchable.
+insert into public.catalog_entities (
+  id, kind, origin, status, display_name, sort_name, disambiguation,
+  musicbrainz_mbid, created_at, updated_at
+)
+values
+  ('d3000000-0000-0000-0000-000000000001', 'area', 'musicbrainz', 'active', 'San Francisco', 'San Francisco', null, '33333333-3333-4333-8333-333333333333', timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000101', 'area', 'tunedin_custom', 'active', 'San Francisco', 'San Francisco', null, null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000102', 'artist', 'tunedin_custom', 'active', 'The Local Signals', 'The Local Signals', null, null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000103', 'place', 'tunedin_custom', 'active', 'The Fillmore', 'The Fillmore', 'Local reusable venue fixture', null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000104', 'song', 'tunedin_custom', 'active', 'Midnight Test Signal', 'Midnight Test Signal', null, null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000105', 'tour', 'tunedin_custom', 'active', 'Local Fixture Tour', 'Local Fixture Tour', null, null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000201', 'area', 'legacy_import', 'needs_review', 'Seed Archive City', 'Seed Archive City', null, null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000202', 'artist', 'legacy_import', 'needs_review', 'Seed Archive Artist', 'Seed Archive Artist', null, null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000203', 'place', 'legacy_import', 'needs_review', 'Seed Archive Hall', 'Seed Archive Hall', null, null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000204', 'song', 'legacy_import', 'needs_review', 'Seed Archive Song', 'Seed Archive Song', null, null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000205', 'tour', 'legacy_import', 'needs_review', 'Seed Archive Tour', 'Seed Archive Tour', null, null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00');
+
+insert into public.catalog_areas (id, country_code)
+values
+  ('d3000000-0000-0000-0000-000000000001', 'US'),
+  ('d3000000-0000-0000-0000-000000000101', 'US'),
+  ('d3000000-0000-0000-0000-000000000201', 'US');
+
+insert into public.catalog_artists (id, artist_type, area_id, area_name)
+values
+  ('d3000000-0000-0000-0000-000000000102', 'Group', 'd3000000-0000-0000-0000-000000000101', 'San Francisco'),
+  ('d3000000-0000-0000-0000-000000000202', 'Group', 'd3000000-0000-0000-0000-000000000201', 'Seed Archive City');
+
+insert into public.catalog_places (id, area_id, place_type, address)
+values
+  ('d3000000-0000-0000-0000-000000000103', 'd3000000-0000-0000-0000-000000000101', 'Venue', '1805 Geary Blvd'),
+  ('d3000000-0000-0000-0000-000000000203', 'd3000000-0000-0000-0000-000000000201', 'Venue', null);
+
+insert into public.catalog_songs (id, artist_credit)
+values
+  ('d3000000-0000-0000-0000-000000000104', 'The Local Signals'),
+  ('d3000000-0000-0000-0000-000000000204', 'Seed Archive Artist');
+
+insert into public.catalog_song_artists (
+  song_id, artist_id, credit_position, credit_name, join_phrase
+)
+values
+  ('d3000000-0000-0000-0000-000000000104', 'd3000000-0000-0000-0000-000000000102', 1, 'The Local Signals', ''),
+  ('d3000000-0000-0000-0000-000000000204', 'd3000000-0000-0000-0000-000000000202', 1, 'Seed Archive Artist', '');
+
+insert into public.catalog_tours (id)
+values
+  ('d3000000-0000-0000-0000-000000000105'),
+  ('d3000000-0000-0000-0000-000000000205');
+
+insert into public.catalog_tour_artists (tour_id, artist_id, credit_position)
+values
+  ('d3000000-0000-0000-0000-000000000105', 'd3000000-0000-0000-0000-000000000102', 1),
+  ('d3000000-0000-0000-0000-000000000205', 'd3000000-0000-0000-0000-000000000202', 1);
+
+insert into private.catalog_entity_provenance (
+  entity_id, kind, creator_id, dedupe_key, created_at
+)
+values
+  ('d3000000-0000-0000-0000-000000000101', 'area', 'd1000000-0000-0000-0000-000000000001', 'area|san francisco|country:US|parent:-', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000102', 'artist', 'd1000000-0000-0000-0000-000000000001', 'artist|the local signals|type:group|area:d3000000-0000-0000-0000-000000000101|disambiguation:-', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000103', 'place', 'd1000000-0000-0000-0000-000000000001', 'place|the fillmore|area:d3000000-0000-0000-0000-000000000101', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000104', 'song', 'd1000000-0000-0000-0000-000000000001', 'song|midnight test signal|artists:d3000000-0000-0000-0000-000000000102|disambiguation:-', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000105', 'tour', 'd1000000-0000-0000-0000-000000000001', 'tour|local fixture tour|artists:d3000000-0000-0000-0000-000000000102', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000201', 'area', 'd1000000-0000-0000-0000-000000000001', 'seed-legacy-area', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000202', 'artist', 'd1000000-0000-0000-0000-000000000001', 'seed-legacy-artist', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000203', 'place', 'd1000000-0000-0000-0000-000000000001', 'seed-legacy-place', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000204', 'song', 'd1000000-0000-0000-0000-000000000001', 'seed-legacy-song', timestamptz '2025-01-01 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000205', 'tour', 'd1000000-0000-0000-0000-000000000001', 'seed-legacy-tour', timestamptz '2025-01-01 12:00:00+00');
+
+-- Mirror the provenance written by production MusicBrainz ingestion without
+-- assigning a tunedIn creator to the external entity.
+insert into private.catalog_entity_provenance (
+  entity_id, kind, source_updated_at, refreshed_at, created_at
+)
+values (
+  'd3000000-0000-0000-0000-000000000001',
+  'area',
+  timestamptz '2025-01-01 12:00:00+00',
+  timestamptz '2025-01-01 12:00:00+00',
+  timestamptz '2025-01-01 12:00:00+00'
+);
+
 insert into public.relationships (
   user_low_id,
   user_high_id,
@@ -166,6 +252,9 @@ values
   ('d1000000-0000-0000-0000-000000000003', 'd1000000-0000-0000-0000-000000000005', 'accepted', 'd1000000-0000-0000-0000-000000000003', 'd1000000-0000-0000-0000-000000000005', timestamptz '2025-02-03 10:00:00+00', timestamptz '2025-02-03 11:00:00+00', timestamptz '2025-02-03 10:00:00+00', timestamptz '2025-02-03 11:00:00+00'),
   ('d1000000-0000-0000-0000-000000000004', 'd1000000-0000-0000-0000-000000000006', 'accepted', 'd1000000-0000-0000-0000-000000000006', 'd1000000-0000-0000-0000-000000000004', timestamptz '2025-02-04 10:00:00+00', timestamptz '2025-02-04 11:00:00+00', timestamptz '2025-02-04 10:00:00+00', timestamptz '2025-02-04 11:00:00+00');
 
+do $catalog_seed$
+begin
+create temporary table seed_concert_fixture as
 with fixture (
   id,
   owner_id,
@@ -203,9 +292,10 @@ with fixture (
     ('d2000000-0000-0000-0000-000000000022'::uuid, 'd1000000-0000-0000-0000-000000000006'::uuid, 'Radiohead', 'Bill Graham Civic Auditorium', 'San Francisco', date '2025-12-12', 'friends'::public.concert_visibility, 'The Smile Sessions', timestamptz '2025-12-13 04:00:00+00', array['Paranoid Android', 'Weird Fishes/Arpeggi', 'Karma Police']::text[]),
     ('d2000000-0000-0000-0000-000000000023'::uuid, 'd1000000-0000-0000-0000-000000000006'::uuid, 'HAIM', 'The Fillmore', 'San Francisco', date '2026-04-25', 'friends'::public.concert_visibility, 'I quit Tour', timestamptz '2026-04-26 04:00:00+00', array['The Steps', 'The Wire', 'Want You Back']::text[]),
     ('d2000000-0000-0000-0000-000000000024'::uuid, 'd1000000-0000-0000-0000-000000000006'::uuid, 'The xx', 'The Independent', 'San Francisco', date '2025-08-08', 'collaborators'::public.concert_visibility, 'I See You Tour', timestamptz '2025-08-09 04:00:00+00', array['Intro', 'Crystalised', 'On Hold']::text[])
-),
-inserted_concerts as (
-  insert into public.concerts (
+)
+select * from fixture;
+
+insert into public.concerts (
     id,
     owner_id,
     venue_name,
@@ -230,11 +320,9 @@ inserted_concerts as (
     created_at + interval '3 days',
     created_at + interval '3 days',
     3
-  from fixture
-  returning id
-),
-inserted_artists as (
-  insert into public.concert_artists (
+from seed_concert_fixture;
+
+insert into public.concert_artists (
     id,
     concert_id,
     lineup_position,
@@ -251,11 +339,9 @@ inserted_artists as (
     true,
     created_at,
     created_at
-  from fixture
-  returning id
-),
-inserted_setlist_items as (
-  insert into public.setlist_items (
+from seed_concert_fixture;
+
+insert into public.setlist_items (
     id,
     concert_id,
     set_position,
@@ -270,11 +356,20 @@ inserted_setlist_items as (
     song.title,
     concert.created_at,
     concert.created_at
-  from fixture as concert
-  cross join lateral unnest(concert.setlist) with ordinality as song(title, ordinality)
-  returning id
-)
-select count(*) from inserted_concerts;
+from seed_concert_fixture as concert
+cross join lateral unnest(concert.setlist) with ordinality as song(title, ordinality);
+
+-- Swap identical venue snapshots onto one reusable durable custom place
+-- identity. The normal touch trigger records this as part of seed assembly.
+update public.concerts
+set catalog_place_id = 'd3000000-0000-0000-0000-000000000103'
+where id in (
+  'd2000000-0000-0000-0000-000000000006',
+  'd2000000-0000-0000-0000-000000000007'
+);
+drop table seed_concert_fixture;
+end
+$catalog_seed$;
 
 insert into public.concert_collaborators (
   concert_id,

@@ -29,6 +29,7 @@ Environment variables:
 - `GOOGLE_IOS_CLIENT_ID`
 - `GOOGLE_SERVER_CLIENT_ID`
 - `GOOGLE_REVERSED_CLIENT_ID`
+- `MUSICBRAINZ_USER_AGENT` (contactable `tunedIn/<version> (...)` value)
 
 Environment secrets:
 
@@ -98,7 +99,7 @@ make staging-promote
 
 The workflow performs these operations in order:
 
-1. Rebuild and verify the disposable backend.
+1. Rebuild and verify the disposable backend, deterministic MusicBrainz Function fixtures, and authenticated Local catalog gateway.
 2. Regenerate, lint, test, and build the iOS project.
 3. Validate the offline PostHog contract and print a read-only Staging drift plan.
 4. Create an ephemeral ignored Staging configuration from protected values.
@@ -118,7 +119,7 @@ The workflow performs these operations in order:
 10. Verify current Supabase Auth drift, then enable the Apple and Google providers while leaving the existing email path available until upload succeeds.
 11. Print the Staging migration dry run.
 12. Apply pending migrations without seeds or reset.
-13. Deploy tracked Edge Functions, if any, and verify migration parity.
+13. Reconcile the protected MusicBrainz runtime values, deploy the allow-listed `music-catalog` Edge Function, verify its deployed version, and verify migration parity.
 14. Upload the already verified IPA to App Store Connect/TestFlight with Apple's `altool` and the protected API key.
 15. Disable email and phone sign-up, keep manual identity linking disabled, and verify the complete Staging Auth contract.
 16. Record the commit, observability target, authentication contract, and build number in the GitHub Actions summary.
