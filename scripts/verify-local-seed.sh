@@ -63,11 +63,12 @@ metrics="$(docker exec "$database_container" psql -U postgres -d postgres -v ON_
     (select count(*) from public.comments where concert_id between 'd4500000-0000-0000-0000-000000000001'::uuid and 'd4500000-0000-0000-0000-000000000002'::uuid),
     (select count(*) from public.social_activity_events where id between 'd4100000-0000-0000-0000-000000000301'::uuid and 'd4100000-0000-0000-0000-000000000302'::uuid),
     (select count(*) from private.catalog_event_notification_outbox where id between 'd4400000-0000-0000-0000-000000000101'::uuid and 'd4400000-0000-0000-0000-000000000102'::uuid),
+    (select count(*) from public.concert_photos where id between 'd4600000-0000-0000-0000-000000000001'::uuid and 'd4600000-0000-0000-0000-000000000004'::uuid and status = 'ready'),
     (select count(*) from public.catalog_events as event where event.id between 'd4000000-0000-0000-0000-000000000001'::uuid and 'd4000000-0000-0000-0000-000000000004'::uuid and event.memory_unlock_at is distinct from case when event.starts_at is not null then event.starts_at + interval '4 hours' else (event.event_date + 1 + time '03:00') at time zone event.time_zone_identifier end),
     (select count(*) from public.catalog_events as event where event.id between 'd4000000-0000-0000-0000-000000000001'::uuid and 'd4000000-0000-0000-0000-000000000004'::uuid and event.exact_duplicate_key is distinct from md5((case when event.listing = 'listed' then 'listed' else 'unlisted:' || event.created_by::text end) || '|' || event.catalog_place_id::text || '|' || event.event_date::text || '|' || event.headliner_catalog_artist_id::text));
 ")"
 
-expected="16|16|16|16|15|1|5|1|1|1|6|24|8|12|73|0|0|1|2|11|1|5|5|10|4|0|0|0|0|4|4|5|1|0|9|3|2|1|8|2|3|3|3|9|2|2|2|2|2|0|0"
+expected="16|16|16|16|15|1|5|1|1|1|6|24|8|12|73|0|0|1|2|11|1|5|5|10|4|0|0|0|0|4|4|5|1|0|9|3|2|1|8|2|3|3|3|9|2|2|2|2|2|4|0|0"
 if [[ "$metrics" != "$expected" ]]; then
   echo "Local Supabase seed integrity check failed (expected ${expected}; received ${metrics})." >&2
   exit 1

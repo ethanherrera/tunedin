@@ -136,6 +136,7 @@ simulator-community-events: build ## Launch the fixture-backed holistic communit
 
 local-db-reset: ## Reset the disposable local Supabase database, migrations, and development seed.
 	@./scripts/reset-local-supabase.sh
+	@./scripts/seed-local-diary-media.sh
 	@./scripts/verify-local-seed.sh
 	@$(MAKE) --no-print-directory local-next-steps
 
