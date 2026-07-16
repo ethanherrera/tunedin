@@ -118,6 +118,7 @@ struct TunedInFloatingAction: View {
 
 struct TunedInSelectionLens: View {
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
   var body: some View {
     if #available(iOS 26.0, *), !reduceTransparency {
@@ -132,7 +133,9 @@ struct TunedInSelectionLens: View {
         .fill(TunedInDesign.accentTint)
         .overlay {
           Capsule()
-            .strokeBorder(TunedInDesign.accent.opacity(0.2))
+            .strokeBorder(
+              TunedInDesign.accent.opacity(colorSchemeContrast == .increased ? 0.72 : 0.2)
+            )
         }
     }
   }
@@ -318,9 +321,11 @@ struct TunedInPersistentControlRegion<Content: View>: View {
 
 private struct TunedInLiquidGlassIconSurface: ViewModifier {
   let style: TunedInGlassIconButton.Style
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
   func body(content: Content) -> some View {
-    if #available(iOS 26.0, *) {
+    if #available(iOS 26.0, *), !reduceTransparency {
       if style == .accent {
         content.glassEffect(.regular.tint(TunedInDesign.accent.opacity(0.22)).interactive(), in: .circle)
       } else {
@@ -328,26 +333,47 @@ private struct TunedInLiquidGlassIconSurface: ViewModifier {
       }
     } else {
       content
-        .background(.ultraThinMaterial, in: Circle())
+        .background {
+          if reduceTransparency {
+            Circle().fill(style == .accent ? TunedInDesign.accentTint : TunedInDesign.raisedSurface)
+          } else {
+            Circle().fill(.ultraThinMaterial)
+          }
+        }
         .background(style == .accent ? TunedInDesign.accent.opacity(0.14) : .clear, in: Circle())
-        .overlay { Circle().strokeBorder(.white.opacity(0.42)) }
+        .overlay {
+          Circle().strokeBorder(
+            TunedInDesign.cardBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.85)
+          )
+        }
         .shadow(color: style == .accent ? TunedInDesign.accent.opacity(0.2) : .clear, radius: 10, y: 5)
     }
   }
 }
 
 private struct TunedInLiquidGlassActionSurface: ViewModifier {
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
   func body(content: Content) -> some View {
-    if #available(iOS 26.0, *) {
+    if #available(iOS 26.0, *), !reduceTransparency {
       content
         .glassEffect(.regular.tint(TunedInDesign.accent.opacity(0.22)).interactive(), in: .circle)
     } else {
       content
-        .background(.ultraThinMaterial, in: Circle())
+        .background {
+          if reduceTransparency {
+            Circle().fill(TunedInDesign.accent)
+          } else {
+            Circle().fill(.ultraThinMaterial)
+          }
+        }
         .background(TunedInDesign.accent.opacity(0.14), in: Circle())
         .overlay {
           Circle()
-            .strokeBorder(.white.opacity(0.52))
+            .strokeBorder(
+              TunedInDesign.cardBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.85)
+            )
         }
         .shadow(color: TunedInDesign.accent.opacity(0.2), radius: 12, y: 6)
     }
@@ -633,6 +659,8 @@ private struct TunedInLiquidGlassSectionSurface: ViewModifier {
 private struct TunedInLiquidGlassSearchSurface: ViewModifier {
   let style: TunedInGlassSearchField.Style
   let isGlassEnabled: Bool
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
   func body(content: Content) -> some View {
     content
@@ -644,11 +672,11 @@ private struct TunedInLiquidGlassSearchSurface: ViewModifier {
   private var surfaceBackground: some View {
     if #available(iOS 26.0, *) {
       ZStack {
-        Capsule().fill(isGlassEnabled ? .clear : TunedInDesign.raisedSurface)
+        Capsule().fill(effectiveGlassEnabled ? .clear : TunedInDesign.raisedSurface)
         Capsule()
           .fill(.clear)
           .glassEffect(.regular.tint(tint).interactive(), in: Capsule())
-          .opacity(isGlassEnabled ? 1 : 0)
+          .opacity(effectiveGlassEnabled ? 1 : 0)
       }
       .allowsHitTesting(false)
     } else {
@@ -659,21 +687,19 @@ private struct TunedInLiquidGlassSearchSurface: ViewModifier {
   @ViewBuilder
   private var surfaceBorder: some View {
     if #available(iOS 26.0, *) {
-      if !isGlassEnabled {
-        Capsule().strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
+      if !effectiveGlassEnabled {
+        Capsule().strokeBorder(TunedInDesign.cardBorder.opacity(borderOpacity))
       }
     } else {
       Capsule().strokeBorder(
-        isGlassEnabled
-          ? TunedInDesign.cardBorder.opacity(0.85)
-          : TunedInDesign.cardBorder.opacity(0.72)
+        TunedInDesign.cardBorder.opacity(borderOpacity)
       )
     }
   }
 
   @ViewBuilder
   private var fallbackBackground: some View {
-    if isGlassEnabled {
+    if effectiveGlassEnabled {
       ZStack {
         Capsule().fill(backgroundTint)
         Capsule().fill(.ultraThinMaterial)
@@ -690,10 +716,20 @@ private struct TunedInLiquidGlassSearchSurface: ViewModifier {
   private var backgroundTint: Color {
     style == .neutralPopover ? .white.opacity(0.06) : TunedInDesign.cardBackground.opacity(0.84)
   }
+
+  private var effectiveGlassEnabled: Bool {
+    isGlassEnabled && !reduceTransparency
+  }
+
+  private var borderOpacity: Double {
+    colorSchemeContrast == .increased ? 1 : (effectiveGlassEnabled ? 0.85 : 0.72)
+  }
 }
 
 private struct TunedInLiquidGlassPopoverSurface: ViewModifier {
   let isGlassEnabled: Bool
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
   func body(content: Content) -> some View {
     content
@@ -709,11 +745,11 @@ private struct TunedInLiquidGlassPopoverSurface: ViewModifier {
   private var surfaceBackground: some View {
     if #available(iOS 26.0, *) {
       ZStack {
-        popoverShape.fill(isGlassEnabled ? .clear : TunedInDesign.cardBackground)
+        popoverShape.fill(effectiveGlassEnabled ? .clear : TunedInDesign.cardBackground)
         popoverShape
           .fill(.clear)
           .glassEffect(.regular, in: popoverShape)
-          .opacity(isGlassEnabled ? 1 : 0)
+          .opacity(effectiveGlassEnabled ? 1 : 0)
       }
       .allowsHitTesting(false)
     } else {
@@ -723,7 +759,7 @@ private struct TunedInLiquidGlassPopoverSurface: ViewModifier {
 
   @ViewBuilder
   private var fallbackBackground: some View {
-    if isGlassEnabled {
+    if effectiveGlassEnabled {
       ZStack {
         popoverShape.fill(.white.opacity(0.05))
         popoverShape.fill(.ultraThinMaterial)
@@ -735,31 +771,21 @@ private struct TunedInLiquidGlassPopoverSurface: ViewModifier {
 
   @ViewBuilder
   private var surfaceBorder: some View {
-    if #unavailable(iOS 26.0), isGlassEnabled {
-      popoverShape.strokeBorder(.white.opacity(0.34))
+    if !effectiveGlassEnabled || colorSchemeContrast == .increased {
+      popoverShape.strokeBorder(
+        TunedInDesign.cardBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.72)
+      )
     }
+  }
+
+  private var effectiveGlassEnabled: Bool {
+    isGlassEnabled && !reduceTransparency
   }
 }
 
 private struct TunedInLiquidGlassBottomBarSurface: ViewModifier {
-  func body(content: Content) -> some View {
-    if #available(iOS 26.0, *) {
-      content
-        .glassEffect(.regular, in: Capsule())
-    } else {
-      content
-        .background(.ultraThinMaterial, in: Capsule())
-        .background(TunedInDesign.cardBackground.opacity(0.86), in: Capsule())
-        .overlay {
-          Capsule()
-            .strokeBorder(TunedInDesign.cardBorder.opacity(0.85))
-        }
-    }
-  }
-}
-
-private struct TunedInLiquidGlassIdentitySurface: ViewModifier {
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
   func body(content: Content) -> some View {
     if #available(iOS 26.0, *), !reduceTransparency {
@@ -767,11 +793,47 @@ private struct TunedInLiquidGlassIdentitySurface: ViewModifier {
         .glassEffect(.regular, in: Capsule())
     } else {
       content
-        .background(.ultraThinMaterial, in: Capsule())
+        .background {
+          if reduceTransparency {
+            Capsule().fill(TunedInDesign.cardBackground)
+          } else {
+            Capsule().fill(.ultraThinMaterial)
+          }
+        }
+        .background(TunedInDesign.cardBackground.opacity(0.86), in: Capsule())
+        .overlay {
+          Capsule()
+            .strokeBorder(
+              TunedInDesign.cardBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.85)
+            )
+        }
+    }
+  }
+}
+
+private struct TunedInLiquidGlassIdentitySurface: ViewModifier {
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+  func body(content: Content) -> some View {
+    if #available(iOS 26.0, *), !reduceTransparency {
+      content
+        .glassEffect(.regular, in: Capsule())
+    } else {
+      content
+        .background {
+          if reduceTransparency {
+            Capsule().fill(TunedInDesign.cardBackground)
+          } else {
+            Capsule().fill(.ultraThinMaterial)
+          }
+        }
         .background(TunedInDesign.cardBackground.opacity(0.9), in: Capsule())
         .overlay {
           Capsule()
-            .strokeBorder(TunedInDesign.cardBorder.opacity(0.85))
+            .strokeBorder(
+              TunedInDesign.cardBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.85)
+            )
         }
     }
   }

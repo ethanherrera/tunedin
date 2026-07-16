@@ -38,17 +38,28 @@ struct TunedInGlassTextButton: View {
 }
 
 private struct TunedInLiquidGlassTextActionSurface: ViewModifier {
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
   func body(content: Content) -> some View {
-    if #available(iOS 26.0, *) {
+    if #available(iOS 26.0, *), !reduceTransparency {
       content
         .glassEffect(.regular.tint(TunedInDesign.accent.opacity(0.22)).interactive(), in: .capsule)
     } else {
       content
-        .background(.ultraThinMaterial, in: Capsule())
+        .background {
+          if reduceTransparency {
+            Capsule().fill(TunedInDesign.accent)
+          } else {
+            Capsule().fill(.ultraThinMaterial)
+          }
+        }
         .background(TunedInDesign.accent.opacity(0.14), in: Capsule())
         .overlay {
           Capsule()
-            .strokeBorder(.white.opacity(0.52))
+            .strokeBorder(
+              TunedInDesign.cardBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.85)
+            )
         }
         .shadow(color: TunedInDesign.accent.opacity(0.2), radius: 12, y: 6)
     }

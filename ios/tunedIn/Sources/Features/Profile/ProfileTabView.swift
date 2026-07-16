@@ -25,6 +25,7 @@ struct MainTabView: View {
   @State private var selectionFeedbackTrigger = 0
   @StateObject private var concertFloatingControls = ConcertFloatingControls()
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Namespace private var bottomGlassNamespace
   @Namespace private var tabSelectionNamespace
 
@@ -192,6 +193,7 @@ struct MainTabView: View {
     }
     .buttonStyle(.plain)
     .contentShape(.interaction, Capsule())
+    .accessibilityLabel(title)
   }
 
   private func activateTab(_ tab: Tab) {
@@ -232,14 +234,22 @@ struct MainTabView: View {
   }
 
   private func navigationLabel(title: String, icon: String, isSelected: Bool) -> some View {
-    HStack(spacing: 6) {
-      Image(systemName: icon)
-        .font(.caption.weight(.bold))
-      Text(title)
-        .font(.caption.weight(.bold))
+    Group {
+      if dynamicTypeSize.isAccessibilitySize {
+        Image(systemName: icon)
+          .font(.title3.weight(.bold))
+          .accessibilityHidden(true)
+      } else {
+        HStack(spacing: 6) {
+          Image(systemName: icon)
+            .font(.caption.weight(.bold))
+          Text(title)
+            .font(.caption.weight(.bold))
+        }
+      }
     }
     .foregroundStyle(isSelected ? TunedInDesign.selectedControlForeground : TunedInDesign.primaryText)
-    .frame(minWidth: 78, minHeight: 44)
+    .frame(minWidth: dynamicTypeSize.isAccessibilitySize ? 58 : 78, minHeight: 44)
     .padding(.horizontal, 2)
     .background {
       if isSelected {
@@ -365,6 +375,7 @@ private struct ConcertContextBottomBar: View {
   @Namespace private var selectionNamespace
   @State private var selectionFeedbackTrigger = 0
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   var body: some View {
     TunedInGlassTraversalLayout(glassNamespace: glassNamespace) {
@@ -385,13 +396,21 @@ private struct ConcertContextBottomBar: View {
               }
               controls.select(page: page)
             } label: {
-              VStack(spacing: 2) {
-                Image(systemName: page.icon)
-                  .font(.caption.weight(.bold))
-                Text(page.title)
-                  .font(.caption2.weight(.bold))
-                  .lineLimit(1)
-                  .minimumScaleFactor(0.75)
+              Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                  Image(systemName: page.icon)
+                    .font(.body.weight(.bold))
+                    .accessibilityHidden(true)
+                } else {
+                  VStack(spacing: 2) {
+                    Image(systemName: page.icon)
+                      .font(.caption.weight(.bold))
+                    Text(page.title)
+                      .font(.caption2.weight(.bold))
+                      .lineLimit(1)
+                      .minimumScaleFactor(0.75)
+                  }
+                }
               }
               .foregroundStyle(
                 controls.selectedPage == page
