@@ -353,6 +353,24 @@ struct DiaryPhotoImage: View {
   }
 }
 
+struct EventScrollTopMask: View {
+  var body: some View {
+    LinearGradient(
+      stops: [
+        .init(color: TunedInDesign.pageBackground, location: 0),
+        .init(color: TunedInDesign.pageBackground, location: 0.62),
+        .init(color: TunedInDesign.pageBackground.opacity(0), location: 1)
+      ],
+      startPoint: .top,
+      endPoint: .bottom
+    )
+    .frame(height: 64)
+    .ignoresSafeArea(edges: .top)
+    .allowsHitTesting(false)
+    .accessibilityHidden(true)
+  }
+}
+
 struct EventPostRow: View {
   let post: EventPost
   var onReply: (() -> Void)?

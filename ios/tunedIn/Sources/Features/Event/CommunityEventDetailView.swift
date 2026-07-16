@@ -5,20 +5,6 @@ import SwiftUI
 // swiftlint:disable file_length
 
 struct CommunityEventDetailView: View {
-  private enum Page: String, CaseIterable {
-    case event = "Event"
-    case people = "People"
-    case memories = "Memories"
-
-    var icon: String {
-      switch self {
-      case .event: "music.note"
-      case .people: "person.2"
-      case .memories: "photo.on.rectangle.angled"
-      }
-    }
-  }
-
   let eventID: UUID
   let viewerID: UUID
   let repository: any EventRepository
@@ -40,16 +26,13 @@ struct CommunityEventDetailView: View {
     self.concertRepository = concertRepository
     self.initialDiaryID = initialDiaryID
     self.onDismiss = onDismiss
-    _selectedPage = State(initialValue: initialDiaryID == nil ? .event : .memories)
   }
 
   @State private var detail: CommunityEventDetail?
-  @State private var selectedPage = Page.event
   @State private var isLoading = true
   @State private var errorMessage: String?
   @State private var isPresentingInvites = false
   @State private var isPresentingReport = false
-  @Namespace private var selectionNamespace
 
   var body: some View {
     ZStack {
@@ -79,19 +62,31 @@ struct CommunityEventDetailView: View {
               }
             )
 
-            switch selectedPage {
-            case .event:
-              EventOverviewPage(
+            if repository.capabilities.contains(.diaries), detail.summary.phase() == .memories {
+              EventMemoriesPage(
                 detail: detail,
                 viewerID: viewerID,
                 repository: repository,
-                allowsConversation: repository.capabilities.contains(.conversation),
-                onReport: { isPresentingReport = true },
-                onPostAdded: { Task { await load() } }
+                concertRepository: concertRepository,
+                initialDiaryID: initialDiaryID,
+                onSaved: { Task { await load() } }
               )
-            case .people:
+            }
+
+            if repository.capabilities.contains(.attendance) {
               EventPeoplePage(detail: detail, viewerID: viewerID)
-            case .memories:
+            }
+
+            EventOverviewPage(
+              detail: detail,
+              viewerID: viewerID,
+              repository: repository,
+              allowsConversation: repository.capabilities.contains(.conversation),
+              onReport: { isPresentingReport = true },
+              onPostAdded: { Task { await load() } }
+            )
+
+            if repository.capabilities.contains(.diaries), detail.summary.phase() != .memories {
               EventMemoriesPage(
                 detail: detail,
                 viewerID: viewerID,
@@ -108,11 +103,14 @@ struct CommunityEventDetailView: View {
         }
         .refreshable { await load() }
       }
+
+      EventScrollTopMask()
+        .frame(maxHeight: .infinity, alignment: .top)
     }
     .toolbar(.hidden, for: .navigationBar)
     .safeAreaInset(edge: .bottom, spacing: 0) {
       TunedInPersistentControlRegion {
-        detailBottomBar
+        eventBottomBar
           .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
           .padding(.top, 6)
           .padding(.bottom, TunedInDesign.bottomControlInset)
@@ -140,7 +138,7 @@ struct CommunityEventDetailView: View {
     }
   }
 
-  private var detailBottomBar: some View {
+  private var eventBottomBar: some View {
     TunedInGlassTraversalLayout {
       TunedInGlassIconButton(
         systemImage: "chevron.backward",
@@ -149,31 +147,13 @@ struct CommunityEventDetailView: View {
       )
     } center: {
       TunedInGlassBottomBar {
-        HStack(spacing: 2) {
-          ForEach(availablePages, id: \.self) { page in
-            Button { selectedPage = page } label: {
-              VStack(spacing: 2) {
-                Image(systemName: page.icon).font(.caption.weight(.bold))
-                Text(page.rawValue).font(.caption2.weight(.bold))
-              }
-              .foregroundStyle(
-                selectedPage == page ? TunedInDesign.selectedControlForeground : TunedInDesign.primaryText
-              )
-              .frame(maxWidth: .infinity)
-              .frame(height: 48)
-              .background {
-                if selectedPage == page {
-                  TunedInSelectionLens()
-                    .matchedGeometryEffect(id: "event-detail-page", in: selectionNamespace)
-                }
-              }
-            }
-            .buttonStyle(.plain)
-            .accessibilityAddTraits(selectedPage == page ? .isSelected : [])
-          }
-        }
+        Text(detail?.summary.title ?? "Concert")
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(TunedInDesign.primaryText)
+          .lineLimit(1)
+          .frame(minWidth: 132, minHeight: 48)
+          .padding(.horizontal, 16)
       }
-      .frame(maxWidth: CGFloat(availablePages.count * 84))
     } trailing: {
       if canInvite {
         TunedInGlassIconButton(
@@ -186,17 +166,6 @@ struct CommunityEventDetailView: View {
         EmptyView()
       }
     }
-  }
-
-  private var availablePages: [Page] {
-    var pages = [Page.event]
-    if repository.capabilities.contains(.attendance) {
-      pages.append(.people)
-    }
-    if repository.capabilities.contains(.diaries) {
-      pages.append(.memories)
-    }
-    return pages
   }
 
   private var canInvite: Bool {
@@ -241,7 +210,6 @@ struct CommunityEventDetailView: View {
         audience: audience
       )
       errorMessage = nil
-      selectedPage = .memories
     } catch {
       errorMessage = error.localizedDescription
     }
@@ -257,24 +225,32 @@ private struct CommunityEventHero: View {
   @State private var audience = EventAudience.friends
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 16) {
+    VStack(alignment: .leading, spacing: 14) {
       HStack(alignment: .firstTextBaseline, spacing: 12) {
         Text(CommunityEventDateText.fullDate(detail.summary.eventDate))
           .font(.caption.weight(.bold))
           .textCase(.uppercase)
-          .foregroundStyle(TunedInDesign.primaryText)
+          .foregroundStyle(TunedInDesign.mutedText)
+        if let startsAt = detail.summary.startsAt {
+          Text(
+            CommunityEventDateText.time(
+              startsAt,
+              timeZoneIdentifier: detail.summary.timeZoneIdentifier
+            )
+          )
+          .font(.caption.weight(.semibold))
+          .foregroundStyle(TunedInDesign.mutedText)
+        }
         Spacer()
         phaseBadge
       }
 
-      Spacer(minLength: 18)
-
-      VStack(alignment: .leading, spacing: 6) {
+      VStack(alignment: .leading, spacing: 5) {
         Text(detail.summary.title)
-          .font(.system(.largeTitle, design: .rounded, weight: .bold))
+          .font(.system(size: 34, weight: .bold, design: .default))
           .foregroundStyle(TunedInDesign.primaryText)
         Text("\(detail.summary.venueName) · \(detail.summary.areaName)")
-          .font(.body.weight(.medium))
+          .font(.body)
           .foregroundStyle(TunedInDesign.mutedText)
       }
 
@@ -344,35 +320,18 @@ private struct CommunityEventHero: View {
       }
 
       HStack(spacing: 8) {
-        if let startsAt = detail.summary.startsAt {
-          Label(
-            CommunityEventDateText.time(
-              startsAt,
-              timeZoneIdentifier: detail.summary.timeZoneIdentifier
-            ),
-            systemImage: "clock"
-          )
-        }
-        Spacer()
+        Image(systemName: "person.3.fill")
+        Text("\(detail.attendances.count) visible")
+        Spacer(minLength: 0)
         Text(detail.summary.sourceLabel)
       }
       .font(.caption2.weight(.semibold))
       .foregroundStyle(TunedInDesign.mutedText)
+
+      Divider().overlay(TunedInDesign.cardBorder)
     }
-    .padding(20)
-    .frame(maxWidth: .infinity, minHeight: 280, alignment: .bottomLeading)
-    .background(
-      LinearGradient(
-        colors: [TunedInDesign.accent.opacity(0.4), TunedInDesign.accentTint, TunedInDesign.cardBackground],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-      ),
-      in: RoundedRectangle(cornerRadius: TunedInDesign.largeCornerRadius, style: .continuous)
-    )
-    .overlay {
-      RoundedRectangle(cornerRadius: TunedInDesign.largeCornerRadius, style: .continuous)
-        .strokeBorder(TunedInDesign.cardBorder.opacity(0.55))
-    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(.top, 4)
     .task(id: detail.summary.currentUserAudience) {
       audience = detail.summary.currentUserAudience ?? .friends
     }
@@ -494,38 +453,6 @@ private struct EventOverviewPage: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 18) {
-      DisclosureGroup(isExpanded: $isShowingDetails) {
-        VStack(alignment: .leading, spacing: 12) {
-          EventMetadataRow(label: "Date", value: CommunityEventDateText.fullDate(detail.summary.eventDate))
-          if let startsAt = detail.summary.startsAt {
-            EventMetadataRow(
-              label: "Starts",
-              value: CommunityEventDateText.time(
-                startsAt,
-                timeZoneIdentifier: detail.summary.timeZoneIdentifier
-              )
-            )
-          }
-          EventMetadataRow(label: "Venue", value: detail.summary.venueName)
-          EventMetadataRow(label: "Location", value: detail.summary.areaName)
-          EventMetadataRow(label: "Source", value: detail.summary.sourceLabel)
-
-          Button(action: onReport) {
-            Label("Suggest a correction", systemImage: "exclamationmark.bubble")
-              .font(.subheadline.weight(.semibold))
-              .foregroundStyle(TunedInDesign.primaryText)
-          }
-          .buttonStyle(.plain)
-        }
-        .padding(.top, 12)
-      } label: {
-        Label("Details", systemImage: "info.circle")
-          .font(.headline)
-          .foregroundStyle(TunedInDesign.primaryText)
-      }
-      .tint(TunedInDesign.mutedText)
-      .padding(.vertical, 2)
-
       if allowsConversation {
         VStack(alignment: .leading, spacing: 12) {
           Text("Before the show")
@@ -606,6 +533,38 @@ private struct EventOverviewPage: View {
           }
         }
       }
+
+      DisclosureGroup(isExpanded: $isShowingDetails) {
+        VStack(alignment: .leading, spacing: 12) {
+          EventMetadataRow(label: "Date", value: CommunityEventDateText.fullDate(detail.summary.eventDate))
+          if let startsAt = detail.summary.startsAt {
+            EventMetadataRow(
+              label: "Starts",
+              value: CommunityEventDateText.time(
+                startsAt,
+                timeZoneIdentifier: detail.summary.timeZoneIdentifier
+              )
+            )
+          }
+          EventMetadataRow(label: "Venue", value: detail.summary.venueName)
+          EventMetadataRow(label: "Location", value: detail.summary.areaName)
+          EventMetadataRow(label: "Source", value: detail.summary.sourceLabel)
+
+          Button(action: onReport) {
+            Label("Suggest a correction", systemImage: "exclamationmark.bubble")
+              .font(.subheadline.weight(.semibold))
+              .foregroundStyle(TunedInDesign.primaryText)
+          }
+          .buttonStyle(.plain)
+        }
+        .padding(.top, 12)
+      } label: {
+        Label("Event details", systemImage: "info.circle")
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(TunedInDesign.primaryText)
+      }
+      .tint(TunedInDesign.mutedText)
+      .padding(.vertical, 4)
     }
     .task {
       if let remembered = EventAudience(rawValue: UserDefaults.standard.string(
@@ -651,65 +610,52 @@ private struct EventPeoplePage: View {
   let viewerID: UUID
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 18) {
-      Text(detail.summary.phase() == .memories ? "People who went" : "People going")
-        .font(.headline)
-        .foregroundStyle(TunedInDesign.primaryText)
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(alignment: .firstTextBaseline) {
+        Text(detail.summary.phase() == .memories ? "Who went" : "Who’s going")
+          .font(.headline)
+          .foregroundStyle(TunedInDesign.primaryText)
+        Spacer()
+        Text("\(detail.attendances.count) visible")
+          .font(.caption)
+          .foregroundStyle(TunedInDesign.mutedText)
+      }
 
       if detail.attendances.isEmpty {
-        EventEmptyView(
-          systemImage: "person.2",
-          title: "No visible plans yet",
-          message: "Private attendance stays private. Friends and community plans appear here."
-        )
+        Text("No visible plans yet. Private attendance stays private.")
+          .font(.subheadline)
+          .foregroundStyle(TunedInDesign.mutedText)
+          .padding(.vertical, 8)
       } else {
-        if !circleAttendances.isEmpty {
-          attendeeSection(title: "You & friends", attendances: circleAttendances)
-        }
-        if !communityAttendances.isEmpty {
-          attendeeSection(title: "Community", attendances: communityAttendances)
-        }
-      }
-    }
-  }
-
-  private var circleAttendances: [EventAttendance] {
-    detail.attendances.filter {
-      $0.profile.id == viewerID || $0.profile.relationship == .friends
-    }
-  }
-
-  private var communityAttendances: [EventAttendance] {
-    detail.attendances.filter {
-      $0.profile.id != viewerID && $0.profile.relationship != .friends
-    }
-  }
-
-  private func attendeeSection(title: String, attendances: [EventAttendance]) -> some View {
-    VStack(alignment: .leading, spacing: 4) {
-      Text(title)
-        .font(.subheadline.weight(.bold))
-        .foregroundStyle(TunedInDesign.mutedText)
-        .padding(.bottom, 4)
-
-      ForEach(attendances) { attendance in
-        HStack(spacing: 12) {
-          ProfileAvatarView(profile: attendance.profile, size: 46)
-          VStack(alignment: .leading, spacing: 3) {
-            Text(attendance.profile.id == viewerID ? "You" : attendance.profile.displayName)
-              .font(.body.weight(.semibold))
-              .foregroundStyle(TunedInDesign.primaryText)
-            Text("@\(attendance.profile.username) · \(attendance.status.title)")
-              .font(.caption)
-              .foregroundStyle(TunedInDesign.mutedText)
+        ScrollView(.horizontal, showsIndicators: false) {
+          HStack(alignment: .top, spacing: 14) {
+            ForEach(sortedAttendances) { attendance in
+              VStack(spacing: 6) {
+                ProfileAvatarView(profile: attendance.profile, size: 54)
+                Text(attendance.profile.id == viewerID ? "You" : attendance.profile.displayName)
+                  .font(.caption.weight(.semibold))
+                  .foregroundStyle(TunedInDesign.primaryText)
+                  .lineLimit(1)
+                Text(attendance.profile.relationship == .friends ? "Friend" : "Community")
+                  .font(.caption2)
+                  .foregroundStyle(TunedInDesign.mutedText)
+              }
+              .frame(width: 72)
+            }
           }
-          Spacer()
-          Image(systemName: attendance.audience.icon)
-            .foregroundStyle(TunedInDesign.mutedText)
+          .padding(.horizontal, 1)
         }
-        .padding(.vertical, 10)
-        Divider().overlay(TunedInDesign.cardBorder)
       }
+      Divider().overlay(TunedInDesign.cardBorder)
+    }
+  }
+
+  private var sortedAttendances: [EventAttendance] {
+    detail.attendances.sorted { lhs, rhs in
+      let lhsRank = lhs.profile.id == viewerID ? 0 : (lhs.profile.relationship == .friends ? 1 : 2)
+      let rhsRank = rhs.profile.id == viewerID ? 0 : (rhs.profile.relationship == .friends ? 1 : 2)
+      if lhsRank != rhsRank { return lhsRank < rhsRank }
+      return lhs.profile.displayName < rhs.profile.displayName
     }
   }
 }
@@ -729,57 +675,71 @@ private struct EventMemoriesPage: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       if !memoriesAreAvailable {
-        EventEmptyView(
-          systemImage: "lock.fill",
-          title: "Memories unlock after the show",
-          message: "For now, make plans and talk with friends. Ratings, diaries, photos, "
-            + "and video belong to the post-show moment."
-        )
-      } else {
-        HStack {
-          VStack(alignment: .leading, spacing: 4) {
-            Text("Concert memories")
-              .font(.headline)
+        HStack(spacing: 12) {
+          Image(systemName: "lock.fill")
+            .foregroundStyle(TunedInDesign.mutedText)
+          VStack(alignment: .leading, spacing: 3) {
+            Text("Memories unlock after the show")
+              .font(.subheadline.weight(.semibold))
               .foregroundStyle(TunedInDesign.primaryText)
-            Text("Each person owns their diary and its sharing settings.")
+            Text("Ratings, photos, videos, and reviews belong to the post-show moment.")
               .font(.caption)
               .foregroundStyle(TunedInDesign.mutedText)
+          }
+        }
+        .padding(.vertical, 8)
+      } else {
+        HStack(alignment: .firstTextBaseline) {
+          VStack(alignment: .leading, spacing: 4) {
+            Text("Memories")
+              .font(.title2.weight(.bold))
+              .foregroundStyle(TunedInDesign.primaryText)
             if let score = detail.summary.averageDiaryScore {
-              Label(
-                "Visible average \(score.formatted(.number.precision(.fractionLength(1))))"
-                  + " · \(detail.summary.diaryCount) "
-                  + (detail.summary.diaryCount == 1 ? "diary" : "diaries"),
-                systemImage: "star.fill"
+              Text(
+                "\(score.formatted(.number.precision(.fractionLength(1)))) average"
+                  + " from \(detail.summary.diaryCount) visible "
+                  + (detail.summary.diaryCount == 1 ? "diary" : "diaries")
               )
               .font(.caption.weight(.semibold))
-              .foregroundStyle(TunedInDesign.accent)
+              .foregroundStyle(TunedInDesign.mutedText)
             }
           }
           Spacer()
           if detail.summary.canCreateDiary() {
-            Button(detail.diaryPreviews.contains(where: { $0.author.id == viewerID }) ? "Edit mine" : "Add mine") {
+            Button(myDiary == nil ? "Add yours" : "Edit yours") {
               isPresentingDiary = true
             }
-              .buttonStyle(.borderedProminent)
-              .tint(TunedInDesign.accent)
+            .font(.subheadline.weight(.bold))
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.capsule)
+            .tint(TunedInDesign.accent)
           }
         }
 
         if detail.diaryPreviews.isEmpty {
-          EventEmptyView(
-            systemImage: "book.closed",
-            title: "No shared diaries yet",
-            message: "Going or Went still exists without a diary. Writing one is always optional."
-          )
+          Text("No shared diaries yet. Going or Went still exists without writing one.")
+            .font(.subheadline)
+            .foregroundStyle(TunedInDesign.mutedText)
+            .padding(.vertical, 12)
         } else {
-          ForEach(sortedDiaries) { diary in
-            if concertRepository == nil {
-              EventDiaryPreviewCard(diary: diary)
-            } else {
-              Button { selectedDiary = diary } label: {
-                EventDiaryPreviewCard(diary: diary)
+          if let myDiary {
+            Text("Your memory")
+              .font(.subheadline.weight(.bold))
+              .foregroundStyle(TunedInDesign.mutedText)
+            memoryButton(myDiary)
+          }
+
+          if !otherDiaries.isEmpty {
+            Text("What people shared")
+              .font(.subheadline.weight(.bold))
+              .foregroundStyle(TunedInDesign.mutedText)
+              .padding(.top, myDiary == nil ? 0 : 4)
+
+            ForEach(otherDiaries) { diary in
+              memoryButton(diary)
+              if diary.id != otherDiaries.last?.id {
+                Divider().overlay(TunedInDesign.cardBorder)
               }
-              .buttonStyle(TunedInPosterButtonStyle())
             }
           }
         }
@@ -787,7 +747,7 @@ private struct EventMemoriesPage: View {
     }
     .fullScreenCover(isPresented: $isPresentingDiary) {
       EventDiaryComposerView(
-        eventID: detail.id,
+        event: detail.summary,
         viewerID: viewerID,
         repository: repository,
         concertRepository: concertRepository,
@@ -834,10 +794,75 @@ private struct EventMemoriesPage: View {
       return lhs.publishedAt > rhs.publishedAt
     }
   }
+
+  private var myDiary: EventDiaryPreview? {
+    sortedDiaries.first(where: { $0.author.id == viewerID })
+  }
+
+  private var otherDiaries: [EventDiaryPreview] {
+    sortedDiaries.filter { $0.author.id != viewerID }
+  }
+
+  @ViewBuilder
+  private func memoryButton(_ diary: EventDiaryPreview) -> some View {
+    if let concertRepository {
+      Button { selectedDiary = diary } label: {
+        EventMemoryRow(diary: diary, concertRepository: concertRepository)
+      }
+      .buttonStyle(TunedInPosterButtonStyle())
+    } else {
+      EventDiaryPreviewCard(diary: diary)
+    }
+  }
+}
+
+private struct EventMemoryRow: View {
+  let diary: EventDiaryPreview
+  let concertRepository: any ConcertRepository
+
+  var body: some View {
+    HStack(alignment: .top, spacing: 14) {
+      DiaryMediaPreview(
+        diaryID: diary.id,
+        reportedPhotoCount: diary.photoCount,
+        concertRepository: concertRepository,
+        height: 112,
+        maximumVisiblePhotos: 1
+      )
+      .frame(width: 112)
+
+      VStack(alignment: .leading, spacing: 6) {
+        HStack(alignment: .firstTextBaseline) {
+          Text(diary.author.displayName)
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
+            .lineLimit(1)
+          Spacer(minLength: 8)
+          if let score = diary.score {
+            Text(score.formatted(.number.precision(.fractionLength(1))))
+              .font(.title3.weight(.bold))
+              .foregroundStyle(TunedInDesign.accent)
+          }
+        }
+
+        if let note = diary.note {
+          Text(note)
+            .font(.subheadline)
+            .foregroundStyle(TunedInDesign.primaryText)
+            .lineLimit(3)
+        }
+
+        DiaryEngagementLine(diary: diary)
+      }
+      .padding(.vertical, 4)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .contentShape(Rectangle())
+  }
 }
 
 private struct EventDiaryComposerView: View {
-  let eventID: UUID
+  let event: CommunityEventSummary
   let viewerID: UUID
   let repository: any EventRepository
   let concertRepository: (any ConcertRepository)?
@@ -856,7 +881,7 @@ private struct EventDiaryComposerView: View {
   @State private var errorMessage: String?
 
   init(
-    eventID: UUID,
+    event: CommunityEventSummary,
     viewerID: UUID,
     repository: any EventRepository,
     concertRepository: (any ConcertRepository)?,
@@ -864,7 +889,7 @@ private struct EventDiaryComposerView: View {
     onSaved: @escaping () -> Void,
     onDismiss: @escaping () -> Void
   ) {
-    self.eventID = eventID
+    self.event = event
     self.viewerID = viewerID
     self.repository = repository
     self.concertRepository = concertRepository
@@ -889,138 +914,143 @@ private struct EventDiaryComposerView: View {
       TunedInDesign.pageBackground.ignoresSafeArea()
 
       ScrollView {
-        VStack(alignment: .leading, spacing: 18) {
-          EventScreenHeader(
-            eyebrow: "Your concert, your perspective",
-            title: existing == nil ? "Add a diary" : "Edit your diary",
-            subtitle: "This belongs to you even if the shared event changes later."
+        VStack(alignment: .leading, spacing: 26) {
+          EventDiaryComposerHeader(
+            event: event,
+            existing: existing,
+            concertRepository: concertRepository,
+            photoSelection: $photoSelection,
+            isSaving: isSaving
           )
 
-          TunedInFormCard {
-            Toggle("Add a score", isOn: $includesScore)
-              .tint(TunedInDesign.accent)
-            if includesScore {
-              HStack {
-                Text("Your score")
-                  .font(.headline)
-                Spacer()
-                Text(score.formatted(.number.precision(.fractionLength(1))))
-                  .font(.title2.weight(.bold))
-                  .foregroundStyle(TunedInDesign.accent)
-              }
-              Slider(value: $score, in: 0.5 ... 10, step: 0.5)
-                .tint(TunedInDesign.accent)
-            }
+          VStack(alignment: .leading, spacing: 0) {
+            Text("Ratings")
+              .font(.headline)
+              .foregroundStyle(TunedInDesign.primaryText)
+              .padding(.bottom, 10)
+
+            DiaryScoreRow(
+              title: "Overall",
+              systemImage: "star.fill",
+              isIncluded: $includesScore,
+              value: $score
+            )
 
             Divider()
 
-            Toggle("Rate the performance", isOn: $includesPerformanceScore)
-              .tint(TunedInDesign.accent)
-            if includesPerformanceScore {
-              HStack {
-                Text("Performance")
-                  .font(.headline)
-                Spacer()
-                Text(performanceScore.formatted(.number.precision(.fractionLength(1))))
-                  .font(.title2.weight(.bold))
-                  .foregroundStyle(TunedInDesign.accent)
-              }
-              Slider(value: $performanceScore, in: 0.5 ... 10, step: 0.5)
-                .tint(TunedInDesign.accent)
-            }
+            DiaryScoreRow(
+              title: "Performance",
+              systemImage: "music.mic",
+              isIncluded: $includesPerformanceScore,
+              value: $performanceScore
+            )
           }
 
-          TunedInFormCard {
-            Text("What do you want to remember?")
+          VStack(alignment: .leading, spacing: 8) {
+            Text("Review")
               .font(.headline)
               .foregroundStyle(TunedInDesign.primaryText)
-            TextEditor(text: $note)
-              .frame(minHeight: 160)
-              .scrollContentBackground(.hidden)
-              .padding(10)
-              .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14))
+            ZStack(alignment: .topLeading) {
+              if note.isEmpty {
+                Text("What do you want to remember?")
+                  .font(.body)
+                  .foregroundStyle(TunedInDesign.mutedText)
+                  .padding(.horizontal, 14)
+                  .padding(.vertical, 18)
+                  .allowsHitTesting(false)
+              }
+              TextEditor(text: $note)
+                .frame(minHeight: 110)
+                .scrollContentBackground(.hidden)
+                .padding(.horizontal, 4)
+            }
+            .overlay(alignment: .bottom) {
+              Divider().overlay(TunedInDesign.cardBorder)
+            }
             Text("\(note.count)/4000")
               .font(.caption.monospacedDigit())
               .foregroundStyle(note.count > 4_000 ? TunedInDesign.accent : TunedInDesign.mutedText)
               .frame(maxWidth: .infinity, alignment: .trailing)
           }
 
-          TunedInFormCard {
-            Text("Photos")
-              .font(.headline)
-              .foregroundStyle(TunedInDesign.primaryText)
-            if concertRepository != nil {
-              PhotosPicker(
-                selection: $photoSelection,
-                maxSelectionCount: 10,
-                matching: .images
-              ) {
-                Label(
-                  photoPickerTitle,
-                  systemImage: "photo.badge.plus"
-                )
+          VStack(alignment: .leading, spacing: 16) {
+            if (existing?.photoCount ?? 0) == 0 {
+              if concertRepository != nil {
+                PhotosPicker(
+                  selection: $photoSelection,
+                  maxSelectionCount: 10,
+                  matching: .images
+                ) {
+                  Label(
+                    photoPickerTitle,
+                    systemImage: "photo.badge.plus"
+                  )
+                  .font(.subheadline.weight(.bold))
+                  .foregroundStyle(TunedInDesign.actionForeground)
+                  .padding(.horizontal, 16)
+                  .frame(height: 44)
+                  .background(TunedInDesign.accent, in: Capsule())
+                }
+                .disabled(isSaving)
+              } else {
+                Text("Photo uploads are unavailable in this preview.")
+                  .font(.caption)
+                  .foregroundStyle(TunedInDesign.mutedText)
+              }
+            }
+
+            Divider()
+
+            HStack(spacing: 12) {
+              Label("Audience", systemImage: audience.icon)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(TunedInDesign.primaryText)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(14)
-                .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14))
-              }
-              .disabled(isSaving)
-            } else {
-              Text("Photo uploads are unavailable in this preview.")
-                .font(.caption)
-                .foregroundStyle(TunedInDesign.mutedText)
-            }
-            Text("Photos inherit this diary’s audience. You can share a photo-only memory.")
-              .font(.caption)
-              .foregroundStyle(TunedInDesign.mutedText)
-          }
-
-          TunedInFormCard {
-            Text("Who can see this diary?")
-              .font(.headline)
-              .foregroundStyle(TunedInDesign.primaryText)
-            Picker("Diary audience", selection: $audience) {
-              ForEach(EventAudience.allCases, id: \.self) { option in
-                Text(option.title).tag(option)
+              Spacer()
+              Menu {
+                ForEach(EventAudience.allCases, id: \.self) { option in
+                  Button {
+                    audience = option
+                  } label: {
+                    Label(option.title, systemImage: option.icon)
+                  }
+                }
+              } label: {
+                HStack(spacing: 6) {
+                  Text(audience.title)
+                  Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.weight(.bold))
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(TunedInDesign.accent)
               }
             }
-            .pickerStyle(.segmented)
-            Label(
-              "After saving, open this diary to see its album and talk with friends. Video comes later.",
-              systemImage: "photo.on.rectangle.angled"
-            )
-            .font(.caption)
-            .foregroundStyle(TunedInDesign.mutedText)
           }
 
           if let errorMessage {
             Text(errorMessage).font(.caption).foregroundStyle(TunedInDesign.accent)
           }
-
-          Button { Task { await save() } } label: {
-            Text(isSaving ? "Saving…" : "Save diary")
-              .font(.headline)
-              .foregroundStyle(TunedInDesign.actionForeground)
-              .frame(maxWidth: .infinity)
-              .padding(.vertical, 15)
-              .background(TunedInDesign.accent, in: Capsule())
-          }
-          .buttonStyle(.plain)
-          .disabled(isSaving || note.count > 4_000 || !hasDiaryContent)
         }
         .padding(20)
-        .padding(.bottom, 24)
+        .padding(.bottom, 96)
       }
+
+      EventScrollTopMask()
+        .frame(maxHeight: .infinity, alignment: .top)
     }
     .safeAreaInset(edge: .bottom, spacing: 0) {
       TunedInPersistentControlRegion {
-        TunedInSubscreenBackBar(title: "Diary", action: onDismiss)
+        EventDiaryActionBar(
+          isSaving: isSaving,
+          canSave: canSaveDiary,
+          onDismiss: onDismiss,
+          onSave: { Task { await save() } }
+        )
           .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
           .padding(.top, 8)
           .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
+    .tunedInKeyboardManaged()
   }
 
   @MainActor
@@ -1038,7 +1068,7 @@ private struct EventDiaryComposerView: View {
           diaryID = existingID
         } else {
           diaryID = try await repository.preparePhotoDiary(
-            eventID: eventID,
+            eventID: event.id,
             authorID: viewerID,
             audience: audience
           )
@@ -1062,7 +1092,7 @@ private struct EventDiaryComposerView: View {
         hasReadyPhoto = hasReadyPhoto || uploadedCount > 0
       }
       _ = try await repository.saveDiary(
-        eventID: eventID,
+        eventID: event.id,
         authorID: viewerID,
         input: EventDiaryInput(
           score: includesScore ? score : nil,
@@ -1086,6 +1116,163 @@ private struct EventDiaryComposerView: View {
       || CatalogInput.optionalNormalizedText(note) != nil
       || !photoSelection.isEmpty
       || (existing?.photoCount ?? 0) > 0
+  }
+
+  private var canSaveDiary: Bool {
+    !isSaving && note.count <= 4_000 && hasDiaryContent
+  }
+}
+
+private struct EventDiaryActionBar: View {
+  let isSaving: Bool
+  let canSave: Bool
+  let onDismiss: () -> Void
+  let onSave: () -> Void
+
+  var body: some View {
+    TunedInGlassTraversalLayout {
+      TunedInGlassIconButton(
+        systemImage: "chevron.backward",
+        accessibilityLabel: "Cancel diary",
+        action: onDismiss
+      )
+      .disabled(isSaving)
+    } center: {
+      TunedInGlassTextButton(
+        isSaving ? "Saving" : "Save diary",
+        systemImage: isSaving ? "ellipsis" : "checkmark",
+        accessibilityHint: canSave
+          ? "Saves this diary"
+          : "Add a score, review, or photo before saving",
+        action: onSave
+      )
+      .disabled(!canSave)
+      .opacity(canSave ? 1 : 0.45)
+    } trailing: {
+      EmptyView()
+    }
+  }
+}
+
+private struct EventDiaryComposerHeader: View {
+  let event: CommunityEventSummary
+  let existing: EventDiaryPreview?
+  let concertRepository: (any ConcertRepository)?
+  @Binding var photoSelection: [PhotosPickerItem]
+  let isSaving: Bool
+
+  var body: some View {
+    let photoPickerTitle = photoSelection.isEmpty ? "Add" : "\(photoSelection.count) selected"
+
+    VStack(alignment: .leading, spacing: 20) {
+      VStack(alignment: .leading, spacing: 5) {
+        Text(event.title.uppercased())
+          .font(.caption.weight(.bold))
+          .tracking(0.6)
+          .foregroundStyle(TunedInDesign.accent)
+        Text(existing == nil ? "Add your memory" : "Edit your memory")
+          .font(.largeTitle.weight(.bold))
+          .foregroundStyle(TunedInDesign.primaryText)
+        Text("Your photos, rating, and review stay in your personal diary.")
+          .font(.subheadline)
+          .foregroundStyle(TunedInDesign.mutedText)
+      }
+
+      if let existing, let concertRepository, existing.photoCount > 0 {
+        ZStack(alignment: .topTrailing) {
+          DiaryMediaPreview(
+            diaryID: existing.id,
+            reportedPhotoCount: existing.photoCount,
+            concertRepository: concertRepository,
+            height: 170,
+            maximumVisiblePhotos: 2
+          )
+
+          PhotosPicker(
+            selection: $photoSelection,
+            maxSelectionCount: 10,
+            matching: .images
+          ) {
+            Label(
+              photoPickerTitle,
+              systemImage: "photo.badge.plus"
+            )
+            .font(.caption.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
+            .padding(.horizontal, 12)
+            .frame(height: 36)
+            .background(.ultraThinMaterial, in: Capsule())
+          }
+          .disabled(isSaving)
+          .padding(12)
+        }
+        .padding(.horizontal, -20)
+      }
+    }
+  }
+}
+
+private struct DiaryScoreRow: View {
+  let title: String
+  let systemImage: String
+  @Binding var isIncluded: Bool
+  @Binding var value: Double
+
+  var body: some View {
+    HStack(spacing: 8) {
+      Image(systemName: systemImage)
+        .font(.subheadline.weight(.bold))
+        .foregroundStyle(TunedInDesign.accent)
+        .frame(width: 32, height: 32)
+        .background(TunedInDesign.accentTint, in: Circle())
+
+      Text(title)
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(TunedInDesign.primaryText)
+        .lineLimit(1)
+        .minimumScaleFactor(0.85)
+
+      Spacer(minLength: 8)
+
+      if isIncluded {
+        Button {
+          value = max(0.5, value - 0.5)
+        } label: {
+          Image(systemName: "minus")
+            .frame(width: 28, height: 28)
+        }
+        .disabled(value <= 0.5)
+
+        Text(value.formatted(.number.precision(.fractionLength(1))))
+          .font(.headline.monospacedDigit())
+          .foregroundStyle(TunedInDesign.primaryText)
+          .frame(width: 34)
+
+        Button {
+          value = min(10, value + 0.5)
+        } label: {
+          Image(systemName: "plus")
+            .frame(width: 28, height: 28)
+        }
+        .disabled(value >= 10)
+
+        Button {
+          isIncluded = false
+        } label: {
+          Image(systemName: "xmark")
+            .font(.caption.weight(.bold))
+            .frame(width: 28, height: 28)
+        }
+        .accessibilityLabel("Remove \(title.lowercased()) score")
+      } else {
+        Button("Add") {
+          isIncluded = true
+        }
+        .font(.subheadline.weight(.bold))
+        .foregroundStyle(TunedInDesign.accent)
+      }
+    }
+    .buttonStyle(.plain)
   }
 }
 

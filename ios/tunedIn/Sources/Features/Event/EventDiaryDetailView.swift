@@ -18,26 +18,15 @@ struct EventDiaryDetailView: View {
   @State private var isPosting = false
   @State private var errorMessage: String?
 
-  private let columns = [
-    GridItem(.flexible(), spacing: 6),
-    GridItem(.flexible(), spacing: 6)
-  ]
-
   var body: some View {
     ZStack {
       TunedInDesign.pageBackground.ignoresSafeArea()
 
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
-          EventScreenHeader(
-            eyebrow: "\(event.headlinerName) · \(event.venueName)",
-            title: diary.author.id == viewerID ? "Your diary" : "\(diary.author.displayName)’s diary",
-            subtitle: "The review, album, and comments all follow this diary’s sharing setting."
-          )
-
-          EventDiaryPreviewCard(diary: diary)
-
-          diaryPhotoSection
+          diaryAuthorHeader
+          diaryMediaSection
+          diaryReview
           diaryCommentSection
 
           if let errorMessage {
@@ -47,13 +36,16 @@ struct EventDiaryDetailView: View {
           }
         }
         .padding(20)
-        .padding(.bottom, 24)
+        .padding(.bottom, 96)
       }
       .refreshable { await load(policy: .refresh) }
+
+      EventScrollTopMask()
+        .frame(maxHeight: .infinity, alignment: .top)
     }
     .safeAreaInset(edge: .bottom, spacing: 0) {
       TunedInPersistentControlRegion {
-        TunedInSubscreenBackBar(title: "Diary", action: onDismiss)
+        TunedInSubscreenBackBar(title: "Back to event", action: onDismiss)
           .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
           .padding(.top, 8)
           .padding(.bottom, TunedInDesign.bottomControlInset)
@@ -67,19 +59,43 @@ struct EventDiaryDetailView: View {
     }
   }
 
-  private var diaryPhotoSection: some View {
-    let uploadTitle = isUploading ? "Adding…" : "Add"
-    return VStack(alignment: .leading, spacing: 12) {
-      HStack {
-        VStack(alignment: .leading, spacing: 3) {
-          Text("Photos")
-            .font(.headline)
-            .foregroundStyle(TunedInDesign.primaryText)
-          Text("\(photos.count) from this diary")
-            .font(.caption)
-            .foregroundStyle(TunedInDesign.mutedText)
+  private var diaryAuthorHeader: some View {
+    HStack(spacing: 12) {
+      ProfileAvatarView(profile: diary.author, size: 44)
+      VStack(alignment: .leading, spacing: 3) {
+        HStack(spacing: 5) {
+          Text(diary.author.displayName)
+            .fontWeight(.bold)
+          Image(systemName: diary.audience.icon)
+            .font(.caption2)
         }
-        Spacer()
+        .font(.subheadline)
+        .foregroundStyle(TunedInDesign.primaryText)
+        Text("\(event.headlinerName) · \(event.venueName)")
+          .font(.caption)
+          .foregroundStyle(TunedInDesign.mutedText)
+          .lineLimit(1)
+        Text(CommunityEventDateText.fullDate(event.eventDate))
+          .font(.caption)
+          .foregroundStyle(TunedInDesign.mutedText)
+      }
+      Spacer()
+      if let score = diary.score {
+        Text(score.formatted(.number.precision(.fractionLength(1))))
+          .font(.title.weight(.bold))
+          .foregroundStyle(TunedInDesign.accent)
+      }
+    }
+  }
+
+  @ViewBuilder
+  private var diaryMediaSection: some View {
+    let uploadTitle = isUploading ? "Adding…" : "Add"
+    if isLoading, diary.photoCount > 0, photos.isEmpty {
+      TunedInSkeletonBlock(cornerRadius: 20)
+        .aspectRatio(0.8, contentMode: .fit)
+    } else if !photos.isEmpty {
+      VStack(alignment: .trailing, spacing: 8) {
         if diary.author.id == viewerID {
           PhotosPicker(
             selection: $photoSelection,
@@ -91,31 +107,40 @@ struct EventDiaryDetailView: View {
           }
           .disabled(isUploading)
         }
-      }
-
-      if isLoading, photos.isEmpty {
-        HStack(spacing: 6) {
-          TunedInSkeletonBlock().aspectRatio(0.8, contentMode: .fit)
-          TunedInSkeletonBlock().aspectRatio(0.8, contentMode: .fit)
-        }
-      } else if photos.isEmpty {
-        Text(
-          diary.author.id == viewerID
-            ? "Add the first photo you want to keep with this memory."
-            : "No photos have been shared with this diary yet."
-        )
-        .font(.subheadline)
-        .foregroundStyle(TunedInDesign.mutedText)
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 18))
-      } else {
-        LazyVGrid(columns: columns, spacing: 6) {
+        TabView {
           ForEach(photos) { photo in
-            EventDiaryPhotoTile(photo: photo, concertRepository: concertRepository)
+            DiaryPhotoImage(photo: photo, concertRepository: concertRepository)
+              .frame(maxWidth: .infinity, maxHeight: .infinity)
           }
         }
+        .tabViewStyle(.page(indexDisplayMode: photos.count > 1 ? .automatic : .never))
+        .frame(height: 468)
+        .padding(.horizontal, -20)
       }
+    } else if diary.author.id == viewerID {
+      PhotosPicker(
+        selection: $photoSelection,
+        maxSelectionCount: 10,
+        matching: .images
+      ) {
+        Label(uploadTitle == "Add" ? "Add photos" : uploadTitle, systemImage: "photo.badge.plus")
+          .font(.subheadline.weight(.bold))
+          .foregroundStyle(TunedInDesign.primaryText)
+          .padding(.vertical, 8)
+      }
+      .disabled(isUploading)
+    }
+  }
+
+  private var diaryReview: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      if let note = diary.note {
+        Text(note)
+          .font(.body)
+          .foregroundStyle(TunedInDesign.primaryText)
+      }
+
+      DiaryEngagementLine(diary: diary)
     }
   }
 
@@ -145,7 +170,7 @@ struct EventDiaryDetailView: View {
       if isLoading, comments.isEmpty {
         TunedInSkeletonBlock(cornerRadius: 18).frame(height: 76)
       } else if comments.isEmpty {
-        Text("No comments yet. Start the conversation around this memory.")
+        Text("No comments yet.")
           .font(.subheadline)
           .foregroundStyle(TunedInDesign.mutedText)
       } else {
@@ -164,8 +189,8 @@ struct EventDiaryDetailView: View {
             }
             Spacer(minLength: 0)
           }
-          .padding(12)
-          .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 16))
+          .padding(.vertical, 8)
+          Divider().overlay(TunedInDesign.cardBorder)
         }
       }
     }
@@ -237,52 +262,6 @@ struct EventDiaryDetailView: View {
       onChanged()
     } catch {
       errorMessage = error.localizedDescription
-    }
-  }
-}
-
-private struct EventDiaryPhotoTile: View {
-  let photo: ConcertAlbumPhoto
-  let concertRepository: any ConcertRepository
-
-  @State private var url: URL?
-  @State private var failed = false
-
-  var body: some View {
-    ZStack {
-      TunedInDesign.raisedSurface
-      if let url {
-        CachedRemoteImage(
-          url: url,
-          resource: .albumPhoto(photoID: photo.id, version: photo.version)
-        ) { phase in
-          switch phase {
-          case let .success(image):
-            image.resizable().scaledToFill()
-          case .failure:
-            TunedInImagePlaceholder(failed: true)
-          case .empty:
-            TunedInImagePlaceholder(failed: false)
-          @unknown default:
-            TunedInImagePlaceholder(failed: false)
-          }
-        }
-      } else {
-        TunedInImagePlaceholder(failed: failed)
-      }
-    }
-    .aspectRatio(0.8, contentMode: .fit)
-    .clipShape(RoundedRectangle(cornerRadius: 14))
-    .task(id: "\(photo.id)-\(photo.version)") {
-      do {
-        url = try await concertRepository.albumPhotoURL(
-          photoID: photo.id,
-          objectPath: photo.objectPath,
-          version: photo.version
-        )
-      } catch {
-        failed = true
-      }
     }
   }
 }
