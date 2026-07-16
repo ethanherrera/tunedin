@@ -4,11 +4,19 @@ import SwiftUI
 // Main-tab transition code temporarily shares this file with the existing profile surfaces.
 // swiftlint:disable file_length
 
+// swiftlint:disable:next type_body_length
 struct MainTabView: View {
   private enum Tab: Hashable {
     case feed
     case plans
     case profile
+  }
+
+  private struct CommunityEventRoute: Identifiable {
+    let event: CommunityEventSummary
+    let diaryID: UUID?
+
+    var id: UUID { event.id }
   }
 
   let session: AppSession
@@ -22,8 +30,8 @@ struct MainTabView: View {
   @State private var isPresentingEventDiscovery = false
   @State private var isPresentingPeopleSearch = false
   @State private var shouldPresentPeopleSearchAfterDiscovery = false
-  @State private var pendingCommunityEvent: CommunityEventSummary?
-  @State private var presentedCommunityEvent: CommunityEventSummary?
+  @State private var pendingCommunityEvent: CommunityEventRoute?
+  @State private var presentedCommunityEvent: CommunityEventRoute?
   @State private var pendingSearchedProfile: SocialProfile?
   @State private var presentedSearchedProfile: SocialProfile?
   @State private var archiveRefreshToken = 0
@@ -73,7 +81,7 @@ struct MainTabView: View {
             eventRepository: eventRepository,
             musicCatalogRepository: musicCatalogRepository,
             onOpenEvent: { event in
-              pendingCommunityEvent = event
+              pendingCommunityEvent = CommunityEventRoute(event: event, diaryID: nil)
               isPresentingEventDiscovery = false
             },
             onSearchPeople: {
@@ -84,13 +92,14 @@ struct MainTabView: View {
           )
         }
       }
-      .fullScreenCover(item: $presentedCommunityEvent) { event in
+      .fullScreenCover(item: $presentedCommunityEvent) { route in
         if let eventRepository {
           CommunityEventDetailView(
-            eventID: event.id,
+            eventID: route.event.id,
             viewerID: profile.id,
             repository: eventRepository,
             concertRepository: concertRepository,
+            initialDiaryID: route.diaryID,
             onDismiss: { presentedCommunityEvent = nil }
           )
         }
@@ -101,7 +110,10 @@ struct MainTabView: View {
       ) {
         peopleSearchDrawer
       }
-      .fullScreenCover(item: $presentedSearchedProfile) { searchedProfile in
+      .fullScreenCover(
+        item: $presentedSearchedProfile,
+        onDismiss: presentPendingProfileDestination
+      ) { searchedProfile in
         NavigationStack {
           PersonProfileView(
             profile: searchedProfile,
@@ -109,6 +121,11 @@ struct MainTabView: View {
             currentUsername: profile.username ?? "",
             socialRepository: socialRepository,
             concertRepository: concertRepository,
+            eventRepository: eventRepository,
+            onOpenCommunityEvent: { event, diaryID in
+              pendingCommunityEvent = CommunityEventRoute(event: event, diaryID: diaryID)
+              presentedSearchedProfile = nil
+            },
             onDismiss: { presentedSearchedProfile = nil }
           )
         }
@@ -229,6 +246,12 @@ struct MainTabView: View {
     }
   }
 
+  private func presentPendingProfileDestination() {
+    guard let pendingCommunityEvent else { return }
+    self.pendingCommunityEvent = nil
+    presentedCommunityEvent = pendingCommunityEvent
+  }
+
   @ViewBuilder
   private var selectedContent: some View {
     switch selectedTab {
@@ -238,7 +261,12 @@ struct MainTabView: View {
           CommunityActivityFeedView(
             viewerID: profile.id,
             repository: eventRepository,
-            onOpenEvent: { presentedCommunityEvent = $0 }
+            onOpenActivity: { activity in
+              presentedCommunityEvent = CommunityEventRoute(
+                event: activity.event,
+                diaryID: activity.diary?.id
+              )
+            }
           )
         } else {
           NavigationStack {
@@ -257,7 +285,9 @@ struct MainTabView: View {
         CommunityPlansView(
           viewerID: profile.id,
           repository: eventRepository,
-          onOpenEvent: { presentedCommunityEvent = $0 }
+          onOpenEvent: {
+            presentedCommunityEvent = CommunityEventRoute(event: $0, diaryID: nil)
+          }
         )
         .id(plansNavigationID)
       } else {
@@ -272,7 +302,9 @@ struct MainTabView: View {
         eventRepository: eventRepository,
         socialRepository: socialRepository,
         archiveRefreshToken: archiveRefreshToken,
-        onOpenCommunityEvent: { presentedCommunityEvent = $0 }
+        onOpenCommunityEvent: { event, diaryID in
+          presentedCommunityEvent = CommunityEventRoute(event: event, diaryID: diaryID)
+        }
       )
       .id(profileNavigationID)
     }
@@ -624,7 +656,7 @@ struct ProfileTabView: View {
   let eventRepository: (any EventRepository)?
   let socialRepository: any SocialRepository
   let archiveRefreshToken: Int
-  let onOpenCommunityEvent: (CommunityEventSummary) -> Void
+  let onOpenCommunityEvent: (CommunityEventSummary, UUID?) -> Void
   @State private var friendCount = 0
   @State private var communityHistory = CommunityProfileHistory.empty
   @State private var archiveModel: ConcertArchiveModel
@@ -637,7 +669,7 @@ struct ProfileTabView: View {
     eventRepository: (any EventRepository)?,
     socialRepository: any SocialRepository,
     archiveRefreshToken: Int,
-    onOpenCommunityEvent: @escaping (CommunityEventSummary) -> Void
+    onOpenCommunityEvent: @escaping (CommunityEventSummary, UUID?) -> Void
   ) {
     self.session = session
     self.user = user

@@ -49,7 +49,7 @@ struct EventDiaryDetailView: View {
         .padding(20)
         .padding(.bottom, 24)
       }
-      .refreshable { await load() }
+      .refreshable { await load(policy: .refresh) }
     }
     .safeAreaInset(edge: .bottom, spacing: 0) {
       TunedInPersistentControlRegion {
@@ -59,7 +59,7 @@ struct EventDiaryDetailView: View {
           .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
-    .task { await load() }
+    .task { await load(policy: .automatic) }
     .onChange(of: photoSelection) { _, items in
       guard !items.isEmpty else { return }
       photoSelection = []
@@ -172,12 +172,20 @@ struct EventDiaryDetailView: View {
   }
 
   @MainActor
-  private func load() async {
+  private func load(policy: CacheReadPolicy) async {
     isLoading = photos.isEmpty && comments.isEmpty
     defer { isLoading = false }
     do {
-      async let loadedPhotos = concertRepository.albumPhotos(concertID: diary.id, cursor: nil)
-      async let loadedComments = concertRepository.comments(concertID: diary.id, cursor: nil)
+      async let loadedPhotos = concertRepository.albumPhotos(
+        concertID: diary.id,
+        cursor: nil,
+        policy: policy
+      )
+      async let loadedComments = concertRepository.comments(
+        concertID: diary.id,
+        cursor: nil,
+        policy: policy
+      )
       (photos, comments) = try await (loadedPhotos, loadedComments)
       errorMessage = nil
     } catch {
@@ -238,24 +246,43 @@ private struct EventDiaryPhotoTile: View {
   let concertRepository: any ConcertRepository
 
   @State private var url: URL?
+  @State private var failed = false
 
   var body: some View {
     ZStack {
       TunedInDesign.raisedSurface
-      AsyncImage(url: url) { image in
-        image.resizable().scaledToFill()
-      } placeholder: {
-        ProgressView().tint(TunedInDesign.accent)
+      if let url {
+        CachedRemoteImage(
+          url: url,
+          resource: .albumPhoto(photoID: photo.id, version: photo.version)
+        ) { phase in
+          switch phase {
+          case let .success(image):
+            image.resizable().scaledToFill()
+          case .failure:
+            TunedInImagePlaceholder(failed: true)
+          case .empty:
+            TunedInImagePlaceholder(failed: false)
+          @unknown default:
+            TunedInImagePlaceholder(failed: false)
+          }
+        }
+      } else {
+        TunedInImagePlaceholder(failed: failed)
       }
     }
     .aspectRatio(0.8, contentMode: .fit)
     .clipShape(RoundedRectangle(cornerRadius: 14))
     .task(id: "\(photo.id)-\(photo.version)") {
-      url = try? await concertRepository.albumPhotoURL(
-        photoID: photo.id,
-        objectPath: photo.objectPath,
-        version: photo.version
-      )
+      do {
+        url = try await concertRepository.albumPhotoURL(
+          photoID: photo.id,
+          objectPath: photo.objectPath,
+          version: photo.version
+        )
+      } catch {
+        failed = true
+      }
     }
   }
 }

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct CommunityProfileHistorySection: View {
   let history: CommunityProfileHistory
-  let onOpenEvent: (CommunityEventSummary) -> Void
+  let onOpenEvent: (CommunityEventSummary, UUID?) -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
@@ -11,28 +11,42 @@ struct CommunityProfileHistorySection: View {
           Text("Concert life")
             .font(.title3.weight(.bold))
             .foregroundStyle(TunedInDesign.primaryText)
-          Text("Went is lightweight. Diaries hold the memory.")
+          Text("Going makes the plan. Went is lightweight. Diaries hold the memory.")
             .font(.caption)
             .foregroundStyle(TunedInDesign.mutedText)
         }
         Spacer()
-        Text("\(history.went.count) went · \(history.diaries.count) diaries")
+        Text(
+          "\(history.going.count) going · \(history.went.count) went · "
+            + "\(history.diaries.count) diaries"
+        )
           .font(.caption.weight(.semibold))
           .foregroundStyle(TunedInDesign.mutedText)
       }
 
-      if history.went.isEmpty, history.diaries.isEmpty {
-        Text("Concerts you mark Went—and the diaries you choose to write—will live here.")
+      if history.going.isEmpty, history.went.isEmpty, history.diaries.isEmpty {
+        Text("Concert plans, shows you went to, and diaries you choose to write will live here.")
           .font(.subheadline)
           .foregroundStyle(TunedInDesign.mutedText)
           .padding(16)
           .frame(maxWidth: .infinity, alignment: .leading)
           .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 18))
       } else {
+        if !history.going.isEmpty {
+          profileSubsection("Going") {
+            ForEach(history.going.prefix(3)) { event in
+              Button { onOpenEvent(event, nil) } label: {
+                CommunityEventRow(event: event, showsSource: false)
+              }
+              .buttonStyle(TunedInPosterButtonStyle())
+            }
+          }
+        }
+
         if !history.went.isEmpty {
           profileSubsection("Went") {
             ForEach(history.went.prefix(3)) { event in
-              Button { onOpenEvent(event) } label: {
+              Button { onOpenEvent(event, nil) } label: {
                 CommunityEventRow(event: event, showsSource: false)
               }
               .buttonStyle(TunedInPosterButtonStyle())
@@ -43,7 +57,7 @@ struct CommunityProfileHistorySection: View {
         if !history.diaries.isEmpty {
           profileSubsection("Diaries") {
             ForEach(history.diaries.prefix(3)) { entry in
-              Button { onOpenEvent(entry.event) } label: {
+              Button { onOpenEvent(entry.event, entry.diary.id) } label: {
                 EventDiaryPreviewCard(diary: entry.diary)
               }
               .buttonStyle(TunedInPosterButtonStyle())
@@ -70,7 +84,7 @@ struct CommunityProfileHistorySection: View {
 struct CommunityActivityFeedView: View {
   let viewerID: UUID
   let repository: any EventRepository
-  let onOpenEvent: (CommunityEventSummary) -> Void
+  let onOpenActivity: (EventActivity) -> Void
 
   @State private var activities: [EventActivity] = []
   @State private var isLoading = true
@@ -104,7 +118,7 @@ struct CommunityActivityFeedView: View {
           } else {
             LazyVStack(spacing: 14) {
               ForEach(activities) { activity in
-                Button { onOpenEvent(activity.event) } label: {
+                Button { onOpenActivity(activity) } label: {
                   CommunityActivityCard(activity: activity)
                 }
                 .buttonStyle(TunedInPosterButtonStyle())

@@ -301,8 +301,8 @@ select is(
   (select count(*) from public.list_catalog_event_activity(null, 50)
     where action = 'event_posted'
       and (event ->> 'event_id')::uuid = current_setting('test.event_social_event')::uuid),
-  1::bigint,
-  'the activity feed applies post audience at read time'
+  0::bigint,
+  'the friend circle feed excludes community activity from strangers'
 );
 
 select set_config('request.jwt.claim.sub', 'e4000000-0000-4000-8000-000000000001', true);

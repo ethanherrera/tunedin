@@ -32,14 +32,15 @@ struct UpsertCatalogEventDiaryParameters: Encodable, Equatable, Sendable {
   let performanceScore: Double?
   let reviewBody: String?
   let audience: EventAudience
-  let publish = true
+  let publish: Bool
 
-  init(eventID: UUID, input: EventDiaryInput) {
+  init(eventID: UUID, input: EventDiaryInput, publish: Bool = true) {
     self.eventID = eventID
     overallScore = input.score
     performanceScore = input.performanceScore
     reviewBody = CatalogInput.optionalNormalizedText(input.note ?? "")
     audience = input.audience
+    self.publish = publish
   }
 
   enum CodingKeys: String, CodingKey {
@@ -49,6 +50,44 @@ struct UpsertCatalogEventDiaryParameters: Encodable, Equatable, Sendable {
     case reviewBody = "p_review_body"
     case audience = "p_audience"
     case publish = "p_publish"
+  }
+}
+
+struct UpsertCatalogEventDiaryRPCRecord: Decodable, Equatable, Sendable {
+  let diaryID: UUID
+  let eventID: UUID
+  let publishedAt: String?
+
+  enum CodingKeys: String, CodingKey {
+    case diaryID = "diary_id"
+    case eventID = "event_id"
+    case publishedAt = "published_at"
+  }
+}
+
+struct CatalogEventProfileAttendanceParameters: Encodable, Equatable, Sendable {
+  let profileID: UUID
+  let state: EventAttendanceStatus
+  let cursor: [String: String]?
+  let limit: Int
+
+  init(
+    profileID: UUID,
+    state: EventAttendanceStatus,
+    cursor: [String: String]? = nil,
+    limit: Int = 50
+  ) {
+    self.profileID = profileID
+    self.state = state
+    self.cursor = cursor
+    self.limit = limit
+  }
+
+  enum CodingKeys: String, CodingKey {
+    case profileID = "p_profile_id"
+    case state = "p_state"
+    case cursor = "p_cursor"
+    case limit = "p_limit"
   }
 }
 
@@ -127,6 +166,20 @@ struct CatalogEventProfileHistoryRPCRecord: Decodable, Equatable, Sendable {
   enum CodingKeys: String, CodingKey {
     case event, diary
     case historyKind = "history_kind"
+    case occurredAt = "occurred_at"
+  }
+}
+
+struct CatalogEventProfileAttendanceRPCRecord: Decodable, Equatable, Sendable {
+  let attendanceID: UUID
+  let event: CatalogEventRPCRecord
+  let status: EventAttendanceStatus
+  let audience: EventAudience
+  let occurredAt: String
+
+  enum CodingKeys: String, CodingKey {
+    case event, status, audience
+    case attendanceID = "attendance_id"
     case occurredAt = "occurred_at"
   }
 }

@@ -195,9 +195,9 @@ select set_config(
       'is_primary', true
     )),
     current_setting('test.event_place_id')::uuid,
-    current_date + 30,
+    current_date + 31,
     current_setting('test.event_tour_id')::uuid,
-    ((current_date + 30) + time '21:00') at time zone 'America/Los_Angeles',
+    ((current_date + 31) + time '21:00') at time zone 'America/Los_Angeles',
     'America/Los_Angeles',
     'listed'
   ) as created),
@@ -207,7 +207,7 @@ select set_config(
 select isnt(
   current_setting('test.near_event_id')::uuid,
   current_setting('test.event_id')::uuid,
-  'a genuinely different start time remains a distinct occurrence'
+  'a nearby-date show remains a distinct occurrence'
 );
 
 select is(

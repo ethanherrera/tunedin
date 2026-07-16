@@ -48,7 +48,7 @@
     func attendanceMutationDoesNotCreateADiary() async throws {
       let repository = DevelopmentEventRepository(now: now)
       let viewerID = DevelopmentSocialFixture.currentUserID
-      let eventID = DevelopmentEventFixture.vampireWeekendCancelledID
+      let eventID = DevelopmentEventFixture.mitskiGreekID
 
       let detail = try await repository.setAttendance(
         eventID: eventID,
@@ -116,12 +116,80 @@
         listing: .listed
       )
 
+      let candidates = try await repository.duplicateCandidates(
+        for: input,
+        viewerID: DevelopmentSocialFixture.currentUserID
+      )
+      #expect(candidates.first?.id == DevelopmentEventFixture.mitskiGreekID)
+
       do {
         _ = try await repository.createEvent(input, creatorID: DevelopmentSocialFixture.currentUserID)
         Issue.record("Expected duplicate creation to be rejected")
       } catch let CommunityEventError.duplicateEvent(eventID) {
         #expect(eventID == DevelopmentEventFixture.mitskiGreekID)
       }
+    }
+
+    @Test
+    func creatingAnEventDoesNotCreateAttendanceAndUsesFourHourUnlock() async throws {
+      let repository = DevelopmentEventRepository(now: now)
+      let catalog = DevelopmentMusicCatalogRepository()
+      let artistEntity = try #require(
+        await catalog.entity(id: DevelopmentMusicCatalogFixture.vampireWeekendID)
+      )
+      let placeEntity = try #require(
+        await catalog.entity(id: DevelopmentMusicCatalogFixture.masonicID)
+      )
+      guard case let .artist(artist) = artistEntity,
+            case let .place(place) = placeEntity
+      else {
+        Issue.record("Expected resolved catalog fixtures")
+        return
+      }
+      let startsAt = now.addingTimeInterval(60 * 86_400)
+      let detail = try await repository.createEvent(
+        CommunityEventCreationInput(
+          artists: [artist],
+          place: place,
+          tour: nil,
+          eventDate: startsAt,
+          startsAt: startsAt,
+          timeZoneIdentifier: "America/Los_Angeles",
+          listing: .listed
+        ),
+        creatorID: DevelopmentSocialFixture.currentUserID
+      )
+
+      #expect(detail.summary.currentUserAttendance == nil)
+      #expect(detail.attendances.isEmpty)
+      #expect(detail.summary.memoryUnlockAt == startsAt.addingTimeInterval(4 * 3_600))
+    }
+
+    @Test
+    func aReadyPhotoCanBeTheOnlyDiaryContent() async throws {
+      let repository = DevelopmentEventRepository(now: now)
+      let viewerID = DevelopmentSocialFixture.currentUserID
+      let diaryID = try await repository.preparePhotoDiary(
+        eventID: DevelopmentEventFixture.mitskiMemoryID,
+        authorID: viewerID,
+        audience: .friends
+      )
+      let detail = try await repository.saveDiary(
+        eventID: DevelopmentEventFixture.mitskiMemoryID,
+        authorID: viewerID,
+        input: EventDiaryInput(
+          score: nil,
+          performanceScore: nil,
+          note: nil,
+          audience: .friends,
+          hasReadyPhoto: true
+        )
+      )
+
+      let diary = try #require(detail.diaryPreviews.first(where: { $0.id == diaryID }))
+      #expect(diary.photoCount == 1)
+      #expect(diary.score == nil)
+      #expect(diary.note == nil)
     }
   }
 #endif

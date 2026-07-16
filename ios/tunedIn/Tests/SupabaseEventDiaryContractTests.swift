@@ -30,6 +30,20 @@ struct SupabaseEventDiaryContractTests {
       )
     ))
     let profile = try encodedObject(CatalogEventProfileHistoryParameters(profileID: profileID))
+    let going = try encodedObject(CatalogEventProfileAttendanceParameters(
+      profileID: profileID,
+      state: .going
+    ))
+    let draft = try encodedObject(UpsertCatalogEventDiaryParameters(
+      eventID: eventID,
+      input: EventDiaryInput(
+        score: nil,
+        performanceScore: nil,
+        note: nil,
+        audience: .friends
+      ),
+      publish: false
+    ))
 
     #expect(Set(diaries.keys) == ["p_event_id", "p_scope", "p_limit"])
     #expect(diaries["p_event_id"] as? String == eventID.uuidString)
@@ -45,6 +59,9 @@ struct SupabaseEventDiaryContractTests {
     #expect(save["p_publish"] as? Bool == true)
     #expect(Set(profile.keys) == ["p_profile_id", "p_limit"])
     #expect(profile["p_profile_id"] as? String == profileID.uuidString)
+    #expect(Set(going.keys) == ["p_profile_id", "p_state", "p_limit"])
+    #expect(going["p_state"] as? String == "going")
+    #expect(draft["p_publish"] as? Bool == false)
   }
 
   @Test
@@ -90,6 +107,51 @@ struct SupabaseEventDiaryContractTests {
     #expect(summaryRecord.averageScore == 9.25)
     #expect(event.diaryCount == 2)
     #expect(event.averageDiaryScore == 9.25)
+  }
+
+  @Test
+  func activityAndProfileAttendanceCarryDiaryAndGoingDestinations() throws {
+    let activityData = Data(
+      """
+      {
+        "activity_id":"90000000-0000-0000-0000-000000000001",
+        "action":"diary_published",
+        "actor_id":"20000000-0000-0000-0000-000000000001",
+        "actor_username":"morgan",
+        "actor_display_name":"Morgan",
+        "actor_relationship":"friends",
+        "actor_avatar_object_path":null,
+        "actor_avatar_version":2,
+        "subject_id":"30000000-0000-0000-0000-000000000001",
+        "diary":\(diaryJSON),
+        "event":\(eventJSON),
+        "occurred_at":"2026-07-16T20:00:00Z"
+      }
+      """.utf8
+    )
+    let attendanceData = Data(
+      """
+      {
+        "attendance_id":"91000000-0000-0000-0000-000000000001",
+        "event":\(eventJSON),
+        "status":"going",
+        "audience":"friends",
+        "occurred_at":"2026-07-16T20:00:00Z"
+      }
+      """.utf8
+    )
+    let activityRecord = try JSONDecoder().decode(CatalogEventActivityRPCRecord.self, from: activityData)
+    let attendance = try JSONDecoder().decode(
+      CatalogEventProfileAttendanceRPCRecord.self,
+      from: attendanceData
+    )
+    let event = try CommunityEventSummary(databaseRecord: activityRecord.event)
+    let activity = try EventActivity(databaseRecord: activityRecord, event: event)
+
+    #expect(activity.diary?.id == activityRecord.subjectID)
+    #expect(activity.diary?.photoCount == 4)
+    #expect(attendance.status == .going)
+    #expect(attendance.event.eventID == event.id)
   }
 
   private var diaryJSON: String {

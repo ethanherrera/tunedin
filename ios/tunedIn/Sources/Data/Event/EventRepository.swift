@@ -28,6 +28,10 @@ protocol EventRepository: Sendable {
   var capabilities: EventRepositoryCapabilities { get }
 
   func searchEvents(query: String, viewerID: UUID) async throws -> [CommunityEventSummary]
+  func duplicateCandidates(
+    for input: CommunityEventCreationInput,
+    viewerID: UUID
+  ) async throws -> [CommunityEventSummary]
   func eventDetail(id: UUID, viewerID: UUID) async throws -> CommunityEventDetail
   func plans(viewerID: UUID) async throws -> [CommunityEventSummary]
   func activityFeed(viewerID: UUID) async throws -> [EventActivity]
@@ -35,6 +39,11 @@ protocol EventRepository: Sendable {
     eventID: UUID,
     viewerID: UUID,
     status: EventAttendanceStatus?,
+    audience: EventAudience
+  ) async throws -> CommunityEventDetail
+  func confirmCancelledPerformance(
+    eventID: UUID,
+    viewerID: UUID,
     audience: EventAudience
   ) async throws -> CommunityEventDetail
   func addPost(
@@ -58,11 +67,29 @@ protocol EventRepository: Sendable {
     authorID: UUID,
     input: EventDiaryInput
   ) async throws -> CommunityEventDetail
+  func preparePhotoDiary(
+    eventID: UUID,
+    authorID: UUID,
+    audience: EventAudience
+  ) async throws -> UUID
   func profileHistory(profileID: UUID, viewerID: UUID) async throws -> CommunityProfileHistory
+  func reportEvent(
+    eventID: UUID,
+    reporterID: UUID,
+    reason: EventReportReason,
+    note: String?
+  ) async throws
   func createEvent(_ input: CommunityEventCreationInput, creatorID: UUID) async throws -> CommunityEventDetail
 }
 
 extension EventRepository {
+  func duplicateCandidates(
+    for _: CommunityEventCreationInput,
+    viewerID _: UUID
+  ) async throws -> [CommunityEventSummary] {
+    []
+  }
+
   func plans(viewerID _: UUID) async throws -> [CommunityEventSummary] {
     throw CommunityEventError.featureUnavailable("Plans")
   }
@@ -78,6 +105,14 @@ extension EventRepository {
     audience _: EventAudience
   ) async throws -> CommunityEventDetail {
     throw CommunityEventError.featureUnavailable("Going and Went")
+  }
+
+  func confirmCancelledPerformance(
+    eventID _: UUID,
+    viewerID _: UUID,
+    audience _: EventAudience
+  ) async throws -> CommunityEventDetail {
+    throw CommunityEventError.featureUnavailable("Cancelled performance confirmation")
   }
 
   func addPost(
@@ -119,10 +154,27 @@ extension EventRepository {
     throw CommunityEventError.featureUnavailable("Concert diaries")
   }
 
+  func preparePhotoDiary(
+    eventID _: UUID,
+    authorID _: UUID,
+    audience _: EventAudience
+  ) async throws -> UUID {
+    throw CommunityEventError.featureUnavailable("Diary photos")
+  }
+
   func profileHistory(
     profileID _: UUID,
     viewerID _: UUID
   ) async throws -> CommunityProfileHistory {
     throw CommunityEventError.featureUnavailable("Concert history")
+  }
+
+  func reportEvent(
+    eventID _: UUID,
+    reporterID _: UUID,
+    reason _: EventReportReason,
+    note _: String?
+  ) async throws {
+    throw CommunityEventError.featureUnavailable("Event reports")
   }
 }

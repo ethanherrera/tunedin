@@ -1,4 +1,8 @@
+import PhotosUI
 import SwiftUI
+
+// This cohesive event journey keeps its phase-specific private views together.
+// swiftlint:disable file_length
 
 struct CommunityEventDetailView: View {
   private enum Page: String, CaseIterable {
@@ -19,13 +23,31 @@ struct CommunityEventDetailView: View {
   let viewerID: UUID
   let repository: any EventRepository
   let concertRepository: (any ConcertRepository)?
+  let initialDiaryID: UUID?
   let onDismiss: () -> Void
+
+  init(
+    eventID: UUID,
+    viewerID: UUID,
+    repository: any EventRepository,
+    concertRepository: (any ConcertRepository)?,
+    initialDiaryID: UUID? = nil,
+    onDismiss: @escaping () -> Void
+  ) {
+    self.eventID = eventID
+    self.viewerID = viewerID
+    self.repository = repository
+    self.concertRepository = concertRepository
+    self.initialDiaryID = initialDiaryID
+    self.onDismiss = onDismiss
+  }
 
   @State private var detail: CommunityEventDetail?
   @State private var selectedPage = Page.event
   @State private var isLoading = true
   @State private var errorMessage: String?
   @State private var isPresentingInvites = false
+  @State private var isPresentingReport = false
   @Namespace private var selectionNamespace
 
   var body: some View {
@@ -50,6 +72,9 @@ struct CommunityEventDetailView: View {
               allowsAttendance: repository.capabilities.contains(.attendance),
               onSetAttendance: { status, audience in
                 Task { await setAttendance(status, audience: audience) }
+              },
+              onConfirmCancelledPerformance: { audience in
+                Task { await confirmCancelledPerformance(audience: audience) }
               }
             )
 
@@ -60,6 +85,7 @@ struct CommunityEventDetailView: View {
                 viewerID: viewerID,
                 repository: repository,
                 allowsConversation: repository.capabilities.contains(.conversation),
+                onReport: { isPresentingReport = true },
                 onPostAdded: { Task { await load() } }
               )
             case .people:
@@ -70,6 +96,7 @@ struct CommunityEventDetailView: View {
                 viewerID: viewerID,
                 repository: repository,
                 concertRepository: concertRepository,
+                initialDiaryID: initialDiaryID,
                 onSaved: { Task { await load() } }
               )
             }
@@ -96,6 +123,16 @@ struct CommunityEventDetailView: View {
         eventID: eventID,
         viewerID: viewerID,
         repository: repository
+      )
+      .presentationDetents([.medium, .large])
+      .presentationDragIndicator(.visible)
+    }
+    .sheet(isPresented: $isPresentingReport) {
+      EventReportView(
+        eventID: eventID,
+        viewerID: viewerID,
+        repository: repository,
+        onDismiss: { isPresentingReport = false }
       )
       .presentationDetents([.medium, .large])
       .presentationDragIndicator(.visible)
@@ -187,12 +224,28 @@ struct CommunityEventDetailView: View {
       errorMessage = error.localizedDescription
     }
   }
+
+  @MainActor
+  private func confirmCancelledPerformance(audience: EventAudience) async {
+    do {
+      detail = try await repository.confirmCancelledPerformance(
+        eventID: eventID,
+        viewerID: viewerID,
+        audience: audience
+      )
+      errorMessage = nil
+      selectedPage = .memories
+    } catch {
+      errorMessage = error.localizedDescription
+    }
+  }
 }
 
 private struct CommunityEventHero: View {
   let detail: CommunityEventDetail
   let allowsAttendance: Bool
   let onSetAttendance: (EventAttendanceStatus?, EventAudience) -> Void
+  let onConfirmCancelledPerformance: (EventAudience) -> Void
 
   @State private var audience = EventAudience.friends
 
@@ -213,8 +266,9 @@ private struct CommunityEventHero: View {
 
       Divider().overlay(TunedInDesign.cardBorder)
 
-      if allowsAttendance,
-         detail.summary.phase() != .cancelled || detail.summary.currentUserAttendance != nil {
+      if allowsAttendance, detail.summary.phase() == .cancelled {
+        cancelledAttendanceControl
+      } else if allowsAttendance {
         HStack(spacing: 12) {
           if detail.summary.phase() == .memories {
             Menu {
@@ -295,6 +349,37 @@ private struct CommunityEventHero: View {
     }
   }
 
+  @ViewBuilder
+  private var cancelledAttendanceControl: some View {
+    if Date.now < detail.summary.memoryUnlockAt {
+      Label(
+        "Attendance is paused unless the performance actually happens.",
+        systemImage: "calendar.badge.exclamationmark"
+      )
+      .font(.caption.weight(.semibold))
+      .foregroundStyle(TunedInDesign.mutedText)
+    } else if detail.summary.currentUserAttendance == .went {
+      Label("You confirmed this performance happened", systemImage: "checkmark.seal.fill")
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(TunedInDesign.primaryText)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 18))
+    } else {
+      Button {
+        onConfirmCancelledPerformance(audience)
+      } label: {
+        Label("The performance happened — I went", systemImage: "checkmark.circle.fill")
+          .font(.headline)
+          .foregroundStyle(TunedInDesign.actionForeground)
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 13)
+          .background(TunedInDesign.accent, in: Capsule())
+      }
+      .buttonStyle(TunedInPosterButtonStyle())
+    }
+  }
+
   private var attendanceLabel: some View {
     Label(attendanceTitle, systemImage: attendanceIcon)
       .font(.headline)
@@ -368,6 +453,7 @@ private struct EventOverviewPage: View {
   let viewerID: UUID
   let repository: any EventRepository
   let allowsConversation: Bool
+  let onReport: () -> Void
   let onPostAdded: () -> Void
 
   @State private var comment = ""
@@ -395,6 +481,14 @@ private struct EventOverviewPage: View {
         EventMetadataRow(label: "Venue", value: detail.summary.venueName)
         EventMetadataRow(label: "Location", value: detail.summary.areaName)
         EventMetadataRow(label: "Source", value: detail.summary.sourceLabel)
+
+        Divider()
+        Button(action: onReport) {
+          Label("Suggest a correction", systemImage: "exclamationmark.bubble")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(TunedInDesign.primaryText)
+        }
+        .buttonStyle(.plain)
       }
 
       if allowsConversation {
@@ -427,7 +521,10 @@ private struct EventOverviewPage: View {
 
             Menu {
               ForEach([EventAudience.friends, .community], id: \.self) { option in
-                Button(option.title) { audience = option }
+                Button(option.title) {
+                  audience = option
+                  rememberPostAudience(option)
+                }
               }
             } label: {
               Image(systemName: audience == .friends ? "person.2.fill" : "globe.americas.fill")
@@ -467,6 +564,13 @@ private struct EventOverviewPage: View {
         }
       }
     }
+    .task {
+      if let remembered = EventAudience(rawValue: UserDefaults.standard.string(
+        forKey: "community-event-post-audience.\(viewerID.uuidString)"
+      ) ?? "") {
+        audience = remembered
+      }
+    }
   }
 
   @MainActor
@@ -481,6 +585,7 @@ private struct EventOverviewPage: View {
         body: comment,
         audience: audience
       )
+      rememberPostAudience(audience)
       comment = ""
       replyTo = nil
       errorMessage = nil
@@ -488,6 +593,13 @@ private struct EventOverviewPage: View {
     } catch {
       errorMessage = error.localizedDescription
     }
+  }
+
+  private func rememberPostAudience(_ audience: EventAudience) {
+    UserDefaults.standard.set(
+      audience.rawValue,
+      forKey: "community-event-post-audience.\(viewerID.uuidString)"
+    )
   }
 }
 
@@ -535,14 +647,16 @@ private struct EventMemoriesPage: View {
   let viewerID: UUID
   let repository: any EventRepository
   let concertRepository: (any ConcertRepository)?
+  let initialDiaryID: UUID?
   let onSaved: () -> Void
 
   @State private var isPresentingDiary = false
   @State private var selectedDiary: EventDiaryPreview?
+  @State private var didOpenInitialDiary = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
-      if detail.summary.phase() != .memories {
+      if !memoriesAreAvailable {
         EventEmptyView(
           systemImage: "lock.fill",
           title: "Memories unlock after the show",
@@ -586,7 +700,7 @@ private struct EventMemoriesPage: View {
             message: "Going or Went still exists without a diary. Writing one is always optional."
           )
         } else {
-          ForEach(detail.diaryPreviews.sorted(by: { $0.publishedAt > $1.publishedAt })) { diary in
+          ForEach(sortedDiaries) { diary in
             if concertRepository == nil {
               EventDiaryPreviewCard(diary: diary)
             } else {
@@ -604,6 +718,7 @@ private struct EventMemoriesPage: View {
         eventID: detail.id,
         viewerID: viewerID,
         repository: repository,
+        concertRepository: concertRepository,
         existing: detail.diaryPreviews.first(where: { $0.author.id == viewerID }),
         onSaved: {
           isPresentingDiary = false
@@ -624,6 +739,28 @@ private struct EventMemoriesPage: View {
         )
       }
     }
+    .task(id: initialDiaryID) {
+      guard !didOpenInitialDiary,
+            let initialDiaryID,
+            let diary = detail.diaryPreviews.first(where: { $0.id == initialDiaryID })
+      else { return }
+      didOpenInitialDiary = true
+      selectedDiary = diary
+    }
+  }
+
+  private var memoriesAreAvailable: Bool {
+    detail.summary.phase() == .memories
+      || (detail.summary.lifecycle == .cancelled && Date.now >= detail.summary.memoryUnlockAt)
+  }
+
+  private var sortedDiaries: [EventDiaryPreview] {
+    detail.diaryPreviews.sorted { lhs, rhs in
+      let lhsRank = lhs.author.id == viewerID ? 0 : (lhs.author.relationship == .friends ? 1 : 2)
+      let rhsRank = rhs.author.id == viewerID ? 0 : (rhs.author.relationship == .friends ? 1 : 2)
+      if lhsRank != rhsRank { return lhsRank < rhsRank }
+      return lhs.publishedAt > rhs.publishedAt
+    }
   }
 }
 
@@ -631,6 +768,7 @@ private struct EventDiaryComposerView: View {
   let eventID: UUID
   let viewerID: UUID
   let repository: any EventRepository
+  let concertRepository: (any ConcertRepository)?
   let existing: EventDiaryPreview?
   let onSaved: () -> Void
   let onDismiss: () -> Void
@@ -641,6 +779,7 @@ private struct EventDiaryComposerView: View {
   @State private var performanceScore: Double
   @State private var note: String
   @State private var audience: EventAudience
+  @State private var photoSelection: [PhotosPickerItem] = []
   @State private var isSaving = false
   @State private var errorMessage: String?
 
@@ -648,6 +787,7 @@ private struct EventDiaryComposerView: View {
     eventID: UUID,
     viewerID: UUID,
     repository: any EventRepository,
+    concertRepository: (any ConcertRepository)?,
     existing: EventDiaryPreview?,
     onSaved: @escaping () -> Void,
     onDismiss: @escaping () -> Void
@@ -655,6 +795,7 @@ private struct EventDiaryComposerView: View {
     self.eventID = eventID
     self.viewerID = viewerID
     self.repository = repository
+    self.concertRepository = concertRepository
     self.existing = existing
     self.onSaved = onSaved
     self.onDismiss = onDismiss
@@ -667,6 +808,11 @@ private struct EventDiaryComposerView: View {
   }
 
   var body: some View {
+    let photoPickerTitle = if photoSelection.isEmpty {
+      (existing?.photoCount ?? 0) > 0 ? "Add more photos" : "Choose photos"
+    } else {
+      "\(photoSelection.count) selected"
+    }
     ZStack {
       TunedInDesign.pageBackground.ignoresSafeArea()
 
@@ -728,6 +874,37 @@ private struct EventDiaryComposerView: View {
           }
 
           TunedInFormCard {
+            Text("Photos")
+              .font(.headline)
+              .foregroundStyle(TunedInDesign.primaryText)
+            if concertRepository != nil {
+              PhotosPicker(
+                selection: $photoSelection,
+                maxSelectionCount: 10,
+                matching: .images
+              ) {
+                Label(
+                  photoPickerTitle,
+                  systemImage: "photo.badge.plus"
+                )
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(TunedInDesign.primaryText)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14))
+              }
+              .disabled(isSaving)
+            } else {
+              Text("Photo uploads are unavailable in this preview.")
+                .font(.caption)
+                .foregroundStyle(TunedInDesign.mutedText)
+            }
+            Text("Photos inherit this diary’s audience. You can share a photo-only memory.")
+              .font(.caption)
+              .foregroundStyle(TunedInDesign.mutedText)
+          }
+
+          TunedInFormCard {
             Text("Who can see this diary?")
               .font(.headline)
               .foregroundStyle(TunedInDesign.primaryText)
@@ -738,7 +915,7 @@ private struct EventDiaryComposerView: View {
             }
             .pickerStyle(.segmented)
             Label(
-              "After saving, open this diary to add photos and talk with friends. Video comes later.",
+              "After saving, open this diary to see its album and talk with friends. Video comes later.",
               systemImage: "photo.on.rectangle.angled"
             )
             .font(.caption)
@@ -779,6 +956,39 @@ private struct EventDiaryComposerView: View {
     isSaving = true
     defer { isSaving = false }
     do {
+      var hasReadyPhoto = (existing?.photoCount ?? 0) > 0
+      if !photoSelection.isEmpty {
+        guard let concertRepository else {
+          throw CommunityEventError.invalidEvent("Photo uploads are unavailable right now.")
+        }
+        let diaryID: UUID
+        if let existingID = existing?.id {
+          diaryID = existingID
+        } else {
+          diaryID = try await repository.preparePhotoDiary(
+            eventID: eventID,
+            authorID: viewerID,
+            audience: audience
+          )
+        }
+        var uploadedCount = 0
+        for item in photoSelection {
+          guard let source = try await item.loadTransferable(type: Data.self) else {
+            throw AppFailure.unexpected
+          }
+          let data = try await ConcertAlbumImageProcessor.process(source)
+          let reservation = try await concertRepository.reserveAlbumPhoto(
+            concertID: diaryID,
+            photoID: UUID()
+          )
+          _ = try await concertRepository.uploadReservedAlbumPhoto(
+            data,
+            reservation: reservation
+          )
+          uploadedCount += 1
+        }
+        hasReadyPhoto = hasReadyPhoto || uploadedCount > 0
+      }
       _ = try await repository.saveDiary(
         eventID: eventID,
         authorID: viewerID,
@@ -786,9 +996,11 @@ private struct EventDiaryComposerView: View {
           score: includesScore ? score : nil,
           performanceScore: includesPerformanceScore ? performanceScore : nil,
           note: note,
-          audience: audience
+          audience: audience,
+          hasReadyPhoto: hasReadyPhoto
         )
       )
+      photoSelection = []
       errorMessage = nil
       onSaved()
     } catch {
@@ -800,6 +1012,81 @@ private struct EventDiaryComposerView: View {
     includesScore
       || includesPerformanceScore
       || CatalogInput.optionalNormalizedText(note) != nil
+      || !photoSelection.isEmpty
+      || (existing?.photoCount ?? 0) > 0
+  }
+}
+
+private struct EventReportView: View {
+  let eventID: UUID
+  let viewerID: UUID
+  let repository: any EventRepository
+  let onDismiss: () -> Void
+
+  @State private var reason = EventReportReason.wrongDate
+  @State private var note = ""
+  @State private var isSubmitting = false
+  @State private var errorMessage: String?
+
+  var body: some View {
+    NavigationStack {
+      Form {
+        Section("What should we review?") {
+          Picker("Reason", selection: $reason) {
+            ForEach(EventReportReason.allCases, id: \.self) { option in
+              Text(option.title).tag(option)
+            }
+          }
+          TextField("Optional details", text: $note, axis: .vertical)
+            .lineLimit(2 ... 6)
+          Text("\(note.count)/500")
+            .font(.caption.monospacedDigit())
+            .foregroundStyle(note.count > 500 ? TunedInDesign.accent : TunedInDesign.mutedText)
+        }
+
+        Section {
+          Text(
+            "A report starts a review. It never removes anyone’s Going, Went, invitations, "
+              + "photos, or diary; those stay attached or can be reattached safely."
+          )
+          .font(.caption)
+          .foregroundStyle(TunedInDesign.mutedText)
+        }
+
+        if let errorMessage {
+          Text(errorMessage).foregroundStyle(TunedInDesign.accent)
+        }
+      }
+      .navigationTitle("Suggest a correction")
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button("Cancel", action: onDismiss)
+        }
+        ToolbarItem(placement: .confirmationAction) {
+          Button(isSubmitting ? "Sending…" : "Send") {
+            Task { await submit() }
+          }
+          .disabled(isSubmitting || note.count > 500)
+        }
+      }
+    }
+  }
+
+  @MainActor
+  private func submit() async {
+    isSubmitting = true
+    defer { isSubmitting = false }
+    do {
+      try await repository.reportEvent(
+        eventID: eventID,
+        reporterID: viewerID,
+        reason: reason,
+        note: note
+      )
+      onDismiss()
+    } catch {
+      errorMessage = error.localizedDescription
+    }
   }
 }
 

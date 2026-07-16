@@ -1,6 +1,10 @@
 import Foundation
 import Supabase
 
+// RPC records remain colocated with their mappings so schema drift is reviewable in one diff.
+// swiftlint:disable file_length
+
+// swiftlint:disable:next type_body_length
 struct SupabaseEventRepository: EventRepository {
   let capabilities = EventRepositoryCapabilities.phase4Memories
 
@@ -17,6 +21,21 @@ struct SupabaseEventRepository: EventRepository {
         .rpc(
           "search_catalog_events",
           params: SearchCatalogEventsParameters(query: normalized.isEmpty ? nil : normalized)
+        )
+        .execute()
+      return try await summaries(from: response.value)
+    }
+  }
+
+  func duplicateCandidates(
+    for input: CommunityEventCreationInput,
+    viewerID _: UUID
+  ) async throws -> [CommunityEventSummary] {
+    try await withAppFailure {
+      let response: PostgrestResponse<[CatalogEventRPCRecord]> = try await client
+        .rpc(
+          "find_catalog_event_duplicate_candidates",
+          params: FindEventDuplicateCandidatesParameters(input: input)
         )
         .execute()
       return try await summaries(from: response.value)
@@ -93,6 +112,25 @@ struct SupabaseEventRepository: EventRepository {
           params: SetCatalogEventAttendanceParameters(
             eventID: eventID,
             status: status,
+            audience: audience
+          )
+        )
+        .execute()
+      return try await eventDetail(id: eventID, viewerID: viewerID)
+    }
+  }
+
+  func confirmCancelledPerformance(
+    eventID: UUID,
+    viewerID: UUID,
+    audience: EventAudience
+  ) async throws -> CommunityEventDetail {
+    try await withAppFailure {
+      _ = try await client
+        .rpc(
+          "confirm_cancelled_catalog_event_performance",
+          params: ConfirmCancelledPerformanceParameters(
+            eventID: eventID,
             audience: audience
           )
         )
@@ -209,21 +247,60 @@ struct SupabaseEventRepository: EventRepository {
     }
   }
 
+  func preparePhotoDiary(
+    eventID: UUID,
+    authorID _: UUID,
+    audience: EventAudience
+  ) async throws -> UUID {
+    try await withAppFailure {
+      let input = EventDiaryInput(
+        score: nil,
+        performanceScore: nil,
+        note: nil,
+        audience: audience
+      )
+      let response: PostgrestResponse<UpsertCatalogEventDiaryRPCRecord> = try await client
+        .rpc(
+          "upsert_catalog_event_diary",
+          params: UpsertCatalogEventDiaryParameters(
+            eventID: eventID,
+            input: input,
+            publish: false
+          )
+        )
+        .single()
+        .execute()
+      return response.value.diaryID
+    }
+  }
+
   func profileHistory(
     profileID: UUID,
     viewerID _: UUID
   ) async throws -> CommunityProfileHistory {
     try await withAppFailure {
-      let response: PostgrestResponse<[CatalogEventProfileHistoryRPCRecord]> = try await client
+      async let attendanceResponse: PostgrestResponse<[CatalogEventProfileAttendanceRPCRecord]> = client
+        .rpc(
+          "list_catalog_profile_attendance",
+          params: CatalogEventProfileAttendanceParameters(profileID: profileID, state: .going)
+        )
+        .execute()
+      async let historyResponse: PostgrestResponse<[CatalogEventProfileHistoryRPCRecord]> = client
         .rpc(
           "list_catalog_profile_event_history",
           params: CatalogEventProfileHistoryParameters(profileID: profileID)
         )
         .execute()
-      let eventsByID = try await summaryMap(from: response.value.map(\.event))
+      let (attendance, history) = try await (attendanceResponse, historyResponse)
+      let allEventRecords = attendance.value.map(\.event) + history.value.map(\.event)
+      let eventsByID = try await summaryMap(from: allEventRecords)
+      let going = try attendance.value.map { record in
+        guard let event = eventsByID[record.event.eventID] else { throw AppFailure.unexpected }
+        return event
+      }
       var went: [CommunityEventSummary] = []
       var diaries: [EventProfileDiary] = []
-      for record in response.value {
+      for record in history.value {
         guard let event = eventsByID[record.event.eventID] else { throw AppFailure.unexpected }
         switch record.historyKind {
         case "went":
@@ -240,7 +317,27 @@ struct SupabaseEventRepository: EventRepository {
           throw AppFailure.unexpected
         }
       }
-      return CommunityProfileHistory(went: went, diaries: diaries)
+      return CommunityProfileHistory(going: going, went: went, diaries: diaries)
+    }
+  }
+
+  func reportEvent(
+    eventID: UUID,
+    reporterID _: UUID,
+    reason: EventReportReason,
+    note: String?
+  ) async throws {
+    try await withAppFailure {
+      _ = try await client
+        .rpc(
+          "report_catalog_event",
+          params: ReportCatalogEventParameters(
+            eventID: eventID,
+            reason: reason,
+            note: note
+          )
+        )
+        .execute()
     }
   }
 
@@ -498,6 +595,67 @@ struct CreateCatalogEventParameters: Encodable, Equatable, Sendable {
   }
 }
 
+struct FindEventDuplicateCandidatesParameters: Encodable, Equatable, Sendable {
+  let artists: [CreateCatalogEventArtistParameters]
+  let catalogPlaceID: UUID
+  let eventDate: String
+  let catalogTourID: UUID?
+  let startsAt: String?
+  let timeZoneIdentifier: String
+  let listing: CommunityEventListing
+  let limit = 5
+
+  init(input: CommunityEventCreationInput) {
+    let create = CreateCatalogEventParameters(input: input)
+    artists = create.artists
+    catalogPlaceID = create.catalogPlaceID
+    eventDate = create.eventDate
+    catalogTourID = create.catalogTourID
+    startsAt = create.startsAt
+    timeZoneIdentifier = create.timeZoneIdentifier
+    listing = create.listing
+  }
+
+  enum CodingKeys: String, CodingKey {
+    case artists = "p_artists"
+    case catalogPlaceID = "p_catalog_place_id"
+    case eventDate = "p_event_date"
+    case catalogTourID = "p_catalog_tour_id"
+    case startsAt = "p_starts_at"
+    case timeZoneIdentifier = "p_time_zone_identifier"
+    case listing = "p_listing"
+    case limit = "p_limit"
+  }
+}
+
+struct ConfirmCancelledPerformanceParameters: Encodable, Equatable, Sendable {
+  let eventID: UUID
+  let audience: EventAudience
+
+  enum CodingKeys: String, CodingKey {
+    case eventID = "p_event_id"
+    case audience = "p_audience"
+  }
+}
+
+struct ReportCatalogEventParameters: Encodable, Equatable, Sendable {
+  let eventID: UUID
+  let reason: EventReportReason
+  let note: String?
+
+  init(eventID: UUID, reason: EventReportReason, note: String?) {
+    self.eventID = eventID
+    self.reason = reason
+    self.note = CatalogInput.optionalNormalizedText(note ?? "")
+  }
+
+  enum CodingKeys: String, CodingKey {
+    case eventID = "p_event_id"
+    case reason = "p_reason"
+    case note = "p_note"
+  }
+}
+
 struct CreateCatalogEventArtistParameters: Encodable, Equatable, Sendable {
   let catalogArtistID: UUID
   let isPrimary: Bool
@@ -716,11 +874,13 @@ struct CatalogEventActivityRPCRecord: Decodable, Equatable, Sendable {
   let actorRelationship: String
   let actorAvatarObjectPath: String?
   let actorAvatarVersion: Int64
+  let subjectID: UUID?
+  let diary: CatalogEventDiaryRPCRecord?
   let event: CatalogEventRPCRecord
   let occurredAt: String
 
   enum CodingKeys: String, CodingKey {
-    case action, event
+    case action, diary, event
     case activityID = "activity_id"
     case actorID = "actor_id"
     case actorUsername = "actor_username"
@@ -728,6 +888,7 @@ struct CatalogEventActivityRPCRecord: Decodable, Equatable, Sendable {
     case actorRelationship = "actor_relationship"
     case actorAvatarObjectPath = "actor_avatar_object_path"
     case actorAvatarVersion = "actor_avatar_version"
+    case subjectID = "subject_id"
     case occurredAt = "occurred_at"
   }
 }
@@ -904,6 +1065,7 @@ extension EventActivity {
       kind: databaseRecord.action,
       actor: actor,
       event: event,
+      diary: try databaseRecord.diary.map(EventDiaryPreview.init(databaseRecord:)),
       occurredAt: occurredAt,
       message: databaseRecord.action.message(eventName: event.headlinerName)
     )

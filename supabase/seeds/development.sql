@@ -267,7 +267,7 @@ values
     date '2026-09-18',
     timestamptz '2026-09-19 03:00:00+00',
     'America/Los_Angeles',
-    timestamptz '2026-09-19 09:00:00+00',
+    timestamptz '2026-09-19 07:00:00+00',
     'scheduled',
     'listed',
     'community_added',
@@ -279,8 +279,7 @@ values
     'The Local Signals',
     'the local signals the fillmore san francisco local fixture tour',
     md5(
-      'listed|d3000000-0000-0000-0000-000000000103|2026-09-18|'
-      || date_trunc('second', timestamptz '2026-09-19 03:00:00+00')::text
+      'listed|d3000000-0000-0000-0000-000000000103|2026-09-18'
       || '|d3000000-0000-0000-0000-000000000102'
     ),
     timestamptz '2026-07-16 18:00:00+00',
@@ -297,7 +296,7 @@ values
     date '2026-05-08',
     timestamptz '2026-05-09 03:00:00+00',
     'America/Los_Angeles',
-    timestamptz '2026-05-09 09:00:00+00',
+    timestamptz '2026-05-09 07:00:00+00',
     'completed',
     'listed',
     'corroborated',
@@ -309,8 +308,7 @@ values
     'The Local Signals',
     'the local signals the fillmore san francisco',
     md5(
-      'listed|d3000000-0000-0000-0000-000000000103|2026-05-08|'
-      || date_trunc('second', timestamptz '2026-05-09 03:00:00+00')::text
+      'listed|d3000000-0000-0000-0000-000000000103|2026-05-08'
       || '|d3000000-0000-0000-0000-000000000102'
     ),
     timestamptz '2026-05-01 18:00:00+00',
@@ -327,7 +325,7 @@ values
     date '2026-10-04',
     timestamptz '2026-10-05 03:00:00+00',
     'America/Los_Angeles',
-    timestamptz '2026-10-05 09:00:00+00',
+    timestamptz '2026-10-05 07:00:00+00',
     'scheduled',
     'unlisted',
     'community_added',
@@ -340,8 +338,7 @@ values
     'the local signals the fillmore san francisco',
     md5(
       'unlisted:d1000000-0000-0000-0000-000000000001|'
-      || 'd3000000-0000-0000-0000-000000000103|2026-10-04|'
-      || date_trunc('second', timestamptz '2026-10-05 03:00:00+00')::text
+      || 'd3000000-0000-0000-0000-000000000103|2026-10-04'
       || '|d3000000-0000-0000-0000-000000000102'
     ),
     timestamptz '2026-07-16 19:00:00+00',
@@ -358,7 +355,7 @@ values
     date '2026-08-22',
     timestamptz '2026-08-23 03:00:00+00',
     'America/Los_Angeles',
-    timestamptz '2026-08-23 09:00:00+00',
+    timestamptz '2026-08-23 07:00:00+00',
     'cancelled',
     'listed',
     'disputed',
@@ -370,8 +367,7 @@ values
     'The Local Signals',
     'the local signals the fillmore san francisco',
     md5(
-      'listed|d3000000-0000-0000-0000-000000000103|2026-08-22|'
-      || date_trunc('second', timestamptz '2026-08-23 03:00:00+00')::text
+      'listed|d3000000-0000-0000-0000-000000000103|2026-08-22'
       || '|d3000000-0000-0000-0000-000000000102'
     ),
     timestamptz '2026-07-10 18:00:00+00',

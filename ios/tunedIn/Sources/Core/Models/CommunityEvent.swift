@@ -115,7 +115,9 @@ struct CommunityEventSummary: Codable, Equatable, Identifiable, Sendable {
   }
 
   func canCreateDiary(at date: Date = .now) -> Bool {
-    phase(at: date) == .memories && currentUserAttendance == .went
+    let memoriesAreAvailable = phase(at: date) == .memories
+      || (lifecycle == .cancelled && date >= memoryUnlockAt)
+    return memoriesAreAvailable && currentUserAttendance == .went
   }
 }
 
@@ -159,10 +161,11 @@ struct EventProfileDiary: Equatable, Identifiable, Sendable {
 }
 
 struct CommunityProfileHistory: Equatable, Sendable {
+  let going: [CommunityEventSummary]
   let went: [CommunityEventSummary]
   let diaries: [EventProfileDiary]
 
-  static let empty = Self(went: [], diaries: [])
+  static let empty = Self(going: [], went: [], diaries: [])
 }
 
 struct CommunityEventDetail: Codable, Equatable, Identifiable, Sendable {
@@ -191,6 +194,7 @@ struct EventActivity: Codable, Equatable, Identifiable, Sendable {
   let kind: EventActivityKind
   let actor: SocialProfile
   let event: CommunityEventSummary
+  let diary: EventDiaryPreview?
   let occurredAt: Date
   let message: String
 }
@@ -235,6 +239,43 @@ struct EventDiaryInput: Equatable, Sendable {
   let performanceScore: Double?
   let note: String?
   let audience: EventAudience
+  let hasReadyPhoto: Bool
+
+  init(
+    score: Double?,
+    performanceScore: Double?,
+    note: String?,
+    audience: EventAudience,
+    hasReadyPhoto: Bool = false
+  ) {
+    self.score = score
+    self.performanceScore = performanceScore
+    self.note = note
+    self.audience = audience
+    self.hasReadyPhoto = hasReadyPhoto
+  }
+}
+
+enum EventReportReason: String, CaseIterable, Codable, Equatable, Sendable {
+  case duplicate
+  case wrongDate = "wrong_date"
+  case wrongVenue = "wrong_venue"
+  case wrongLineup = "wrong_lineup"
+  case cancelled
+  case sensitiveLocation = "sensitive_location"
+  case other
+
+  var title: String {
+    switch self {
+    case .duplicate: "Duplicate concert"
+    case .wrongDate: "Wrong date or time"
+    case .wrongVenue: "Wrong venue"
+    case .wrongLineup: "Wrong lineup"
+    case .cancelled: "Cancelled or postponed"
+    case .sensitiveLocation: "Sensitive location"
+    case .other: "Something else"
+    }
+  }
 }
 
 enum CommunityEventError: LocalizedError, Equatable {

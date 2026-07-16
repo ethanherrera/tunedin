@@ -342,6 +342,7 @@ public enum PublicSchema {
   }
   public struct CatalogEventAttendanceSelect: Codable, Hashable, Sendable {
     public let audience: CatalogEventAudience
+    public let cancelledPerformanceConfirmedAt: String?
     public let createdAt: String
     public let eventId: UUID
     public let id: UUID
@@ -352,6 +353,7 @@ public enum PublicSchema {
     public let updatedAt: String
     public enum CodingKeys: String, CodingKey {
       case audience = "audience"
+      case cancelledPerformanceConfirmedAt = "cancelled_performance_confirmed_at"
       case createdAt = "created_at"
       case eventId = "event_id"
       case id = "id"
@@ -364,6 +366,7 @@ public enum PublicSchema {
   }
   public struct CatalogEventAttendanceInsert: Codable, Hashable, Sendable {
     public let audience: CatalogEventAudience?
+    public let cancelledPerformanceConfirmedAt: String?
     public let createdAt: String?
     public let eventId: UUID
     public let id: UUID?
@@ -374,6 +377,7 @@ public enum PublicSchema {
     public let updatedAt: String?
     public enum CodingKeys: String, CodingKey {
       case audience = "audience"
+      case cancelledPerformanceConfirmedAt = "cancelled_performance_confirmed_at"
       case createdAt = "created_at"
       case eventId = "event_id"
       case id = "id"
@@ -386,6 +390,7 @@ public enum PublicSchema {
   }
   public struct CatalogEventAttendanceUpdate: Codable, Hashable, Sendable {
     public let audience: CatalogEventAudience?
+    public let cancelledPerformanceConfirmedAt: String?
     public let createdAt: String?
     public let eventId: UUID?
     public let id: UUID?
@@ -396,6 +401,7 @@ public enum PublicSchema {
     public let updatedAt: String?
     public enum CodingKeys: String, CodingKey {
       case audience = "audience"
+      case cancelledPerformanceConfirmedAt = "cancelled_performance_confirmed_at"
       case createdAt = "created_at"
       case eventId = "event_id"
       case id = "id"

@@ -82,7 +82,11 @@ struct CommunityActivityCard: View {
           .font(.caption2)
           .foregroundStyle(TunedInDesign.mutedText)
       }
-      CommunityEventRow(event: activity.event, showsSource: false)
+      if let diary = activity.diary {
+        EventDiaryPreviewCard(diary: diary)
+      } else {
+        CommunityEventRow(event: activity.event, showsSource: false)
+      }
     }
     .padding(16)
     .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: TunedInDesign.largeCornerRadius))

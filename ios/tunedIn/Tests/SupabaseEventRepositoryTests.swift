@@ -214,6 +214,7 @@ extension SupabaseEventRepositoryContractTests {
     )
 
     let object = try encodedObject(CreateCatalogEventParameters(input: input))
+    let duplicateLookup = try encodedObject(FindEventDuplicateCandidatesParameters(input: input))
     let artists = try #require(object["p_artists"] as? [[String: Any]])
 
     #expect(Set(object.keys) == [
@@ -226,6 +227,31 @@ extension SupabaseEventRepositoryContractTests {
     #expect(artists.count == 1)
     #expect(artists.first?["catalog_artist_id"] as? String == artistID.uuidString)
     #expect(artists.first?["is_primary"] as? Bool == true)
+    #expect(Set(duplicateLookup.keys) == [
+      "p_artists", "p_catalog_place_id", "p_event_date", "p_time_zone_identifier",
+      "p_listing", "p_limit"
+    ])
+    #expect(duplicateLookup["p_limit"] as? Int == 5)
+  }
+
+  @Test
+  func cancellationConfirmationAndReportsUseBoundedRPCInputs() throws {
+    let eventID = UUID(uuidString: "10000000-0000-0000-0000-000000000001")!
+    let confirmation = try encodedObject(ConfirmCancelledPerformanceParameters(
+      eventID: eventID,
+      audience: .privateOnly
+    ))
+    let report = try encodedObject(ReportCatalogEventParameters(
+      eventID: eventID,
+      reason: .sensitiveLocation,
+      note: "  Please review this location.  "
+    ))
+
+    #expect(Set(confirmation.keys) == ["p_event_id", "p_audience"])
+    #expect(confirmation["p_audience"] as? String == "private")
+    #expect(Set(report.keys) == ["p_event_id", "p_reason", "p_note"])
+    #expect(report["p_reason"] as? String == "sensitive_location")
+    #expect(report["p_note"] as? String == "Please review this location.")
   }
 
   @Test

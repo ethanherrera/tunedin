@@ -26,6 +26,7 @@
     private var events: [UUID: StoredEvent]
     private var nextCreatedEventValue = 100
     private var nextPostValue = 100
+    private var preparedDiaryIDs: [UUID: UUID] = [:]
     private let now: Date
 
     init(now: Date = .now) {
@@ -44,6 +45,37 @@
         }
         .map { refreshedSummary($0, viewerID: viewerID) }
         .sorted(by: Self.eventSort)
+    }
+
+    func duplicateCandidates(
+      for input: CommunityEventCreationInput,
+      viewerID: UUID
+    ) async throws -> [CommunityEventSummary] {
+      guard let headlinerID = input.artists.first?.id else { return [] }
+      let calendar = Calendar(identifier: .gregorian)
+      return visibleEvents(viewerID: viewerID)
+        .filter { stored in
+          guard stored.summary.artists.first(where: \.isHeadliner)?.catalogArtistID == headlinerID else {
+            return false
+          }
+          let matchingLocation = stored.summary.catalogPlaceID == input.place.id
+            || stored.summary.catalogAreaID == input.place.areaID
+          let dayDistance = abs(
+            calendar.dateComponents(
+              [.day],
+              from: calendar.startOfDay(for: input.eventDate),
+              to: calendar.startOfDay(for: stored.summary.eventDate)
+            ).day ?? .max
+          )
+          return matchingLocation && dayDistance <= 2
+        }
+        .map { refreshedSummary($0, viewerID: viewerID) }
+        .sorted { lhs, rhs in
+          if lhs.catalogPlaceID == input.place.id, rhs.catalogPlaceID != input.place.id { return true }
+          return lhs.eventDate < rhs.eventDate
+        }
+        .prefix(5)
+        .map { $0 }
     }
 
     func eventDetail(id: UUID, viewerID: UUID) async throws -> CommunityEventDetail {
@@ -77,6 +109,7 @@
           kind: .markedGoing,
           actor: morgan,
           event: upcoming,
+          diary: nil,
           occurredAt: now.addingTimeInterval(-3_600),
           message: "is going to " + upcoming.headlinerName
         ),
@@ -85,6 +118,7 @@
           kind: .diaryPublished,
           actor: ava,
           event: memory,
+          diary: events[DevelopmentEventFixture.mitskiMemoryID]?.diaryPreviews.first,
           occurredAt: now.addingTimeInterval(-86_400),
           message: "shared a memory from " + memory.headlinerName
         )
@@ -100,6 +134,14 @@
       guard var stored = events[eventID], canView(stored, viewerID: viewerID) else {
         throw CommunityEventError.eventUnavailable
       }
+      if status == .going,
+         stored.summary.lifecycle == .cancelled || stored.summary.phase(at: now) == .memories {
+        throw CommunityEventError.invalidEvent("Going is available only before the concert.")
+      }
+      if let status, status != .going,
+         stored.summary.lifecycle == .cancelled || stored.summary.phase(at: now) != .memories {
+        throw CommunityEventError.invalidEvent("Went can be confirmed only after the concert.")
+      }
       stored.attendances.removeAll(where: { $0.profile.id == viewerID })
       if let status {
         stored.attendances.append(
@@ -111,6 +153,33 @@
           )
         )
       }
+      stored.summary = refreshedSummary(stored, viewerID: viewerID)
+      events[eventID] = stored
+      return detail(from: stored, viewerID: viewerID)
+    }
+
+    func confirmCancelledPerformance(
+      eventID: UUID,
+      viewerID: UUID,
+      audience: EventAudience
+    ) async throws -> CommunityEventDetail {
+      guard var stored = events[eventID], canView(stored, viewerID: viewerID) else {
+        throw CommunityEventError.eventUnavailable
+      }
+      guard stored.summary.lifecycle == .cancelled, now >= stored.summary.memoryUnlockAt else {
+        throw CommunityEventError.invalidEvent(
+          "Confirm a cancelled performance only after its scheduled show time."
+        )
+      }
+      stored.attendances.removeAll(where: { $0.profile.id == viewerID })
+      stored.attendances.append(
+        EventAttendance(
+          profile: Self.profile(viewerID),
+          status: .went,
+          audience: audience,
+          updatedAt: now
+        )
+      )
       stored.summary = refreshedSummary(stored, viewerID: viewerID)
       events[eventID] = stored
       return detail(from: stored, viewerID: viewerID)
@@ -194,7 +263,9 @@
         throw CommunityEventError.eventUnavailable
       }
       let summary = refreshedSummary(stored, viewerID: authorID)
-      guard summary.phase(at: now) == .memories else {
+      guard summary.phase(at: now) == .memories
+        || (summary.lifecycle == .cancelled && now >= summary.memoryUnlockAt)
+      else {
         throw CommunityEventError.invalidEvent("Diaries unlock after the concert.")
       }
       guard summary.currentUserAttendance == .went else {
@@ -210,19 +281,20 @@
       if let note, note.count > 4_000 {
         throw CommunityEventError.invalidEvent("Diary notes can be up to 4,000 characters.")
       }
-      guard input.score != nil || input.performanceScore != nil || note != nil else {
-        throw CommunityEventError.invalidEvent("Add a score or note before sharing your diary.")
+      guard input.score != nil || input.performanceScore != nil || note != nil || input.hasReadyPhoto else {
+        throw CommunityEventError.invalidEvent("Add a score, note, or photo before sharing your diary.")
       }
       let existing = stored.diaryPreviews.first(where: { $0.author.id == authorID })
       stored.diaryPreviews.removeAll(where: { $0.author.id == authorID })
       stored.diaryPreviews.append(
         EventDiaryPreview(
-          id: existing?.id ?? Self.uuid(value: nextCreatedEventValue + 1, prefix: "ED"),
+          id: existing?.id ?? preparedDiaryIDs[eventID]
+            ?? Self.uuid(value: nextCreatedEventValue + 1, prefix: "ED"),
           author: Self.profile(authorID),
           score: input.score,
           performanceScore: input.performanceScore,
           note: note,
-          photoCount: existing?.photoCount ?? 0,
+          photoCount: max(existing?.photoCount ?? 0, input.hasReadyPhoto ? 1 : 0),
           videoCount: existing?.videoCount ?? 0,
           commentCount: existing?.commentCount ?? 0,
           audience: input.audience,
@@ -235,14 +307,36 @@
       return detail(from: stored, viewerID: authorID)
     }
 
+    func preparePhotoDiary(
+      eventID: UUID,
+      authorID: UUID,
+      audience _: EventAudience
+    ) async throws -> UUID {
+      guard let stored = events[eventID], canView(stored, viewerID: authorID) else {
+        throw CommunityEventError.eventUnavailable
+      }
+      if let existing = stored.diaryPreviews.first(where: { $0.author.id == authorID }) {
+        return existing.id
+      }
+      if let prepared = preparedDiaryIDs[eventID] { return prepared }
+      nextCreatedEventValue += 1
+      let diaryID = Self.uuid(value: nextCreatedEventValue, prefix: "ED")
+      preparedDiaryIDs[eventID] = diaryID
+      return diaryID
+    }
+
     func profileHistory(profileID: UUID, viewerID: UUID) async throws -> CommunityProfileHistory {
+      var going: [CommunityEventSummary] = []
       var went: [CommunityEventSummary] = []
       var diaries: [EventProfileDiary] = []
       for stored in visibleEvents(viewerID: viewerID) {
         if let attendance = stored.attendances.first(where: { $0.profile.id == profileID }),
-           attendance.status == .went,
            canRead(attendance: attendance, viewerID: viewerID) {
-          went.append(refreshedSummary(stored, viewerID: viewerID))
+          if attendance.status == .going {
+            going.append(refreshedSummary(stored, viewerID: viewerID))
+          } else {
+            went.append(refreshedSummary(stored, viewerID: viewerID))
+          }
         }
         for diary in stored.diaryPreviews where diary.author.id == profileID
           && canRead(diary: diary, viewerID: viewerID) {
@@ -255,6 +349,7 @@
         }
       }
       return CommunityProfileHistory(
+        going: going.sorted(by: { $0.eventDate < $1.eventDate }),
         went: went.sorted(by: { $0.eventDate > $1.eventDate }),
         diaries: diaries.sorted(by: { $0.diary.publishedAt > $1.diary.publishedAt })
       )
@@ -282,14 +377,7 @@
 
       nextCreatedEventValue += 1
       let id = Self.uuid(value: nextCreatedEventValue, prefix: "EE")
-      let unlockAt = input.startsAt?.addingTimeInterval(8 * 3_600)
-        ?? input.eventDate.addingTimeInterval(24 * 3_600)
-      let attendance = EventAttendance(
-        profile: Self.profile(creatorID),
-        status: input.eventDate < now ? .went : .going,
-        audience: .friends,
-        updatedAt: now
-      )
+      let unlockAt = Self.memoryUnlockAt(for: input)
       let artists = input.artists.enumerated().map { index, artist in
         CommunityEventArtist(
           catalogArtistID: artist.id,
@@ -315,24 +403,35 @@
         integrity: .communityAdded,
         rowState: .active,
         sourceLabel: "Community made",
-        currentUserAttendance: attendance.status,
-        currentUserAudience: attendance.audience,
+        currentUserAttendance: nil,
+        currentUserAudience: nil,
         friendPreviews: [],
-        publicGoingCount: attendance.status == .going ? 1 : 0,
-        publicWentCount: attendance.status == .went ? 1 : 0,
+        publicGoingCount: 0,
+        publicWentCount: 0,
         diaryCount: 0,
         averageDiaryScore: nil,
         duplicateCandidateEventID: nil
       )
       let stored = StoredEvent(
         summary: summary,
-        attendances: [attendance],
+        attendances: [],
         posts: [],
         diaryPreviews: [],
-        invitedProfileIDs: []
+        invitedProfileIDs: input.listing == .unlisted ? [creatorID] : []
       )
       events[id] = stored
       return detail(from: stored, viewerID: creatorID)
+    }
+
+    func reportEvent(
+      eventID: UUID,
+      reporterID: UUID,
+      reason _: EventReportReason,
+      note _: String?
+    ) async throws {
+      guard let stored = events[eventID], canView(stored, viewerID: reporterID) else {
+        throw CommunityEventError.eventUnavailable
+      }
     }
 
     private func visibleEvents(viewerID: UUID) -> [StoredEvent] {
@@ -629,7 +728,7 @@
         eventDate: eventDate,
         startsAt: eventDate,
         timeZoneIdentifier: "America/Los_Angeles",
-        memoryUnlockAt: eventDate.addingTimeInterval(8 * 3_600),
+        memoryUnlockAt: eventDate.addingTimeInterval(4 * 3_600),
         lifecycle: lifecycle,
         listing: listing,
         integrity: .communityAdded,
@@ -657,6 +756,17 @@
           displayName: "Concert listener",
           relationship: .none
         )
+    }
+
+    private static func memoryUnlockAt(for input: CommunityEventCreationInput) -> Date {
+      if let startsAt = input.startsAt {
+        return startsAt.addingTimeInterval(4 * 3_600)
+      }
+      var calendar = Calendar(identifier: .gregorian)
+      calendar.timeZone = TimeZone(identifier: input.timeZoneIdentifier) ?? .gmt
+      let startOfDay = calendar.startOfDay(for: input.eventDate)
+      let nextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
+      return calendar.date(bySettingHour: 3, minute: 0, second: 0, of: nextDay) ?? nextDay
     }
 
     private static func uuid(value: Int, prefix: String) -> UUID {

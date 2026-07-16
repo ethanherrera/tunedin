@@ -53,12 +53,8 @@ struct EventDiscoveryView: View {
             )
           } else {
             LazyVStack(spacing: 12) {
-              ForEach(results) { event in
-                Button { onOpenEvent(event) } label: {
-                  CommunityEventRow(event: event, showsSource: true)
-                }
-                .buttonStyle(TunedInPosterButtonStyle())
-              }
+              eventSection(title: "Upcoming", events: upcomingResults)
+              eventSection(title: "Past", events: pastResults)
             }
           }
 
@@ -108,6 +104,31 @@ struct EventDiscoveryView: View {
     }
   }
 
+  private var upcomingResults: [CommunityEventSummary] {
+    results.filter { $0.phase() != .memories }
+  }
+
+  private var pastResults: [CommunityEventSummary] {
+    results.filter { $0.phase() == .memories }
+  }
+
+  @ViewBuilder
+  private func eventSection(title: String, events: [CommunityEventSummary]) -> some View {
+    if !events.isEmpty {
+      Text(title)
+        .font(.headline)
+        .foregroundStyle(TunedInDesign.primaryText)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, title == "Past" ? 8 : 0)
+      ForEach(events) { event in
+        Button { onOpenEvent(event) } label: {
+          CommunityEventRow(event: event, showsSource: true)
+        }
+        .buttonStyle(TunedInPosterButtonStyle())
+      }
+    }
+  }
+
   @MainActor
   private func search() async {
     isLoading = results.isEmpty
@@ -138,6 +159,8 @@ struct CommunityEventCreationView: View {
   @State private var pickerKind: CatalogEntityKind?
   @State private var isPresentingTimeZonePicker = false
   @State private var isSaving = false
+  @State private var duplicateCandidates: [CommunityEventSummary] = []
+  @State private var isCheckingDuplicates = false
   @State private var errorMessage: String?
 
   var body: some View {
@@ -223,6 +246,27 @@ struct CommunityEventCreationView: View {
               .foregroundStyle(TunedInDesign.mutedText)
           }
 
+          if isCheckingDuplicates {
+            Label("Checking nearby community events…", systemImage: "magnifyingglass")
+              .font(.caption.weight(.semibold))
+              .foregroundStyle(TunedInDesign.mutedText)
+          } else if !duplicateCandidates.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+              Text("Possible matches")
+                .font(.headline)
+                .foregroundStyle(TunedInDesign.primaryText)
+              Text("Open one if it is the same concert. You can still create a separate event when it is not.")
+                .font(.caption)
+                .foregroundStyle(TunedInDesign.mutedText)
+              ForEach(duplicateCandidates) { candidate in
+                Button { onCreated(candidate) } label: {
+                  CommunityEventRow(event: candidate, showsSource: true)
+                }
+                .buttonStyle(TunedInPosterButtonStyle())
+              }
+            }
+          }
+
           if let errorMessage {
             Label(errorMessage, systemImage: "exclamationmark.triangle")
               .font(.subheadline)
@@ -232,7 +276,11 @@ struct CommunityEventCreationView: View {
           Button { Task { await create() } } label: {
             HStack {
               if isSaving { ProgressView().tint(TunedInDesign.actionForeground) }
-              Text(isSaving ? "Checking for matches…" : "Create shared event")
+              Text(
+                isSaving
+                  ? "Creating…"
+                  : (duplicateCandidates.isEmpty ? "Create shared event" : "Create separate event")
+              )
             }
             .font(.headline)
             .foregroundStyle(TunedInDesign.actionForeground)
@@ -278,12 +326,46 @@ struct CommunityEventCreationView: View {
         onDismiss: { isPresentingTimeZonePicker = false }
       )
     }
+    .task(id: duplicateLookupKey) {
+      guard creationInput != nil else {
+        duplicateCandidates = []
+        return
+      }
+      try? await Task.sleep(for: .milliseconds(300))
+      guard !Task.isCancelled else { return }
+      await checkDuplicates()
+    }
   }
 
   private var canSubmit: Bool { artist != nil && place != nil }
 
   private var selectedTimeZone: TimeZone {
     TimeZone(identifier: timeZoneIdentifier) ?? .current
+  }
+
+  private var creationInput: CommunityEventCreationInput? {
+    guard let artist, let place else { return nil }
+    return CommunityEventCreationInput(
+      artists: [artist],
+      place: place,
+      tour: tour,
+      eventDate: eventDate,
+      startsAt: includesTime ? eventDate : nil,
+      timeZoneIdentifier: timeZoneIdentifier,
+      listing: listing
+    )
+  }
+
+  private var duplicateLookupKey: String {
+    guard let input = creationInput else { return "empty" }
+    return [
+      input.artists.first?.id.uuidString ?? "",
+      input.place.id.uuidString,
+      input.eventDate.timeIntervalSince1970.formatted(),
+      input.startsAt == nil ? "no-time" : "time",
+      input.timeZoneIdentifier,
+      input.listing.rawValue
+    ].joined(separator: "|")
   }
 
   private static var defaultEventDate: Date {
@@ -323,18 +405,9 @@ struct CommunityEventCreationView: View {
 
   @MainActor
   private func create() async {
-    guard let artist, let place else { return }
+    guard let input = creationInput else { return }
     isSaving = true
     defer { isSaving = false }
-    let input = CommunityEventCreationInput(
-      artists: [artist],
-      place: place,
-      tour: tour,
-      eventDate: eventDate,
-      startsAt: includesTime ? eventDate : nil,
-      timeZoneIdentifier: timeZoneIdentifier,
-      listing: listing
-    )
     do {
       let detail = try await eventRepository.createEvent(input, creatorID: creatorID)
       errorMessage = nil
@@ -348,6 +421,21 @@ struct CommunityEventCreationView: View {
       }
     } catch {
       errorMessage = error.localizedDescription
+    }
+  }
+
+  @MainActor
+  private func checkDuplicates() async {
+    guard let input = creationInput else { return }
+    isCheckingDuplicates = true
+    defer { isCheckingDuplicates = false }
+    do {
+      duplicateCandidates = try await eventRepository.duplicateCandidates(
+        for: input,
+        viewerID: creatorID
+      )
+    } catch {
+      duplicateCandidates = []
     }
   }
 
