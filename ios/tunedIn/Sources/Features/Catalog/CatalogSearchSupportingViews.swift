@@ -121,8 +121,8 @@ struct CatalogResultsList: View {
         .listRowBackground(TunedInDesign.raisedSurface)
       }
 
-      resultSection(title: "Your catalog", results: tunedInResults)
-      resultSection(title: "MusicBrainz", results: musicBrainzResults)
+      resultSection(title: "Saved in tunedIn", results: tunedInResults)
+      resultSection(title: "More results", results: musicBrainzResults)
 
       if model.isLoadingMore {
         HStack {
@@ -151,9 +151,9 @@ struct CatalogResultsList: View {
 
       Section {
         VStack(alignment: .leading, spacing: 4) {
-          Label("Data from MusicBrainz", systemImage: "music.note")
+          Label("tunedIn catalog search", systemImage: "music.note")
             .font(.caption.weight(.semibold))
-          Text("Live results become stable tunedIn catalog entries when selected.")
+          Text("More results are saved to your tunedIn catalog when selected.")
             .font(.caption2)
         }
         .foregroundStyle(TunedInDesign.mutedText)

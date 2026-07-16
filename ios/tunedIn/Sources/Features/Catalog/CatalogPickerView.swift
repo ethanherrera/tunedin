@@ -126,7 +126,7 @@ struct CatalogPickerView: View {
       .onChange(of: isUsingArtistContext) { _, enabled in
         model.setArtistContextEnabled(enabled)
       }
-      .accessibilityHint("Choose whether MusicBrainz recording results are filtered to the concert lineup.")
+      .accessibilityHint("Choose whether recording results are filtered to the concert lineup.")
     }
   }
 
@@ -176,7 +176,7 @@ struct CatalogPickerView: View {
       if recentSearches.isEmpty {
         statusView(
           title: "Start with two characters",
-          description: "Search your saved catalog and MusicBrainz together.",
+          description: "Search artists, venues, tours, and songs in tunedIn.",
           systemImage: "magnifyingglass"
         )
       } else {
@@ -207,8 +207,8 @@ struct CatalogPickerView: View {
       retryStatus(
         title: "Search is taking a beat",
         description: retryAfterSeconds.map {
-          "MusicBrainz asked us to wait about \(max(1, Int($0.rounded(.up)))) seconds."
-        } ?? "MusicBrainz asked us to wait before searching again.",
+          "tunedIn search is busy. Try again in about \(max(1, Int($0.rounded(.up)))) seconds."
+        } ?? "tunedIn search is busy. Please try again shortly.",
         systemImage: "clock.badge.exclamationmark"
       )
     case let .failed(message, retryable):
@@ -274,7 +274,7 @@ struct CatalogPickerView: View {
 
   private var catalogLoadingView: some View {
     VStack(alignment: .leading, spacing: 12) {
-      Text("Searching your catalog and MusicBrainz…")
+      Text("Searching tunedIn…")
         .font(.subheadline)
         .foregroundStyle(TunedInDesign.mutedText)
 

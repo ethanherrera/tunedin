@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { CatalogError, safeErrorBody } from "../errors.ts";
 import { createMusicCatalogHandler, type SafeRequestEvent } from "../handler.ts";
 import { MusicCatalogService } from "../service.ts";
 import type {
@@ -37,6 +38,30 @@ Deno.test("handler returns the typed authentication and validation envelopes", a
   }));
   assert.equal(invalid.status, 400);
   assert.equal((await invalid.json()).error.code, "invalid_request");
+});
+
+Deno.test("public gateway errors never identify the catalog provider", () => {
+  const unavailable = safeErrorBody(
+    new CatalogError(
+      "upstream_unavailable",
+      503,
+      "MusicBrainz is temporarily unavailable.",
+      true,
+    ),
+  );
+  assert.equal(unavailable.error.message, "Search is temporarily unavailable.");
+  assert.equal(
+    JSON.stringify(unavailable).toLocaleLowerCase("en-US").includes("musicbrainz"),
+    false,
+  );
+
+  const futureProviderError = safeErrorBody(
+    new CatalogError("future_error", 500, "MusicBrainz returned something new.", true),
+  );
+  assert.equal(
+    futureProviderError.error.message,
+    "Search could not be completed. Please try again.",
+  );
 });
 
 Deno.test("handler streams and rejects chunked oversized bodies before buffering the remainder", async () => {

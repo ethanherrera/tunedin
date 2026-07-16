@@ -4,6 +4,22 @@ import Testing
 
 struct MusicCatalogContractTests {
   @Test
+  func providerNamesNeverReachUserFacingGatewayErrors() {
+    #expect(
+      CatalogGatewayErrorCopy.message(
+        code: "upstream_unavailable",
+        fallback: "MusicBrainz is temporarily unavailable."
+      ) == "Search is temporarily unavailable."
+    )
+    #expect(
+      CatalogGatewayErrorCopy.message(
+        code: "future_error",
+        fallback: "MusicBrainz returned something new."
+      ) == "Search could not be completed. Please try again."
+    )
+  }
+
+  @Test
   func decodesRequiredOriginAndStructuredMetadata() throws {
     let data = Data(
       #"""

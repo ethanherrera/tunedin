@@ -143,7 +143,7 @@ struct CatalogCustomEntryView: View {
       Text("Add \(kind.singularTitle.lowercased())")
         .font(.system(size: 32, weight: .bold, design: .serif))
         .foregroundStyle(TunedInDesign.primaryText)
-      Text("This creates a reusable entry in your tunedIn catalog. It is not sent to MusicBrainz.")
+      Text("This creates a reusable entry in your tunedIn catalog for future searches.")
         .font(.subheadline)
         .foregroundStyle(TunedInDesign.mutedText)
     }
