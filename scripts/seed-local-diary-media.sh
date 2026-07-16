@@ -58,6 +58,14 @@ prepare_jpeg "$root_dir/ios/tunedIn/Resources/Artwork/midnight-theatre.png" "$mi
 
 listener_token="$(sign_in listener)"
 morgan_token="$(sign_in morgan)"
+remi_token="$(sign_in remi)"
+kai_token="$(sign_in kai)"
+rowan_token="$(sign_in rowan)"
+mia_token="$(sign_in mia)"
+leo_token="$(sign_in leo)"
+nia_token="$(sign_in nia)"
+owen_token="$(sign_in owen)"
+zoe_token="$(sign_in zoe)"
 
 seed_photo() {
   local token="$1"
@@ -104,6 +112,14 @@ seed_photo() {
 
 listener_diary="d4500000-0000-0000-0000-000000000001"
 morgan_diary="d4500000-0000-0000-0000-000000000002"
+remi_diary="d4500000-0000-0000-0000-000000000003"
+kai_diary="d4500000-0000-0000-0000-000000000004"
+rowan_diary="d4500000-0000-0000-0000-000000000005"
+mia_diary="d4500000-0000-0000-0000-000000000006"
+leo_diary="d4500000-0000-0000-0000-000000000007"
+nia_diary="d4500000-0000-0000-0000-000000000008"
+owen_diary="d4500000-0000-0000-0000-000000000009"
+zoe_diary="d4500000-0000-0000-0000-000000000010"
 
 seed_photo "$listener_token" "$listener_diary" \
   "d4600000-0000-0000-0000-000000000001" "$midnight" "Right before the encore."
@@ -113,5 +129,21 @@ seed_photo "$morgan_token" "$morgan_diary" \
   "d4600000-0000-0000-0000-000000000003" "$afterglow" "The quietest moment of the night."
 seed_photo "$morgan_token" "$morgan_diary" \
   "d4600000-0000-0000-0000-000000000004" "$midnight" "That final run of songs."
+seed_photo "$remi_token" "$remi_diary" \
+  "d4600000-0000-0000-0000-000000000005" "$midnight" "The crowd before the first chorus."
+seed_photo "$kai_token" "$kai_diary" \
+  "d4600000-0000-0000-0000-000000000006" "$afterglow" "Lights during the final song."
+seed_photo "$rowan_token" "$rowan_diary" \
+  "d4600000-0000-0000-0000-000000000007" "$midnight" "When the set started getting loud."
+seed_photo "$mia_token" "$mia_diary" \
+  "d4600000-0000-0000-0000-000000000008" "$afterglow" "The room from the balcony."
+seed_photo "$leo_token" "$leo_diary" \
+  "d4600000-0000-0000-0000-000000000009" "$midnight" "The surprise song."
+seed_photo "$nia_token" "$nia_diary" \
+  "d4600000-0000-0000-0000-000000000010" "$afterglow" "A wonderfully messy night."
+seed_photo "$owen_token" "$owen_diary" \
+  "d4600000-0000-0000-0000-000000000011" "$midnight" "Right in the middle of the encore."
+seed_photo "$zoe_token" "$zoe_diary" \
+  "d4600000-0000-0000-0000-000000000012" "$afterglow" "The transition into the closer."
 
-echo "Seeded four Local diary photos through the production reservation and attachment path."
+echo "Seeded twelve Local concert-post photos through the production reservation and attachment path."

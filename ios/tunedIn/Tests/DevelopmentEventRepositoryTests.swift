@@ -16,10 +16,10 @@
       #expect(events.contains(where: { $0.listing == .listed && $0.phase(at: now) == .upcoming }))
       #expect(events.contains(where: { $0.listing == .unlisted }))
       #expect(events.contains(where: { $0.phase(at: now) == .cancelled }))
-      let memory = try #require(events.first(where: { $0.phase(at: now) == .memories }))
+      let memory = try #require(events.first(where: { $0.id == DevelopmentEventFixture.mitskiMemoryID }))
       #expect(memory.currentUserAttendance == .went)
-      #expect(memory.diaryCount == 2)
-      #expect(memory.averageDiaryScore == 9.25)
+      #expect(memory.diaryCount == 10)
+      #expect(memory.averageDiaryScore == 8.9)
 
       let detail = try await repository.eventDetail(id: memory.id, viewerID: viewerID)
       #expect(detail.attendances.contains(where: { $0.profile.id == viewerID && $0.status == .went }))
@@ -40,8 +40,40 @@
         viewerID: DevelopmentSocialFixture.noaID
       )
 
-      #expect(memberResults.count == 1)
-      #expect(publicResults.isEmpty)
+      #expect(memberResults.contains(where: { $0.id == DevelopmentEventFixture.bigThiefMasonicID }))
+      #expect(!publicResults.contains(where: { $0.id == DevelopmentEventFixture.bigThiefMasonicID }))
+    }
+
+    @Test
+    func fixturesIncludePurposefullyEmptyAndPackedConcerts() async throws {
+      let repository = DevelopmentEventRepository(now: now)
+      let viewerID = DevelopmentSocialFixture.currentUserID
+
+      let packedUpcoming = try await repository.eventDetail(
+        id: DevelopmentEventFixture.mitskiGreekID,
+        viewerID: viewerID
+      )
+      let packedMemory = try await repository.eventDetail(
+        id: DevelopmentEventFixture.mitskiMemoryID,
+        viewerID: viewerID
+      )
+      let emptyUpcoming = try await repository.eventDetail(
+        id: DevelopmentEventFixture.emptyUpcomingID,
+        viewerID: viewerID
+      )
+      let emptyMemory = try await repository.eventDetail(
+        id: DevelopmentEventFixture.emptyMemoryID,
+        viewerID: viewerID
+      )
+
+      #expect(packedUpcoming.attendances.count == 10)
+      #expect(packedUpcoming.posts.count == 12)
+      #expect(packedMemory.attendances.count == 11)
+      #expect(packedMemory.diaryPreviews.count == 10)
+      #expect(emptyUpcoming.attendances.isEmpty)
+      #expect(emptyUpcoming.posts.isEmpty)
+      #expect(emptyMemory.attendances.isEmpty)
+      #expect(emptyMemory.diaryPreviews.isEmpty)
     }
 
     @Test

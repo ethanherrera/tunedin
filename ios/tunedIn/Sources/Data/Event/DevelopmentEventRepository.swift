@@ -10,6 +10,8 @@
     static let vampireWeekendCancelledID = UUID(uuidString: "E0000000-0000-0000-0000-000000000003")!
     static let mitskiMemoryID = UUID(uuidString: "E0000000-0000-0000-0000-000000000004")!
     static let duplicateMitskiID = UUID(uuidString: "E0000000-0000-0000-0000-000000000005")!
+    static let emptyUpcomingID = UUID(uuidString: "E0000000-0000-0000-0000-000000000006")!
+    static let emptyMemoryID = UUID(uuidString: "E0000000-0000-0000-0000-000000000007")!
   }
 
   actor DevelopmentEventRepository: EventRepository {
@@ -521,6 +523,7 @@
       let current = profile(DevelopmentSocialFixture.currentUserID)
       let morgan = profile(DevelopmentSocialFixture.morganID)
       let ava = profile(DevelopmentSocialFixture.avaID)
+      let packedFriends = DevelopmentSocialFixture.profiles.filter { $0.relationship == .friends }
       let calendar = Calendar(identifier: .gregorian)
       func fixtureDate(daysFromNow: Int, hour: Int, minute: Int = 30) -> Date {
         let shifted = calendar.date(byAdding: .day, value: daysFromNow, to: now) ?? now
@@ -530,6 +533,8 @@
       let soon = fixtureDate(daysFromNow: 7, hour: 20)
       let cancelledDate = fixtureDate(daysFromNow: 28, hour: 19)
       let past = fixtureDate(daysFromNow: -45, hour: 20)
+      let emptyFuture = fixtureDate(daysFromNow: 42, hour: 19)
+      let emptyPast = fixtureDate(daysFromNow: -90, hour: 20)
 
       let upcoming = baseSummary(
         id: DevelopmentEventFixture.mitskiGreekID,
@@ -580,6 +585,30 @@
         lifecycle: .completed,
         listing: .listed
       )
+      let emptyUpcoming = baseSummary(
+        id: DevelopmentEventFixture.emptyUpcomingID,
+        artistID: DevelopmentMusicCatalogFixture.bigThiefID,
+        artist: "Big Thief",
+        placeID: DevelopmentMusicCatalogFixture.greekTheatreBerkeleyID,
+        areaID: DevelopmentMusicCatalogFixture.berkeleyAreaID,
+        venue: "The Greek Theatre",
+        area: "Berkeley",
+        eventDate: emptyFuture,
+        lifecycle: .scheduled,
+        listing: .listed
+      )
+      let emptyMemory = baseSummary(
+        id: DevelopmentEventFixture.emptyMemoryID,
+        artistID: DevelopmentMusicCatalogFixture.vampireWeekendID,
+        artist: "Vampire Weekend",
+        placeID: DevelopmentMusicCatalogFixture.masonicID,
+        areaID: DevelopmentMusicCatalogFixture.sanFranciscoAreaID,
+        venue: "The Masonic",
+        area: "San Francisco",
+        eventDate: emptyPast,
+        lifecycle: .completed,
+        listing: .listed
+      )
       let duplicate = CommunityEventSummary(
         id: DevelopmentEventFixture.duplicateMitskiID,
         artists: upcoming.artists,
@@ -608,9 +637,15 @@
       )
 
       let upcomingAttendance = [
-        EventAttendance(profile: current, status: .going, audience: .friends, updatedAt: now),
-        EventAttendance(profile: morgan, status: .going, audience: .community, updatedAt: now)
-      ]
+        EventAttendance(profile: current, status: .going, audience: .friends, updatedAt: now)
+      ] + packedFriends.enumerated().map { index, friend in
+        EventAttendance(
+          profile: friend,
+          status: .going,
+          audience: index.isMultiple(of: 2) ? .friends : .community,
+          updatedAt: now.addingTimeInterval(TimeInterval(index * 60))
+        )
+      }
       let unlistedAttendance = [
         EventAttendance(profile: current, status: .going, audience: .friends, updatedAt: now),
         EventAttendance(profile: morgan, status: .going, audience: .friends, updatedAt: now)
@@ -618,6 +653,23 @@
       let memoryAttendance = [
         EventAttendance(profile: current, status: .went, audience: .friends, updatedAt: past),
         EventAttendance(profile: ava, status: .went, audience: .community, updatedAt: past)
+      ] + packedFriends.enumerated().map { index, friend in
+        EventAttendance(
+          profile: friend,
+          status: .went,
+          audience: index.isMultiple(of: 2) ? .friends : .community,
+          updatedAt: past.addingTimeInterval(TimeInterval(index * 60))
+        )
+      }
+      let packedDiaryNotes = [
+        "The crowd knew every word, even before the first chorus landed.",
+        "I keep replaying the lights during the final song.",
+        "The set started quietly and just kept getting bigger.",
+        "Best sound I have heard in this room all year.",
+        "The surprise song completely changed the energy.",
+        "A loud, warm, wonderfully messy night.",
+        "The encore was worth losing my voice for.",
+        "Still thinking about that transition into the closer."
       ]
       let memoryDiaries = [
         EventDiaryPreview(
@@ -644,15 +696,69 @@
           audience: .friends,
           publishedAt: past.addingTimeInterval(12 * 3_600)
         )
+      ] + packedFriends.filter { $0.id != DevelopmentSocialFixture.morganID }
+        .enumerated()
+        .map { index, friend in
+          EventDiaryPreview(
+            id: uuid(value: index + 3, prefix: "ED"),
+            author: friend,
+            score: 8.0 + Double(index % 5) * 0.5,
+            performanceScore: 8.5 + Double(index % 4) * 0.5,
+            note: packedDiaryNotes[index],
+            photoCount: index % 3 + 1,
+            videoCount: index.isMultiple(of: 4) ? 1 : 0,
+            commentCount: index + 1,
+            audience: index.isMultiple(of: 2) ? .friends : .community,
+            publishedAt: past.addingTimeInterval(TimeInterval((index + 13) * 3_600))
+          )
+        }
+      let packedPostBodies = [
+        "I really hope we get First Love / Late Spring.",
+        "Who wants to meet by the north entrance?",
+        "The opener's new record is so good live.",
+        "Manifesting a surprise song in the encore.",
+        "I found a few face-value tickets this morning.",
+        "Taking the early train if anyone wants to join.",
+        "This will be my first time at the Greek.",
+        "Do we think doors are actually at 6:30?",
+        "Already building the pre-show playlist."
       ]
-      let upcomingPosts = [
+      let upcomingPosts = packedFriends.enumerated().map { index, friend in
         EventPost(
-          id: uuid(value: 1, prefix: "EC"),
+          id: uuid(value: index + 1, prefix: "EC"),
           parentPostID: nil,
+          author: friend,
+          body: packedPostBodies[index],
+          audience: index.isMultiple(of: 2) ? .friends : .community,
+          createdAt: now.addingTimeInterval(TimeInterval(-((index + 2) * 1_800))),
+          isDeleted: false
+        )
+      } + [
+        EventPost(
+          id: uuid(value: 20, prefix: "EC"),
+          parentPostID: uuid(value: 2, prefix: "EC"),
           author: morgan,
-          body: "I really hope we get First Love / Late Spring.",
+          body: "Yes, let's make a group chat for the meetup.",
           audience: .friends,
-          createdAt: now.addingTimeInterval(-7_200),
+          createdAt: now.addingTimeInterval(-1_200),
+          isDeleted: false
+        ),
+        EventPost(
+          id: uuid(value: 21, prefix: "EC"),
+          parentPostID: uuid(value: 4, prefix: "EC"),
+          author: profile(DevelopmentSocialFixture.miaID),
+          body: "I would lose it if that happens.",
+          audience: .friends,
+          createdAt: now.addingTimeInterval(-900),
+          isDeleted: false
+        ),
+        EventPost(
+          id: uuid(value: 22, prefix: "EC"),
+          parentPostID: uuid(value: 8, prefix: "EC"),
+          author: profile(DevelopmentSocialFixture.zoeID),
+          body: "The venue email says doors at 6:30, music at 7:30.",
+          audience: .community,
+          createdAt: now.addingTimeInterval(-600),
           isDeleted: false
         )
       ]
@@ -684,6 +790,20 @@
           attendances: memoryAttendance,
           posts: [],
           diaryPreviews: memoryDiaries,
+          invitedProfileIDs: []
+        ),
+        emptyUpcoming.id: StoredEvent(
+          summary: emptyUpcoming,
+          attendances: [],
+          posts: [],
+          diaryPreviews: [],
+          invitedProfileIDs: []
+        ),
+        emptyMemory.id: StoredEvent(
+          summary: emptyMemory,
+          attendances: [],
+          posts: [],
+          diaryPreviews: [],
           invitedProfileIDs: []
         ),
         duplicate.id: StoredEvent(
