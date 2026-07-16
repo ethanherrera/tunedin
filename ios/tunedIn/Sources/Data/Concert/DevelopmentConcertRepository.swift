@@ -133,7 +133,7 @@
     }
 
     func reserveAlbumPhoto(concertID: UUID, photoID: UUID) async throws -> ConcertPhotoReservation {
-      _ = try detail(for: concertID)
+      try assertCanUseConcertMedia(concertID)
       return ConcertPhotoReservation(
         photoID: photoID,
         concertID: concertID,
@@ -392,8 +392,7 @@
       concertID: UUID,
       cursor: ConcertCommentCursor?
     ) async throws -> [ConcertComment] {
-      let detail = try detail(for: concertID)
-      guard canView(detail) else { throw DevelopmentConcertRepositoryError.permissionDenied }
+      try assertCanUseConcertMedia(concertID)
       let sorted = (commentsByConcert[concertID] ?? []).sorted {
         if $0.createdAt == $1.createdAt {
           return $0.id.uuidString > $1.id.uuidString
@@ -409,8 +408,7 @@
     }
 
     func createComment(concertID: UUID, body: String) async throws -> ConcertComment {
-      let detail = try detail(for: concertID)
-      guard canView(detail) else { throw DevelopmentConcertRepositoryError.permissionDenied }
+      try assertCanUseConcertMedia(concertID)
       let text = ConcertInput.normalizedText(body)
       guard ConcertInput.isValidRequiredText(text, maximumLength: 1000) else {
         throw DevelopmentConcertRepositoryError.invalidComment
@@ -573,6 +571,12 @@
     private func detail(for id: UUID) throws -> ConcertDetail {
       guard let detail = details[id] else { throw DevelopmentConcertRepositoryError.notFound }
       return detail
+    }
+
+    private func assertCanUseConcertMedia(_ id: UUID) throws {
+      if id.uuidString.hasPrefix("ED") { return }
+      let detail = try detail(for: id)
+      guard canView(detail) else { throw DevelopmentConcertRepositoryError.permissionDenied }
     }
 
     private func placeSnapshot(

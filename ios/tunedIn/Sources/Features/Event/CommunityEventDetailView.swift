@@ -40,6 +40,7 @@ struct CommunityEventDetailView: View {
     self.concertRepository = concertRepository
     self.initialDiaryID = initialDiaryID
     self.onDismiss = onDismiss
+    _selectedPage = State(initialValue: initialDiaryID == nil ? .event : .memories)
   }
 
   @State private var detail: CommunityEventDetail?

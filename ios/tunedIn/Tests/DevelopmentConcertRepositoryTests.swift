@@ -1,4 +1,5 @@
 #if DEBUG
+  import Foundation
   import Testing
   @testable import tunedIn
 
@@ -153,6 +154,21 @@
         cursor: nil
       )
       #expect(year.isEmpty)
+    }
+
+    @Test
+    func communityDiaryFixturesReuseAlbumAndCommentInfrastructure() async throws {
+      let repository = DevelopmentConcertRepository()
+      let diaryID = try #require(UUID(uuidString: "ED000000-0000-0000-0000-000000000001"))
+      let photoID = UUID()
+
+      let reservation = try await repository.reserveAlbumPhoto(concertID: diaryID, photoID: photoID)
+      #expect(reservation.concertID == diaryID)
+      #expect(try await repository.comments(concertID: diaryID, cursor: nil).isEmpty)
+
+      let comment = try await repository.createComment(concertID: diaryID, body: "Fixture memory comment")
+      #expect(comment.concertID == diaryID)
+      #expect(try await repository.comments(concertID: diaryID, cursor: nil).map(\.id) == [comment.id])
     }
   }
 #endif
