@@ -80,24 +80,26 @@ struct PersonProfileView: View {
               history: communityHistory,
               concertRepository: concertRepository,
               onOpenEvent: onOpenCommunityEvent
-            )
+            ) {
+              if isCurrentUser || profile.relationship.canViewFriendContent {
+                LegacyConcertArchiveDisclosure(
+                  profileID: profile.id,
+                  viewerID: currentUserID,
+                  viewerUsername: currentUsername,
+                  isOwner: isCurrentUser,
+                  concertRepository: concertRepository,
+                  socialRepository: socialRepository,
+                  model: archiveModel,
+                  refreshToken: 0,
+                  isExpanded: $isShowingLegacyArchive
+                )
+              }
+            }
           }
 
           if isCurrentUser || profile.relationship.canViewFriendContent {
             friendCountLink
-            if eventRepository?.capabilities.contains(.diaries) == true {
-              LegacyConcertArchiveDisclosure(
-                profileID: profile.id,
-                viewerID: currentUserID,
-                viewerUsername: currentUsername,
-                isOwner: isCurrentUser,
-                concertRepository: concertRepository,
-                socialRepository: socialRepository,
-                model: archiveModel,
-                refreshToken: 0,
-                isExpanded: $isShowingLegacyArchive
-              )
-            } else {
+            if eventRepository?.capabilities.contains(.diaries) != true {
               ConcertArchiveView(
                 profileID: profile.id,
                 viewerID: currentUserID,
@@ -274,7 +276,9 @@ struct PersonProfileView: View {
         currentUserID: currentUserID,
         currentUsername: currentUsername,
         socialRepository: socialRepository,
-        concertRepository: concertRepository
+        concertRepository: concertRepository,
+        eventRepository: eventRepository,
+        onOpenCommunityEvent: onOpenCommunityEvent
       )
     }
   }

@@ -14,6 +14,8 @@ struct FriendsListView: View {
   let currentUsername: String
   let socialRepository: any SocialRepository
   let concertRepository: any ConcertRepository
+  let eventRepository: (any EventRepository)?
+  let onOpenCommunityEvent: ((CommunityEventSummary, UUID?) -> Void)?
 
   @State private var model: PeopleHubModel
   @State private var query = ""
@@ -29,7 +31,9 @@ struct FriendsListView: View {
     currentUserID: UUID,
     currentUsername: String,
     socialRepository: any SocialRepository,
-    concertRepository: any ConcertRepository
+    concertRepository: any ConcertRepository,
+    eventRepository: (any EventRepository)? = nil,
+    onOpenCommunityEvent: ((CommunityEventSummary, UUID?) -> Void)? = nil
   ) {
     let requestedProfileUsername = profileUsername ?? currentUsername
     self.profileUsername = requestedProfileUsername
@@ -37,6 +41,8 @@ struct FriendsListView: View {
     self.currentUsername = currentUsername
     self.socialRepository = socialRepository
     self.concertRepository = concertRepository
+    self.eventRepository = eventRepository
+    self.onOpenCommunityEvent = onOpenCommunityEvent
     _model = State(
       initialValue: PeopleHubModel(
         repository: socialRepository,
@@ -218,7 +224,9 @@ struct FriendsListView: View {
         currentUserID: currentUserID,
         currentUsername: currentUsername,
         socialRepository: socialRepository,
-        concertRepository: concertRepository
+        concertRepository: concertRepository,
+        eventRepository: eventRepository,
+        onOpenCommunityEvent: onOpenCommunityEvent
       )
     } label: {
       PersonRow(profile: profile)

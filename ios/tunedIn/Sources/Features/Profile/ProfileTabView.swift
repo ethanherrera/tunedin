@@ -719,18 +719,19 @@ struct ProfileTabView: View {
                 history: communityHistory,
                 concertRepository: concertRepository,
                 onOpenEvent: onOpenCommunityEvent
-              )
-              LegacyConcertArchiveDisclosure(
-                profileID: profile.id,
-                viewerID: profile.id,
-                viewerUsername: profile.username ?? "",
-                isOwner: true,
-                concertRepository: concertRepository,
-                socialRepository: socialRepository,
-                model: archiveModel,
-                refreshToken: archiveRefreshToken,
-                isExpanded: $isShowingLegacyArchive
-              )
+              ) {
+                LegacyConcertArchiveDisclosure(
+                  profileID: profile.id,
+                  viewerID: profile.id,
+                  viewerUsername: profile.username ?? "",
+                  isOwner: true,
+                  concertRepository: concertRepository,
+                  socialRepository: socialRepository,
+                  model: archiveModel,
+                  refreshToken: archiveRefreshToken,
+                  isExpanded: $isShowingLegacyArchive
+                )
+              }
             } else {
               ConcertArchiveView(
                 profileID: profile.id,
@@ -792,7 +793,9 @@ struct ProfileTabView: View {
         currentUserID: profile.id,
         currentUsername: profile.username ?? "",
         socialRepository: socialRepository,
-        concertRepository: concertRepository
+        concertRepository: concertRepository,
+        eventRepository: eventRepository,
+        onOpenCommunityEvent: onOpenCommunityEvent
       )
     }
   }

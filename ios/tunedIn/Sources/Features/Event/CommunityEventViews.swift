@@ -1,52 +1,79 @@
 import SwiftUI
 
-struct CommunityProfileHistorySection: View {
-  private enum Page: String, CaseIterable {
-    case diaries = "Posts"
-    case going = "Going"
-    case went = "Went"
+enum CommunityProfileCollection: CaseIterable, Hashable {
+  case posts
+  case concerts
+
+  var title: String {
+    switch self {
+    case .posts: "Posts"
+    case .concerts: "Concerts"
+    }
   }
 
+  var systemImage: String {
+    switch self {
+    case .posts: "square.grid.3x3"
+    case .concerts: "music.note.list"
+    }
+  }
+}
+
+struct CommunityProfileHistorySection<ArchiveContent: View>: View {
   let history: CommunityProfileHistory
   let concertRepository: any ConcertRepository
   let onOpenEvent: (CommunityEventSummary, UUID?) -> Void
+  let archiveContent: ArchiveContent
 
-  @State private var selectedPage = Page.diaries
+  @State private var selectedCollection = CommunityProfileCollection.posts
   @Namespace private var selectionNamespace
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  init(
+    history: CommunityProfileHistory,
+    concertRepository: any ConcertRepository,
+    onOpenEvent: @escaping (CommunityEventSummary, UUID?) -> Void,
+    @ViewBuilder archiveContent: () -> ArchiveContent
+  ) {
+    self.history = history
+    self.concertRepository = concertRepository
+    self.onOpenEvent = onOpenEvent
+    self.archiveContent = archiveContent()
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
       HStack(spacing: 0) {
-        ForEach(Page.allCases, id: \.self) { page in
-          Button { selectedPage = page } label: {
-            VStack(spacing: 4) {
-              Text("\(count(for: page))")
-                .font(.title3.weight(.bold))
-              Text(page.rawValue)
-                .font(.caption.weight(.semibold))
+        ForEach(CommunityProfileCollection.allCases, id: \.self) { collection in
+          Button { selectedCollection = collection } label: {
+            HStack(spacing: 7) {
+              Image(systemName: collection.systemImage)
+                .font(.caption.weight(.bold))
+              Text(collection.title)
+                .font(.subheadline.weight(.semibold))
             }
             .foregroundStyle(TunedInDesign.primaryText)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 9)
+            .padding(.vertical, 11)
             .overlay(alignment: .bottom) {
-              if selectedPage == page {
+              if selectedCollection == collection {
                 Capsule()
                   .fill(TunedInDesign.accent)
                   .frame(height: 3)
-                  .matchedGeometryEffect(id: "profile-history-page", in: selectionNamespace)
+                  .matchedGeometryEffect(id: "profile-collection", in: selectionNamespace)
               }
             }
           }
           .buttonStyle(.plain)
-          .accessibilityAddTraits(selectedPage == page ? .isSelected : [])
+          .accessibilityLabel(collection.title)
+          .accessibilityAddTraits(selectedCollection == collection ? .isSelected : [])
         }
       }
 
       Divider().overlay(TunedInDesign.cardBorder)
 
-      switch selectedPage {
-      case .diaries:
+      switch selectedCollection {
+      case .posts:
         if history.diaries.isEmpty {
           emptyState("No posts yet.")
         } else {
@@ -76,38 +103,53 @@ struct CommunityProfileHistorySection: View {
           }
           .padding(.horizontal, -20)
         }
-      case .going:
-        if history.going.isEmpty {
-          emptyState("No upcoming plans shared yet.")
-        } else {
-          ForEach(history.going) { event in
-            Button { onOpenEvent(event, nil) } label: {
-              CommunityEventRow(event: event, showsSource: false)
-            }
-            .buttonStyle(TunedInPosterButtonStyle())
-          }
-        }
-      case .went:
-        if history.went.isEmpty {
-          emptyState("No attended concerts shared yet.")
-        } else {
-          ForEach(history.went) { event in
-            Button { onOpenEvent(event, nil) } label: {
-              CommunityEventRow(event: event, showsSource: false)
-            }
-            .buttonStyle(TunedInPosterButtonStyle())
-          }
+      case .concerts:
+        VStack(alignment: .leading, spacing: 24) {
+          concertSection(
+            title: "Upcoming",
+            events: history.going,
+            emptyMessage: "No upcoming concerts shared."
+          )
+          concertSection(
+            title: "Past",
+            events: history.went,
+            emptyMessage: "No past concerts shared."
+          )
+          archiveContent
         }
       }
     }
-    .animation(TunedInMotion.selection(reduceMotion: reduceMotion), value: selectedPage)
+    .animation(TunedInMotion.selection(reduceMotion: reduceMotion), value: selectedCollection)
   }
 
-  private func count(for page: Page) -> Int {
-    switch page {
-    case .diaries: history.diaries.count
-    case .going: history.going.count
-    case .went: history.went.count
+  private func concertSection(
+    title: String,
+    events: [CommunityEventSummary],
+    emptyMessage: String
+  ) -> some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(spacing: 7) {
+        Text(title)
+          .font(.headline)
+          .foregroundStyle(TunedInDesign.primaryText)
+        Text("\(events.count)")
+          .font(.caption2.weight(.bold))
+          .foregroundStyle(TunedInDesign.mutedText)
+          .padding(.horizontal, 6)
+          .padding(.vertical, 3)
+          .background(TunedInDesign.raisedSurface, in: Capsule())
+      }
+
+      if events.isEmpty {
+        emptyState(emptyMessage)
+      } else {
+        ForEach(events) { event in
+          Button { onOpenEvent(event, nil) } label: {
+            CommunityEventRow(event: event, showsSource: false)
+          }
+          .buttonStyle(TunedInPosterButtonStyle())
+        }
+      }
     }
   }
 
