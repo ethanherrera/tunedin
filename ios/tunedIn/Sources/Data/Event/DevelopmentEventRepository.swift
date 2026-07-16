@@ -82,7 +82,7 @@
         ),
         EventActivity(
           id: Self.uuid(value: 2, prefix: "EA"),
-          kind: .sharedDiary,
+          kind: .diaryPublished,
           actor: ava,
           event: memory,
           occurredAt: now.addingTimeInterval(-86_400),
@@ -119,6 +119,7 @@
     func addPost(
       eventID: UUID,
       authorID: UUID,
+      parentPostID: UUID?,
       body: String,
       audience: EventAudience
     ) async throws -> EventPost {
@@ -132,10 +133,12 @@
       nextPostValue += 1
       let post = EventPost(
         id: Self.uuid(value: nextPostValue, prefix: "EC"),
+        parentPostID: parentPostID,
         author: Self.profile(authorID),
         body: normalized,
         audience: audience,
-        createdAt: now
+        createdAt: now,
+        isDeleted: false
       )
       stored.posts.append(post)
       events[eventID] = stored
@@ -167,6 +170,19 @@
       }
       stored.invitedProfileIDs.formUnion(recipientIDs)
       events[eventID] = stored
+    }
+
+    func pendingInvitations(viewerID _: UUID) async throws -> [EventInvitation] {
+      []
+    }
+
+    func respondToInvitation(
+      invitationID _: UUID,
+      viewerID _: UUID,
+      response _: EventInvitationResponse,
+      audience _: EventAudience
+    ) async throws {
+      throw CommunityEventError.invitationUnavailable
     }
 
     func saveDiary(
@@ -477,10 +493,12 @@
       let upcomingPosts = [
         EventPost(
           id: uuid(value: 1, prefix: "EC"),
+          parentPostID: nil,
           author: morgan,
           body: "I really hope we get First Love / Late Spring.",
           audience: .friends,
-          createdAt: now.addingTimeInterval(-7_200)
+          createdAt: now.addingTimeInterval(-7_200),
+          isDeleted: false
         )
       ]
 

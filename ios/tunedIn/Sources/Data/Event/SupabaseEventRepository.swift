@@ -2,7 +2,7 @@ import Foundation
 import Supabase
 
 struct SupabaseEventRepository: EventRepository {
-  let capabilities = EventRepositoryCapabilities.phase2Attendance
+  let capabilities = EventRepositoryCapabilities.phase3Social
 
   private let client: SupabaseClient
 
@@ -37,10 +37,16 @@ struct SupabaseEventRepository: EventRepository {
           params: ListCatalogEventAttendeesParameters(eventID: id)
         )
         .execute()
+      let posts: PostgrestResponse<[CatalogEventPostRPCRecord]> = try await client
+        .rpc(
+          "list_catalog_event_posts",
+          params: ListCatalogEventPostsParameters(eventID: id)
+        )
+        .execute()
       return CommunityEventDetail(
         summary: summary,
         attendances: try attendees.value.map(EventAttendance.init(databaseRecord:)),
-        posts: [],
+        posts: try posts.value.map(EventPost.init(databaseRecord:)),
         diaryPreviews: []
       )
     }
@@ -52,6 +58,20 @@ struct SupabaseEventRepository: EventRepository {
         .rpc("list_my_catalog_event_plans", params: CatalogEventPageParameters())
         .execute()
       return try await summaries(from: response.value)
+    }
+  }
+
+  func activityFeed(viewerID _: UUID) async throws -> [EventActivity] {
+    try await withAppFailure {
+      let response: PostgrestResponse<[CatalogEventActivityRPCRecord]> = try await client
+        .rpc("list_catalog_event_activity", params: CatalogEventPageParameters())
+        .execute()
+      let summaries = try await summaries(from: response.value.map(\.event))
+      let summariesByID = Dictionary(uniqueKeysWithValues: summaries.map { ($0.id, $0) })
+      return try response.value.map { record in
+        guard let event = summariesByID[record.event.eventID] else { throw AppFailure.unexpected }
+        return try EventActivity(databaseRecord: record, event: event)
+      }
     }
   }
 
@@ -73,6 +93,99 @@ struct SupabaseEventRepository: EventRepository {
         )
         .execute()
       return try await eventDetail(id: eventID, viewerID: viewerID)
+    }
+  }
+
+  func addPost(
+    eventID: UUID,
+    authorID _: UUID,
+    parentPostID: UUID?,
+    body: String,
+    audience: EventAudience
+  ) async throws -> EventPost {
+    try await withAppFailure {
+      let created: PostgrestResponse<CreateCatalogEventPostRPCRecord> = try await client
+        .rpc(
+          "create_catalog_event_post",
+          params: CreateCatalogEventPostParameters(
+            eventID: eventID,
+            parentPostID: parentPostID,
+            body: body,
+            audience: audience
+          )
+        )
+        .single()
+        .execute()
+      let response: PostgrestResponse<[CatalogEventPostRPCRecord]> = try await client
+        .rpc(
+          "list_catalog_event_posts",
+          params: ListCatalogEventPostsParameters(eventID: eventID)
+        )
+        .execute()
+      guard let record = response.value.first(where: { $0.id == created.value.postID }) else {
+        throw AppFailure.unexpected
+      }
+      return try EventPost(databaseRecord: record)
+    }
+  }
+
+  func inviteCandidates(eventID: UUID, viewerID _: UUID) async throws -> [EventInviteCandidate] {
+    try await withAppFailure {
+      let response: PostgrestResponse<[CatalogEventInviteCandidateRPCRecord]> = try await client
+        .rpc(
+          "list_catalog_event_invite_candidates",
+          params: CatalogEventIDParameters(eventID: eventID)
+        )
+        .execute()
+      return response.value.map(EventInviteCandidate.init(databaseRecord:))
+    }
+  }
+
+  func sendInvitations(eventID: UUID, senderID _: UUID, recipientIDs: [UUID]) async throws {
+    try await withAppFailure {
+      _ = try await client
+        .rpc(
+          "send_catalog_event_invitations",
+          params: SendCatalogEventInvitationsParameters(
+            eventID: eventID,
+            recipientIDs: recipientIDs
+          )
+        )
+        .execute()
+    }
+  }
+
+  func pendingInvitations(viewerID _: UUID) async throws -> [EventInvitation] {
+    try await withAppFailure {
+      let response: PostgrestResponse<[CatalogEventInvitationRPCRecord]> = try await client
+        .rpc("list_pending_catalog_event_invitations", params: CatalogEventPageParameters(limit: 20))
+        .execute()
+      let summaries = try await summaries(from: response.value.map(\.event))
+      let eventsByID = Dictionary(uniqueKeysWithValues: summaries.map { ($0.id, $0) })
+      return try response.value.map { record in
+        guard let event = eventsByID[record.eventID] else { throw AppFailure.unexpected }
+        return try EventInvitation(databaseRecord: record, event: event)
+      }
+    }
+  }
+
+  func respondToInvitation(
+    invitationID: UUID,
+    viewerID _: UUID,
+    response: EventInvitationResponse,
+    audience: EventAudience
+  ) async throws {
+    try await withAppFailure {
+      _ = try await client
+        .rpc(
+          "respond_catalog_event_invitation",
+          params: RespondCatalogEventInvitationParameters(
+            invitationID: invitationID,
+            response: response,
+            audience: audience
+          )
+        )
+        .execute()
     }
   }
 
@@ -189,6 +302,68 @@ struct ListCatalogEventAttendeesParameters: Encodable, Equatable, Sendable {
     case scope = "p_scope"
     case cursor = "p_cursor"
     case limit = "p_limit"
+  }
+}
+
+struct ListCatalogEventPostsParameters: Encodable, Equatable, Sendable {
+  let eventID: UUID
+  let scope: String
+  let cursor: [String: String]?
+  let limit: Int
+
+  init(
+    eventID: UUID,
+    scope: String = "all",
+    cursor: [String: String]? = nil,
+    limit: Int = 50
+  ) {
+    self.eventID = eventID
+    self.scope = scope
+    self.cursor = cursor
+    self.limit = limit
+  }
+
+  enum CodingKeys: String, CodingKey {
+    case eventID = "p_event_id"
+    case scope = "p_scope"
+    case cursor = "p_cursor"
+    case limit = "p_limit"
+  }
+}
+
+struct CreateCatalogEventPostParameters: Encodable, Equatable, Sendable {
+  let eventID: UUID
+  let parentPostID: UUID?
+  let body: String
+  let audience: EventAudience
+
+  enum CodingKeys: String, CodingKey {
+    case eventID = "p_event_id"
+    case parentPostID = "p_parent_post_id"
+    case body = "p_body"
+    case audience = "p_audience"
+  }
+}
+
+struct SendCatalogEventInvitationsParameters: Encodable, Equatable, Sendable {
+  let eventID: UUID
+  let recipientIDs: [UUID]
+
+  enum CodingKeys: String, CodingKey {
+    case eventID = "p_event_id"
+    case recipientIDs = "p_recipient_ids"
+  }
+}
+
+struct RespondCatalogEventInvitationParameters: Encodable, Equatable, Sendable {
+  let invitationID: UUID
+  let response: EventInvitationResponse
+  let audience: EventAudience
+
+  enum CodingKeys: String, CodingKey {
+    case invitationID = "p_invitation_id"
+    case response = "p_response"
+    case audience = "p_audience"
   }
 }
 
@@ -369,6 +544,113 @@ struct CatalogEventAttendeeRPCRecord: Decodable, Equatable, Sendable {
   }
 }
 
+struct CatalogEventPostRPCRecord: Decodable, Equatable, Sendable {
+  let id: UUID
+  let parentPostID: UUID?
+  let authorID: UUID
+  let authorUsername: String
+  let authorDisplayName: String
+  let authorRelationship: String
+  let authorAvatarObjectPath: String?
+  let authorAvatarVersion: Int64
+  let body: String
+  let audience: EventAudience
+  let createdAt: String
+  let isDeleted: Bool
+
+  enum CodingKeys: String, CodingKey {
+    case id, body, audience
+    case parentPostID = "parent_post_id"
+    case authorID = "author_id"
+    case authorUsername = "author_username"
+    case authorDisplayName = "author_display_name"
+    case authorRelationship = "author_relationship"
+    case authorAvatarObjectPath = "author_avatar_object_path"
+    case authorAvatarVersion = "author_avatar_version"
+    case createdAt = "created_at"
+    case isDeleted = "is_deleted"
+  }
+}
+
+struct CreateCatalogEventPostRPCRecord: Decodable, Equatable, Sendable {
+  let postID: UUID
+
+  enum CodingKeys: String, CodingKey {
+    case postID = "post_id"
+  }
+}
+
+struct CatalogEventInviteCandidateRPCRecord: Decodable, Equatable, Sendable {
+  let id: UUID
+  let username: String
+  let displayName: String
+  let relationship: String
+  let avatarObjectPath: String?
+  let avatarVersion: Int64
+  let attendanceStatus: EventAttendanceStatus?
+  let isAlreadyInvited: Bool
+
+  enum CodingKeys: String, CodingKey {
+    case id, username, relationship
+    case displayName = "display_name"
+    case avatarObjectPath = "avatar_object_path"
+    case avatarVersion = "avatar_version"
+    case attendanceStatus = "attendance_status"
+    case isAlreadyInvited = "is_already_invited"
+  }
+}
+
+struct CatalogEventInvitationRPCRecord: Decodable, Equatable, Sendable {
+  let invitationID: UUID
+  let eventID: UUID
+  let event: CatalogEventRPCRecord
+  let senderID: UUID
+  let senderUsername: String
+  let senderDisplayName: String
+  let senderRelationship: String
+  let senderAvatarObjectPath: String?
+  let senderAvatarVersion: Int64
+  let createdAt: String
+
+  enum CodingKeys: String, CodingKey {
+    case event
+    case invitationID = "invitation_id"
+    case eventID = "event_id"
+    case senderID = "sender_id"
+    case senderUsername = "sender_username"
+    case senderDisplayName = "sender_display_name"
+    case senderRelationship = "sender_relationship"
+    case senderAvatarObjectPath = "sender_avatar_object_path"
+    case senderAvatarVersion = "sender_avatar_version"
+    case createdAt = "created_at"
+  }
+}
+
+struct CatalogEventActivityRPCRecord: Decodable, Equatable, Sendable {
+  let activityID: UUID
+  let action: EventActivityKind
+  let actorID: UUID
+  let actorUsername: String
+  let actorDisplayName: String
+  let actorRelationship: String
+  let actorAvatarObjectPath: String?
+  let actorAvatarVersion: Int64
+  let event: CatalogEventRPCRecord
+  let occurredAt: String
+
+  enum CodingKeys: String, CodingKey {
+    case action, event
+    case activityID = "activity_id"
+    case actorID = "actor_id"
+    case actorUsername = "actor_username"
+    case actorDisplayName = "actor_display_name"
+    case actorRelationship = "actor_relationship"
+    case actorAvatarObjectPath = "actor_avatar_object_path"
+    case actorAvatarVersion = "actor_avatar_version"
+    case occurredAt = "occurred_at"
+  }
+}
+
 extension CommunityEventSummary {
   init(
     databaseRecord: CatalogEventRPCRecord,
@@ -456,6 +738,117 @@ extension EventAttendance {
       audience: databaseRecord.audience,
       updatedAt: updatedAt
     )
+  }
+}
+
+extension EventPost {
+  init(databaseRecord: CatalogEventPostRPCRecord) throws {
+    guard let createdAt = CommunityEventDateCoding.dateTime(from: databaseRecord.createdAt) else {
+      throw AppFailure.unexpected
+    }
+    self.init(
+      id: databaseRecord.id,
+      parentPostID: databaseRecord.parentPostID,
+      author: SocialProfile(
+        id: databaseRecord.authorID,
+        username: databaseRecord.authorUsername,
+        displayName: databaseRecord.authorDisplayName,
+        relationship: RelationshipState(rawValue: databaseRecord.authorRelationship) ?? .none,
+        avatarObjectPath: databaseRecord.authorAvatarObjectPath,
+        avatarVersion: databaseRecord.authorAvatarVersion
+      ),
+      body: databaseRecord.body,
+      audience: databaseRecord.audience,
+      createdAt: createdAt,
+      isDeleted: databaseRecord.isDeleted
+    )
+  }
+}
+
+private extension EventInviteCandidate {
+  init(databaseRecord: CatalogEventInviteCandidateRPCRecord) {
+    self.init(
+      profile: SocialProfile(
+        id: databaseRecord.id,
+        username: databaseRecord.username,
+        displayName: databaseRecord.displayName,
+        relationship: RelationshipState(rawValue: databaseRecord.relationship) ?? .none,
+        avatarObjectPath: databaseRecord.avatarObjectPath,
+        avatarVersion: databaseRecord.avatarVersion
+      ),
+      attendanceStatus: databaseRecord.attendanceStatus,
+      isAlreadyInvited: databaseRecord.isAlreadyInvited
+    )
+  }
+}
+
+extension EventInvitation {
+  init(databaseRecord: CatalogEventInvitationRPCRecord, event: CommunityEventSummary) throws {
+    guard let createdAt = CommunityEventDateCoding.dateTime(from: databaseRecord.createdAt) else {
+      throw AppFailure.unexpected
+    }
+    self.init(
+      id: databaseRecord.invitationID,
+      event: event,
+      sender: SocialProfile(
+        id: databaseRecord.senderID,
+        username: databaseRecord.senderUsername,
+        displayName: databaseRecord.senderDisplayName,
+        relationship: RelationshipState(rawValue: databaseRecord.senderRelationship) ?? .none,
+        avatarObjectPath: databaseRecord.senderAvatarObjectPath,
+        avatarVersion: databaseRecord.senderAvatarVersion
+      ),
+      createdAt: createdAt
+    )
+  }
+}
+
+extension EventActivity {
+  init(databaseRecord: CatalogEventActivityRPCRecord, event: CommunityEventSummary) throws {
+    guard let occurredAt = CommunityEventDateCoding.dateTime(from: databaseRecord.occurredAt) else {
+      throw AppFailure.unexpected
+    }
+    let actor = SocialProfile(
+      id: databaseRecord.actorID,
+      username: databaseRecord.actorUsername,
+      displayName: databaseRecord.actorDisplayName,
+      relationship: RelationshipState(rawValue: databaseRecord.actorRelationship) ?? .none,
+      avatarObjectPath: databaseRecord.actorAvatarObjectPath,
+      avatarVersion: databaseRecord.actorAvatarVersion
+    )
+    self.init(
+      id: databaseRecord.activityID,
+      kind: databaseRecord.action,
+      actor: actor,
+      event: event,
+      occurredAt: occurredAt,
+      message: databaseRecord.action.message(eventName: event.headlinerName)
+    )
+  }
+}
+
+private extension EventActivityKind {
+  func message(eventName: String) -> String {
+    switch self {
+    case .eventCreated:
+      "added \(eventName)"
+    case .eventUpdated:
+      "updated \(eventName)"
+    case .markedGoing:
+      "is going to \(eventName)"
+    case .markedWent:
+      "went to \(eventName)"
+    case .invitationAccepted:
+      "accepted an invite to \(eventName)"
+    case .diaryPublished:
+      "shared a memory from \(eventName)"
+    case .diaryMediaAdded:
+      "added photos from \(eventName)"
+    case .eventPosted:
+      "posted about \(eventName)"
+    case .eventReplied:
+      "replied about \(eventName)"
+    }
   }
 }
 

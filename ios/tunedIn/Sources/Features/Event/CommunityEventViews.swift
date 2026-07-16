@@ -79,9 +79,11 @@ struct CommunityPlansView: View {
   let onOpenEvent: (CommunityEventSummary) -> Void
 
   @State private var events: [CommunityEventSummary] = []
+  @State private var invitations: [EventInvitation] = []
   @State private var isLoading = true
   @State private var errorMessage: String?
   @State private var presentation = Presentation.list
+  @State private var respondingInvitationID: UUID?
 
   var body: some View {
     ZStack {
@@ -94,6 +96,24 @@ struct CommunityPlansView: View {
             title: "Plans",
             subtitle: "Every show you’re going to—and the friends joining you."
           )
+
+          if !invitations.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+              Text("Invited by friends")
+                .font(.headline)
+                .foregroundStyle(TunedInDesign.primaryText)
+
+              ForEach(invitations) { invitation in
+                EventInvitationCard(
+                  invitation: invitation,
+                  isResponding: respondingInvitationID == invitation.id,
+                  onOpen: { onOpenEvent(invitation.event) },
+                  onAccept: { Task { await respond(to: invitation, with: .accepted) } },
+                  onDecline: { Task { await respond(to: invitation, with: .declined) } }
+                )
+              }
+            }
+          }
 
           Picker("Plans view", selection: $presentation) {
             ForEach(Presentation.allCases, id: \.self) { option in
@@ -165,13 +185,79 @@ struct CommunityPlansView: View {
 
   @MainActor
   private func load() async {
-    isLoading = events.isEmpty
+    isLoading = events.isEmpty && invitations.isEmpty
     defer { isLoading = false }
     do {
       events = try await repository.plans(viewerID: viewerID)
+      if repository.capabilities.contains(.invitations) {
+        invitations = try await repository.pendingInvitations(viewerID: viewerID)
+      } else {
+        invitations = []
+      }
       errorMessage = nil
     } catch {
       errorMessage = error.localizedDescription
+    }
+  }
+
+  @MainActor
+  private func respond(to invitation: EventInvitation, with response: EventInvitationResponse) async {
+    respondingInvitationID = invitation.id
+    defer { respondingInvitationID = nil }
+    do {
+      try await repository.respondToInvitation(
+        invitationID: invitation.id,
+        viewerID: viewerID,
+        response: response,
+        audience: .friends
+      )
+      await load()
+    } catch {
+      errorMessage = error.localizedDescription
+    }
+  }
+}
+
+private struct EventInvitationCard: View {
+  let invitation: EventInvitation
+  let isResponding: Bool
+  let onOpen: () -> Void
+  let onAccept: () -> Void
+  let onDecline: () -> Void
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(spacing: 10) {
+        ProfileAvatarView(profile: invitation.sender, size: 42)
+        VStack(alignment: .leading, spacing: 3) {
+          Text("\(invitation.sender.displayName) invited you")
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
+          Text(invitation.createdAt, style: .relative)
+            .font(.caption)
+            .foregroundStyle(TunedInDesign.mutedText)
+        }
+      }
+
+      Button(action: onOpen) {
+        CommunityEventRow(event: invitation.event, showsSource: false)
+      }
+      .buttonStyle(TunedInPosterButtonStyle())
+
+      HStack(spacing: 10) {
+        Button("Not this time", action: onDecline)
+          .buttonStyle(.bordered)
+        Button("I’m going", action: onAccept)
+          .buttonStyle(.borderedProminent)
+          .tint(TunedInDesign.accent)
+      }
+      .disabled(isResponding)
+    }
+    .padding(14)
+    .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius))
+    .overlay {
+      RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius)
+        .strokeBorder(TunedInDesign.cardBorder.opacity(0.55))
     }
   }
 }

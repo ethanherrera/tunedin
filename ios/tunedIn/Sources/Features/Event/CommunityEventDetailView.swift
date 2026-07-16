@@ -370,6 +370,7 @@ private struct EventOverviewPage: View {
 
   @State private var comment = ""
   @State private var audience = EventAudience.friends
+  @State private var replyTo: EventPost?
   @State private var isPosting = false
   @State private var errorMessage: String?
 
@@ -401,8 +402,23 @@ private struct EventOverviewPage: View {
           .foregroundStyle(TunedInDesign.primaryText)
 
         if detail.summary.phase() != .memories {
+          if let replyTo {
+            HStack(spacing: 8) {
+              Image(systemName: "arrowshape.turn.up.left.fill")
+              Text("Replying to \(replyTo.author.displayName)")
+                .lineLimit(1)
+              Spacer()
+              Button("Cancel") { self.replyTo = nil }
+            }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(TunedInDesign.mutedText)
+          }
           HStack(spacing: 8) {
-            TextField("What are you excited for?", text: $comment, axis: .vertical)
+            TextField(
+              replyTo == nil ? "What are you excited for?" : "Write a reply…",
+              text: $comment,
+              axis: .vertical
+            )
               .lineLimit(1 ... 4)
               .padding(12)
               .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14))
@@ -437,8 +453,13 @@ private struct EventOverviewPage: View {
             .foregroundStyle(TunedInDesign.mutedText)
             .padding(.vertical, 12)
         } else {
-          ForEach(detail.posts.sorted(by: { $0.createdAt > $1.createdAt })) { post in
-            EventPostRow(post: post)
+          ForEach(detail.posts.sorted(by: { $0.createdAt < $1.createdAt })) { post in
+            EventPostRow(
+              post: post,
+              onReply: post.parentPostID == nil && !post.isDeleted
+                ? { replyTo = post }
+                : nil
+            )
           }
         }
         }
@@ -454,10 +475,12 @@ private struct EventOverviewPage: View {
       _ = try await repository.addPost(
         eventID: detail.id,
         authorID: viewerID,
+        parentPostID: replyTo?.id,
         body: comment,
         audience: audience
       )
       comment = ""
+      replyTo = nil
       errorMessage = nil
       onPostAdded()
     } catch {

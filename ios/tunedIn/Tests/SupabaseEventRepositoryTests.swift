@@ -4,6 +4,19 @@ import Testing
 
 struct SupabaseEventRepositoryContractTests {
   @Test
+  func phaseThreeCapabilitiesAddTheSocialLoopWithoutDiaries() {
+    let capabilities = EventRepositoryCapabilities.phase3Social
+
+    #expect(capabilities.contains(.discovery))
+    #expect(capabilities.contains(.plans))
+    #expect(capabilities.contains(.attendance))
+    #expect(capabilities.contains(.activityFeed))
+    #expect(capabilities.contains(.conversation))
+    #expect(capabilities.contains(.invitations))
+    #expect(!capabilities.contains(.diaries))
+  }
+
+  @Test
   func phaseTwoCapabilitiesExposeDiscoveryPlansAndAttendanceOnly() {
     let repository = PhaseTwoEventRepositoryDouble()
 
@@ -63,7 +76,127 @@ struct SupabaseEventRepositoryContractTests {
     #expect(attendance["p_audience"] as? String == "friends")
     #expect(Set(cleared.keys) == ["p_event_id", "p_audience"])
   }
+}
 
+struct SupabaseEventSocialContractTests {
+  @Test
+  func conversationAndInvitationParametersUseExactRPCContractKeys() throws {
+    let eventID = UUID(uuidString: "10000000-0000-0000-0000-000000000001")!
+    let postID = UUID(uuidString: "20000000-0000-0000-0000-000000000001")!
+    let friendID = UUID(uuidString: "30000000-0000-0000-0000-000000000001")!
+    let invitationID = UUID(uuidString: "40000000-0000-0000-0000-000000000001")!
+    let posts = try encodedObject(ListCatalogEventPostsParameters(eventID: eventID))
+    let create = try encodedObject(CreateCatalogEventPostParameters(
+      eventID: eventID,
+      parentPostID: postID,
+      body: "Can’t wait",
+      audience: .friends
+    ))
+    let send = try encodedObject(SendCatalogEventInvitationsParameters(
+      eventID: eventID,
+      recipientIDs: [friendID]
+    ))
+    let respond = try encodedObject(RespondCatalogEventInvitationParameters(
+      invitationID: invitationID,
+      response: .accepted,
+      audience: .friends
+    ))
+
+    #expect(Set(posts.keys) == ["p_event_id", "p_scope", "p_limit"])
+    #expect(posts["p_scope"] as? String == "all")
+    #expect(Set(create.keys) == ["p_event_id", "p_parent_post_id", "p_body", "p_audience"])
+    #expect(create["p_parent_post_id"] as? String == postID.uuidString)
+    #expect(create["p_audience"] as? String == "friends")
+    #expect(Set(send.keys) == ["p_event_id", "p_recipient_ids"])
+    #expect(send["p_recipient_ids"] as? [String] == [friendID.uuidString])
+    #expect(Set(respond.keys) == ["p_invitation_id", "p_response", "p_audience"])
+    #expect(respond["p_response"] as? String == "accepted")
+  }
+
+  @Test
+  func conversationRecordPreservesReplyAndDeletionState() throws {
+    let data = Data(
+      #"""
+      {
+        "id":"50000000-0000-0000-0000-000000000001",
+        "parent_post_id":"50000000-0000-0000-0000-000000000000",
+        "author_id":"60000000-0000-0000-0000-000000000001",
+        "author_username":"morgan",
+        "author_display_name":"Morgan",
+        "author_relationship":"friends",
+        "author_avatar_object_path":null,
+        "author_avatar_version":0,
+        "body":"Post deleted",
+        "audience":"friends",
+        "created_at":"2026-07-16T20:00:00Z",
+        "is_deleted":true
+      }
+      """#.utf8
+    )
+    let record = try JSONDecoder().decode(CatalogEventPostRPCRecord.self, from: data)
+    let post = try EventPost(databaseRecord: record)
+
+    #expect(post.parentPostID == UUID(uuidString: "50000000-0000-0000-0000-000000000000"))
+    #expect(post.author.relationship == .friends)
+    #expect(post.isDeleted)
+  }
+
+  @Test
+  func invitationRecordCarriesACompleteEventCard() throws {
+    let data = Data(
+      #"""
+      {
+        "invitation_id":"70000000-0000-0000-0000-000000000001",
+        "event_id":"50000000-0000-0000-0000-000000000001",
+        "event":{
+          "event_id":"50000000-0000-0000-0000-000000000001",
+          "artists":[{
+            "catalog_artist_id":"20000000-0000-0000-0000-000000000001",
+            "display_name":"Mitski",
+            "position":0,
+            "is_headliner":true
+          }],
+          "catalog_place_id":"30000000-0000-0000-0000-000000000001",
+          "catalog_area_id":"40000000-0000-0000-0000-000000000001",
+          "catalog_tour_id":null,
+          "venue_name":"The Anthem",
+          "area_name":"Washington, D.C.",
+          "event_date":"2026-09-17",
+          "starts_at":"2026-09-17T23:30:00Z",
+          "time_zone_identifier":"America/New_York",
+          "memory_unlock_at":"2026-09-18T08:00:00Z",
+          "lifecycle":"scheduled",
+          "listing":"unlisted",
+          "integrity":"community_added",
+          "row_state":"active",
+          "source_label":"Community made"
+        },
+        "sender_id":"60000000-0000-0000-0000-000000000001",
+        "sender_username":"morgan",
+        "sender_display_name":"Morgan",
+        "sender_relationship":"friends",
+        "sender_avatar_object_path":null,
+        "sender_avatar_version":0,
+        "created_at":"2026-07-16T20:00:00Z"
+      }
+      """#.utf8
+    )
+    let record = try JSONDecoder().decode(CatalogEventInvitationRPCRecord.self, from: data)
+    let summary = try CommunityEventSummary(databaseRecord: record.event)
+    let invitation = try EventInvitation(databaseRecord: record, event: summary)
+
+    #expect(invitation.event.id == record.eventID)
+    #expect(invitation.event.listing == .unlisted)
+    #expect(invitation.sender.relationship == .friends)
+  }
+
+  private func encodedObject(_ value: some Encodable) throws -> [String: Any] {
+    let data = try JSONEncoder().encode(value)
+    return try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+  }
+}
+
+extension SupabaseEventRepositoryContractTests {
   @Test
   func creationParametersUseCatalogIDsAndVenueLocalDate() throws {
     let artistID = UUID(uuidString: "20000000-0000-0000-0000-000000000001")!

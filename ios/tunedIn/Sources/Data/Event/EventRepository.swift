@@ -13,6 +13,9 @@ struct EventRepositoryCapabilities: OptionSet, Equatable, Sendable {
 
   static let phase1Discovery: Self = [.discovery]
   static let phase2Attendance: Self = [.discovery, .plans, .attendance]
+  static let phase3Social: Self = [
+    .discovery, .plans, .activityFeed, .attendance, .conversation, .invitations
+  ]
   static let complete: Self = [
     .discovery, .plans, .activityFeed, .attendance, .conversation, .invitations, .diaries
   ]
@@ -34,11 +37,19 @@ protocol EventRepository: Sendable {
   func addPost(
     eventID: UUID,
     authorID: UUID,
+    parentPostID: UUID?,
     body: String,
     audience: EventAudience
   ) async throws -> EventPost
   func inviteCandidates(eventID: UUID, viewerID: UUID) async throws -> [EventInviteCandidate]
   func sendInvitations(eventID: UUID, senderID: UUID, recipientIDs: [UUID]) async throws
+  func pendingInvitations(viewerID: UUID) async throws -> [EventInvitation]
+  func respondToInvitation(
+    invitationID: UUID,
+    viewerID: UUID,
+    response: EventInvitationResponse,
+    audience: EventAudience
+  ) async throws
   func saveDiary(
     eventID: UUID,
     authorID: UUID,
@@ -68,6 +79,7 @@ extension EventRepository {
   func addPost(
     eventID _: UUID,
     authorID _: UUID,
+    parentPostID _: UUID?,
     body _: String,
     audience _: EventAudience
   ) async throws -> EventPost {
@@ -79,6 +91,19 @@ extension EventRepository {
   }
 
   func sendInvitations(eventID _: UUID, senderID _: UUID, recipientIDs _: [UUID]) async throws {
+    throw CommunityEventError.featureUnavailable("Invitations")
+  }
+
+  func pendingInvitations(viewerID _: UUID) async throws -> [EventInvitation] {
+    throw CommunityEventError.featureUnavailable("Invitations")
+  }
+
+  func respondToInvitation(
+    invitationID _: UUID,
+    viewerID _: UUID,
+    response _: EventInvitationResponse,
+    audience _: EventAudience
+  ) async throws {
     throw CommunityEventError.featureUnavailable("Invitations")
   }
 

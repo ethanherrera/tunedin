@@ -52,10 +52,14 @@ metrics="$(docker exec "$database_container" psql -U postgres -d postgres -v ON_
     (select count(*) from public.catalog_event_attendance where profile_id = 'd1000000-0000-0000-0000-000000000001'::uuid and status in ('going', 'went')),
     (select count(*) from public.catalog_event_attendance where event_id = 'd4000000-0000-0000-0000-000000000001'::uuid and audience = 'community'),
     (select count(*) from public.catalog_event_attendance where event_id = 'd4000000-0000-0000-0000-000000000001'::uuid and audience = 'private'),
-    (select count(*) from public.social_activity_events where id between 'd4100000-0000-0000-0000-000000000101'::uuid and 'd4100000-0000-0000-0000-000000000108'::uuid);
+    (select count(*) from public.social_activity_events where id between 'd4100000-0000-0000-0000-000000000101'::uuid and 'd4100000-0000-0000-0000-000000000108'::uuid),
+    (select count(*) from public.catalog_event_invitations where id between 'd4200000-0000-0000-0000-000000000001'::uuid and 'd4200000-0000-0000-0000-000000000002'::uuid),
+    (select count(*) from public.catalog_event_posts where id between 'd4300000-0000-0000-0000-000000000001'::uuid and 'd4300000-0000-0000-0000-000000000003'::uuid),
+    (select count(*) from public.social_activity_events where id between 'd4100000-0000-0000-0000-000000000201'::uuid and 'd4100000-0000-0000-0000-000000000203'::uuid),
+    (select count(*) from private.catalog_event_notification_outbox where id between 'd4400000-0000-0000-0000-000000000001'::uuid and 'd4400000-0000-0000-0000-000000000003'::uuid);
 ")"
 
-expected="16|16|16|16|15|1|5|1|1|1|6|24|8|12|73|0|0|1|2|11|1|5|5|10|2|0|0|0|0|4|4|5|1|0|9|3|2|1|8"
+expected="16|16|16|16|15|1|5|1|1|1|6|24|8|12|73|0|0|1|2|11|1|5|5|10|2|0|0|0|0|4|4|5|1|0|9|3|2|1|8|2|3|3|3"
 if [[ "$metrics" != "$expected" ]]; then
   echo "Local Supabase seed integrity check failed (expected ${expected}; received ${metrics})." >&2
   exit 1

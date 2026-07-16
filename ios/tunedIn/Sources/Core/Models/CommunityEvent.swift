@@ -129,10 +129,12 @@ struct EventAttendance: Codable, Equatable, Identifiable, Sendable {
 
 struct EventPost: Codable, Equatable, Identifiable, Sendable {
   let id: UUID
+  let parentPostID: UUID?
   let author: SocialProfile
   let body: String
   let audience: EventAudience
   let createdAt: Date
+  let isDeleted: Bool
 }
 
 struct EventDiaryPreview: Codable, Equatable, Identifiable, Sendable {
@@ -156,10 +158,15 @@ struct CommunityEventDetail: Codable, Equatable, Identifiable, Sendable {
 }
 
 enum EventActivityKind: String, Codable, Equatable, Sendable {
+  case eventCreated = "event_created"
+  case eventUpdated = "event_updated"
   case markedGoing = "marked_going"
-  case sharedDiary = "shared_diary"
-  case postedComment = "posted_comment"
-  case invitedYou = "invited_you"
+  case markedWent = "marked_went"
+  case invitationAccepted = "invitation_accepted"
+  case diaryPublished = "diary_published"
+  case diaryMediaAdded = "diary_media_added"
+  case eventPosted = "event_posted"
+  case eventReplied = "event_replied"
 }
 
 struct EventActivity: Codable, Equatable, Identifiable, Sendable {
@@ -177,6 +184,18 @@ struct EventInviteCandidate: Codable, Equatable, Identifiable, Sendable {
   let isAlreadyInvited: Bool
 
   var id: UUID { profile.id }
+}
+
+enum EventInvitationResponse: String, Codable, Equatable, Sendable {
+  case accepted
+  case declined
+}
+
+struct EventInvitation: Codable, Equatable, Identifiable, Sendable {
+  let id: UUID
+  let event: CommunityEventSummary
+  let sender: SocialProfile
+  let createdAt: Date
 }
 
 struct CommunityEventCreationInput: Equatable, Sendable {

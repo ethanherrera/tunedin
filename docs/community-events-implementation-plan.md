@@ -1,6 +1,6 @@
 # Community Events Implementation Plan
 
-Status: in progress; Phases 1–2 implemented for the disposable Local environment
+Status: in progress; Phases 1–3 implemented for the disposable Local environment
 Decision date: 2026-07-16
 Decision owner: Ethan
 Depends on: `docs/community-events-product-design.md` and
@@ -30,7 +30,18 @@ Depends on: `docs/community-events-product-design.md` and
   database authorization, generated-type, Local build, and repository contract
   verification pass. The final interactive iPhone 13 click-through is pending a
   manually unlocked Mac; hosted Development remains unchanged.
-- Phase 3 and later persistence contracts have not started.
+- Phase 3 is implemented in
+  `20260716230000_catalog_event_invitations_posts.sql` and the Local iOS
+  repository: private friend invitations, an inbox whose bounded response includes
+  complete event cards, transactional accept-to-Going, pre-show friends/community
+  posts and one-level replies, soft deletion, read-time friendship/block
+  revocation, notification-safe opaque outbox events, and a privacy-filtered event
+  activity feed. Invitation and post quotas are enforced in Postgres. Seeded
+  sessions verify invite, reply, accept, inbox, Plans, and feed behavior; 449 pgTAP
+  tests, generated-type checks, Local build, and repository tests pass. Interactive
+  iPhone 13 visual inspection remains pending a manually unlocked Mac, and hosted
+  Development remains unchanged.
+- Phase 4 and later persistence contracts have not started.
 
 ## Architecture decision
 
@@ -384,6 +395,10 @@ Exit: two real local users can mark Going with different audiences, see only the
 permitted rows, and retain an attendance-only Went history.
 
 ### Phase 3 — invitations and upcoming conversation
+
+Implementation status: complete in the disposable Local environment, with the
+interactive iPhone 13 click-through still pending a manually unlocked Mac. Hosted
+Development remains gated until the reviewed migrations are deployed.
 
 - Add invitations, event posts/replies, rate limits, soft deletion, and private
   notification outbox events.

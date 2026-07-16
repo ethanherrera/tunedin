@@ -139,9 +139,21 @@ struct EventDiaryPreviewCard: View {
 
 struct EventPostRow: View {
   let post: EventPost
+  var onReply: (() -> Void)?
+
+  init(post: EventPost, onReply: (() -> Void)? = nil) {
+    self.post = post
+    self.onReply = onReply
+  }
 
   var body: some View {
     HStack(alignment: .top, spacing: 10) {
+      if post.parentPostID != nil {
+        Image(systemName: "arrowshape.turn.up.left")
+          .font(.caption)
+          .foregroundStyle(TunedInDesign.mutedText)
+          .frame(width: 16, height: 38)
+      }
       ProfileAvatarView(profile: post.author, size: 38)
       VStack(alignment: .leading, spacing: 4) {
         HStack {
@@ -157,9 +169,17 @@ struct EventPostRow: View {
         }
         Text(post.body)
           .font(.subheadline)
-          .foregroundStyle(TunedInDesign.primaryText)
+          .foregroundStyle(post.isDeleted ? TunedInDesign.mutedText : TunedInDesign.primaryText)
+          .italic(post.isDeleted)
+        if let onReply {
+          Button("Reply", action: onReply)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(TunedInDesign.accent)
+            .buttonStyle(.plain)
+        }
       }
     }
+    .padding(.leading, post.parentPostID == nil ? 0 : 22)
     .padding(.vertical, 8)
   }
 }
