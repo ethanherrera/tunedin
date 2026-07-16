@@ -486,6 +486,8 @@ struct ConcertDetailView: View {
   @State private var detail: ConcertDetail?
   @State private var errorMessage: String?
   @State private var isShowingEditor = false
+  @State private var isShowingMoments = false
+  @State private var momentsDetent = PresentationDetent.medium
   @State private var selectedPage: ConcertDetailPage = .concert
   @State private var isShowingDeleteConfirmation = false
   @State private var isShowingFinalDeleteConfirmation = false
@@ -628,6 +630,19 @@ struct ConcertDetailView: View {
         )
       }
     }
+    .sheet(isPresented: $isShowingMoments) {
+      ConcertCommentsView(
+        concertID: concertID,
+        viewerID: viewerID,
+        viewerUsername: viewerUsername,
+        concertRepository: concertRepository,
+        model: commentsModel,
+        selectedDetent: $momentsDetent
+      )
+      .presentationDetents([.medium, .large], selection: $momentsDetent)
+      .presentationDragIndicator(.visible)
+      .presentationCornerRadius(30)
+    }
     .confirmationDialog(
       "Delete this concert?",
       isPresented: $isShowingDeleteConfirmation,
@@ -764,37 +779,45 @@ struct ConcertDetailView: View {
   }
 
   private func concertContent(_ detail: ConcertDetail) -> some View {
-    ScrollView {
-      LazyVStack(alignment: .leading, spacing: 0) {
-        concertHeader(detail, artworkStyle: .full)
-          .background {
-            GeometryReader { proxy in
-              Color.clear.preference(
-                key: ConcertHeroScrollPositionKey.self,
-                value: proxy.frame(in: .named("concert-detail-scroll")).minY
-              )
+    ScrollViewReader { scrollProxy in
+      ScrollView {
+        LazyVStack(alignment: .leading, spacing: 0) {
+          concertHeader(detail, artworkStyle: .full)
+            .id("concert-hero")
+            .background {
+              GeometryReader { proxy in
+                Color.clear.preference(
+                  key: ConcertHeroScrollPositionKey.self,
+                  value: proxy.frame(in: .named("concert-detail-scroll")).minY
+                )
+              }
             }
+          concertEditorialSections(detail) {
+            openMoments(from: scrollProxy)
           }
-        concertEditorialSections(detail)
           .padding(.horizontal, 20)
           .padding(.top, 24)
           .padding(.bottom, TunedInDesign.scrollContentBottomInset + 28)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
       }
-      .frame(maxWidth: .infinity, alignment: .leading)
-    }
-    .coordinateSpace(name: "concert-detail-scroll")
-    .modifier(ConcertHeroScrollTrackingModifier(progress: $heroCollapseProgress))
-    .ignoresSafeArea(edges: .top)
-    .refreshable {
-      await loadDetail(policy: .refresh)
-      await commentsModel.loadComments(policy: .refresh)
-      if errorMessage == nil, commentsModel.loadErrorMessage == nil {
-        hasRemoteChanges = false
+      .coordinateSpace(name: "concert-detail-scroll")
+      .modifier(ConcertHeroScrollTrackingModifier(progress: $heroCollapseProgress))
+      .ignoresSafeArea(edges: .top)
+      .refreshable {
+        await loadDetail(policy: .refresh)
+        await commentsModel.loadComments(policy: .refresh)
+        if errorMessage == nil, commentsModel.loadErrorMessage == nil {
+          hasRemoteChanges = false
+        }
       }
     }
   }
 
-  private func concertEditorialSections(_ detail: ConcertDetail) -> some View {
+  private func concertEditorialSections(
+    _ detail: ConcertDetail,
+    openMoments: @escaping () -> Void
+  ) -> some View {
     VStack(alignment: .leading, spacing: 26) {
       if let tour = detail.concert.tour {
         HStack(spacing: 8) {
@@ -841,7 +864,7 @@ struct ConcertDetailView: View {
         venueRow(detail)
       }
 
-      commentsSection
+      commentsSection(openMoments: openMoments)
     }
   }
 
@@ -884,20 +907,62 @@ struct ConcertDetailView: View {
     }
   }
 
-  private var commentsSection: some View {
+  private func commentsSection(openMoments: @escaping () -> Void) -> some View {
     VStack(alignment: .leading, spacing: 14) {
       Divider()
         .overlay(TunedInDesign.cardBorder.opacity(0.55))
-      Text("Moments")
-        .font(.title2.weight(.bold))
-        .foregroundStyle(TunedInDesign.primaryText)
-      ConcertCommentsView(
-        concertID: concertID,
-        viewerID: viewerID,
-        concertRepository: concertRepository,
-        pageHeader: AnyView(EmptyView()),
-        model: commentsModel
-      )
+      Button(action: openMoments) {
+        HStack(spacing: 13) {
+          Image(systemName: "bubble.left.and.bubble.right.fill")
+            .font(.headline)
+            .foregroundStyle(TunedInDesign.accent)
+            .frame(width: 44, height: 44)
+            .background(TunedInDesign.accentTint, in: Circle())
+
+          VStack(alignment: .leading, spacing: 3) {
+            Text("Moments")
+              .font(.title3.weight(.bold))
+              .foregroundStyle(TunedInDesign.primaryText)
+            Text(momentsSummary)
+              .font(.subheadline)
+              .foregroundStyle(TunedInDesign.mutedText)
+          }
+          Spacer()
+          Image(systemName: "chevron.up")
+            .font(.caption.weight(.bold))
+            .foregroundStyle(TunedInDesign.mutedText)
+        }
+        .padding(16)
+        .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 20))
+      }
+      .buttonStyle(.plain)
+      .accessibilityHint("Opens the conversation while keeping this concert visible")
+    }
+  }
+
+  private var momentsSummary: String {
+    if commentsModel.isLoading {
+      return "Open the conversation from this night."
+    }
+
+    let count = commentsModel.comments.count + commentsModel.optimisticComments.count
+    return count == 0
+      ? "Add the first detail from this night."
+      : "\(count) \(count == 1 ? "moment" : "moments") shared from this night."
+  }
+
+  private func openMoments(from scrollProxy: ScrollViewProxy) {
+    momentsDetent = .medium
+    if reduceMotion {
+      scrollProxy.scrollTo("concert-hero", anchor: .top)
+      isShowingMoments = true
+      return
+    }
+
+    withAnimation(TunedInMotion.navigation(reduceMotion: false)) {
+      scrollProxy.scrollTo("concert-hero", anchor: .top)
+    } completion: {
+      isShowingMoments = true
     }
   }
 

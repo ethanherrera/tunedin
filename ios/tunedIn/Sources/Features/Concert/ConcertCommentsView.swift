@@ -1,37 +1,65 @@
-import Observation
 import SwiftUI
 
 struct ConcertCommentsView: View {
   let concertID: UUID
   let viewerID: UUID
+  let viewerUsername: String
   let concertRepository: any ConcertRepository
-  let pageHeader: AnyView
   let model: ConcertCommentsModel
+  @Binding var selectedDetent: PresentationDetent
 
   @Environment(\.telemetry) private var telemetry
+  @FocusState private var isComposerFocused: Bool
   @State private var draft = ""
   @State private var editingCommentID: UUID?
   @State private var editDraft = ""
-  @State private var isSending = false
   @State private var errorMessage: String?
   @State private var commentPendingDeletion: ConcertComment?
+  @State private var successFeedback = 0
+  @State private var failureFeedback = 0
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      pageHeader
-      composer
+    VStack(spacing: 0) {
+      momentsHeader
 
-      if model.isLoading {
-        loadingState
-      } else if let loadErrorMessage = model.loadErrorMessage, model.comments.isEmpty {
-        loadFailure(message: loadErrorMessage)
-      } else if model.comments.isEmpty {
-        emptyState
-      } else {
-        commentList
+      ScrollView {
+        VStack(alignment: .leading, spacing: 12) {
+          if let errorMessage {
+            Label(errorMessage, systemImage: "exclamationmark.triangle")
+              .font(.caption)
+              .foregroundStyle(.orange)
+          }
+
+          if model.isLoading {
+            loadingState
+          } else if let loadErrorMessage = model.loadErrorMessage, !hasComments {
+            loadFailure(message: loadErrorMessage)
+          } else if !hasComments {
+            emptyState
+          } else {
+            commentList
+          }
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 16)
+      }
+
+      composer
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 10)
+        .background(.bar)
+    }
+    .background(TunedInDesign.pageBackground)
+    .tunedInKeyboardManaged()
+    .task { await model.loadComments(policy: .automatic) }
+    .onChange(of: isComposerFocused) { _, isFocused in
+      if isFocused {
+        selectedDetent = .large
       }
     }
-    .task { await model.loadComments(policy: .automatic) }
+    .sensoryFeedback(.success, trigger: successFeedback)
+    .sensoryFeedback(.error, trigger: failureFeedback)
     .confirmationDialog(
       "Delete this comment?",
       isPresented: isShowingDeleteConfirmation,
@@ -42,6 +70,21 @@ struct ConcertCommentsView: View {
     } message: { _ in
       Text("The history will keep a record that a comment was removed, but its text will be gone.")
     }
+  }
+
+  private var momentsHeader: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text("Moments")
+        .font(.system(size: 30, weight: .bold, design: .rounded))
+        .foregroundStyle(TunedInDesign.primaryText)
+      Text("The details everyone remembers differently.")
+        .font(.subheadline)
+        .foregroundStyle(TunedInDesign.mutedText)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(.horizontal, 20)
+    .padding(.top, 8)
+    .padding(.bottom, 12)
   }
 
   private var loadingState: some View {
@@ -102,6 +145,13 @@ struct ConcertCommentsView: View {
       ForEach(model.comments.sorted(by: { $0.createdAt < $1.createdAt })) { comment in
         commentCard(comment)
       }
+      ForEach(model.optimisticComments) { comment in
+        OptimisticConcertCommentRow(
+          comment: comment,
+          viewerUsername: viewerUsername,
+          onRetry: retry
+        )
+      }
     }
   }
 
@@ -114,41 +164,29 @@ struct ConcertCommentsView: View {
   }
 
   private var composer: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      if let errorMessage {
-        Text(errorMessage)
-          .font(.caption)
-          .foregroundStyle(.red)
-      }
-      HStack(alignment: .bottom, spacing: 10) {
-        TextField("Leave a comment…", text: $draft, axis: .vertical)
-          .lineLimit(1 ... 4)
-          .textInputAutocapitalization(.sentences)
-          .submitLabel(.send)
-          .onSubmit(send)
-          .padding(.leading, 14)
-          .padding(.vertical, 10)
+    HStack(alignment: .bottom, spacing: 10) {
+      TextField("Leave a moment…", text: $draft, axis: .vertical)
+        .lineLimit(1 ... 4)
+        .textInputAutocapitalization(.sentences)
+        .submitLabel(.send)
+        .focused($isComposerFocused)
+        .onSubmit(send)
+        .padding(.leading, 14)
+        .padding(.vertical, 10)
 
-        Button(action: send) {
-          if isSending {
-            ProgressView()
-              .tint(TunedInDesign.actionForeground)
-              .frame(width: 40, height: 40)
-          } else {
-            Image(systemName: "arrow.up")
-              .font(.headline.weight(.black))
-              .foregroundStyle(TunedInDesign.actionForeground)
-              .frame(width: 40, height: 40)
-          }
-        }
-        .buttonStyle(.plain)
-        .background(TunedInDesign.accent, in: Circle())
-        .disabled(isSending || ConcertInput.normalizedText(draft).isEmpty)
+      Button(action: send) {
+        Image(systemName: "arrow.up")
+          .font(.headline.weight(.black))
+          .foregroundStyle(TunedInDesign.actionForeground)
+          .frame(width: 40, height: 40)
       }
-      .padding(5)
-      .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 23, style: .continuous))
+      .buttonStyle(.plain)
+      .background(TunedInDesign.accent, in: Circle())
+      .disabled(ConcertInput.normalizedText(draft).isEmpty)
+      .accessibilityLabel("Post moment")
     }
-    .padding(.vertical, 4)
+    .padding(5)
+    .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 23, style: .continuous))
   }
 
   private func commentCard(_ comment: ConcertComment) -> some View {
@@ -219,17 +257,30 @@ struct ConcertCommentsView: View {
     })
   }
 
+  private var hasComments: Bool {
+    !model.comments.isEmpty || !model.optimisticComments.isEmpty
+  }
+
   private func send() {
     let text = ConcertInput.normalizedText(draft)
     guard !text.isEmpty else { return }
-    isSending = true
+    let commentID = model.enqueueOptimisticComment(body: text)
+    draft = ""
+    postOptimisticComment(id: commentID)
+  }
+
+  private func retry(_ comment: OptimisticConcertComment) {
+    model.markOptimisticCommentPosting(id: comment.id)
+    postOptimisticComment(id: comment.id)
+  }
+
+  private func postOptimisticComment(id: UUID) {
     let startedAt = ContinuousClock.now
     Task {
       do {
-        let comment = try await concertRepository.createComment(concertID: concertID, body: text)
-        model.comments.append(comment)
-        draft = ""
+        try await model.postOptimisticComment(id: id)
         errorMessage = nil
+        successFeedback += 1
         telemetry?.capture(
           .commentCreated,
           properties: [.durationMilliseconds: .integer(startedAt.duration(to: .now).commentTelemetryMilliseconds)]
@@ -244,9 +295,8 @@ struct ConcertCommentsView: View {
             failure: failure
           )
         }
-        errorMessage = error.localizedDescription
+        failureFeedback += 1
       }
-      isSending = false
     }
   }
 
@@ -290,78 +340,6 @@ struct ConcertCommentsView: View {
         errorMessage = error.localizedDescription
       }
     }
-  }
-}
-
-@MainActor
-@Observable
-final class ConcertCommentsModel {
-  var comments: [ConcertComment] = []
-  private(set) var isLoading = true
-  private(set) var isLoadingOlder = false
-  private(set) var canLoadOlder = false
-  private(set) var loadErrorMessage: String?
-
-  private let concertID: UUID
-  private let concertRepository: any ConcertRepository
-
-  init(concertID: UUID, concertRepository: any ConcertRepository) {
-    self.concertID = concertID
-    self.concertRepository = concertRepository
-  }
-
-  func loadComments(policy: CacheReadPolicy = .automatic) async {
-    loadErrorMessage = nil
-    do {
-      let loaded = try await concertRepository.comments(
-        concertID: concertID,
-        cursor: nil,
-        policy: policy
-      )
-      comments = loaded
-      canLoadOlder = loaded.count == 30
-    } catch {
-      let failure = AppFailure(error)
-      if failure == .permissionDenied || failure == .unavailable {
-        comments = []
-        canLoadOlder = false
-      }
-      loadErrorMessage = error.localizedDescription
-    }
-    isLoading = false
-  }
-
-  func retryLoadComments() async {
-    isLoading = true
-    await loadComments(policy: .refresh)
-  }
-
-  func loadOlderComments() async {
-    guard let oldestComment = comments.min(by: isOlderComment), !isLoadingOlder else { return }
-    isLoadingOlder = true
-
-    do {
-      let loaded = try await concertRepository.comments(
-        concertID: concertID,
-        cursor: ConcertCommentCursor(createdAt: oldestComment.createdAt, commentID: oldestComment.id),
-        policy: .networkOnly
-      )
-      let existingIDs = Set(comments.map(\.id))
-      comments.append(contentsOf: loaded.filter { !existingIDs.contains($0.id) })
-      canLoadOlder = loaded.count == 30
-      loadErrorMessage = nil
-    } catch {
-      loadErrorMessage = error.localizedDescription
-    }
-
-    isLoadingOlder = false
-  }
-
-  private func isOlderComment(_ lhs: ConcertComment, _ rhs: ConcertComment) -> Bool {
-    if lhs.createdAt == rhs.createdAt {
-      return lhs.id.uuidString < rhs.id.uuidString
-    }
-    return lhs.createdAt < rhs.createdAt
   }
 }
 

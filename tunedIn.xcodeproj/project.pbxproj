@@ -33,7 +33,9 @@
 		305EB7B1166D9EC2981A9292 /* AppFailureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1243DF949645D1AB5318AC3A /* AppFailureTests.swift */; };
 		31D622AFEF6EE9C7391285DE /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FF7F1D63EE17CDDD562417 /* OnboardingView.swift */; };
 		395C8557A1C118C14C1806B9 /* SignedURLCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F7883953FF6E8AF449F2EEE /* SignedURLCacheTests.swift */; };
+		3CA803A1A13C60B87E60A624 /* ConcertCommentsModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED21BAA8719FCC24B848527 /* ConcertCommentsModelTests.swift */; };
 		3DDFF6632A0FF59AA5074712 /* ConcertArchiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A439D31D760416F79E073FAB /* ConcertArchiveView.swift */; };
+		3FB051F22E3EE019D54AAA19 /* OptimisticConcertCommentRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10B897D90CC52B97C99CEDD0 /* OptimisticConcertCommentRow.swift */; };
 		416E16CEB733DF73D5D7DD64 /* FeedbackRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F2144AD14AFB8762C4E55F1 /* FeedbackRepository.swift */; };
 		41BDB81104C4F1D219D1CEED /* CachingConcertRepositoryAssertions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92C58F63460E2CA54114828E /* CachingConcertRepositoryAssertions.swift */; };
 		439D26423A0BE361FF528EFB /* SupabaseMusicCatalogRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0C565BFA62211C3BF34AD55 /* SupabaseMusicCatalogRepository.swift */; };
@@ -96,6 +98,7 @@
 		A8A2DDCEBC958A4C3C29E0A0 /* EmailVerificationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2644431350079CF5B9312C52 /* EmailVerificationView.swift */; };
 		AC269C3B78F78CDE8267040A /* CachingSocialRepositoryTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC1E38A8A523C54E3092618A /* CachingSocialRepositoryTestSupport.swift */; };
 		ACE8334B175DF5C109B78F0C /* ConcertCreationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B68A83B5FEE54C667FDD5DF /* ConcertCreationView.swift */; };
+		ADDF13EAB1D42981707B73DF /* ConcertCommentsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D571981280F04D30D806F1 /* ConcertCommentsModel.swift */; };
 		AE81DCE029F4C5D0BAFD47C3 /* CachingSocialRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14F8C6D775F7CCFD0EECADC0 /* CachingSocialRepository.swift */; };
 		AF47C399A33E2C4A3552A4D9 /* AppDataCache+Entries.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49118DB38941F0B19D636AA3 /* AppDataCache+Entries.swift */; };
 		B0D627D07A1F3473D8C920C8 /* ConcertAlbumView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9224775E10F128EC952F4D9 /* ConcertAlbumView.swift */; };
@@ -153,12 +156,14 @@
 		075C8094B7B7249F8E4DF36F /* AuthenticationRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationRepository.swift; sourceTree = "<group>"; };
 		0A5695E4F2552EBE2BF611CB /* ConcertPhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertPhotoView.swift; sourceTree = "<group>"; };
 		0FFF5BB2D4E0012FC744B6C7 /* CachingConcertRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachingConcertRepositoryTests.swift; sourceTree = "<group>"; };
+		10B897D90CC52B97C99CEDD0 /* OptimisticConcertCommentRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OptimisticConcertCommentRow.swift; sourceTree = "<group>"; };
 		1237B11A854A5A058C98A39C /* ProfileInputTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileInputTests.swift; sourceTree = "<group>"; };
 		1243DF949645D1AB5318AC3A /* AppFailureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFailureTests.swift; sourceTree = "<group>"; };
 		12BF5F5977FF497486952221 /* SocialProfileSearchCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialProfileSearchCache.swift; sourceTree = "<group>"; };
 		14F8C6D775F7CCFD0EECADC0 /* CachingSocialRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachingSocialRepository.swift; sourceTree = "<group>"; };
 		1B68A83B5FEE54C667FDD5DF /* ConcertCreationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertCreationView.swift; sourceTree = "<group>"; };
 		1BE2F9F51BD9E636B4A4F0F2 /* CachingSocialRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachingSocialRepositoryTests.swift; sourceTree = "<group>"; };
+		1ED21BAA8719FCC24B848527 /* ConcertCommentsModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertCommentsModelTests.swift; sourceTree = "<group>"; };
 		1F681222916D48C5DFDF2BF0 /* TunedInGlassSearchFieldFocusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunedInGlassSearchFieldFocusTests.swift; sourceTree = "<group>"; };
 		1FED4A315859A86F043EA6A2 /* EmailSignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailSignInView.swift; sourceTree = "<group>"; };
 		21073FA12796111F79010BBE /* ConcertInputTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertInputTests.swift; sourceTree = "<group>"; };
@@ -239,6 +244,7 @@
 		A61A8D23CF454736E46B989C /* CatalogSearchTestRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogSearchTestRepository.swift; sourceTree = "<group>"; };
 		A63A5DA16780038538F59309 /* CachingConcertRepositoryTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachingConcertRepositoryTestSupport.swift; sourceTree = "<group>"; };
 		A68C4BF2544ABC5F8B9AA816 /* tunedIn.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = tunedIn.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A9D571981280F04D30D806F1 /* ConcertCommentsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertCommentsModel.swift; sourceTree = "<group>"; };
 		AB65B95E9AC543A960D5F27F /* DevelopmentScenarioTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentScenarioTests.swift; sourceTree = "<group>"; };
 		ADA1EA5245BDFD82C605C81B /* FeedbackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackView.swift; sourceTree = "<group>"; };
 		B0C565BFA62211C3BF34AD55 /* SupabaseMusicCatalogRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseMusicCatalogRepository.swift; sourceTree = "<group>"; };
@@ -525,6 +531,7 @@
 				D9224775E10F128EC952F4D9 /* ConcertAlbumView.swift */,
 				A439D31D760416F79E073FAB /* ConcertArchiveView.swift */,
 				607F112255B95105F98C8662 /* ConcertCollaborationSheets.swift */,
+				A9D571981280F04D30D806F1 /* ConcertCommentsModel.swift */,
 				57A397514DA79526B0C10E77 /* ConcertCommentsView.swift */,
 				48D5349FC56B2CBC9101478D /* ConcertCreationDraft.swift */,
 				BD75288821322770423012C4 /* ConcertCreationFormSections.swift */,
@@ -533,6 +540,7 @@
 				8CE4DB3E207A0AC8993F44B3 /* ConcertMonogramViews.swift */,
 				0A5695E4F2552EBE2BF611CB /* ConcertPhotoView.swift */,
 				917A061CD10CA03F02514632 /* ConcertSetlistDraftView.swift */,
+				10B897D90CC52B97C99CEDD0 /* OptimisticConcertCommentRow.swift */,
 			);
 			path = Concert;
 			sourceTree = "<group>";
@@ -575,6 +583,7 @@
 				CC1E38A8A523C54E3092618A /* CachingSocialRepositoryTestSupport.swift */,
 				8316E522B3EFC395C838FDA7 /* CatalogRecentSearchStoreTests.swift */,
 				A61A8D23CF454736E46B989C /* CatalogSearchTestRepository.swift */,
+				1ED21BAA8719FCC24B848527 /* ConcertCommentsModelTests.swift */,
 				21073FA12796111F79010BBE /* ConcertInputTests.swift */,
 				8D20A416A01449F03EA5661F /* DevelopmentConcertRepositoryTests.swift */,
 				2D653AA51C36082C30B6B3EB /* DevelopmentMusicCatalogTests.swift */,
@@ -768,6 +777,7 @@
 				B0D627D07A1F3473D8C920C8 /* ConcertAlbumView.swift in Sources */,
 				3DDFF6632A0FF59AA5074712 /* ConcertArchiveView.swift in Sources */,
 				FA19D4BCBE81ABBD2AFC6813 /* ConcertCollaborationSheets.swift in Sources */,
+				ADDF13EAB1D42981707B73DF /* ConcertCommentsModel.swift in Sources */,
 				BDA4800089B8C2A1AEA9EB36 /* ConcertCommentsView.swift in Sources */,
 				DD9DF4D5F2A6DFA4463F9723 /* ConcertCreationDraft.swift in Sources */,
 				7A9E943A4D2A0A5CD8AF0398 /* ConcertCreationFormSections.swift in Sources */,
@@ -793,6 +803,7 @@
 				E39F8D45BE40B4934641D52C /* MusicCatalogRepository.swift in Sources */,
 				E3BAF02B2C8ECCF11FD56841 /* NativeSocialSignInView.swift in Sources */,
 				31D622AFEF6EE9C7391285DE /* OnboardingView.swift in Sources */,
+				3FB051F22E3EE019D54AAA19 /* OptimisticConcertCommentRow.swift in Sources */,
 				C019CCF65BDF8AD9A3C4C558 /* PeopleHubView.swift in Sources */,
 				DE9D4024F47CD0B1936B8812 /* PersonProfileView.swift in Sources */,
 				F6BD5F9DE56156E2DDA5B1EF /* PostHogTelemetryTransport.swift in Sources */,
@@ -849,6 +860,7 @@
 				502ED9B66C75E572400D0553 /* CachingSocialRepositoryTests.swift in Sources */,
 				65E312E9579A907A685FB0BA /* CatalogRecentSearchStoreTests.swift in Sources */,
 				FCD0EC22A0E4DEE101E3ABA5 /* CatalogSearchTestRepository.swift in Sources */,
+				3CA803A1A13C60B87E60A624 /* ConcertCommentsModelTests.swift in Sources */,
 				1793E9051F51C7519FF80E6E /* ConcertInputTests.swift in Sources */,
 				29178E4550968F8687FE86CA /* DevelopmentConcertRepositoryTests.swift in Sources */,
 				C15327F2FFA67ED5DF412FF5 /* DevelopmentMusicCatalogTests.swift in Sources */,
