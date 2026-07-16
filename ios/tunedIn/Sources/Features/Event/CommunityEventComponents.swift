@@ -104,9 +104,7 @@ struct CommunityActivityCard: View {
             }
             Spacer()
             if let score = diary.score {
-              Text(score.formatted(.number.precision(.fractionLength(1))))
-                .font(.title2.weight(.bold))
-                .foregroundStyle(TunedInDesign.accent)
+              CommunityEventScoreBadge(score: score, size: .large)
             }
           }
 
@@ -199,6 +197,11 @@ struct EventDiaryPreviewCard: View {
             performanceScore.formatted(.number.precision(.fractionLength(1))),
             systemImage: "music.mic"
           )
+          .foregroundStyle(CommunityEventScoreBand(score: performanceScore).fill)
+          .accessibilityLabel(
+            "Performance \(performanceScore.formatted(.number.precision(.fractionLength(1)))), "
+              + CommunityEventScoreBand(score: performanceScore).accessibilityDescription
+          )
         }
         if diary.photoCount > 0 {
           Label("\(diary.photoCount)", systemImage: "photo")
@@ -225,9 +228,7 @@ struct EventDiaryPreviewCard: View {
   @ViewBuilder
   private var score: some View {
     if let score = diary.score {
-      Text(score.formatted(.number.precision(.fractionLength(1))))
-        .font(.title3.weight(.bold))
-        .foregroundStyle(TunedInDesign.accent)
+      CommunityEventScoreBadge(score: score)
     }
   }
 }
@@ -241,6 +242,11 @@ struct DiaryEngagementLine: View {
         Label(
           performanceScore.formatted(.number.precision(.fractionLength(1))),
           systemImage: "music.mic"
+        )
+        .foregroundStyle(CommunityEventScoreBand(score: performanceScore).fill)
+        .accessibilityLabel(
+          "Performance \(performanceScore.formatted(.number.precision(.fractionLength(1)))), "
+            + CommunityEventScoreBand(score: performanceScore).accessibilityDescription
         )
       }
       if diary.photoCount > 0 {

@@ -28,6 +28,7 @@ struct MainTabView: View {
 
   @State private var isPresentingConcertCreation = false
   @State private var isPresentingEventDiscovery = false
+  @State private var isPresentingCommunityEventCreation = false
   @State private var isPresentingPeopleSearch = false
   @State private var shouldPresentPeopleSearchAfterDiscovery = false
   @State private var pendingCommunityEvent: CommunityEventRoute?
@@ -89,6 +90,23 @@ struct MainTabView: View {
               isPresentingEventDiscovery = false
             },
             onDismiss: { isPresentingEventDiscovery = false }
+          )
+        }
+      }
+      .fullScreenCover(
+        isPresented: $isPresentingCommunityEventCreation,
+        onDismiss: presentPendingDiscoveryDestination
+      ) {
+        if let eventRepository {
+          CommunityEventCreationView(
+            creatorID: profile.id,
+            eventRepository: eventRepository,
+            musicCatalogRepository: musicCatalogRepository,
+            onCreated: { event in
+              pendingCommunityEvent = CommunityEventRoute(event: event, diaryID: nil)
+              isPresentingCommunityEventCreation = false
+            },
+            onDismiss: { isPresentingCommunityEventCreation = false }
           )
         }
       }
@@ -188,13 +206,13 @@ struct MainTabView: View {
         } trailing: {
           TunedInGlassIconButton(
             systemImage: "plus",
-            accessibilityLabel: eventRepository == nil ? "Log concert" : "Find or add concert",
+            accessibilityLabel: eventRepository == nil ? "Log concert" : "Add concert",
             style: .accent
           ) {
             if eventRepository == nil {
               isPresentingConcertCreation = true
             } else {
-              isPresentingEventDiscovery = true
+              isPresentingCommunityEventCreation = true
             }
           }
         }

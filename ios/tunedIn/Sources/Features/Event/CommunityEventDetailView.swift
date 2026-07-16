@@ -695,13 +695,15 @@ private struct EventMemoriesPage: View {
               .font(.title2.weight(.bold))
               .foregroundStyle(TunedInDesign.primaryText)
             if let score = detail.summary.averageDiaryScore {
-              Text(
-                "\(score.formatted(.number.precision(.fractionLength(1)))) average"
-                  + " from \(detail.summary.diaryCount) visible "
-                  + (detail.summary.diaryCount == 1 ? "post" : "posts")
-              )
-              .font(.caption.weight(.semibold))
-              .foregroundStyle(TunedInDesign.mutedText)
+              HStack(spacing: 6) {
+                CommunityEventScoreBadge(score: score, size: .compact)
+                Text(
+                  "average from \(detail.summary.diaryCount) visible "
+                    + (detail.summary.diaryCount == 1 ? "post" : "posts")
+                )
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(TunedInDesign.mutedText)
+              }
             }
           }
           Spacer()
@@ -839,9 +841,7 @@ private struct EventMemoryRow: View {
             .lineLimit(1)
           Spacer(minLength: 8)
           if let score = diary.score {
-            Text(score.formatted(.number.precision(.fractionLength(1))))
-              .font(.title3.weight(.bold))
-              .foregroundStyle(TunedInDesign.accent)
+            CommunityEventScoreBadge(score: score)
           }
         }
 
@@ -1242,10 +1242,8 @@ private struct DiaryScoreRow: View {
         }
         .disabled(value <= 0.5)
 
-        Text(value.formatted(.number.precision(.fractionLength(1))))
-          .font(.headline.monospacedDigit())
-          .foregroundStyle(TunedInDesign.primaryText)
-          .frame(width: 34)
+        CommunityEventScoreBadge(score: value, size: .compact)
+          .frame(width: 42)
 
         Button {
           value = min(10, value + 0.5)

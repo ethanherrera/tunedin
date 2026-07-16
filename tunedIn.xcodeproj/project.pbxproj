@@ -35,6 +35,7 @@
 		2EF48A51D139DB745D41B9E3 /* AppDataCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED2886E2E60B530A1E241144 /* AppDataCache.swift */; };
 		305EB7B1166D9EC2981A9292 /* AppFailureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1243DF949645D1AB5318AC3A /* AppFailureTests.swift */; };
 		31D622AFEF6EE9C7391285DE /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FF7F1D63EE17CDDD562417 /* OnboardingView.swift */; };
+		36080098A9E0E7321607369C /* CommunityEventScoreBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318EFB4B5D579E645F6BD3E3 /* CommunityEventScoreBadge.swift */; };
 		395C8557A1C118C14C1806B9 /* SignedURLCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F7883953FF6E8AF449F2EEE /* SignedURLCacheTests.swift */; };
 		3B37A2350A0ED4EF671BB97C /* CommunityEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DDBA3FD5E32FB1492EDA83D /* CommunityEvent.swift */; };
 		3CA803A1A13C60B87E60A624 /* ConcertCommentsModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED21BAA8719FCC24B848527 /* ConcertCommentsModelTests.swift */; };
@@ -75,6 +76,7 @@
 		730F9C3AB310567FFB881E7E /* CatalogSearchSupportingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51C9239ADDF5ED1FD84086B4 /* CatalogSearchSupportingViews.swift */; };
 		7A9E943A4D2A0A5CD8AF0398 /* ConcertCreationFormSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD75288821322770423012C4 /* ConcertCreationFormSections.swift */; };
 		7C5E39EEC50F78A16D6351E4 /* CatalogSearchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E9515DFEDEC6E1303CB06D2 /* CatalogSearchModel.swift */; };
+		7E03A226F0EED2E524823CCB /* CommunityEventScoreBandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00DA77E3859E50CB230AF182 /* CommunityEventScoreBandTests.swift */; };
 		7F900D7F871E8EB8BF235637 /* afterglow-stage.png in Resources */ = {isa = PBXBuildFile; fileRef = EA95DDDDA02A9205456F296D /* afterglow-stage.png */; };
 		8146C0397EE86EEBFECFEC93 /* ConcertAlbumUploadViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29F350EB61842D6DA5FE0C2A /* ConcertAlbumUploadViews.swift */; };
 		83A9DCB96622FE84342F37C4 /* TunedInAppearanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93B17BB128F3EE14857B0AEB /* TunedInAppearanceTests.swift */; };
@@ -166,6 +168,7 @@
 /* Begin PBXFileReference section */
 		00796CCD74299B830D1CCE46 /* AppConfigurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfigurationTests.swift; sourceTree = "<group>"; };
 		00AA7CDE85C3B0F94346A4CA /* AppDataCache+Mutation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDataCache+Mutation.swift"; sourceTree = "<group>"; };
+		00DA77E3859E50CB230AF182 /* CommunityEventScoreBandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunityEventScoreBandTests.swift; sourceTree = "<group>"; };
 		013F52C7F7D39C1E0370B322 /* AppDataCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDataCacheTests.swift; sourceTree = "<group>"; };
 		01B0D96A0DB3CFC7F3523631 /* CachingProfileRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachingProfileRepositoryTests.swift; sourceTree = "<group>"; };
 		075C8094B7B7249F8E4DF36F /* AuthenticationRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationRepository.swift; sourceTree = "<group>"; };
@@ -191,6 +194,7 @@
 		2D743EA872FA444B10D7F505 /* PostHogTelemetryTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostHogTelemetryTransport.swift; sourceTree = "<group>"; };
 		2F7883953FF6E8AF449F2EEE /* SignedURLCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignedURLCacheTests.swift; sourceTree = "<group>"; };
 		31182F15131032C2CEBBB6B4 /* CatalogPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogPickerView.swift; sourceTree = "<group>"; };
+		318EFB4B5D579E645F6BD3E3 /* CommunityEventScoreBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunityEventScoreBadge.swift; sourceTree = "<group>"; };
 		31E94630E24AB8EF31087BAE /* EventDiscoveryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDiscoveryViews.swift; sourceTree = "<group>"; };
 		32C1D6763D82D3E1FE54AAB8 /* LocalSimulatorAuthStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSimulatorAuthStorage.swift; sourceTree = "<group>"; };
 		3435407F7622C2A1679CA34E /* TelemetrySanitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetrySanitizer.swift; sourceTree = "<group>"; };
@@ -609,6 +613,7 @@
 			children = (
 				273E2C7F3756C14CC427238F /* CommunityEventComponents.swift */,
 				70236DF53FF5B7FB481B28B0 /* CommunityEventDetailView.swift */,
+				318EFB4B5D579E645F6BD3E3 /* CommunityEventScoreBadge.swift */,
 				4862F91C718B24B7E036D5FD /* CommunityEventViews.swift */,
 				4CF150C1DA53FD37E240893D /* EventDiaryDetailView.swift */,
 				31E94630E24AB8EF31087BAE /* EventDiscoveryViews.swift */,
@@ -641,6 +646,7 @@
 				CC1E38A8A523C54E3092618A /* CachingSocialRepositoryTestSupport.swift */,
 				8316E522B3EFC395C838FDA7 /* CatalogRecentSearchStoreTests.swift */,
 				A61A8D23CF454736E46B989C /* CatalogSearchTestRepository.swift */,
+				00DA77E3859E50CB230AF182 /* CommunityEventScoreBandTests.swift */,
 				1ED21BAA8719FCC24B848527 /* ConcertCommentsModelTests.swift */,
 				21073FA12796111F79010BBE /* ConcertInputTests.swift */,
 				8D20A416A01449F03EA5661F /* DevelopmentConcertRepositoryTests.swift */,
@@ -836,6 +842,7 @@
 				3B37A2350A0ED4EF671BB97C /* CommunityEvent.swift in Sources */,
 				A0FABC2243475604D5271905 /* CommunityEventComponents.swift in Sources */,
 				A94532F475F242FFDABB78CA /* CommunityEventDetailView.swift in Sources */,
+				36080098A9E0E7321607369C /* CommunityEventScoreBadge.swift in Sources */,
 				13057AA08C1D4011AD7A6A01 /* CommunityEventViews.swift in Sources */,
 				6F2919030AA61C68435BC5B8 /* Concert.swift in Sources */,
 				CA3B62A0ECBE75BF5F832D04 /* ConcertAlbumImageProcessor.swift in Sources */,
@@ -933,6 +940,7 @@
 				502ED9B66C75E572400D0553 /* CachingSocialRepositoryTests.swift in Sources */,
 				65E312E9579A907A685FB0BA /* CatalogRecentSearchStoreTests.swift in Sources */,
 				FCD0EC22A0E4DEE101E3ABA5 /* CatalogSearchTestRepository.swift in Sources */,
+				7E03A226F0EED2E524823CCB /* CommunityEventScoreBandTests.swift in Sources */,
 				3CA803A1A13C60B87E60A624 /* ConcertCommentsModelTests.swift in Sources */,
 				1793E9051F51C7519FF80E6E /* ConcertInputTests.swift in Sources */,
 				29178E4550968F8687FE86CA /* DevelopmentConcertRepositoryTests.swift in Sources */,

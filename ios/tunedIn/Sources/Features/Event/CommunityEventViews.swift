@@ -68,7 +68,8 @@ struct CommunityProfileHistorySection: View {
               )
               .accessibilityValue(
                 entry.diary.score.map {
-                  "Score \($0.formatted(.number.precision(.fractionLength(1))))"
+                  "Score \($0.formatted(.number.precision(.fractionLength(1)))), "
+                    + CommunityEventScoreBand(score: $0).accessibilityDescription
                 } ?? "Not scored"
               )
             }
@@ -141,8 +142,7 @@ private struct ProfileDiaryGridTile: View {
 
         VStack(alignment: .leading, spacing: 2) {
           if let score = entry.diary.score {
-            Text(score.formatted(.number.precision(.fractionLength(1))))
-              .font(.headline.weight(.bold))
+            CommunityEventScoreBadge(score: score, size: .compact)
           }
           Text(entry.event.title)
             .font(.caption2.weight(.semibold))

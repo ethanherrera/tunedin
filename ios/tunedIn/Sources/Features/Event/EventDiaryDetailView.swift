@@ -81,9 +81,7 @@ struct EventDiaryDetailView: View {
       }
       Spacer()
       if let score = diary.score {
-        Text(score.formatted(.number.precision(.fractionLength(1))))
-          .font(.title.weight(.bold))
-          .foregroundStyle(TunedInDesign.accent)
+        CommunityEventScoreBadge(score: score, size: .large)
       }
     }
   }
