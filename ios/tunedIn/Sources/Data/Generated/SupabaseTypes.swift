@@ -75,6 +75,10 @@ public enum PublicSchema {
     case ready = "ready"
     case deleting = "deleting"
   }
+  public enum ConcertRecordModel: String, Codable, Hashable, Sendable {
+    case legacyShared = "legacy_shared"
+    case personalDiary = "personal_diary"
+  }
   public enum ConcertVisibility: String, Codable, Hashable, Sendable {
     case `private` = "private"
     case collaborators = "collaborators"
@@ -340,6 +344,7 @@ public enum PublicSchema {
     public let audience: CatalogEventAudience
     public let createdAt: String
     public let eventId: UUID
+    public let id: UUID
     public let profileId: UUID
     public let status: CatalogEventAttendanceStatus
     public let updatedAt: String
@@ -347,6 +352,7 @@ public enum PublicSchema {
       case audience = "audience"
       case createdAt = "created_at"
       case eventId = "event_id"
+      case id = "id"
       case profileId = "profile_id"
       case status = "status"
       case updatedAt = "updated_at"
@@ -356,6 +362,7 @@ public enum PublicSchema {
     public let audience: CatalogEventAudience?
     public let createdAt: String?
     public let eventId: UUID
+    public let id: UUID?
     public let profileId: UUID
     public let status: CatalogEventAttendanceStatus
     public let updatedAt: String?
@@ -363,6 +370,7 @@ public enum PublicSchema {
       case audience = "audience"
       case createdAt = "created_at"
       case eventId = "event_id"
+      case id = "id"
       case profileId = "profile_id"
       case status = "status"
       case updatedAt = "updated_at"
@@ -372,6 +380,7 @@ public enum PublicSchema {
     public let audience: CatalogEventAudience?
     public let createdAt: String?
     public let eventId: UUID?
+    public let id: UUID?
     public let profileId: UUID?
     public let status: CatalogEventAttendanceStatus?
     public let updatedAt: String?
@@ -379,6 +388,7 @@ public enum PublicSchema {
       case audience = "audience"
       case createdAt = "created_at"
       case eventId = "event_id"
+      case id = "id"
       case profileId = "profile_id"
       case status = "status"
       case updatedAt = "updated_at"
@@ -1177,7 +1187,9 @@ public enum PublicSchema {
     }
   }
   public struct ConcertsSelect: Codable, Hashable, Sendable {
+    public let attendanceId: UUID?
     public let catalogAreaId: UUID?
+    public let catalogEventId: UUID?
     public let catalogPlaceId: UUID
     public let catalogTourId: UUID?
     public let city: String?
@@ -1185,11 +1197,15 @@ public enum PublicSchema {
     public let createdAt: String
     public let deletionRequestedAt: String?
     public let deletionStatus: String
+    public let detachedEventReason: String?
+    public let diaryAudience: CatalogEventAudience?
     public let id: UUID
     public let lastActivityAt: String
     public let ownerId: UUID
     public let photoObjectPath: String?
     public let photoVersion: Int64
+    public let publishedAt: String?
+    public let recordModel: ConcertRecordModel
     public let startsAt: String?
     public let tour: String?
     public let updatedAt: String
@@ -1198,7 +1214,9 @@ public enum PublicSchema {
     public let version: Int64
     public let visibility: ConcertVisibility
     public enum CodingKeys: String, CodingKey {
+      case attendanceId = "attendance_id"
       case catalogAreaId = "catalog_area_id"
+      case catalogEventId = "catalog_event_id"
       case catalogPlaceId = "catalog_place_id"
       case catalogTourId = "catalog_tour_id"
       case city = "city"
@@ -1206,11 +1224,15 @@ public enum PublicSchema {
       case createdAt = "created_at"
       case deletionRequestedAt = "deletion_requested_at"
       case deletionStatus = "deletion_status"
+      case detachedEventReason = "detached_event_reason"
+      case diaryAudience = "diary_audience"
       case id = "id"
       case lastActivityAt = "last_activity_at"
       case ownerId = "owner_id"
       case photoObjectPath = "photo_object_path"
       case photoVersion = "photo_version"
+      case publishedAt = "published_at"
+      case recordModel = "record_model"
       case startsAt = "starts_at"
       case tour = "tour"
       case updatedAt = "updated_at"
@@ -1221,7 +1243,9 @@ public enum PublicSchema {
     }
   }
   public struct ConcertsInsert: Codable, Hashable, Sendable {
+    public let attendanceId: UUID?
     public let catalogAreaId: UUID?
+    public let catalogEventId: UUID?
     public let catalogPlaceId: UUID
     public let catalogTourId: UUID?
     public let city: String?
@@ -1229,11 +1253,15 @@ public enum PublicSchema {
     public let createdAt: String?
     public let deletionRequestedAt: String?
     public let deletionStatus: String?
+    public let detachedEventReason: String?
+    public let diaryAudience: CatalogEventAudience?
     public let id: UUID?
     public let lastActivityAt: String?
     public let ownerId: UUID
     public let photoObjectPath: String?
     public let photoVersion: Int64?
+    public let publishedAt: String?
+    public let recordModel: ConcertRecordModel?
     public let startsAt: String?
     public let tour: String?
     public let updatedAt: String?
@@ -1242,7 +1270,9 @@ public enum PublicSchema {
     public let version: Int64?
     public let visibility: ConcertVisibility?
     public enum CodingKeys: String, CodingKey {
+      case attendanceId = "attendance_id"
       case catalogAreaId = "catalog_area_id"
+      case catalogEventId = "catalog_event_id"
       case catalogPlaceId = "catalog_place_id"
       case catalogTourId = "catalog_tour_id"
       case city = "city"
@@ -1250,11 +1280,15 @@ public enum PublicSchema {
       case createdAt = "created_at"
       case deletionRequestedAt = "deletion_requested_at"
       case deletionStatus = "deletion_status"
+      case detachedEventReason = "detached_event_reason"
+      case diaryAudience = "diary_audience"
       case id = "id"
       case lastActivityAt = "last_activity_at"
       case ownerId = "owner_id"
       case photoObjectPath = "photo_object_path"
       case photoVersion = "photo_version"
+      case publishedAt = "published_at"
+      case recordModel = "record_model"
       case startsAt = "starts_at"
       case tour = "tour"
       case updatedAt = "updated_at"
@@ -1265,7 +1299,9 @@ public enum PublicSchema {
     }
   }
   public struct ConcertsUpdate: Codable, Hashable, Sendable {
+    public let attendanceId: UUID?
     public let catalogAreaId: UUID?
+    public let catalogEventId: UUID?
     public let catalogPlaceId: UUID?
     public let catalogTourId: UUID?
     public let city: String?
@@ -1273,11 +1309,15 @@ public enum PublicSchema {
     public let createdAt: String?
     public let deletionRequestedAt: String?
     public let deletionStatus: String?
+    public let detachedEventReason: String?
+    public let diaryAudience: CatalogEventAudience?
     public let id: UUID?
     public let lastActivityAt: String?
     public let ownerId: UUID?
     public let photoObjectPath: String?
     public let photoVersion: Int64?
+    public let publishedAt: String?
+    public let recordModel: ConcertRecordModel?
     public let startsAt: String?
     public let tour: String?
     public let updatedAt: String?
@@ -1286,7 +1326,9 @@ public enum PublicSchema {
     public let version: Int64?
     public let visibility: ConcertVisibility?
     public enum CodingKeys: String, CodingKey {
+      case attendanceId = "attendance_id"
       case catalogAreaId = "catalog_area_id"
+      case catalogEventId = "catalog_event_id"
       case catalogPlaceId = "catalog_place_id"
       case catalogTourId = "catalog_tour_id"
       case city = "city"
@@ -1294,11 +1336,15 @@ public enum PublicSchema {
       case createdAt = "created_at"
       case deletionRequestedAt = "deletion_requested_at"
       case deletionStatus = "deletion_status"
+      case detachedEventReason = "detached_event_reason"
+      case diaryAudience = "diary_audience"
       case id = "id"
       case lastActivityAt = "last_activity_at"
       case ownerId = "owner_id"
       case photoObjectPath = "photo_object_path"
       case photoVersion = "photo_version"
+      case publishedAt = "published_at"
+      case recordModel = "record_model"
       case startsAt = "starts_at"
       case tour = "tour"
       case updatedAt = "updated_at"
@@ -1306,6 +1352,54 @@ public enum PublicSchema {
       case venueTimeZone = "venue_time_zone"
       case version = "version"
       case visibility = "visibility"
+    }
+  }
+  public struct DiaryReviewsSelect: Codable, Hashable, Sendable {
+    public let concertId: UUID
+    public let createdAt: String
+    public let overallScorePoints: Int16?
+    public let performanceScorePoints: Int16?
+    public let reviewBody: String?
+    public let updatedAt: String
+    public enum CodingKeys: String, CodingKey {
+      case concertId = "concert_id"
+      case createdAt = "created_at"
+      case overallScorePoints = "overall_score_points"
+      case performanceScorePoints = "performance_score_points"
+      case reviewBody = "review_body"
+      case updatedAt = "updated_at"
+    }
+  }
+  public struct DiaryReviewsInsert: Codable, Hashable, Sendable {
+    public let concertId: UUID
+    public let createdAt: String?
+    public let overallScorePoints: Int16?
+    public let performanceScorePoints: Int16?
+    public let reviewBody: String?
+    public let updatedAt: String?
+    public enum CodingKeys: String, CodingKey {
+      case concertId = "concert_id"
+      case createdAt = "created_at"
+      case overallScorePoints = "overall_score_points"
+      case performanceScorePoints = "performance_score_points"
+      case reviewBody = "review_body"
+      case updatedAt = "updated_at"
+    }
+  }
+  public struct DiaryReviewsUpdate: Codable, Hashable, Sendable {
+    public let concertId: UUID?
+    public let createdAt: String?
+    public let overallScorePoints: Int16?
+    public let performanceScorePoints: Int16?
+    public let reviewBody: String?
+    public let updatedAt: String?
+    public enum CodingKeys: String, CodingKey {
+      case concertId = "concert_id"
+      case createdAt = "created_at"
+      case overallScorePoints = "overall_score_points"
+      case performanceScorePoints = "performance_score_points"
+      case reviewBody = "review_body"
+      case updatedAt = "updated_at"
     }
   }
   public struct DirectCollaborationNotificationsSelect: Codable, Hashable, Sendable {

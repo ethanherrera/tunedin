@@ -1,6 +1,6 @@
 # Community Events Implementation Plan
 
-Status: in progress; Phases 1–3 implemented for the disposable Local environment
+Status: in progress; Phases 1–4 implemented for the disposable Local environment
 Decision date: 2026-07-16
 Decision owner: Ethan
 Depends on: `docs/community-events-product-design.md` and
@@ -41,7 +41,17 @@ Depends on: `docs/community-events-product-design.md` and
   tests, generated-type checks, Local build, and repository tests pass. Interactive
   iPhone 13 visual inspection remains pending a manually unlocked Mac, and hosted
   Development remains unchanged.
-- Phase 4 and later persistence contracts have not started.
+- Phase 4 is implemented in `20260717010000_catalog_event_diaries.sql` and the
+  Local iOS repository: independent personal diaries linked to Went attendance,
+  fixed half-point overall/performance scores, normalized reviews, current album
+  photos and comments under diary authorization, visible aggregate scores,
+  friend/community previews, separate profile Went and Diary sections, and feed
+  projections for publication and ready media. Publication, audience, relationship,
+  block, and one-diary-per-person rules are enforced in Postgres. The legacy shared
+  archive excludes these new personal records. The clean upgrade path, deterministic
+  seed, authenticated REST journey, generated types, 493 pgTAP tests, Local build,
+  and 179 iOS tests pass. Interactive iPhone 13 visual inspection remains pending a
+  manually unlocked Mac; hosted Development remains unchanged.
 
 ## Architecture decision
 
@@ -411,6 +421,9 @@ state, and blocked or unauthorized users cannot read or mutate the records.
 
 ### Phase 4 — link personal diaries to events
 
+Implemented for disposable Local Supabase and the Local iOS repository. The
+interactive iPhone 13 visual pass remains pending a manually unlocked Mac.
+
 - Expand `concerts` with event/attendance/model/audience/publication fields and add
   `diary_reviews`.
 - Mark all current rows `legacy_shared` without changing their current access.
@@ -421,8 +434,10 @@ state, and blocked or unauthorized users cannot read or mutate the records.
 - Add profile Went and Diary sections and unified feed projections.
 
 Exit: each user can have an independent diary for one event, attendance can exist
-without a diary, and changing one diary's audience immediately changes all of its
-review/media/comment reads.
+without a diary, and changing one diary's audience immediately changes review,
+comment, album-list, and future media-URL authorization. Already issued private
+Storage URLs remain bearer URLs until their bounded expiry, so clients must never
+treat a cached URL as proof of current diary access.
 
 ### Phase 5 — integrity and resilience operations
 

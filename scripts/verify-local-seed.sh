@@ -56,13 +56,19 @@ metrics="$(docker exec "$database_container" psql -U postgres -d postgres -v ON_
     (select count(*) from public.catalog_event_invitations where id between 'd4200000-0000-0000-0000-000000000001'::uuid and 'd4200000-0000-0000-0000-000000000002'::uuid),
     (select count(*) from public.catalog_event_posts where id between 'd4300000-0000-0000-0000-000000000001'::uuid and 'd4300000-0000-0000-0000-000000000003'::uuid),
     (select count(*) from public.social_activity_events where id between 'd4100000-0000-0000-0000-000000000201'::uuid and 'd4100000-0000-0000-0000-000000000203'::uuid),
-    (select count(*) from private.catalog_event_notification_outbox where id between 'd4400000-0000-0000-0000-000000000001'::uuid and 'd4400000-0000-0000-0000-000000000003'::uuid);
+    (select count(*) from private.catalog_event_notification_outbox where id between 'd4400000-0000-0000-0000-000000000001'::uuid and 'd4400000-0000-0000-0000-000000000003'::uuid),
+    (select count(*) from public.catalog_event_attendance where id between 'd4050000-0000-0000-0000-000000000001'::uuid and 'd4050000-0000-0000-0000-000000000009'::uuid),
+    (select count(*) from public.concerts where id between 'd4500000-0000-0000-0000-000000000001'::uuid and 'd4500000-0000-0000-0000-000000000002'::uuid and record_model = 'personal_diary'),
+    (select count(*) from public.diary_reviews where concert_id between 'd4500000-0000-0000-0000-000000000001'::uuid and 'd4500000-0000-0000-0000-000000000002'::uuid),
+    (select count(*) from public.comments where concert_id between 'd4500000-0000-0000-0000-000000000001'::uuid and 'd4500000-0000-0000-0000-000000000002'::uuid),
+    (select count(*) from public.social_activity_events where id between 'd4100000-0000-0000-0000-000000000301'::uuid and 'd4100000-0000-0000-0000-000000000302'::uuid),
+    (select count(*) from private.catalog_event_notification_outbox where id between 'd4400000-0000-0000-0000-000000000101'::uuid and 'd4400000-0000-0000-0000-000000000102'::uuid);
 ")"
 
-expected="16|16|16|16|15|1|5|1|1|1|6|24|8|12|73|0|0|1|2|11|1|5|5|10|2|0|0|0|0|4|4|5|1|0|9|3|2|1|8|2|3|3|3"
+expected="16|16|16|16|15|1|5|1|1|1|6|24|8|12|73|0|0|1|2|11|1|5|5|10|4|0|0|0|0|4|4|5|1|0|9|3|2|1|8|2|3|3|3|9|2|2|2|2|2"
 if [[ "$metrics" != "$expected" ]]; then
   echo "Local Supabase seed integrity check failed (expected ${expected}; received ${metrics})." >&2
   exit 1
 fi
 
-echo "Local Supabase journey, catalog identity, community event, and private profile-image contracts verified."
+echo "Local Supabase journey, catalog identity, community event, personal diary, and private profile-image contracts verified."

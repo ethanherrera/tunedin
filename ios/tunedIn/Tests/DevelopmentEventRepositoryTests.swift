@@ -19,6 +19,7 @@
       let memory = try #require(events.first(where: { $0.phase(at: now) == .memories }))
       #expect(memory.currentUserAttendance == .went)
       #expect(memory.diaryCount == 2)
+      #expect(memory.averageDiaryScore == 9.25)
 
       let detail = try await repository.eventDetail(id: memory.id, viewerID: viewerID)
       #expect(detail.attendances.contains(where: { $0.profile.id == viewerID && $0.status == .went }))
@@ -69,14 +70,16 @@
         eventID: DevelopmentEventFixture.mitskiMemoryID,
         authorID: viewerID,
         input: EventDiaryInput(
-          score: 9.4,
+          score: 9.5,
+          performanceScore: 9.0,
           note: "A night I want to remember.",
           audience: .privateOnly
         )
       )
 
       let diary = try #require(detail.diaryPreviews.first(where: { $0.author.id == viewerID }))
-      #expect(diary.score == 9.4)
+      #expect(diary.score == 9.5)
+      #expect(diary.performanceScore == 9.0)
       #expect(diary.audience == .privateOnly)
       #expect(detail.summary.currentUserAttendance == .went)
     }

@@ -272,6 +272,7 @@ extension SupabaseEventRepositoryContractTests {
     #expect(summary.friendPreviews.isEmpty)
     #expect(summary.publicGoingCount == 0)
     #expect(summary.diaryCount == 0)
+    #expect(summary.averageDiaryScore == nil)
   }
 
   @Test

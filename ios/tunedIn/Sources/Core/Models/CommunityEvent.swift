@@ -90,6 +90,7 @@ struct CommunityEventSummary: Codable, Equatable, Identifiable, Sendable {
   let publicGoingCount: Int
   let publicWentCount: Int
   let diaryCount: Int
+  let averageDiaryScore: Double?
   let duplicateCandidateEventID: UUID?
 
   var title: String {
@@ -141,11 +142,27 @@ struct EventDiaryPreview: Codable, Equatable, Identifiable, Sendable {
   let id: UUID
   let author: SocialProfile
   let score: Double?
+  let performanceScore: Double?
   let note: String?
   let photoCount: Int
   let videoCount: Int
+  let commentCount: Int
   let audience: EventAudience
   let publishedAt: Date
+}
+
+struct EventProfileDiary: Equatable, Identifiable, Sendable {
+  let event: CommunityEventSummary
+  let diary: EventDiaryPreview
+
+  var id: UUID { diary.id }
+}
+
+struct CommunityProfileHistory: Equatable, Sendable {
+  let went: [CommunityEventSummary]
+  let diaries: [EventProfileDiary]
+
+  static let empty = Self(went: [], diaries: [])
 }
 
 struct CommunityEventDetail: Codable, Equatable, Identifiable, Sendable {
@@ -215,6 +232,7 @@ struct CommunityEventCreationInput: Equatable, Sendable {
 
 struct EventDiaryInput: Equatable, Sendable {
   let score: Double?
+  let performanceScore: Double?
   let note: String?
   let audience: EventAudience
 }

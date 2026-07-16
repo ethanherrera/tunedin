@@ -18,6 +18,7 @@ struct CommunityEventDetailView: View {
   let eventID: UUID
   let viewerID: UUID
   let repository: any EventRepository
+  let concertRepository: (any ConcertRepository)?
   let onDismiss: () -> Void
 
   @State private var detail: CommunityEventDetail?
@@ -68,6 +69,7 @@ struct CommunityEventDetailView: View {
                 detail: detail,
                 viewerID: viewerID,
                 repository: repository,
+                concertRepository: concertRepository,
                 onSaved: { Task { await load() } }
               )
             }
@@ -532,9 +534,11 @@ private struct EventMemoriesPage: View {
   let detail: CommunityEventDetail
   let viewerID: UUID
   let repository: any EventRepository
+  let concertRepository: (any ConcertRepository)?
   let onSaved: () -> Void
 
   @State private var isPresentingDiary = false
+  @State private var selectedDiary: EventDiaryPreview?
 
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
@@ -554,6 +558,16 @@ private struct EventMemoriesPage: View {
             Text("Each person owns their diary and its sharing settings.")
               .font(.caption)
               .foregroundStyle(TunedInDesign.mutedText)
+            if let score = detail.summary.averageDiaryScore {
+              Label(
+                "Visible average \(score.formatted(.number.precision(.fractionLength(1))))"
+                  + " · \(detail.summary.diaryCount) "
+                  + (detail.summary.diaryCount == 1 ? "diary" : "diaries"),
+                systemImage: "star.fill"
+              )
+              .font(.caption.weight(.semibold))
+              .foregroundStyle(TunedInDesign.accent)
+            }
           }
           Spacer()
           if detail.summary.canCreateDiary() {
@@ -573,7 +587,14 @@ private struct EventMemoriesPage: View {
           )
         } else {
           ForEach(detail.diaryPreviews.sorted(by: { $0.publishedAt > $1.publishedAt })) { diary in
-            EventDiaryPreviewCard(diary: diary)
+            if concertRepository == nil {
+              EventDiaryPreviewCard(diary: diary)
+            } else {
+              Button { selectedDiary = diary } label: {
+                EventDiaryPreviewCard(diary: diary)
+              }
+              .buttonStyle(TunedInPosterButtonStyle())
+            }
           }
         }
       }
@@ -591,6 +612,18 @@ private struct EventMemoriesPage: View {
         onDismiss: { isPresentingDiary = false }
       )
     }
+    .fullScreenCover(item: $selectedDiary) { diary in
+      if let concertRepository {
+        EventDiaryDetailView(
+          event: detail.summary,
+          diary: diary,
+          viewerID: viewerID,
+          concertRepository: concertRepository,
+          onChanged: onSaved,
+          onDismiss: { selectedDiary = nil }
+        )
+      }
+    }
   }
 }
 
@@ -604,6 +637,8 @@ private struct EventDiaryComposerView: View {
 
   @State private var includesScore: Bool
   @State private var score: Double
+  @State private var includesPerformanceScore: Bool
+  @State private var performanceScore: Double
   @State private var note: String
   @State private var audience: EventAudience
   @State private var isSaving = false
@@ -625,6 +660,8 @@ private struct EventDiaryComposerView: View {
     self.onDismiss = onDismiss
     _includesScore = State(initialValue: existing?.score != nil)
     _score = State(initialValue: existing?.score ?? 8)
+    _includesPerformanceScore = State(initialValue: existing?.performanceScore != nil)
+    _performanceScore = State(initialValue: existing?.performanceScore ?? 8)
     _note = State(initialValue: existing?.note ?? "")
     _audience = State(initialValue: existing?.audience ?? .friends)
   }
@@ -653,7 +690,24 @@ private struct EventDiaryComposerView: View {
                   .font(.title2.weight(.bold))
                   .foregroundStyle(TunedInDesign.accent)
               }
-              Slider(value: $score, in: 0 ... 10, step: 0.1)
+              Slider(value: $score, in: 0.5 ... 10, step: 0.5)
+                .tint(TunedInDesign.accent)
+            }
+
+            Divider()
+
+            Toggle("Rate the performance", isOn: $includesPerformanceScore)
+              .tint(TunedInDesign.accent)
+            if includesPerformanceScore {
+              HStack {
+                Text("Performance")
+                  .font(.headline)
+                Spacer()
+                Text(performanceScore.formatted(.number.precision(.fractionLength(1))))
+                  .font(.title2.weight(.bold))
+                  .foregroundStyle(TunedInDesign.accent)
+              }
+              Slider(value: $performanceScore, in: 0.5 ... 10, step: 0.5)
                 .tint(TunedInDesign.accent)
             }
           }
@@ -684,7 +738,7 @@ private struct EventDiaryComposerView: View {
             }
             .pickerStyle(.segmented)
             Label(
-              "Photos and video will attach to this diary when persistent media support lands.",
+              "After saving, open this diary to add photos and talk with friends. Video comes later.",
               systemImage: "photo.on.rectangle.angled"
             )
             .font(.caption)
@@ -704,7 +758,7 @@ private struct EventDiaryComposerView: View {
               .background(TunedInDesign.accent, in: Capsule())
           }
           .buttonStyle(.plain)
-          .disabled(isSaving || note.count > 4_000)
+          .disabled(isSaving || note.count > 4_000 || !hasDiaryContent)
         }
         .padding(20)
         .padding(.bottom, 24)
@@ -730,6 +784,7 @@ private struct EventDiaryComposerView: View {
         authorID: viewerID,
         input: EventDiaryInput(
           score: includesScore ? score : nil,
+          performanceScore: includesPerformanceScore ? performanceScore : nil,
           note: note,
           audience: audience
         )
@@ -739,6 +794,12 @@ private struct EventDiaryComposerView: View {
     } catch {
       errorMessage = error.localizedDescription
     }
+  }
+
+  private var hasDiaryContent: Bool {
+    includesScore
+      || includesPerformanceScore
+      || CatalogInput.optionalNormalizedText(note) != nil
   }
 }
 

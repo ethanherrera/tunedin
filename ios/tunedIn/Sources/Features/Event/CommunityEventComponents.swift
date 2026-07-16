@@ -120,9 +120,18 @@ struct EventDiaryPreviewCard: View {
           .font(.body)
           .foregroundStyle(TunedInDesign.primaryText)
       }
+      if let performanceScore = diary.performanceScore {
+        Label(
+          "Performance \(performanceScore.formatted(.number.precision(.fractionLength(1))))",
+          systemImage: "music.mic"
+        )
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(TunedInDesign.mutedText)
+      }
       HStack(spacing: 14) {
         Label("\(diary.photoCount)", systemImage: "photo")
         Label("\(diary.videoCount)", systemImage: "video")
+        Label("\(diary.commentCount)", systemImage: "bubble.left")
         Label(diary.audience.title, systemImage: diary.audience.icon)
       }
       .font(.caption.weight(.semibold))

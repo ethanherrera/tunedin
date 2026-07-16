@@ -1,5 +1,72 @@
 import SwiftUI
 
+struct CommunityProfileHistorySection: View {
+  let history: CommunityProfileHistory
+  let onOpenEvent: (CommunityEventSummary) -> Void
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      HStack(alignment: .firstTextBaseline) {
+        VStack(alignment: .leading, spacing: 3) {
+          Text("Concert life")
+            .font(.title3.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
+          Text("Went is lightweight. Diaries hold the memory.")
+            .font(.caption)
+            .foregroundStyle(TunedInDesign.mutedText)
+        }
+        Spacer()
+        Text("\(history.went.count) went · \(history.diaries.count) diaries")
+          .font(.caption.weight(.semibold))
+          .foregroundStyle(TunedInDesign.mutedText)
+      }
+
+      if history.went.isEmpty, history.diaries.isEmpty {
+        Text("Concerts you mark Went—and the diaries you choose to write—will live here.")
+          .font(.subheadline)
+          .foregroundStyle(TunedInDesign.mutedText)
+          .padding(16)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 18))
+      } else {
+        if !history.went.isEmpty {
+          profileSubsection("Went") {
+            ForEach(history.went.prefix(3)) { event in
+              Button { onOpenEvent(event) } label: {
+                CommunityEventRow(event: event, showsSource: false)
+              }
+              .buttonStyle(TunedInPosterButtonStyle())
+            }
+          }
+        }
+
+        if !history.diaries.isEmpty {
+          profileSubsection("Diaries") {
+            ForEach(history.diaries.prefix(3)) { entry in
+              Button { onOpenEvent(entry.event) } label: {
+                EventDiaryPreviewCard(diary: entry.diary)
+              }
+              .buttonStyle(TunedInPosterButtonStyle())
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private func profileSubsection<Content: View>(
+    _ title: String,
+    @ViewBuilder content: () -> Content
+  ) -> some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text(title)
+        .font(.headline)
+        .foregroundStyle(TunedInDesign.primaryText)
+      content()
+    }
+  }
+}
+
 struct CommunityActivityFeedView: View {
   let viewerID: UUID
   let repository: any EventRepository

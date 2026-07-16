@@ -90,6 +90,7 @@ struct MainTabView: View {
             eventID: event.id,
             viewerID: profile.id,
             repository: eventRepository,
+            concertRepository: concertRepository,
             onDismiss: { presentedCommunityEvent = nil }
           )
         }
@@ -268,8 +269,10 @@ struct MainTabView: View {
         user: user,
         profile: profile,
         concertRepository: concertRepository,
+        eventRepository: eventRepository,
         socialRepository: socialRepository,
-        archiveRefreshToken: archiveRefreshToken
+        archiveRefreshToken: archiveRefreshToken,
+        onOpenCommunityEvent: { presentedCommunityEvent = $0 }
       )
       .id(profileNavigationID)
     }
@@ -618,9 +621,12 @@ struct ProfileTabView: View {
   let user: AuthenticatedUser
   let profile: Profile
   let concertRepository: any ConcertRepository
+  let eventRepository: (any EventRepository)?
   let socialRepository: any SocialRepository
   let archiveRefreshToken: Int
+  let onOpenCommunityEvent: (CommunityEventSummary) -> Void
   @State private var friendCount = 0
+  @State private var communityHistory = CommunityProfileHistory.empty
   @State private var archiveModel: ConcertArchiveModel
 
   init(
@@ -628,15 +634,19 @@ struct ProfileTabView: View {
     user: AuthenticatedUser,
     profile: Profile,
     concertRepository: any ConcertRepository,
+    eventRepository: (any EventRepository)?,
     socialRepository: any SocialRepository,
-    archiveRefreshToken: Int
+    archiveRefreshToken: Int,
+    onOpenCommunityEvent: @escaping (CommunityEventSummary) -> Void
   ) {
     self.session = session
     self.user = user
     self.profile = profile
     self.concertRepository = concertRepository
+    self.eventRepository = eventRepository
     self.socialRepository = socialRepository
     self.archiveRefreshToken = archiveRefreshToken
+    self.onOpenCommunityEvent = onOpenCommunityEvent
     _archiveModel = State(
       initialValue: ConcertArchiveModel(profileID: profile.id, concertRepository: concertRepository)
     )
@@ -652,6 +662,12 @@ struct ProfileTabView: View {
           VStack(alignment: .leading, spacing: 20) {
             profileHeader
             friendCountLink
+            if eventRepository?.capabilities.contains(.diaries) == true {
+              CommunityProfileHistorySection(
+                history: communityHistory,
+                onOpenEvent: onOpenCommunityEvent
+              )
+            }
             ConcertArchiveView(
               profileID: profile.id,
               viewerID: profile.id,
@@ -675,6 +691,7 @@ struct ProfileTabView: View {
     }
     .task(id: profile.username) {
       await loadFriendCount(policy: .automatic)
+      await loadCommunityHistory()
     }
   }
 
@@ -727,8 +744,20 @@ struct ProfileTabView: View {
 
   private func refreshServerContent() async {
     await loadFriendCount(policy: .refresh)
+    await loadCommunityHistory()
     await archiveModel.reload(policy: .refresh)
     try? await session.refreshProfile()
+  }
+
+  private func loadCommunityHistory() async {
+    guard let eventRepository, eventRepository.capabilities.contains(.diaries) else {
+      communityHistory = .empty
+      return
+    }
+    communityHistory = (try? await eventRepository.profileHistory(
+      profileID: profile.id,
+      viewerID: profile.id
+    )) ?? .empty
   }
 }
 

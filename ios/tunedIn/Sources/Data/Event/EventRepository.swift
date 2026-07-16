@@ -16,6 +16,9 @@ struct EventRepositoryCapabilities: OptionSet, Equatable, Sendable {
   static let phase3Social: Self = [
     .discovery, .plans, .activityFeed, .attendance, .conversation, .invitations
   ]
+  static let phase4Memories: Self = [
+    .discovery, .plans, .activityFeed, .attendance, .conversation, .invitations, .diaries
+  ]
   static let complete: Self = [
     .discovery, .plans, .activityFeed, .attendance, .conversation, .invitations, .diaries
   ]
@@ -55,6 +58,7 @@ protocol EventRepository: Sendable {
     authorID: UUID,
     input: EventDiaryInput
   ) async throws -> CommunityEventDetail
+  func profileHistory(profileID: UUID, viewerID: UUID) async throws -> CommunityProfileHistory
   func createEvent(_ input: CommunityEventCreationInput, creatorID: UUID) async throws -> CommunityEventDetail
 }
 
@@ -113,5 +117,12 @@ extension EventRepository {
     input _: EventDiaryInput
   ) async throws -> CommunityEventDetail {
     throw CommunityEventError.featureUnavailable("Concert diaries")
+  }
+
+  func profileHistory(
+    profileID _: UUID,
+    viewerID _: UUID
+  ) async throws -> CommunityProfileHistory {
+    throw CommunityEventError.featureUnavailable("Concert history")
   }
 }

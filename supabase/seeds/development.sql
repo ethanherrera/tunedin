@@ -443,18 +443,18 @@ values
 -- rows exercise own, friends, community, private, upcoming, past, and unlisted
 -- Plans states through the real audience-aware Phase 2 RPCs.
 insert into public.catalog_event_attendance (
-  event_id, profile_id, status, audience, created_at, updated_at
+  id, event_id, profile_id, status, audience, created_at, updated_at
 )
 values
-  ('d4000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', 'going', 'friends', timestamptz '2026-07-16 20:00:00+00', timestamptz '2026-07-16 20:00:00+00'),
-  ('d4000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000002', 'going', 'community', timestamptz '2026-07-16 20:01:00+00', timestamptz '2026-07-16 20:01:00+00'),
-  ('d4000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000003', 'going', 'private', timestamptz '2026-07-16 20:02:00+00', timestamptz '2026-07-16 20:02:00+00'),
-  ('d4000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000004', 'going', 'friends', timestamptz '2026-07-16 20:03:00+00', timestamptz '2026-07-16 20:03:00+00'),
-  ('d4000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000010', 'going', 'community', timestamptz '2026-07-16 20:04:00+00', timestamptz '2026-07-16 20:04:00+00'),
-  ('d4000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000001', 'went', 'private', timestamptz '2026-05-09 09:00:00+00', timestamptz '2026-05-09 09:00:00+00'),
-  ('d4000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000002', 'went', 'community', timestamptz '2026-05-09 09:01:00+00', timestamptz '2026-05-09 09:01:00+00'),
-  ('d4000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000003', 'did_not_go', 'friends', timestamptz '2026-05-09 09:02:00+00', timestamptz '2026-05-09 09:02:00+00'),
-  ('d4000000-0000-0000-0000-000000000003', 'd1000000-0000-0000-0000-000000000001', 'going', 'private', timestamptz '2026-07-16 20:05:00+00', timestamptz '2026-07-16 20:05:00+00');
+  ('d4050000-0000-0000-0000-000000000001', 'd4000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', 'going', 'friends', timestamptz '2026-07-16 20:00:00+00', timestamptz '2026-07-16 20:00:00+00'),
+  ('d4050000-0000-0000-0000-000000000002', 'd4000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000002', 'going', 'community', timestamptz '2026-07-16 20:01:00+00', timestamptz '2026-07-16 20:01:00+00'),
+  ('d4050000-0000-0000-0000-000000000003', 'd4000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000003', 'going', 'private', timestamptz '2026-07-16 20:02:00+00', timestamptz '2026-07-16 20:02:00+00'),
+  ('d4050000-0000-0000-0000-000000000004', 'd4000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000004', 'going', 'friends', timestamptz '2026-07-16 20:03:00+00', timestamptz '2026-07-16 20:03:00+00'),
+  ('d4050000-0000-0000-0000-000000000005', 'd4000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000010', 'going', 'community', timestamptz '2026-07-16 20:04:00+00', timestamptz '2026-07-16 20:04:00+00'),
+  ('d4050000-0000-0000-0000-000000000006', 'd4000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000001', 'went', 'private', timestamptz '2026-05-09 09:00:00+00', timestamptz '2026-05-09 09:00:00+00'),
+  ('d4050000-0000-0000-0000-000000000007', 'd4000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000002', 'went', 'community', timestamptz '2026-05-09 09:01:00+00', timestamptz '2026-05-09 09:01:00+00'),
+  ('d4050000-0000-0000-0000-000000000008', 'd4000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000003', 'did_not_go', 'friends', timestamptz '2026-05-09 09:02:00+00', timestamptz '2026-05-09 09:02:00+00'),
+  ('d4050000-0000-0000-0000-000000000009', 'd4000000-0000-0000-0000-000000000003', 'd1000000-0000-0000-0000-000000000001', 'going', 'private', timestamptz '2026-07-16 20:05:00+00', timestamptz '2026-07-16 20:05:00+00');
 
 insert into public.social_activity_events (
   id, actor_id, action, event_id, metadata, occurred_at
@@ -502,6 +502,175 @@ values
   ('d4400000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000006', 'd1000000-0000-0000-0000-000000000001', 'd4000000-0000-0000-0000-000000000001', 'event_invited', 'd4200000-0000-0000-0000-000000000001', timestamptz '2026-07-15 20:10:00+00'),
   ('d4400000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000005', 'd1000000-0000-0000-0000-000000000001', 'd4000000-0000-0000-0000-000000000003', 'event_invited', 'd4200000-0000-0000-0000-000000000002', timestamptz '2026-07-15 20:11:00+00'),
   ('d4400000-0000-0000-0000-000000000003', 'd1000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000004', 'd4000000-0000-0000-0000-000000000001', 'event_replied', 'd4300000-0000-0000-0000-000000000003', timestamptz '2026-07-15 20:14:00+00');
+
+-- Phase 4 keeps two independent personal diaries on the same shared past
+-- event. Their Went audiences differ from their diary audiences, and comments
+-- remain attached to the diary rather than the global event.
+insert into public.concerts (
+  id,
+  owner_id,
+  venue_name,
+  concert_date,
+  starts_at,
+  venue_time_zone,
+  visibility,
+  created_at,
+  updated_at,
+  last_activity_at,
+  catalog_place_id,
+  catalog_area_id,
+  catalog_tour_id,
+  catalog_event_id,
+  attendance_id,
+  record_model,
+  diary_audience,
+  published_at
+)
+values
+  (
+    'd4500000-0000-0000-0000-000000000001',
+    'd1000000-0000-0000-0000-000000000001',
+    '',
+    date '2026-05-08',
+    timestamptz '2026-05-09 03:00:00+00',
+    'America/Los_Angeles',
+    'private',
+    timestamptz '2026-05-09 10:00:00+00',
+    timestamptz '2026-05-09 10:00:00+00',
+    timestamptz '2026-05-09 10:00:00+00',
+    'd3000000-0000-0000-0000-000000000103',
+    'd3000000-0000-0000-0000-000000000101',
+    null,
+    'd4000000-0000-0000-0000-000000000002',
+    'd4050000-0000-0000-0000-000000000006',
+    'personal_diary',
+    'friends',
+    timestamptz '2026-05-09 10:00:00+00'
+  ),
+  (
+    'd4500000-0000-0000-0000-000000000002',
+    'd1000000-0000-0000-0000-000000000002',
+    '',
+    date '2026-05-08',
+    timestamptz '2026-05-09 03:00:00+00',
+    'America/Los_Angeles',
+    'private',
+    timestamptz '2026-05-09 10:05:00+00',
+    timestamptz '2026-05-09 10:05:00+00',
+    timestamptz '2026-05-09 10:05:00+00',
+    'd3000000-0000-0000-0000-000000000103',
+    'd3000000-0000-0000-0000-000000000101',
+    null,
+    'd4000000-0000-0000-0000-000000000002',
+    'd4050000-0000-0000-0000-000000000007',
+    'personal_diary',
+    'community',
+    timestamptz '2026-05-09 10:05:00+00'
+  );
+
+insert into public.concert_artists (
+  concert_id,
+  lineup_position,
+  artist_name,
+  catalog_artist_id,
+  is_primary
+)
+values
+  ('d4500000-0000-0000-0000-000000000001', 1, '', 'd3000000-0000-0000-0000-000000000102', true),
+  ('d4500000-0000-0000-0000-000000000002', 1, '', 'd3000000-0000-0000-0000-000000000102', true);
+
+insert into public.diary_reviews (
+  concert_id,
+  overall_score_points,
+  performance_score_points,
+  review_body,
+  created_at,
+  updated_at
+)
+values
+  (
+    'd4500000-0000-0000-0000-000000000001',
+    95,
+    90,
+    'The room felt tiny during the encore. I want to remember that last chorus.',
+    timestamptz '2026-05-09 10:00:00+00',
+    timestamptz '2026-05-09 10:00:00+00'
+  ),
+  (
+    'd4500000-0000-0000-0000-000000000002',
+    90,
+    95,
+    'The final run of songs made the whole night click.',
+    timestamptz '2026-05-09 10:05:00+00',
+    timestamptz '2026-05-09 10:05:00+00'
+  );
+
+insert into public.comments (
+  id, concert_id, author_id, body, created_at, updated_at
+)
+values
+  (
+    'd4510000-0000-0000-0000-000000000001',
+    'd4500000-0000-0000-0000-000000000001',
+    'd1000000-0000-0000-0000-000000000002',
+    'That encore is exactly what I keep thinking about too.',
+    timestamptz '2026-05-09 10:10:00+00',
+    timestamptz '2026-05-09 10:10:00+00'
+  ),
+  (
+    'd4510000-0000-0000-0000-000000000002',
+    'd4500000-0000-0000-0000-000000000002',
+    'd1000000-0000-0000-0000-000000000001',
+    'Same—the transition into the closer was perfect.',
+    timestamptz '2026-05-09 10:11:00+00',
+    timestamptz '2026-05-09 10:11:00+00'
+  );
+
+insert into public.social_activity_events (
+  id, actor_id, action, event_id, subject_id, metadata, occurred_at
+)
+values
+  (
+    'd4100000-0000-0000-0000-000000000301',
+    'd1000000-0000-0000-0000-000000000001',
+    'diary_published',
+    'd4000000-0000-0000-0000-000000000002',
+    'd4500000-0000-0000-0000-000000000001',
+    '{}'::jsonb,
+    timestamptz '2026-05-09 10:00:00+00'
+  ),
+  (
+    'd4100000-0000-0000-0000-000000000302',
+    'd1000000-0000-0000-0000-000000000002',
+    'diary_published',
+    'd4000000-0000-0000-0000-000000000002',
+    'd4500000-0000-0000-0000-000000000002',
+    '{}'::jsonb,
+    timestamptz '2026-05-09 10:05:00+00'
+  );
+
+insert into private.catalog_event_notification_outbox (
+  id, recipient_id, actor_id, event_id, action, subject_id, created_at
+)
+values
+  (
+    'd4400000-0000-0000-0000-000000000101',
+    'd1000000-0000-0000-0000-000000000002',
+    'd1000000-0000-0000-0000-000000000001',
+    'd4000000-0000-0000-0000-000000000002',
+    'diary_published',
+    'd4500000-0000-0000-0000-000000000001',
+    timestamptz '2026-05-09 10:00:00+00'
+  ),
+  (
+    'd4400000-0000-0000-0000-000000000102',
+    'd1000000-0000-0000-0000-000000000001',
+    'd1000000-0000-0000-0000-000000000002',
+    'd4000000-0000-0000-0000-000000000002',
+    'diary_published',
+    'd4500000-0000-0000-0000-000000000002',
+    timestamptz '2026-05-09 10:05:00+00'
+  );
 
 do $catalog_seed$
 begin

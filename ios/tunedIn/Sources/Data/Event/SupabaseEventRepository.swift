@@ -2,7 +2,7 @@ import Foundation
 import Supabase
 
 struct SupabaseEventRepository: EventRepository {
-  let capabilities = EventRepositoryCapabilities.phase3Social
+  let capabilities = EventRepositoryCapabilities.phase4Memories
 
   private let client: SupabaseClient
 
@@ -43,11 +43,17 @@ struct SupabaseEventRepository: EventRepository {
           params: ListCatalogEventPostsParameters(eventID: id)
         )
         .execute()
+      let diaries: PostgrestResponse<[CatalogEventDiaryRPCRecord]> = try await client
+        .rpc(
+          "list_catalog_event_diaries",
+          params: ListCatalogEventDiariesParameters(eventID: id)
+        )
+        .execute()
       return CommunityEventDetail(
         summary: summary,
         attendances: try attendees.value.map(EventAttendance.init(databaseRecord:)),
         posts: try posts.value.map(EventPost.init(databaseRecord:)),
-        diaryPreviews: []
+        diaryPreviews: try diaries.value.map(EventDiaryPreview.init(databaseRecord:))
       )
     }
   }
@@ -66,8 +72,7 @@ struct SupabaseEventRepository: EventRepository {
       let response: PostgrestResponse<[CatalogEventActivityRPCRecord]> = try await client
         .rpc("list_catalog_event_activity", params: CatalogEventPageParameters())
         .execute()
-      let summaries = try await summaries(from: response.value.map(\.event))
-      let summariesByID = Dictionary(uniqueKeysWithValues: summaries.map { ($0.id, $0) })
+      let summariesByID = try await summaryMap(from: response.value.map(\.event))
       return try response.value.map { record in
         guard let event = summariesByID[record.event.eventID] else { throw AppFailure.unexpected }
         return try EventActivity(databaseRecord: record, event: event)
@@ -160,8 +165,7 @@ struct SupabaseEventRepository: EventRepository {
       let response: PostgrestResponse<[CatalogEventInvitationRPCRecord]> = try await client
         .rpc("list_pending_catalog_event_invitations", params: CatalogEventPageParameters(limit: 20))
         .execute()
-      let summaries = try await summaries(from: response.value.map(\.event))
-      let eventsByID = Dictionary(uniqueKeysWithValues: summaries.map { ($0.id, $0) })
+      let eventsByID = try await summaryMap(from: response.value.map(\.event))
       return try response.value.map { record in
         guard let event = eventsByID[record.eventID] else { throw AppFailure.unexpected }
         return try EventInvitation(databaseRecord: record, event: event)
@@ -186,6 +190,57 @@ struct SupabaseEventRepository: EventRepository {
           )
         )
         .execute()
+    }
+  }
+
+  func saveDiary(
+    eventID: UUID,
+    authorID: UUID,
+    input: EventDiaryInput
+  ) async throws -> CommunityEventDetail {
+    try await withAppFailure {
+      _ = try await client
+        .rpc(
+          "upsert_catalog_event_diary",
+          params: UpsertCatalogEventDiaryParameters(eventID: eventID, input: input)
+        )
+        .execute()
+      return try await eventDetail(id: eventID, viewerID: authorID)
+    }
+  }
+
+  func profileHistory(
+    profileID: UUID,
+    viewerID _: UUID
+  ) async throws -> CommunityProfileHistory {
+    try await withAppFailure {
+      let response: PostgrestResponse<[CatalogEventProfileHistoryRPCRecord]> = try await client
+        .rpc(
+          "list_catalog_profile_event_history",
+          params: CatalogEventProfileHistoryParameters(profileID: profileID)
+        )
+        .execute()
+      let eventsByID = try await summaryMap(from: response.value.map(\.event))
+      var went: [CommunityEventSummary] = []
+      var diaries: [EventProfileDiary] = []
+      for record in response.value {
+        guard let event = eventsByID[record.event.eventID] else { throw AppFailure.unexpected }
+        switch record.historyKind {
+        case "went":
+          went.append(event)
+        case "diary":
+          guard let diaryRecord = record.diary else { throw AppFailure.unexpected }
+          diaries.append(
+            EventProfileDiary(
+              event: event,
+              diary: try EventDiaryPreview(databaseRecord: diaryRecord)
+            )
+          )
+        default:
+          throw AppFailure.unexpected
+        }
+      }
+      return CommunityProfileHistory(went: went, diaries: diaries)
     }
   }
 
@@ -217,16 +272,42 @@ struct SupabaseEventRepository: EventRepository {
     from records: [CatalogEventRPCRecord]
   ) async throws -> [CommunityEventSummary] {
     guard !records.isEmpty else { return [] }
-    let response: PostgrestResponse<[CatalogEventSocialSummaryRPCRecord]> = try await client
+    let uniqueRecords = records.reduce(into: [UUID: CatalogEventRPCRecord]()) { result, record in
+      result[record.eventID] = record
+    }
+    async let socialResponse: PostgrestResponse<[CatalogEventSocialSummaryRPCRecord]> = client
       .rpc(
         "get_catalog_event_social_summaries",
-        params: CatalogEventSocialSummariesParameters(eventIDs: records.map(\.eventID))
+        params: CatalogEventSocialSummariesParameters(eventIDs: Array(uniqueRecords.keys))
       )
       .execute()
-    let socialByEventID = Dictionary(uniqueKeysWithValues: response.value.map { ($0.eventID, $0) })
+    async let diaryResponse: PostgrestResponse<[CatalogEventDiarySummaryRPCRecord]> = client
+      .rpc(
+        "get_catalog_event_diary_summaries",
+        params: CatalogEventSocialSummariesParameters(eventIDs: Array(uniqueRecords.keys))
+      )
+      .execute()
+    let (social, diary) = try await (socialResponse, diaryResponse)
+    let socialByEventID = Dictionary(uniqueKeysWithValues: social.value.map { ($0.eventID, $0) })
+    let diaryByEventID = Dictionary(uniqueKeysWithValues: diary.value.map { ($0.eventID, $0) })
     return try records.map {
-      try CommunityEventSummary(databaseRecord: $0, socialRecord: socialByEventID[$0.eventID])
+      try CommunityEventSummary(
+        databaseRecord: $0,
+        socialRecord: socialByEventID[$0.eventID],
+        diaryRecord: diaryByEventID[$0.eventID]
+      )
     }
+  }
+
+  private func summaryMap(
+    from records: [CatalogEventRPCRecord]
+  ) async throws -> [UUID: CommunityEventSummary] {
+    let uniqueRecords = records.reduce(into: [UUID: CatalogEventRPCRecord]()) { result, record in
+      result[record.eventID] = record
+    }
+    return Dictionary(uniqueKeysWithValues: try await summaries(from: Array(uniqueRecords.values)).map {
+      ($0.id, $0)
+    })
   }
 }
 
@@ -654,7 +735,8 @@ struct CatalogEventActivityRPCRecord: Decodable, Equatable, Sendable {
 extension CommunityEventSummary {
   init(
     databaseRecord: CatalogEventRPCRecord,
-    socialRecord: CatalogEventSocialSummaryRPCRecord? = nil
+    socialRecord: CatalogEventSocialSummaryRPCRecord? = nil,
+    diaryRecord: CatalogEventDiarySummaryRPCRecord? = nil
   ) throws {
     guard
       let eventDate = CommunityEventDateCoding.date(from: databaseRecord.eventDate),
@@ -698,7 +780,8 @@ extension CommunityEventSummary {
       friendPreviews: socialRecord?.friendPreviews.map(EventFriendPreview.init(databaseRecord:)) ?? [],
       publicGoingCount: socialRecord?.communityGoingCount ?? 0,
       publicWentCount: socialRecord?.communityWentCount ?? 0,
-      diaryCount: 0,
+      diaryCount: Int(diaryRecord?.diaryCount ?? 0),
+      averageDiaryScore: diaryRecord?.averageScore,
       duplicateCandidateEventID: nil
     )
   }

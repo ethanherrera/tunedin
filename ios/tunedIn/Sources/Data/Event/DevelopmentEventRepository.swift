@@ -203,9 +203,15 @@
       if let score = input.score, !(0 ... 10).contains(score) {
         throw CommunityEventError.invalidEvent("Scores must be between 0 and 10.")
       }
+      if let performanceScore = input.performanceScore, !(0 ... 10).contains(performanceScore) {
+        throw CommunityEventError.invalidEvent("Performance scores must be between 0 and 10.")
+      }
       let note = input.note.flatMap(CatalogInput.optionalNormalizedText)
       if let note, note.count > 4_000 {
         throw CommunityEventError.invalidEvent("Diary notes can be up to 4,000 characters.")
+      }
+      guard input.score != nil || input.performanceScore != nil || note != nil else {
+        throw CommunityEventError.invalidEvent("Add a score or note before sharing your diary.")
       }
       let existing = stored.diaryPreviews.first(where: { $0.author.id == authorID })
       stored.diaryPreviews.removeAll(where: { $0.author.id == authorID })
@@ -214,9 +220,11 @@
           id: existing?.id ?? Self.uuid(value: nextCreatedEventValue + 1, prefix: "ED"),
           author: Self.profile(authorID),
           score: input.score,
+          performanceScore: input.performanceScore,
           note: note,
           photoCount: existing?.photoCount ?? 0,
           videoCount: existing?.videoCount ?? 0,
+          commentCount: existing?.commentCount ?? 0,
           audience: input.audience,
           publishedAt: now
         )
@@ -225,6 +233,31 @@
       stored.summary = refreshedSummary(stored, viewerID: authorID)
       events[eventID] = stored
       return detail(from: stored, viewerID: authorID)
+    }
+
+    func profileHistory(profileID: UUID, viewerID: UUID) async throws -> CommunityProfileHistory {
+      var went: [CommunityEventSummary] = []
+      var diaries: [EventProfileDiary] = []
+      for stored in visibleEvents(viewerID: viewerID) {
+        if let attendance = stored.attendances.first(where: { $0.profile.id == profileID }),
+           attendance.status == .went,
+           canRead(attendance: attendance, viewerID: viewerID) {
+          went.append(refreshedSummary(stored, viewerID: viewerID))
+        }
+        for diary in stored.diaryPreviews where diary.author.id == profileID
+          && canRead(diary: diary, viewerID: viewerID) {
+          diaries.append(
+            EventProfileDiary(
+              event: refreshedSummary(stored, viewerID: viewerID),
+              diary: diary
+            )
+          )
+        }
+      }
+      return CommunityProfileHistory(
+        went: went.sorted(by: { $0.eventDate > $1.eventDate }),
+        diaries: diaries.sorted(by: { $0.diary.publishedAt > $1.diary.publishedAt })
+      )
     }
 
     func createEvent(
@@ -288,6 +321,7 @@
         publicGoingCount: attendance.status == .going ? 1 : 0,
         publicWentCount: attendance.status == .went ? 1 : 0,
         diaryCount: 0,
+        averageDiaryScore: nil,
         duplicateCandidateEventID: nil
       )
       let stored = StoredEvent(
@@ -323,11 +357,23 @@
       CommunityEventDetail(
         summary: refreshedSummary(stored, viewerID: viewerID),
         attendances: stored.attendances.filter { attendance in
-          attendance.profile.id == viewerID || attendance.audience != .privateOnly
+          canRead(attendance: attendance, viewerID: viewerID)
         },
         posts: stored.posts.filter { $0.author.id == viewerID || $0.audience != .privateOnly },
-        diaryPreviews: stored.diaryPreviews.filter { $0.author.id == viewerID || $0.audience != .privateOnly }
+        diaryPreviews: stored.diaryPreviews.filter { canRead(diary: $0, viewerID: viewerID) }
       )
+    }
+
+    private func canRead(attendance: EventAttendance, viewerID: UUID) -> Bool {
+      attendance.profile.id == viewerID
+        || attendance.audience == .community
+        || (attendance.audience == .friends && attendance.profile.relationship == .friends)
+    }
+
+    private func canRead(diary: EventDiaryPreview, viewerID: UUID) -> Bool {
+      diary.author.id == viewerID
+        || diary.audience == .community
+        || (diary.audience == .friends && diary.author.relationship == .friends)
     }
 
     private func refreshedSummary(_ stored: StoredEvent, viewerID: UUID) -> CommunityEventSummary {
@@ -335,6 +381,8 @@
       let friends = stored.attendances.filter {
         $0.profile.relationship == .friends && $0.profile.id != viewerID && $0.audience != .privateOnly
       }
+      let visibleDiaries = stored.diaryPreviews.filter { canRead(diary: $0, viewerID: viewerID) }
+      let visibleScores = visibleDiaries.compactMap(\.score)
       return CommunityEventSummary(
         id: stored.summary.id,
         artists: stored.summary.artists,
@@ -357,7 +405,10 @@
         friendPreviews: friends.map { EventFriendPreview(profile: $0.profile, status: $0.status) },
         publicGoingCount: stored.attendances.filter { $0.status == .going && $0.audience == .community }.count,
         publicWentCount: stored.attendances.filter { $0.status == .went && $0.audience == .community }.count,
-        diaryCount: stored.diaryPreviews.filter { $0.audience != .privateOnly }.count,
+        diaryCount: visibleDiaries.count,
+        averageDiaryScore: visibleScores.isEmpty
+          ? nil
+          : visibleScores.reduce(0, +) / Double(visibleScores.count),
         duplicateCandidateEventID: stored.summary.duplicateCandidateEventID
       )
     }
@@ -453,6 +504,7 @@
         publicGoingCount: 0,
         publicWentCount: 0,
         diaryCount: 0,
+        averageDiaryScore: nil,
         duplicateCandidateEventID: DevelopmentEventFixture.mitskiGreekID
       )
 
@@ -472,20 +524,24 @@
         EventDiaryPreview(
           id: uuid(value: 1, prefix: "ED"),
           author: ava,
-          score: 9.2,
+          score: 9.5,
+          performanceScore: 9.0,
           note: "The room went completely still for the quiet songs.",
           photoCount: 6,
           videoCount: 1,
+          commentCount: 4,
           audience: .community,
           publishedAt: past.addingTimeInterval(10 * 3_600)
         ),
         EventDiaryPreview(
           id: uuid(value: 2, prefix: "ED"),
           author: morgan,
-          score: 8.8,
+          score: 9.0,
+          performanceScore: 9.5,
           note: "A perfect closer and an even better crowd.",
           photoCount: 3,
           videoCount: 0,
+          commentCount: 2,
           audience: .friends,
           publishedAt: past.addingTimeInterval(12 * 3_600)
         )
@@ -585,6 +641,7 @@
         publicGoingCount: 0,
         publicWentCount: 0,
         diaryCount: 0,
+        averageDiaryScore: nil,
         duplicateCandidateEventID: duplicateCandidateEventID
       )
     }
