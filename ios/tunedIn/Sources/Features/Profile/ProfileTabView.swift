@@ -660,6 +660,7 @@ struct ProfileTabView: View {
   @State private var friendCount = 0
   @State private var communityHistory = CommunityProfileHistory.empty
   @State private var archiveModel: ConcertArchiveModel
+  @State private var isShowingLegacyArchive = false
 
   init(
     session: AppSession,
@@ -699,17 +700,29 @@ struct ProfileTabView: View {
                 history: communityHistory,
                 onOpenEvent: onOpenCommunityEvent
               )
+              LegacyConcertArchiveDisclosure(
+                profileID: profile.id,
+                viewerID: profile.id,
+                viewerUsername: profile.username ?? "",
+                isOwner: true,
+                concertRepository: concertRepository,
+                socialRepository: socialRepository,
+                model: archiveModel,
+                refreshToken: archiveRefreshToken,
+                isExpanded: $isShowingLegacyArchive
+              )
+            } else {
+              ConcertArchiveView(
+                profileID: profile.id,
+                viewerID: profile.id,
+                viewerUsername: profile.username ?? "",
+                isOwner: true,
+                concertRepository: concertRepository,
+                socialRepository: socialRepository,
+                model: archiveModel,
+                refreshToken: archiveRefreshToken
+              )
             }
-            ConcertArchiveView(
-              profileID: profile.id,
-              viewerID: profile.id,
-              viewerUsername: profile.username ?? "",
-              isOwner: true,
-              concertRepository: concertRepository,
-              socialRepository: socialRepository,
-              model: archiveModel,
-              refreshToken: archiveRefreshToken
-            )
           }
           .padding(.horizontal, 20)
           .padding(.top, 12)
@@ -777,7 +790,9 @@ struct ProfileTabView: View {
   private func refreshServerContent() async {
     await loadFriendCount(policy: .refresh)
     await loadCommunityHistory()
-    await archiveModel.reload(policy: .refresh)
+    if eventRepository?.capabilities.contains(.diaries) != true || isShowingLegacyArchive {
+      await archiveModel.reload(policy: .refresh)
+    }
     try? await session.refreshProfile()
   }
 
@@ -828,25 +843,13 @@ struct ProfileFriendsLink<Destination: View>: View {
       HStack(spacing: 10) {
         Image(systemName: "person.2")
           .font(.subheadline.weight(.semibold))
-          .foregroundStyle(TunedInDesign.primaryText)
-          .frame(width: 34, height: 34)
-          .background(TunedInDesign.accentTint, in: Circle())
+          .foregroundStyle(TunedInDesign.mutedText)
         Text(friendCountLabel)
           .font(.subheadline.weight(.semibold))
           .foregroundStyle(TunedInDesign.primaryText)
-        Spacer()
-        Image(systemName: "chevron.right")
-          .font(.caption.weight(.bold))
-          .foregroundStyle(TunedInDesign.mutedText)
       }
-      .padding(.horizontal, 12)
-      .padding(.vertical, 10)
-      .frame(maxWidth: .infinity)
-      .background(
-        TunedInDesign.cardBackground,
-        in: RoundedRectangle(cornerRadius: TunedInDesign.mediumCornerRadius, style: .continuous)
-      )
-      .contentShape(RoundedRectangle(cornerRadius: TunedInDesign.mediumCornerRadius, style: .continuous))
+      .padding(.vertical, 2)
+      .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     .accessibilityLabel("Open \(friendCountLabel)")
@@ -854,6 +857,45 @@ struct ProfileFriendsLink<Destination: View>: View {
 
   private var friendCountLabel: String {
     "\(count) \(count == 1 ? "friend" : "friends")"
+  }
+}
+
+struct LegacyConcertArchiveDisclosure: View {
+  let profileID: UUID
+  let viewerID: UUID
+  let viewerUsername: String
+  let isOwner: Bool
+  let concertRepository: any ConcertRepository
+  let socialRepository: any SocialRepository
+  let model: ConcertArchiveModel
+  let refreshToken: Int
+  @Binding var isExpanded: Bool
+
+  var body: some View {
+    DisclosureGroup(isExpanded: $isExpanded) {
+      ConcertArchiveView(
+        profileID: profileID,
+        viewerID: viewerID,
+        viewerUsername: viewerUsername,
+        isOwner: isOwner,
+        concertRepository: concertRepository,
+        socialRepository: socialRepository,
+        model: model,
+        refreshToken: refreshToken
+      )
+      .padding(.top, 16)
+    } label: {
+      VStack(alignment: .leading, spacing: 3) {
+        Label("Older concert logs", systemImage: "archivebox")
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(TunedInDesign.primaryText)
+        Text("Shared logs from the earlier tunedIn experience")
+          .font(.caption)
+          .foregroundStyle(TunedInDesign.mutedText)
+      }
+      .padding(.vertical, 8)
+    }
+    .tint(TunedInDesign.mutedText)
   }
 }
 

@@ -1,83 +1,101 @@
 import SwiftUI
 
 struct CommunityProfileHistorySection: View {
+  private enum Page: String, CaseIterable {
+    case diaries = "Diaries"
+    case going = "Going"
+    case went = "Went"
+  }
+
   let history: CommunityProfileHistory
   let onOpenEvent: (CommunityEventSummary, UUID?) -> Void
 
+  @State private var selectedPage = Page.diaries
+  @Namespace private var selectionNamespace
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
   var body: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      HStack(alignment: .firstTextBaseline) {
-        VStack(alignment: .leading, spacing: 3) {
-          Text("Concert life")
-            .font(.title3.weight(.bold))
+    VStack(alignment: .leading, spacing: 14) {
+      HStack(spacing: 0) {
+        ForEach(Page.allCases, id: \.self) { page in
+          Button { selectedPage = page } label: {
+            VStack(spacing: 4) {
+              Text("\(count(for: page))")
+                .font(.title3.weight(.bold))
+              Text(page.rawValue)
+                .font(.caption.weight(.semibold))
+            }
             .foregroundStyle(TunedInDesign.primaryText)
-          Text("Going makes the plan. Went is lightweight. Diaries hold the memory.")
-            .font(.caption)
-            .foregroundStyle(TunedInDesign.mutedText)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 9)
+            .overlay(alignment: .bottom) {
+              if selectedPage == page {
+                Capsule()
+                  .fill(TunedInDesign.accent)
+                  .frame(height: 3)
+                  .matchedGeometryEffect(id: "profile-history-page", in: selectionNamespace)
+              }
+            }
+          }
+          .buttonStyle(.plain)
+          .accessibilityAddTraits(selectedPage == page ? .isSelected : [])
         }
-        Spacer()
-        Text(
-          "\(history.going.count) going · \(history.went.count) went · "
-            + "\(history.diaries.count) diaries"
-        )
-          .font(.caption.weight(.semibold))
-          .foregroundStyle(TunedInDesign.mutedText)
       }
 
-      if history.going.isEmpty, history.went.isEmpty, history.diaries.isEmpty {
-        Text("Concert plans, shows you went to, and diaries you choose to write will live here.")
-          .font(.subheadline)
-          .foregroundStyle(TunedInDesign.mutedText)
-          .padding(16)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 18))
-      } else {
-        if !history.going.isEmpty {
-          profileSubsection("Going") {
-            ForEach(history.going.prefix(3)) { event in
-              Button { onOpenEvent(event, nil) } label: {
-                CommunityEventRow(event: event, showsSource: false)
-              }
-              .buttonStyle(TunedInPosterButtonStyle())
+      Divider().overlay(TunedInDesign.cardBorder)
+
+      switch selectedPage {
+      case .diaries:
+        if history.diaries.isEmpty {
+          emptyState("No diaries shared yet.")
+        } else {
+          ForEach(history.diaries) { entry in
+            Button { onOpenEvent(entry.event, entry.diary.id) } label: {
+              EventDiaryPreviewCard(diary: entry.diary)
             }
+            .buttonStyle(TunedInPosterButtonStyle())
           }
         }
-
-        if !history.went.isEmpty {
-          profileSubsection("Went") {
-            ForEach(history.went.prefix(3)) { event in
-              Button { onOpenEvent(event, nil) } label: {
-                CommunityEventRow(event: event, showsSource: false)
-              }
-              .buttonStyle(TunedInPosterButtonStyle())
+      case .going:
+        if history.going.isEmpty {
+          emptyState("No upcoming plans shared yet.")
+        } else {
+          ForEach(history.going) { event in
+            Button { onOpenEvent(event, nil) } label: {
+              CommunityEventRow(event: event, showsSource: false)
             }
+            .buttonStyle(TunedInPosterButtonStyle())
           }
         }
-
-        if !history.diaries.isEmpty {
-          profileSubsection("Diaries") {
-            ForEach(history.diaries.prefix(3)) { entry in
-              Button { onOpenEvent(entry.event, entry.diary.id) } label: {
-                EventDiaryPreviewCard(diary: entry.diary)
-              }
-              .buttonStyle(TunedInPosterButtonStyle())
+      case .went:
+        if history.went.isEmpty {
+          emptyState("No attended concerts shared yet.")
+        } else {
+          ForEach(history.went) { event in
+            Button { onOpenEvent(event, nil) } label: {
+              CommunityEventRow(event: event, showsSource: false)
             }
+            .buttonStyle(TunedInPosterButtonStyle())
           }
         }
       }
+    }
+    .animation(TunedInMotion.selection(reduceMotion: reduceMotion), value: selectedPage)
+  }
+
+  private func count(for page: Page) -> Int {
+    switch page {
+    case .diaries: history.diaries.count
+    case .going: history.going.count
+    case .went: history.went.count
     }
   }
 
-  private func profileSubsection<Content: View>(
-    _ title: String,
-    @ViewBuilder content: () -> Content
-  ) -> some View {
-    VStack(alignment: .leading, spacing: 10) {
-      Text(title)
-        .font(.headline)
-        .foregroundStyle(TunedInDesign.primaryText)
-      content()
-    }
+  private func emptyState(_ message: String) -> some View {
+    Text(message)
+      .font(.subheadline)
+      .foregroundStyle(TunedInDesign.mutedText)
+      .frame(maxWidth: .infinity, minHeight: 96, alignment: .center)
   }
 }
 
@@ -95,12 +113,10 @@ struct CommunityActivityFeedView: View {
       TunedInDesign.pageBackground.ignoresSafeArea()
 
       ScrollView {
-        VStack(alignment: .leading, spacing: 22) {
-          EventScreenHeader(
-            eyebrow: "Your circle",
-            title: "Feed",
-            subtitle: "Plans before the show. Memories after it."
-          )
+        VStack(alignment: .leading, spacing: 18) {
+          Text("Feed")
+            .font(.largeTitle.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
 
           if isLoading {
             ForEach(0 ..< 3, id: \.self) { _ in
@@ -116,7 +132,7 @@ struct CommunityActivityFeedView: View {
               message: "When friends make plans or share concert memories, they’ll appear here."
             )
           } else {
-            LazyVStack(spacing: 14) {
+            LazyVStack(spacing: 18) {
               ForEach(activities) { activity in
                 Button { onOpenActivity(activity) } label: {
                   CommunityActivityCard(activity: activity)
@@ -171,12 +187,10 @@ struct CommunityPlansView: View {
       TunedInDesign.pageBackground.ignoresSafeArea()
 
       ScrollView {
-        VStack(alignment: .leading, spacing: 22) {
-          EventScreenHeader(
-            eyebrow: "Your calendar",
-            title: "Plans",
-            subtitle: "Every show you’re going to—and the friends joining you."
-          )
+        VStack(alignment: .leading, spacing: 18) {
+          Text("Plans")
+            .font(.largeTitle.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
 
           if !invitations.isEmpty {
             VStack(alignment: .leading, spacing: 12) {

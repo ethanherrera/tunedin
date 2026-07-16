@@ -66,17 +66,15 @@ struct CommunityActivityCard: View {
   let activity: EventActivity
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 14) {
+    VStack(alignment: .leading, spacing: 12) {
       HStack(spacing: 10) {
         ProfileAvatarView(profile: activity.actor, size: 42)
-        VStack(alignment: .leading, spacing: 2) {
-          Text(activity.actor.displayName)
-            .font(.subheadline.weight(.bold))
-            .foregroundStyle(TunedInDesign.primaryText)
-          Text(activity.message)
-            .font(.subheadline)
-            .foregroundStyle(TunedInDesign.mutedText)
-        }
+        (Text(activity.actor.displayName + " ")
+          .fontWeight(.bold)
+          + Text(activity.message))
+          .font(.subheadline)
+          .foregroundStyle(TunedInDesign.primaryText)
+          .multilineTextAlignment(.leading)
         Spacer()
         Text(activity.occurredAt, style: .relative)
           .font(.caption2)
@@ -87,12 +85,8 @@ struct CommunityActivityCard: View {
       } else {
         CommunityEventRow(event: activity.event, showsSource: false)
       }
-    }
-    .padding(16)
-    .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: TunedInDesign.largeCornerRadius))
-    .overlay {
-      RoundedRectangle(cornerRadius: TunedInDesign.largeCornerRadius)
-        .strokeBorder(TunedInDesign.cardBorder.opacity(0.5))
+
+      Divider().overlay(TunedInDesign.cardBorder)
     }
   }
 }

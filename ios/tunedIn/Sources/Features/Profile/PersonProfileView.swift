@@ -20,6 +20,7 @@ struct PersonProfileView: View {
   @State private var isShowingRemoveConfirmation = false
   @State private var archiveModel: ConcertArchiveModel
   @State private var communityHistory = CommunityProfileHistory.empty
+  @State private var isShowingLegacyArchive = false
 
   init(
     profile: SocialProfile,
@@ -83,16 +84,30 @@ struct PersonProfileView: View {
 
           if isCurrentUser || profile.relationship.canViewFriendContent {
             friendCountLink
-            ConcertArchiveView(
-              profileID: profile.id,
-              viewerID: currentUserID,
-              viewerUsername: currentUsername,
-              isOwner: isCurrentUser,
-              concertRepository: concertRepository,
-              socialRepository: socialRepository,
-              model: archiveModel,
-              refreshToken: 0
-            )
+            if eventRepository?.capabilities.contains(.diaries) == true {
+              LegacyConcertArchiveDisclosure(
+                profileID: profile.id,
+                viewerID: currentUserID,
+                viewerUsername: currentUsername,
+                isOwner: isCurrentUser,
+                concertRepository: concertRepository,
+                socialRepository: socialRepository,
+                model: archiveModel,
+                refreshToken: 0,
+                isExpanded: $isShowingLegacyArchive
+              )
+            } else {
+              ConcertArchiveView(
+                profileID: profile.id,
+                viewerID: currentUserID,
+                viewerUsername: currentUsername,
+                isOwner: isCurrentUser,
+                concertRepository: concertRepository,
+                socialRepository: socialRepository,
+                model: archiveModel,
+                refreshToken: 0
+              )
+            }
           } else {
             privacyBoundary
           }
