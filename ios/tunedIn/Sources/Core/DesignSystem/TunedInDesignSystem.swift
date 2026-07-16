@@ -2,20 +2,20 @@ import SwiftUI
 import UIKit
 
 enum TunedInDesign {
-  static let accent = Color(red: 1.0, green: 0.31, blue: 0.15)
-  static let accentTint = adaptive(light: 0xFFE2D8, dark: 0x3A1C15)
-  static let accentWash = adaptive(light: 0xF8A188, dark: 0xFFB29D)
-  static let pageBackground = adaptive(light: 0xF7F5F0, dark: 0x10100F)
-  static let cardBackground = adaptive(light: 0xFCFBF8, dark: 0x1A1A18)
-  static let raisedSurface = adaptive(light: 0xECE9E2, dark: 0x252522)
-  static let primaryText = adaptive(light: 0x191815, dark: 0xF7F4EF)
-  static let mutedText = adaptive(light: 0x68645D, dark: 0xAAA59C)
-  static let selectedControlForeground = adaptive(light: 0x74270F, dark: 0xFFB29D)
-  static let cardBorder = adaptive(light: 0xDDD8CE, dark: 0x3A3935)
-  static let ink = Color(red: 0.08, green: 0.08, blue: 0.075)
-  static let actionForeground = adaptive(light: 0x24120C, dark: 0xFFF9F5)
-  static let ticketViolet = adaptive(light: 0xF35B3B, dark: 0xD94A30)
-  static let ticketRose = adaptive(light: 0xA82F49, dark: 0x74263A)
+  static let accent = adaptive(light: 0x5747E8, dark: 0xA89FFF)
+  static let accentTint = adaptive(light: 0xECE9FF, dark: 0x292544)
+  static let accentWash = adaptive(light: 0x7D70F2, dark: 0xC2BCFF)
+  static let pageBackground = adaptive(light: 0xFAFAF7, dark: 0x121211)
+  static let cardBackground = adaptive(light: 0xFFFFFF, dark: 0x1C1C1A)
+  static let raisedSurface = adaptive(light: 0xF0F0EC, dark: 0x282825)
+  static let primaryText = adaptive(light: 0x11110F, dark: 0xF8F8F4)
+  static let mutedText = adaptive(light: 0x696962, dark: 0xAAA9A1)
+  static let selectedControlForeground = adaptive(light: 0x3324B5, dark: 0xD6D1FF)
+  static let cardBorder = adaptive(light: 0xE3E3DE, dark: 0x3B3B37)
+  static let ink = Color(red: 0.05, green: 0.05, blue: 0.045)
+  static let actionForeground = adaptive(light: 0xFFFFFF, dark: 0x11110F)
+  static let ticketViolet = adaptive(light: 0x6252E8, dark: 0x776AEA)
+  static let ticketRose = adaptive(light: 0x3325A8, dark: 0x4438AD)
   static let smallCornerRadius: CGFloat = 12
   static let mediumCornerRadius: CGFloat = 18
   static let cornerRadius: CGFloat = 22

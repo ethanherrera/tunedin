@@ -8,6 +8,7 @@ struct CommunityProfileHistorySection: View {
   }
 
   let history: CommunityProfileHistory
+  let concertRepository: any ConcertRepository
   let onOpenEvent: (CommunityEventSummary, UUID?) -> Void
 
   @State private var selectedPage = Page.diaries
@@ -49,12 +50,22 @@ struct CommunityProfileHistorySection: View {
         if history.diaries.isEmpty {
           emptyState("No diaries shared yet.")
         } else {
-          ForEach(history.diaries) { entry in
-            Button { onOpenEvent(entry.event, entry.diary.id) } label: {
-              EventDiaryPreviewCard(diary: entry.diary)
+          LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3),
+            spacing: 2
+          ) {
+            ForEach(history.diaries) { entry in
+              Button { onOpenEvent(entry.event, entry.diary.id) } label: {
+                ProfileDiaryGridTile(
+                  entry: entry,
+                  concertRepository: concertRepository
+                )
+              }
+              .buttonStyle(TunedInPosterButtonStyle())
+              .accessibilityLabel("Open \(entry.event.title) diary")
             }
-            .buttonStyle(TunedInPosterButtonStyle())
           }
+          .padding(.horizontal, -20)
         }
       case .going:
         if history.going.isEmpty {
@@ -99,9 +110,50 @@ struct CommunityProfileHistorySection: View {
   }
 }
 
+private struct ProfileDiaryGridTile: View {
+  let entry: EventProfileDiary
+  let concertRepository: any ConcertRepository
+
+  var body: some View {
+    GeometryReader { proxy in
+      ZStack(alignment: .bottomLeading) {
+        DiaryMediaPreview(
+          diaryID: entry.diary.id,
+          reportedPhotoCount: entry.diary.photoCount,
+          concertRepository: concertRepository,
+          height: proxy.size.width,
+          maximumVisiblePhotos: 1
+        )
+
+        LinearGradient(
+          colors: [.clear, .black.opacity(0.76)],
+          startPoint: .center,
+          endPoint: .bottom
+        )
+
+        VStack(alignment: .leading, spacing: 2) {
+          if let score = entry.diary.score {
+            Text(score.formatted(.number.precision(.fractionLength(1))))
+              .font(.headline.weight(.bold))
+          }
+          Text(entry.event.title)
+            .font(.caption2.weight(.semibold))
+            .lineLimit(2)
+        }
+        .foregroundStyle(.white)
+        .padding(8)
+      }
+      .frame(width: proxy.size.width, height: proxy.size.width)
+      .clipped()
+    }
+    .aspectRatio(1, contentMode: .fit)
+  }
+}
+
 struct CommunityActivityFeedView: View {
   let viewerID: UUID
   let repository: any EventRepository
+  let concertRepository: any ConcertRepository
   let onOpenActivity: (EventActivity) -> Void
 
   @State private var activities: [EventActivity] = []
@@ -113,15 +165,17 @@ struct CommunityActivityFeedView: View {
       TunedInDesign.pageBackground.ignoresSafeArea()
 
       ScrollView {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 0) {
           Text("Feed")
             .font(.largeTitle.weight(.bold))
             .foregroundStyle(TunedInDesign.primaryText)
+            .padding(.horizontal, 18)
+            .padding(.bottom, 20)
 
           if isLoading {
             ForEach(0 ..< 3, id: \.self) { _ in
-              TunedInSkeletonBlock(cornerRadius: TunedInDesign.cornerRadius)
-                .frame(height: 150)
+              TunedInSkeletonBlock(cornerRadius: 0)
+                .frame(height: 280)
             }
           } else if let errorMessage {
             EventFailureView(message: errorMessage) { Task { await load() } }
@@ -132,17 +186,19 @@ struct CommunityActivityFeedView: View {
               message: "When friends make plans or share concert memories, they’ll appear here."
             )
           } else {
-            LazyVStack(spacing: 18) {
+            LazyVStack(spacing: 20) {
               ForEach(activities) { activity in
                 Button { onOpenActivity(activity) } label: {
-                  CommunityActivityCard(activity: activity)
+                  CommunityActivityCard(
+                    activity: activity,
+                    concertRepository: concertRepository
+                  )
                 }
                 .buttonStyle(TunedInPosterButtonStyle())
               }
             }
           }
         }
-        .padding(.horizontal, 20)
         .padding(.top, 18)
         .padding(.bottom, TunedInDesign.scrollContentBottomInset)
       }

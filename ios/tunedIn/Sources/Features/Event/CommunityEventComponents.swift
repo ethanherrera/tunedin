@@ -29,12 +29,7 @@ struct CommunityEventRow: View {
         .font(.caption.weight(.bold))
         .foregroundStyle(TunedInDesign.mutedText)
     }
-    .padding(14)
-    .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius))
-    .overlay {
-      RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius)
-        .strokeBorder(TunedInDesign.cardBorder.opacity(0.55))
-    }
+    .padding(.vertical, 12)
     .contentShape(Rectangle())
   }
 
@@ -64,72 +59,156 @@ struct CommunityEventRow: View {
 
 struct CommunityActivityCard: View {
   let activity: EventActivity
+  let concertRepository: any ConcertRepository
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
+    VStack(alignment: .leading, spacing: 0) {
       HStack(spacing: 10) {
         ProfileAvatarView(profile: activity.actor, size: 42)
-        (Text(activity.actor.displayName + " ")
-          .fontWeight(.bold)
-          + Text(activity.message))
-          .font(.subheadline)
-          .foregroundStyle(TunedInDesign.primaryText)
-          .multilineTextAlignment(.leading)
+        VStack(alignment: .leading, spacing: 2) {
+          Text(activity.actor.displayName)
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
+          Text(activity.message)
+            .font(.caption)
+            .foregroundStyle(TunedInDesign.mutedText)
+            .lineLimit(2)
+        }
         Spacer()
         Text(activity.occurredAt, style: .relative)
           .font(.caption2)
           .foregroundStyle(TunedInDesign.mutedText)
       }
+      .padding(.horizontal, 18)
+      .padding(.bottom, 12)
+
       if let diary = activity.diary {
-        EventDiaryPreviewCard(diary: diary)
+        if diary.photoCount > 0 {
+          DiaryMediaPreview(
+            diaryID: diary.id,
+            reportedPhotoCount: diary.photoCount,
+            concertRepository: concertRepository,
+            height: 280
+          )
+        }
+
+        VStack(alignment: .leading, spacing: 9) {
+          HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+              Text(activity.event.title)
+                .font(.headline)
+                .foregroundStyle(TunedInDesign.primaryText)
+              Text("\(activity.event.venueName) · \(activity.event.eventDate, style: .date)")
+                .font(.caption)
+                .foregroundStyle(TunedInDesign.mutedText)
+            }
+            Spacer()
+            if let score = diary.score {
+              Text(score.formatted(.number.precision(.fractionLength(1))))
+                .font(.title2.weight(.bold))
+                .foregroundStyle(TunedInDesign.accent)
+            }
+          }
+
+          if let note = diary.note {
+            Text(note)
+              .font(.subheadline)
+              .foregroundStyle(TunedInDesign.primaryText)
+              .lineLimit(3)
+          }
+
+          DiaryEngagementLine(diary: diary)
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, diary.photoCount > 0 ? 12 : 2)
       } else {
-        CommunityEventRow(event: activity.event, showsSource: false)
+        HStack(spacing: 14) {
+          EventDateTile(date: activity.event.eventDate)
+          VStack(alignment: .leading, spacing: 4) {
+            Text(activity.event.title)
+              .font(.headline)
+              .foregroundStyle(TunedInDesign.primaryText)
+            Text("\(activity.event.venueName) · \(activity.event.areaName)")
+              .font(.subheadline)
+              .foregroundStyle(TunedInDesign.mutedText)
+            if !activity.event.friendPreviews.isEmpty {
+              HStack(spacing: 8) {
+                EventAvatarStack(profiles: activity.event.friendPreviews.map(\.profile))
+                Text("\(activity.event.friendPreviews.count) in your circle")
+                  .font(.caption.weight(.semibold))
+                  .foregroundStyle(TunedInDesign.mutedText)
+              }
+            }
+          }
+          Spacer(minLength: 0)
+          Image(systemName: "chevron.right")
+            .font(.caption.weight(.bold))
+            .foregroundStyle(TunedInDesign.mutedText)
+        }
+        .padding(.horizontal, 18)
       }
 
-      Divider().overlay(TunedInDesign.cardBorder)
+      Divider()
+        .overlay(TunedInDesign.cardBorder)
+        .padding(.top, 18)
     }
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 }
 
 struct EventDiaryPreviewCard: View {
   let diary: EventDiaryPreview
+  let showsAuthor: Bool
+
+  init(diary: EventDiaryPreview, showsAuthor: Bool = true) {
+    self.diary = diary
+    self.showsAuthor = showsAuthor
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      HStack(spacing: 10) {
-        ProfileAvatarView(profile: diary.author, size: 42)
-        VStack(alignment: .leading, spacing: 2) {
-          Text(diary.author.displayName)
-            .font(.subheadline.weight(.bold))
-            .foregroundStyle(TunedInDesign.primaryText)
-          Text("@\(diary.author.username)")
-            .font(.caption)
-            .foregroundStyle(TunedInDesign.mutedText)
+      if showsAuthor {
+        HStack(spacing: 10) {
+          ProfileAvatarView(profile: diary.author, size: 42)
+          VStack(alignment: .leading, spacing: 2) {
+            Text(diary.author.displayName)
+              .font(.subheadline.weight(.bold))
+              .foregroundStyle(TunedInDesign.primaryText)
+            Text("@\(diary.author.username)")
+              .font(.caption)
+              .foregroundStyle(TunedInDesign.mutedText)
+          }
+          Spacer()
+          score
         }
-        Spacer()
-        if let score = diary.score {
-          Text(score.formatted(.number.precision(.fractionLength(1))))
-            .font(.title3.weight(.bold))
-            .foregroundStyle(TunedInDesign.accent)
+      } else if diary.score != nil {
+        HStack {
+          Spacer()
+          score
         }
       }
       if let note = diary.note {
         Text(note)
           .font(.body)
           .foregroundStyle(TunedInDesign.primaryText)
-      }
-      if let performanceScore = diary.performanceScore {
-        Label(
-          "Performance \(performanceScore.formatted(.number.precision(.fractionLength(1))))",
-          systemImage: "music.mic"
-        )
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(TunedInDesign.mutedText)
+          .lineLimit(4)
       }
       HStack(spacing: 14) {
-        Label("\(diary.photoCount)", systemImage: "photo")
-        Label("\(diary.videoCount)", systemImage: "video")
-        Label("\(diary.commentCount)", systemImage: "bubble.left")
+        if let performanceScore = diary.performanceScore {
+          Label(
+            performanceScore.formatted(.number.precision(.fractionLength(1))),
+            systemImage: "music.mic"
+          )
+        }
+        if diary.photoCount > 0 {
+          Label("\(diary.photoCount)", systemImage: "photo")
+        }
+        if diary.videoCount > 0 {
+          Label("\(diary.videoCount)", systemImage: "video")
+        }
+        if diary.commentCount > 0 {
+          Label("\(diary.commentCount)", systemImage: "bubble.left")
+        }
         Label(diary.audience.title, systemImage: diary.audience.icon)
       }
       .font(.caption.weight(.semibold))
@@ -140,6 +219,136 @@ struct EventDiaryPreviewCard: View {
     .overlay {
       RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius)
         .strokeBorder(TunedInDesign.cardBorder.opacity(0.55))
+    }
+  }
+
+  @ViewBuilder
+  private var score: some View {
+    if let score = diary.score {
+      Text(score.formatted(.number.precision(.fractionLength(1))))
+        .font(.title3.weight(.bold))
+        .foregroundStyle(TunedInDesign.accent)
+    }
+  }
+}
+
+struct DiaryEngagementLine: View {
+  let diary: EventDiaryPreview
+
+  var body: some View {
+    HStack(spacing: 14) {
+      if let performanceScore = diary.performanceScore {
+        Label(
+          performanceScore.formatted(.number.precision(.fractionLength(1))),
+          systemImage: "music.mic"
+        )
+      }
+      if diary.photoCount > 0 {
+        Label("\(diary.photoCount)", systemImage: "photo")
+      }
+      if diary.videoCount > 0 {
+        Label("\(diary.videoCount)", systemImage: "video")
+      }
+      if diary.commentCount > 0 {
+        Label("\(diary.commentCount)", systemImage: "bubble.left")
+      }
+      Spacer(minLength: 0)
+      Image(systemName: diary.audience.icon)
+    }
+    .font(.caption.weight(.semibold))
+    .foregroundStyle(TunedInDesign.mutedText)
+  }
+}
+
+struct DiaryMediaPreview: View {
+  let diaryID: UUID
+  let reportedPhotoCount: Int
+  let concertRepository: any ConcertRepository
+  let height: CGFloat
+  var maximumVisiblePhotos = 3
+
+  @State private var photos: [ConcertAlbumPhoto] = []
+  @State private var didFail = false
+
+  var body: some View {
+    Group {
+      if photos.isEmpty {
+        TunedInImagePlaceholder(failed: didFail)
+      } else {
+        GeometryReader { proxy in
+          let count = CGFloat(photos.count)
+          let spacing = CGFloat(2)
+          let width = (proxy.size.width - (spacing * max(0, count - 1))) / count
+
+          HStack(spacing: spacing) {
+            ForEach(photos) { photo in
+              DiaryPhotoImage(photo: photo, concertRepository: concertRepository)
+                .frame(width: width, height: proxy.size.height)
+            }
+          }
+        }
+      }
+    }
+    .frame(maxWidth: .infinity)
+    .frame(height: height)
+    .clipped()
+    .task(id: "\(diaryID)-\(reportedPhotoCount)-\(maximumVisiblePhotos)") {
+      guard reportedPhotoCount > 0 else { return }
+      do {
+        photos = Array(try await concertRepository.albumPhotos(
+          concertID: diaryID,
+          cursor: nil,
+          policy: .refresh
+        ).prefix(maximumVisiblePhotos))
+        didFail = photos.isEmpty
+      } catch {
+        didFail = true
+      }
+    }
+  }
+}
+
+struct DiaryPhotoImage: View {
+  let photo: ConcertAlbumPhoto
+  let concertRepository: any ConcertRepository
+
+  @State private var url: URL?
+  @State private var failed = false
+
+  var body: some View {
+    Group {
+      if let url {
+        CachedRemoteImage(
+          url: url,
+          resource: .albumPhoto(photoID: photo.id, version: photo.version)
+        ) { phase in
+          switch phase {
+          case let .success(image):
+            image.resizable().scaledToFill()
+          case .failure:
+            TunedInImagePlaceholder(failed: true)
+          case .empty:
+            TunedInImagePlaceholder()
+          @unknown default:
+            TunedInImagePlaceholder()
+          }
+        }
+      } else {
+        TunedInImagePlaceholder(failed: failed)
+      }
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .clipped()
+    .task(id: "\(photo.id)-\(photo.version)") {
+      do {
+        url = try await concertRepository.albumPhotoURL(
+          photoID: photo.id,
+          objectPath: photo.objectPath,
+          version: photo.version
+        )
+      } catch {
+        failed = true
+      }
     }
   }
 }
@@ -207,8 +416,7 @@ struct EventDateTile: View {
         .font(.caption2.weight(.semibold))
         .foregroundStyle(TunedInDesign.mutedText)
     }
-    .frame(width: 58, height: 68)
-    .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 16))
+    .frame(width: 52, height: 62)
   }
 }
 

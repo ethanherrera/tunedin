@@ -78,6 +78,7 @@ struct PersonProfileView: View {
              let onOpenCommunityEvent {
             CommunityProfileHistorySection(
               history: communityHistory,
+              concertRepository: concertRepository,
               onOpenEvent: onOpenCommunityEvent
             )
           }

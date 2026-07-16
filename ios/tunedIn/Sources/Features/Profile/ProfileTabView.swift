@@ -261,6 +261,7 @@ struct MainTabView: View {
           CommunityActivityFeedView(
             viewerID: profile.id,
             repository: eventRepository,
+            concertRepository: concertRepository,
             onOpenActivity: { activity in
               presentedCommunityEvent = CommunityEventRoute(
                 event: activity.event,
@@ -698,6 +699,7 @@ struct ProfileTabView: View {
             if eventRepository?.capabilities.contains(.diaries) == true {
               CommunityProfileHistorySection(
                 history: communityHistory,
+                concertRepository: concertRepository,
                 onOpenEvent: onOpenCommunityEvent
               )
               LegacyConcertArchiveDisclosure(
