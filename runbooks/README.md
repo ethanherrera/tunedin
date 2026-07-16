@@ -8,3 +8,4 @@
 - [Simulator Cache Reset](./cache-reset.md) — clear only the app-owned cache for cold-cache diagnosis in a booted Simulator.
 - [Profile Images](./profile-images.md) — provision, verify, and recover private profile-photo storage.
 - [PostHog Staging Observability](./posthog.md) — validate and operate the explicit Staging telemetry contract, dashboard, and dSYMs.
+- [Community Event Integrity Operations](./community-event-integrity.md) — review and audit non-destructive event merge, tombstone, diary detach, and relink recovery.

@@ -1,6 +1,6 @@
 # Community Events Implementation Plan
 
-Status: in progress; Phases 1–4 implemented for the disposable Local environment
+Status: in progress; Phases 1–5 implemented for the disposable Local environment
 Decision date: 2026-07-16
 Decision owner: Ethan
 Depends on: `docs/community-events-product-design.md` and
@@ -52,6 +52,18 @@ Depends on: `docs/community-events-product-design.md` and
   seed, authenticated REST journey, generated types, 493 pgTAP tests, Local build,
   and 179 iOS tests pass. Interactive iPhone 13 visual inspection remains pending a
   manually unlocked Mac; hosted Development remains unchanged.
+- Phase 5 is implemented in
+  `20260717030000_catalog_event_integrity_operations.sql`: protected operator
+  review, optimistic event versions, non-destructive canonical merges, redirect
+  rows, explicit attendance supersession, same-owner diary conflict refusal,
+  tombstone-safe profile history, exceptional force-private diary detach, audited
+  relink recovery, and immutable private operation snapshots. Merge and tombstone
+  corrections also append the established event revision history. The operator
+  claim, two-person review, exact REST commands, verification, forward recovery,
+  and claim removal are documented in
+  `runbooks/community-event-integrity.md`. The new 48-check authorization and
+  lifecycle matrix and the full 541-check database suite pass locally; hosted
+  Development remains unchanged.
 
 ## Architecture decision
 
@@ -441,12 +453,23 @@ treat a cached URL as proof of current diary access.
 
 ### Phase 5 — integrity and resilience operations
 
-- Implement reviewed event merge, conflict handling, redirect tombstones, and event
-  correction history.
-- Add an admin-only legal/safety detach operation with immutable audit records.
-- Add a runbook when these high-impact operations are first implemented.
-- Exercise diary and attendance durability through merge, cancellation, tombstone,
-  and exceptional detach paths.
+Implemented for disposable Local Supabase. No operator has been provisioned in a
+hosted environment.
+
+- Reviewed event merge includes conflict counts and optimistic source/target
+  versions. Non-conflicting rows keep stable IDs; duplicate attendance is retained
+  with an explicit canonical supersession link; a same-owner diary conflict blocks
+  the transaction instead of combining personal content.
+- A merged source remains a redirect row. Tombstones remove shared discovery and
+  detail while authorized profile history continues from durable snapshots.
+- Protected legal/safety/privacy detach forces a diary private without deleting its
+  review, media, comments, or Went row. Audited recovery can relink that same diary
+  and attendance to a recreated active event.
+- Merge and tombstone append event correction revisions; every high-impact action
+  appends a bounded immutable private integrity audit.
+- The operator runbook requires a protected Auth app-metadata claim, two-person
+  review, fixed reason codes, fresh versions, verification, claim removal, and
+  forward-only recovery.
 
 Exit: no supported event lifecycle operation can cascade-delete a user's attendance
 or diary, and operators have a tested recovery procedure.
@@ -486,7 +509,8 @@ For each schema phase:
 
 - update `supabase/seeds/development.sql` with real end-to-end journeys;
 - run `make backend-verify` and `make local-seed-verify`;
-- regenerate and commit Swift DTOs with `make generate`;
+- regenerate and commit Swift DTOs with `make supabase-types`, then regenerate the
+  Xcode project with `make generate`;
 - run `make lint` and `make test`;
 - exercise affected UI in the iPhone 13 Simulator and visually inspect it;
 - add or update a runbook only when the high-impact operation actually exists.

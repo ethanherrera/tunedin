@@ -347,6 +347,8 @@ public enum PublicSchema {
     public let id: UUID
     public let profileId: UUID
     public let status: CatalogEventAttendanceStatus
+    public let supersededAt: String?
+    public let supersededByAttendanceId: UUID?
     public let updatedAt: String
     public enum CodingKeys: String, CodingKey {
       case audience = "audience"
@@ -355,6 +357,8 @@ public enum PublicSchema {
       case id = "id"
       case profileId = "profile_id"
       case status = "status"
+      case supersededAt = "superseded_at"
+      case supersededByAttendanceId = "superseded_by_attendance_id"
       case updatedAt = "updated_at"
     }
   }
@@ -365,6 +369,8 @@ public enum PublicSchema {
     public let id: UUID?
     public let profileId: UUID
     public let status: CatalogEventAttendanceStatus
+    public let supersededAt: String?
+    public let supersededByAttendanceId: UUID?
     public let updatedAt: String?
     public enum CodingKeys: String, CodingKey {
       case audience = "audience"
@@ -373,6 +379,8 @@ public enum PublicSchema {
       case id = "id"
       case profileId = "profile_id"
       case status = "status"
+      case supersededAt = "superseded_at"
+      case supersededByAttendanceId = "superseded_by_attendance_id"
       case updatedAt = "updated_at"
     }
   }
@@ -383,6 +391,8 @@ public enum PublicSchema {
     public let id: UUID?
     public let profileId: UUID?
     public let status: CatalogEventAttendanceStatus?
+    public let supersededAt: String?
+    public let supersededByAttendanceId: UUID?
     public let updatedAt: String?
     public enum CodingKeys: String, CodingKey {
       case audience = "audience"
@@ -391,6 +401,8 @@ public enum PublicSchema {
       case id = "id"
       case profileId = "profile_id"
       case status = "status"
+      case supersededAt = "superseded_at"
+      case supersededByAttendanceId = "superseded_by_attendance_id"
       case updatedAt = "updated_at"
     }
   }
