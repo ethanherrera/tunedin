@@ -571,7 +571,7 @@ struct EventFailureView: View {
 
   var body: some View {
     VStack(spacing: 12) {
-      Label("Couldn’t load events", systemImage: "exclamationmark.triangle")
+      Label("Couldn’t load concerts", systemImage: "exclamationmark.triangle")
         .font(.headline)
         .foregroundStyle(TunedInDesign.primaryText)
       Text(message)

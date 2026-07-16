@@ -122,7 +122,7 @@
           event: memory,
           diary: events[DevelopmentEventFixture.mitskiMemoryID]?.diaryPreviews.first,
           occurredAt: now.addingTimeInterval(-86_400),
-          message: "shared a memory from " + memory.headlinerName
+          message: "posted about " + memory.headlinerName
         )
       ]
     }
@@ -268,10 +268,10 @@
       guard summary.phase(at: now) == .memories
         || (summary.lifecycle == .cancelled && now >= summary.memoryUnlockAt)
       else {
-        throw CommunityEventError.invalidEvent("Diaries unlock after the concert.")
+        throw CommunityEventError.invalidEvent("Posts unlock after the concert.")
       }
       guard summary.currentUserAttendance == .went else {
-        throw CommunityEventError.invalidEvent("Mark that you went before creating a diary.")
+        throw CommunityEventError.invalidEvent("Mark that you went before creating a post.")
       }
       if let score = input.score, !(0 ... 10).contains(score) {
         throw CommunityEventError.invalidEvent("Scores must be between 0 and 10.")
@@ -281,10 +281,10 @@
       }
       let note = input.note.flatMap(CatalogInput.optionalNormalizedText)
       if let note, note.count > 4_000 {
-        throw CommunityEventError.invalidEvent("Diary notes can be up to 4,000 characters.")
+        throw CommunityEventError.invalidEvent("Post reviews can be up to 4,000 characters.")
       }
       guard input.score != nil || input.performanceScore != nil || note != nil || input.hasReadyPhoto else {
-        throw CommunityEventError.invalidEvent("Add a score, note, or photo before sharing your diary.")
+        throw CommunityEventError.invalidEvent("Add a score, review, or photo before sharing your post.")
       }
       let existing = stored.diaryPreviews.first(where: { $0.author.id == authorID })
       stored.diaryPreviews.removeAll(where: { $0.author.id == authorID })

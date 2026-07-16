@@ -288,15 +288,15 @@ enum CommunityEventError: LocalizedError, Equatable {
   var errorDescription: String? {
     switch self {
     case .eventUnavailable:
-      "This event is no longer available."
+      "This concert is no longer available."
     case let .invalidEvent(message):
       message
     case .duplicateEvent:
-      "A matching event already exists. Open it instead of creating another."
+      "A matching concert already exists. Open it instead of creating another."
     case .invitationUnavailable:
       "That invitation is no longer available."
     case let .featureUnavailable(feature):
-      "\(feature) will be available in a later community events phase."
+      "\(feature) isn’t available yet."
     }
   }
 }

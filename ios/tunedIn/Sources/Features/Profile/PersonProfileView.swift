@@ -317,7 +317,7 @@ struct PersonProfileView: View {
   private var relationshipDescription: String {
     switch profile.relationship {
     case .none:
-      "Add them when you’re ready. Nothing from either diary is shared yet."
+      "Add them when you’re ready. Friends-only posts stay private until then."
     case .outgoing:
       "You can take it back any time before they respond."
     case .incoming:

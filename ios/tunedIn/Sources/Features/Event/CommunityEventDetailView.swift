@@ -418,7 +418,7 @@ private struct CommunityEventHero: View {
       Label("Cancelled", systemImage: "xmark.circle.fill")
         .foregroundStyle(TunedInDesign.accent)
     case .memories:
-      Label("Memories", systemImage: "sparkles")
+      Label("Posts", systemImage: "square.and.pencil")
         .foregroundStyle(TunedInDesign.accent)
     }
   }
@@ -460,7 +460,7 @@ private struct EventOverviewPage: View {
             .foregroundStyle(TunedInDesign.primaryText)
 
           if detail.summary.phase() == .memories {
-            Text("This thread is read-only now. Post-show stories live in each person’s diary.")
+            Text("This discussion is read-only now. Concert posts appear below.")
               .font(.caption)
               .foregroundStyle(TunedInDesign.mutedText)
           }
@@ -559,7 +559,7 @@ private struct EventOverviewPage: View {
         }
         .padding(.top, 12)
       } label: {
-        Label("Event details", systemImage: "info.circle")
+        Label("Concert details", systemImage: "info.circle")
           .font(.subheadline.weight(.semibold))
           .foregroundStyle(TunedInDesign.primaryText)
       }
@@ -679,10 +679,10 @@ private struct EventMemoriesPage: View {
           Image(systemName: "lock.fill")
             .foregroundStyle(TunedInDesign.mutedText)
           VStack(alignment: .leading, spacing: 3) {
-            Text("Memories unlock after the show")
+            Text("Posts unlock after the concert")
               .font(.subheadline.weight(.semibold))
               .foregroundStyle(TunedInDesign.primaryText)
-            Text("Ratings, photos, videos, and reviews belong to the post-show moment.")
+            Text("Add ratings, photos, videos, and a review after the concert.")
               .font(.caption)
               .foregroundStyle(TunedInDesign.mutedText)
           }
@@ -691,14 +691,14 @@ private struct EventMemoriesPage: View {
       } else {
         HStack(alignment: .firstTextBaseline) {
           VStack(alignment: .leading, spacing: 4) {
-            Text("Memories")
+            Text("Posts")
               .font(.title2.weight(.bold))
               .foregroundStyle(TunedInDesign.primaryText)
             if let score = detail.summary.averageDiaryScore {
               Text(
                 "\(score.formatted(.number.precision(.fractionLength(1)))) average"
                   + " from \(detail.summary.diaryCount) visible "
-                  + (detail.summary.diaryCount == 1 ? "diary" : "diaries")
+                  + (detail.summary.diaryCount == 1 ? "post" : "posts")
               )
               .font(.caption.weight(.semibold))
               .foregroundStyle(TunedInDesign.mutedText)
@@ -706,7 +706,7 @@ private struct EventMemoriesPage: View {
           }
           Spacer()
           if detail.summary.canCreateDiary() {
-            Button(myDiary == nil ? "Add yours" : "Edit yours") {
+            Button(myDiary == nil ? "Create post" : "Edit post") {
               isPresentingDiary = true
             }
             .font(.subheadline.weight(.bold))
@@ -717,20 +717,20 @@ private struct EventMemoriesPage: View {
         }
 
         if detail.diaryPreviews.isEmpty {
-          Text("No shared diaries yet. Going or Went still exists without writing one.")
+          Text("No posts yet. Going or Went still works without posting.")
             .font(.subheadline)
             .foregroundStyle(TunedInDesign.mutedText)
             .padding(.vertical, 12)
         } else {
           if let myDiary {
-            Text("Your memory")
+            Text("Your post")
               .font(.subheadline.weight(.bold))
               .foregroundStyle(TunedInDesign.mutedText)
             memoryButton(myDiary)
           }
 
           if !otherDiaries.isEmpty {
-            Text("What people shared")
+            Text("From friends and the community")
               .font(.subheadline.weight(.bold))
               .foregroundStyle(TunedInDesign.mutedText)
               .padding(.top, myDiary == nil ? 0 : 4)
@@ -1133,16 +1133,16 @@ private struct EventDiaryActionBar: View {
     TunedInGlassTraversalLayout {
       TunedInGlassIconButton(
         systemImage: "chevron.backward",
-        accessibilityLabel: "Cancel diary",
+        accessibilityLabel: "Close post editor",
         action: onDismiss
       )
       .disabled(isSaving)
     } center: {
       TunedInGlassTextButton(
-        isSaving ? "Saving" : "Save diary",
+        isSaving ? "Saving" : "Save post",
         systemImage: isSaving ? "ellipsis" : "checkmark",
         accessibilityHint: canSave
-          ? "Saves this diary"
+          ? "Saves this post"
           : "Add a score, review, or photo before saving",
         action: onSave
       )
@@ -1166,14 +1166,13 @@ private struct EventDiaryComposerHeader: View {
 
     VStack(alignment: .leading, spacing: 20) {
       VStack(alignment: .leading, spacing: 5) {
-        Text(event.title.uppercased())
-          .font(.caption.weight(.bold))
-          .tracking(0.6)
-          .foregroundStyle(TunedInDesign.accent)
-        Text(existing == nil ? "Add your memory" : "Edit your memory")
+        Text(existing == nil ? "Create post" : "Edit post")
           .font(.largeTitle.weight(.bold))
           .foregroundStyle(TunedInDesign.primaryText)
-        Text("Your photos, rating, and review stay in your personal diary.")
+        Label("Tagged concert · \(event.title)", systemImage: "music.note")
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(TunedInDesign.accent)
+        Text("\(event.venueName) · Add photos, ratings, and your review. You control who can see it.")
           .font(.subheadline)
           .foregroundStyle(TunedInDesign.mutedText)
       }
@@ -1306,7 +1305,7 @@ private struct EventReportView: View {
         Section {
           Text(
             "A report starts a review. It never removes anyone’s Going, Went, invitations, "
-              + "photos, or diary; those stay attached or can be reattached safely."
+              + "photos, or posts; those stay attached or can be reattached safely."
           )
           .font(.caption)
           .foregroundStyle(TunedInDesign.mutedText)

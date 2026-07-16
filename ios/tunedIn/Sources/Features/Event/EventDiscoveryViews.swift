@@ -23,7 +23,7 @@ struct EventDiscoveryView: View {
           EventScreenHeader(
             eyebrow: "Find your next show",
             title: "Concerts",
-            subtitle: "Search shared events first. Add one only when it isn’t here."
+            subtitle: "Search concerts first. Add one only when it isn’t here."
           )
 
           TunedInGlassSearchField(text: $query, prompt: "Artist, venue, or city")
@@ -48,7 +48,7 @@ struct EventDiscoveryView: View {
           } else if results.isEmpty {
             EventEmptyView(
               systemImage: "music.note.list",
-              title: query.isEmpty ? "No shared events yet" : "No matching concert",
+              title: query.isEmpty ? "No concerts yet" : "No matching concert",
               message: "If the concert isn’t here, add it for the community using the music catalog."
             )
           } else {
@@ -59,7 +59,7 @@ struct EventDiscoveryView: View {
           }
 
           Button { isPresentingCreation = true } label: {
-            Label("Add a community event", systemImage: "plus.circle.fill")
+            Label("Add a concert", systemImage: "plus.circle.fill")
               .font(.headline)
               .foregroundStyle(TunedInDesign.actionForeground)
               .frame(maxWidth: .infinity)
@@ -240,14 +240,14 @@ struct CommunityEventCreationView: View {
             .pickerStyle(.segmented)
 
             Text(listing == .listed
-              ? "Anyone can discover this event."
-              : "Only people with access or an invitation can open it.")
+              ? "Anyone can discover this concert."
+              : "Only people with access or an invitation can open this concert.")
               .font(.caption)
               .foregroundStyle(TunedInDesign.mutedText)
           }
 
           if isCheckingDuplicates {
-            Label("Checking nearby community events…", systemImage: "magnifyingglass")
+            Label("Checking nearby concerts…", systemImage: "magnifyingglass")
               .font(.caption.weight(.semibold))
               .foregroundStyle(TunedInDesign.mutedText)
           } else if !duplicateCandidates.isEmpty {
@@ -255,7 +255,7 @@ struct CommunityEventCreationView: View {
               Text("Possible matches")
                 .font(.headline)
                 .foregroundStyle(TunedInDesign.primaryText)
-              Text("Open one if it is the same concert. You can still create a separate event when it is not.")
+              Text("Open one if it is the same concert. You can still create a separate concert when it is not.")
                 .font(.caption)
                 .foregroundStyle(TunedInDesign.mutedText)
               ForEach(duplicateCandidates) { candidate in
@@ -279,7 +279,7 @@ struct CommunityEventCreationView: View {
               Text(
                 isSaving
                   ? "Creating…"
-                  : (duplicateCandidates.isEmpty ? "Create shared event" : "Create separate event")
+                  : (duplicateCandidates.isEmpty ? "Create concert" : "Create separate concert")
               )
             }
             .font(.headline)

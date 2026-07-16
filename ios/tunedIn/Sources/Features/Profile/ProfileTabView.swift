@@ -1099,7 +1099,7 @@ private struct AppearancePicker: View {
         .font(.headline)
         .foregroundStyle(TunedInDesign.primaryText)
 
-      Text("Choose the way you want your diary to feel.")
+      Text("Choose how tunedIn looks and feels.")
         .font(.subheadline)
         .foregroundStyle(TunedInDesign.mutedText)
 

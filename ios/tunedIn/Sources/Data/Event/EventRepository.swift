@@ -95,7 +95,7 @@ extension EventRepository {
   }
 
   func activityFeed(viewerID _: UUID) async throws -> [EventActivity] {
-    throw CommunityEventError.featureUnavailable("Community event activity")
+    throw CommunityEventError.featureUnavailable("Concert activity")
   }
 
   func setAttendance(
@@ -122,7 +122,7 @@ extension EventRepository {
     body _: String,
     audience _: EventAudience
   ) async throws -> EventPost {
-    throw CommunityEventError.featureUnavailable("Event conversation")
+    throw CommunityEventError.featureUnavailable("Concert discussion")
   }
 
   func inviteCandidates(eventID _: UUID, viewerID _: UUID) async throws -> [EventInviteCandidate] {
@@ -151,7 +151,7 @@ extension EventRepository {
     authorID _: UUID,
     input _: EventDiaryInput
   ) async throws -> CommunityEventDetail {
-    throw CommunityEventError.featureUnavailable("Concert diaries")
+    throw CommunityEventError.featureUnavailable("Concert posts")
   }
 
   func preparePhotoDiary(
@@ -159,7 +159,7 @@ extension EventRepository {
     authorID _: UUID,
     audience _: EventAudience
   ) async throws -> UUID {
-    throw CommunityEventError.featureUnavailable("Diary photos")
+    throw CommunityEventError.featureUnavailable("Post photos")
   }
 
   func profileHistory(
@@ -175,6 +175,6 @@ extension EventRepository {
     reason _: EventReportReason,
     note _: String?
   ) async throws {
-    throw CommunityEventError.featureUnavailable("Event reports")
+    throw CommunityEventError.featureUnavailable("Concert reports")
   }
 }

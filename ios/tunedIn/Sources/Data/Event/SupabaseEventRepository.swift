@@ -1086,13 +1086,13 @@ private extension EventActivityKind {
     case .invitationAccepted:
       "accepted an invite to \(eventName)"
     case .diaryPublished:
-      "shared a memory from \(eventName)"
-    case .diaryMediaAdded:
-      "added photos from \(eventName)"
-    case .eventPosted:
       "posted about \(eventName)"
+    case .diaryMediaAdded:
+      "added photos to a post about \(eventName)"
+    case .eventPosted:
+      "commented on \(eventName)"
     case .eventReplied:
-      "replied about \(eventName)"
+      "replied on \(eventName)"
     }
   }
 }

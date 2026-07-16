@@ -45,7 +45,7 @@ struct EventDiaryDetailView: View {
     }
     .safeAreaInset(edge: .bottom, spacing: 0) {
       TunedInPersistentControlRegion {
-        TunedInSubscreenBackBar(title: "Back to event", action: onDismiss)
+        TunedInSubscreenBackBar(title: "Back to concert", action: onDismiss)
           .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
           .padding(.top, 8)
           .padding(.bottom, TunedInDesign.bottomControlInset)
@@ -164,7 +164,7 @@ struct EventDiaryDetailView: View {
             .background(TunedInDesign.accent, in: Circle())
         }
         .disabled(isPosting || CatalogInput.optionalNormalizedText(commentDraft) == nil)
-        .accessibilityLabel("Post diary comment")
+        .accessibilityLabel("Post comment")
       }
 
       if isLoading, comments.isEmpty {

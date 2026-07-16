@@ -2,7 +2,7 @@ import SwiftUI
 
 struct CommunityProfileHistorySection: View {
   private enum Page: String, CaseIterable {
-    case diaries = "Diaries"
+    case diaries = "Posts"
     case going = "Going"
     case went = "Went"
   }
@@ -48,7 +48,7 @@ struct CommunityProfileHistorySection: View {
       switch selectedPage {
       case .diaries:
         if history.diaries.isEmpty {
-          emptyState("No diaries shared yet.")
+          emptyState("No posts yet.")
         } else {
           LazyVGrid(
             columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3),
@@ -62,7 +62,7 @@ struct CommunityProfileHistorySection: View {
                 )
               }
               .buttonStyle(TunedInPosterButtonStyle())
-              .accessibilityLabel("Open \(entry.event.title) diary")
+              .accessibilityLabel("Open post about \(entry.event.title)")
             }
           }
           .padding(.horizontal, -20)
@@ -183,7 +183,7 @@ struct CommunityActivityFeedView: View {
             EventEmptyView(
               systemImage: "person.2.wave.2",
               title: "Your circle is quiet",
-              message: "When friends make plans or share concert memories, they’ll appear here."
+              message: "When friends make plans or share concert posts, they’ll appear here."
             )
           } else {
             LazyVStack(spacing: 20) {
