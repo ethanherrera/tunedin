@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-This repository contains the native tunedIn MVP: a SwiftUI iOS client and its Supabase backend. The external MVP design is reference-only. For structured artist, place, area, song, tour, and concert-entry behavior, the checked-in `docs/musicbrainz-catalog-implementation-plan.md` is the product and implementation source of truth.
+This repository contains the native tunedIn MVP: a SwiftUI iOS client and its Supabase backend. For structured artist, place, area, song, tour, and concert-entry behavior, use the checked-in `docs/musicbrainz-catalog-implementation-plan.md`.
 
 ## Boundaries
 
@@ -11,6 +11,11 @@ This repository contains the native tunedIn MVP: a SwiftUI iOS client and its Su
 - Make schema evolution forward-only. All shared-environment changes are timestamped migrations; never edit an applied migration or use dashboard-only schema changes.
 - Authorization belongs in Postgres RLS and narrowly scoped hardened RPCs, not client checks.
 - Development launch scenarios may bypass email only by injecting deterministic in-memory client repositories. They must not create privileged Supabase sessions, weaken RLS, or be treated as backend/auth verification; use the live Development flow for integration testing.
+
+## Git workflow
+
+- Before starting implementation work and again immediately before creating or updating a pull request, fetch `origin` and rebase the focused feature branch onto the latest `origin/main`.
+- Resolve every rebase or merge conflict locally before continuing, rerun the required verification after conflict resolution, and never create or update a pull request while conflicts remain.
 
 ## iPhone navigation
 
