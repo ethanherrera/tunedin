@@ -11,6 +11,7 @@ struct MainTabView: View {
   let user: AuthenticatedUser
   let profile: Profile
   let concertRepository: any ConcertRepository
+  let eventRepository: (any EventRepository)?
   let socialRepository: any SocialRepository
 
   @State private var isPresentingConcertCreation = false

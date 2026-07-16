@@ -7,7 +7,7 @@ DESTINATION := platform=iOS Simulator,name=iPhone 13
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup configure local-db-start configure-local-supabase local-next-steps generate format lint workflow-lint distribution-metadata-verify staging-configuration-test staging-auth-test staging-auth-plan staging-auth-verify staging-apple-sign-in-test staging-apple-sign-in-plan staging-apple-sign-in-verify staging-ipa-signing-test posthog-test posthog-plan posthog-verify posthog-apply build build-local build-staging archive-staging test test-local check cache-reset simulator-auth-link simulator-local simulator-catalog simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error local-db-reset local-seed-verify supabase-types check-supabase-types backend-test functions-test local-catalog-start local-catalog-stop local-catalog-status local-catalog-verify musicbrainz-upgrade-test musicbrainz-smoke storage-integration-test backend-verify dev-status dev-plan dev-deploy dev-functions-status dev-functions-plan dev-functions-deploy dev-login-link staging-status staging-plan staging-promote
+.PHONY: help setup configure local-db-start configure-local-supabase local-next-steps generate format lint workflow-lint distribution-metadata-verify staging-configuration-test staging-auth-test staging-auth-plan staging-auth-verify staging-apple-sign-in-test staging-apple-sign-in-plan staging-apple-sign-in-verify staging-ipa-signing-test posthog-test posthog-plan posthog-verify posthog-apply build build-local build-staging archive-staging test test-local check cache-reset simulator-auth-link simulator-local simulator-catalog simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error simulator-community-events local-db-reset local-seed-verify supabase-types check-supabase-types backend-test functions-test local-catalog-start local-catalog-stop local-catalog-status local-catalog-verify musicbrainz-upgrade-test musicbrainz-smoke storage-integration-test backend-verify dev-status dev-plan dev-deploy dev-functions-status dev-functions-plan dev-functions-deploy dev-login-link staging-status staging-plan staging-promote
 
 help: ## List available development commands.
 	@awk 'BEGIN {FS = ":.*##"}; /^[a-zA-Z_-]+:.*##/ { printf "%-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -130,6 +130,9 @@ simulator-profile: build ## Install and launch the fresh Development app with a 
 
 simulator-profile-error: build ## Install and launch the fresh Development app with a deterministic profile failure.
 	@./scripts/launch-development-scenario.sh profile-error
+
+simulator-community-events: build ## Launch the fixture-backed holistic community event experience.
+	@./scripts/launch-development-scenario.sh community-events
 
 local-db-reset: ## Reset the disposable local Supabase database, migrations, and development seed.
 	@./scripts/reset-local-supabase.sh

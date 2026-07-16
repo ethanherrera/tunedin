@@ -53,6 +53,21 @@
 
     @MainActor
     @Test
+    func communityEventsScenarioRoutesToCompletedProfile() async {
+      let session = DevelopmentScenario.communityEvents.makeAppSession(
+        authEmailDeliveryMode: .magicLink
+      )
+
+      await settle(session)
+
+      guard case .signedIn = session.phase else {
+        Issue.record("Expected the Development community-events scenario to open the main tabs")
+        return
+      }
+    }
+
+    @MainActor
+    @Test
     func profileErrorScenarioRoutesToFailure() async {
       let session = DevelopmentScenario.profileError.makeAppSession(
         authEmailDeliveryMode: .magicLink

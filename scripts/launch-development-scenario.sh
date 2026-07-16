@@ -8,9 +8,9 @@ project="tunedIn.xcodeproj"
 scheme="tunedIn-Development"
 
 case "${scenario}" in
-  live | signed-out | onboarding | profile | profile-error) ;;
+  live | signed-out | onboarding | profile | profile-error | community-events) ;;
   *)
-    printf 'Unknown Development scenario. Use live, signed-out, onboarding, profile, or profile-error.\n' >&2
+    printf 'Unknown Development scenario. Use live, signed-out, onboarding, profile, profile-error, or community-events.\n' >&2
     exit 1
     ;;
 esac
