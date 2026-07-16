@@ -17,6 +17,8 @@
 
 ## Environment and verification
 
+- An unlocked Mac and working iPhone 13 Simulator access through Computer Use are required before changing any iOS code. If macOS locks or Simulator/Computer Use becomes unavailable, stop all iOS edits immediately; do not continue from code, previews, builds, or tests alone, and do not commit or describe the affected work as visually verified.
+- After losing access, report the exact stopping point and wait for Ethan's explicit instruction to continue. Do not resume because the task wakes automatically or because access might have returned. Once Ethan resumes the task, inspect and exercise the affected Simulator journey before making another iOS edit; leave any edits made since the last visual check uncommitted until that inspection succeeds.
 - `project.yml` is the source for the root `tunedIn.xcodeproj`; run `make generate` after changing it.
 - Configuration files in `Config/` are ignored; only `.xcconfig.example` templates belong in Git.
 - `tunedIn-Development` targets the shared hosted Development project. `tunedIn-Local` uses `Local.xcconfig` generated from the disposable Docker stack; `make simulator-local` refreshes it automatically, or use `make configure-local-supabase` directly. Never paste local keys into source or a committed configuration.

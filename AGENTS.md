@@ -45,6 +45,9 @@ This repository contains the native tunedIn MVP: a SwiftUI iOS client and its Su
 
 ## Required verification
 
+- Treat an unlocked Mac and working iPhone 13 Simulator access through Computer Use as a hard precondition for every change under `ios/`. Confirm that access before starting iOS code changes.
+- If macOS locks or Simulator/Computer Use access becomes unavailable during iOS work, stop immediately. Do not make further iOS code changes, continue UI iteration from source inspection or build output alone, commit the affected work, or claim visual verification. Report the exact stopping point and wait for Ethan to explicitly say to continue after access is restored; automatic task continuation, periodic retries, or inferred permission do not authorize resuming.
+- When Ethan explicitly resumes the work, first reopen the Simulator and exercise the affected journey from the last verified state before making additional iOS edits. If access was lost after an edit, leave that work uncommitted and identify it clearly until it has been inspected in the Simulator.
 - Run `make generate`, `make lint`, and `make test` for iOS changes.
 - After changing user interface behavior or layout, exercise the affected flow in the iPhone 13 Simulator with Computer Use and visually inspect the resulting state before handoff. A successful build alone is not sufficient UI verification.
 - For an end-to-end local iOS path, run `make local-db-reset` once for the documented real local accounts and journeys, then use `make simulator-local` for subsequent launches. The simulator command starts/reuses Local Supabase and configures the ignored Local xcconfig without resetting data; the Local-only seeded-account picker creates normal Supabase sessions, while local Inbucket remains for email-auth testing.
