@@ -84,6 +84,7 @@ enum TunedInDesign {
   static let raisedSurface = adaptive(light: 0xECE9E2, dark: 0x252522)
   static let primaryText = adaptive(light: 0x191815, dark: 0xF7F4EF)
   static let mutedText = adaptive(light: 0x68645D, dark: 0xAAA59C)
+  static let selectedControlForeground = adaptive(light: 0x74270F, dark: 0xFFB29D)
   static let cardBorder = adaptive(light: 0xDDD8CE, dark: 0x3A3935)
   static let ink = Color(red: 0.08, green: 0.08, blue: 0.075)
   static let actionForeground = adaptive(light: 0x24120C, dark: 0xFFF9F5)
@@ -107,6 +108,24 @@ enum TunedInDesign {
         )
       }
     )
+  }
+}
+
+enum TunedInMotion {
+  static func selection(reduceMotion: Bool) -> Animation {
+    reduceMotion
+      ? .easeOut(duration: 0.12)
+      : .smooth(duration: 0.24, extraBounce: 0)
+  }
+
+  static func navigation(reduceMotion: Bool) -> Animation {
+    reduceMotion
+      ? .easeOut(duration: 0.14)
+      : .spring(response: 0.34, dampingFraction: 0.86, blendDuration: 0.08)
+  }
+
+  static func controlSceneTransition(reduceMotion: Bool) -> AnyTransition {
+    reduceMotion ? .opacity : .identity
   }
 }
 
@@ -150,6 +169,28 @@ struct TunedInFloatingAction: View {
       .contentShape(.interaction, Circle())
       .accessibilityLabel(accessibilityLabel)
       .accessibilityHint(accessibilityHint)
+    }
+  }
+}
+
+struct TunedInSelectionLens: View {
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+  var body: some View {
+    if #available(iOS 26.0, *), !reduceTransparency {
+      Capsule()
+        .fill(.clear)
+        .glassEffect(
+          .regular.tint(TunedInDesign.accent.opacity(0.14)),
+          in: Capsule()
+        )
+    } else {
+      Capsule()
+        .fill(TunedInDesign.accentTint)
+        .overlay {
+          Capsule()
+            .strokeBorder(TunedInDesign.accent.opacity(0.2))
+        }
     }
   }
 }
@@ -278,12 +319,18 @@ struct TunedInGlassTraversalLayout<Leading: View, Center: View, Trailing: View>:
 private struct TunedInGlassEffectIdentity: ViewModifier {
   let id: String
   let namespace: Namespace.ID
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   func body(content: Content) -> some View {
     if #available(iOS 26.0, *) {
-      content
-        .glassEffectID(id, in: namespace)
-        .glassEffectTransition(.matchedGeometry)
+      if reduceMotion {
+        content
+          .glassEffectID(id, in: namespace)
+      } else {
+        content
+          .glassEffectID(id, in: namespace)
+          .glassEffectTransition(.matchedGeometry)
+      }
     } else {
       content
     }
@@ -826,6 +873,10 @@ private struct TunedInKeyboardPresentationModifier: ViewModifier {
 }
 
 extension View {
+  func tunedInSelectionFeedback<Trigger: Equatable>(trigger: Trigger) -> some View {
+    sensoryFeedback(.selection, trigger: trigger)
+  }
+
   func tunedInKeyboardManaged(showsDismissControl: Bool = true) -> some View {
     modifier(TunedInKeyboardPresentationModifier(showsDismissControl: showsDismissControl))
   }
