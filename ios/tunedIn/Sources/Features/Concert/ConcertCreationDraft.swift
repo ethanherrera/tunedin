@@ -17,7 +17,7 @@ enum ConcertCatalogPickerTarget: Identifiable, Equatable {
 }
 
 @MainActor
-struct ConcertDraft {
+struct ConcertDraft: @MainActor Equatable {
   struct Artist: Identifiable, Equatable {
     let id: UUID
     var selection: CatalogArtist?
@@ -124,6 +124,17 @@ struct ConcertDraft {
         )
       )
     }
+  }
+
+  static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.artists == rhs.artists
+      && lhs.place == rhs.place
+      && lhs.concertDate == rhs.concertDate
+      && lhs.tour == rhs.tour
+      && lhs.hasStartTime == rhs.hasStartTime
+      && (!lhs.hasStartTime || lhs.startTime == rhs.startTime)
+      && (!lhs.hasStartTime || lhs.venueTimeZoneIdentifier == rhs.venueTimeZoneIdentifier)
+      && lhs.setlist == rhs.setlist
   }
 
   var venueName: String {

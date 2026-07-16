@@ -4,6 +4,12 @@ import PhotosUI
 import SwiftUI
 
 struct ConcertEditView: View {
+  private enum PhotoDraftChange: Equatable {
+    case unchanged
+    case replacement(Data)
+    case removal
+  }
+
   private enum EditPage: Int, CaseIterable, Identifiable {
     case night
     case songs
@@ -32,9 +38,6 @@ struct ConcertEditView: View {
 
   let detail: ConcertDetail
   let canMakePrivate: Bool
-  let viewerRole: ConcertViewerRole
-  let viewerUsername: String
-  let socialRepository: any SocialRepository
   let concertRepository: any ConcertRepository
   let loadLatestDetail: @Sendable () async throws -> ConcertDetail
   let onSaved: (Concert) -> Void
@@ -43,7 +46,9 @@ struct ConcertEditView: View {
   @Environment(\.telemetry) private var telemetry
   @Environment(\.musicCatalogRepository) private var musicCatalogRepository
   @State private var draft: ConcertDraft
+  @State private var originalDraft: ConcertDraft
   @State private var visibility: ConcertVisibility
+  @State private var originalVisibility: ConcertVisibility
   @State private var expectedVersion: Int64
   @State private var page: EditPage = .night
   @State private var isSaving = false
@@ -52,8 +57,10 @@ struct ConcertEditView: View {
   @State private var conflictMessage: String?
   @State private var pendingVisibilityNarrowing: ConcertVisibility?
   @State private var selectedPhoto: PhotosPickerItem?
-  @State private var isChangingPhoto = false
+  @State private var photoDraftChange: PhotoDraftChange = .unchanged
+  @State private var isProcessingPhoto = false
   @State private var isConfirmingPhotoRemoval = false
+  @State private var isShowingDiscardConfirmation = false
   @State private var workingDetail: ConcertDetail
   @State private var catalogPickerTarget: ConcertCatalogPickerTarget?
   @Namespace private var editSelectionNamespace
@@ -61,23 +68,20 @@ struct ConcertEditView: View {
   init(
     detail: ConcertDetail,
     canMakePrivate: Bool,
-    viewerRole: ConcertViewerRole,
-    viewerUsername: String,
-    socialRepository: any SocialRepository,
     concertRepository: any ConcertRepository,
     loadLatestDetail: @escaping @Sendable () async throws -> ConcertDetail,
     onSaved: @escaping (Concert) -> Void
   ) {
     self.detail = detail
     self.canMakePrivate = canMakePrivate
-    self.viewerRole = viewerRole
-    self.viewerUsername = viewerUsername
-    self.socialRepository = socialRepository
     self.concertRepository = concertRepository
     self.loadLatestDetail = loadLatestDetail
     self.onSaved = onSaved
-    _draft = State(initialValue: ConcertDraft(detail: detail))
+    let initialDraft = ConcertDraft(detail: detail)
+    _draft = State(initialValue: initialDraft)
+    _originalDraft = State(initialValue: initialDraft)
     _visibility = State(initialValue: detail.concert.visibility)
+    _originalVisibility = State(initialValue: detail.concert.visibility)
     _expectedVersion = State(initialValue: detail.concert.version)
     _workingDetail = State(initialValue: detail)
   }
@@ -116,8 +120,17 @@ struct ConcertEditView: View {
       }
       .alert("Remove concert photo?", isPresented: $isConfirmingPhotoRemoval) {
         Button("Cancel", role: .cancel) {}
-        Button("Remove", role: .destructive) { Task { await removePhoto() } }
-      } message: { Text("The generated concert artwork will be shown instead.") }
+        Button("Remove", role: .destructive) {
+          photoDraftChange = .removal
+          selectedPhoto = nil
+        }
+      } message: { Text("The generated concert artwork will be used after you save.") }
+      .alert("Discard your changes?", isPresented: $isShowingDiscardConfirmation) {
+        Button("Keep Editing", role: .cancel) {}
+        Button("Discard", role: .destructive) { dismiss() }
+      } message: {
+        Text("Your unsaved concert changes will be lost.")
+      }
       .alert("This concert changed", isPresented: isShowingConflict) {
         Button(isReloadingAfterConflict ? "Loading latest…" : "Load latest version") {
           Task { await reloadAfterConflict() }
@@ -151,7 +164,7 @@ struct ConcertEditView: View {
     .tunedInKeyboardManaged()
     .onChange(of: selectedPhoto) { _, item in
       guard let item else { return }
-      Task { await uploadPhoto(item) }
+      Task { await processPhoto(item) }
     }
     .fullScreenCover(item: $catalogPickerTarget) { target in
       catalogPicker(for: target)
@@ -165,7 +178,7 @@ struct ConcertEditView: View {
           Text("Shape the night")
             .font(.system(size: 30, weight: .bold, design: .rounded))
             .foregroundStyle(TunedInDesign.primaryText)
-          Text("Photo changes save immediately. The rest stays in this draft until you save.")
+          Text("Everything here stays in one draft until you save.")
             .font(.subheadline)
             .foregroundStyle(TunedInDesign.mutedText)
         }
@@ -368,143 +381,145 @@ struct ConcertEditView: View {
 
   private var concertPhotoEditor: some View {
     HStack(spacing: 14) {
-      ConcertPhotoView(
-        concert: detail.concert,
-        artistName: detail.artists.first(where: \.isPrimary)?.name ?? "Concert",
-        repository: concertRepository
-      )
-      .frame(width: 88, height: 112)
-      .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+      photoDraftPreview
+        .frame(width: 88, height: 112)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
       VStack(alignment: .leading, spacing: 9) {
         Text("Main photo").font(.headline).foregroundStyle(TunedInDesign.primaryText)
-        Text("Photo changes are saved now").font(.caption).foregroundStyle(TunedInDesign.mutedText)
+        Text(photoDraftStatus).font(.caption).foregroundStyle(TunedInDesign.mutedText)
         PhotosPicker(selection: $selectedPhoto, matching: .images) {
-          Label(detail.concert.photoObjectPath == nil ? "Add photo" : "Change photo", systemImage: "photo")
+          Label(hasDraftPhoto ? "Change photo" : "Add photo", systemImage: "photo")
             .font(.subheadline.weight(.semibold))
         }
-        if detail.concert.photoObjectPath != nil {
+        if hasDraftPhoto {
           Button("Remove", role: .destructive) { isConfirmingPhotoRemoval = true }
             .font(.subheadline.weight(.semibold))
         }
-        if isChangingPhoto {
-          ProgressView().controlSize(.small)
+        if isProcessingPhoto {
+          ProgressView("Preparing…").controlSize(.small)
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
-      .disabled(isChangingPhoto)
+      .disabled(isProcessingPhoto)
     }
     .padding(14)
     .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
   }
 
-  private func uploadPhoto(_ item: PhotosPickerItem) async {
-    isChangingPhoto = true
-    defer { isChangingPhoto = false }
-    do {
-      guard let data = try await item.loadTransferable(type: Data.self) else { return }
-      let jpeg = try await AvatarImageProcessor.processConcertPhoto(data)
-      let updated = try await concertRepository.setConcertPhoto(jpeg, concertID: detail.concert.id)
-      onSaved(updated)
-      dismiss()
-    } catch { errorMessage = error.localizedDescription }
+  @ViewBuilder
+  private var photoDraftPreview: some View {
+    switch photoDraftChange {
+    case let .replacement(data):
+      if let image = UIImage(data: data) {
+        Image(uiImage: image)
+          .resizable()
+          .scaledToFill()
+      } else {
+        generatedArtwork
+      }
+    case .removal:
+      generatedArtwork
+    case .unchanged:
+      ConcertPhotoView(
+        concert: workingDetail.concert,
+        artistName: draft.primaryArtist?.displayName ?? "Concert",
+        repository: concertRepository
+      )
+    }
   }
 
-  private func removePhoto() async {
-    isChangingPhoto = true
-    defer { isChangingPhoto = false }
+  private var generatedArtwork: some View {
+    ConcertArtworkImage(artistName: draft.primaryArtist?.displayName ?? "Concert")
+  }
+
+  private var hasDraftPhoto: Bool {
+    switch photoDraftChange {
+    case .replacement:
+      true
+    case .removal:
+      false
+    case .unchanged:
+      workingDetail.concert.photoObjectPath != nil
+    }
+  }
+
+  private var photoDraftStatus: String {
+    switch photoDraftChange {
+    case .replacement:
+      "New photo ready to save"
+    case .removal:
+      "Generated artwork will be used"
+    case .unchanged:
+      "Optional · saved with the rest"
+    }
+  }
+
+  private func processPhoto(_ item: PhotosPickerItem) async {
+    isProcessingPhoto = true
+    defer { isProcessingPhoto = false }
     do {
-      let updated = try await concertRepository.removeConcertPhoto(concertID: detail.concert.id)
-      onSaved(updated)
-      dismiss()
+      guard let data = try await item.loadTransferable(type: Data.self) else { return }
+      photoDraftChange = .replacement(try await AvatarImageProcessor.processConcertPhoto(data))
     } catch { errorMessage = error.localizedDescription }
   }
 
   private var songsPage: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      VStack(alignment: .leading, spacing: 4) {
-        Text("Setlist")
-          .font(.system(size: 30, weight: .bold, design: .rounded))
-          .foregroundStyle(TunedInDesign.primaryText)
-        Text("Drag to reorder.")
-          .font(.subheadline)
-          .foregroundStyle(TunedInDesign.mutedText)
-      }
-      .padding(.horizontal, 20)
-      .padding(.top, 8)
-
-      List {
-        ForEach(draft.setlist) { item in
-          HStack {
-            Button {
-              catalogPickerTarget = .song(item.id)
-            } label: {
-              HStack {
-                Text(item.title).foregroundStyle(TunedInDesign.primaryText)
-                Spacer()
-                Image(systemName: "magnifyingglass").foregroundStyle(TunedInDesign.accent)
-              }
-              .contentShape(.interaction, Rectangle())
-            }
-            .buttonStyle(.plain)
-          }
-          .swipeActions {
-            Button(role: .destructive) { draft.removeSetlistItem(item.id) } label: {
-              Label("Remove", systemImage: "trash")
-            }
-          }
-          .padding(.vertical, 6)
-          .listRowBackground(Color.clear)
-        }
-        .onMove { source, destination in
-          draft.moveSetlist(from: source, to: destination)
-        }
-
-        Button {
-          catalogPickerTarget = .song(nil)
-        } label: {
-          Label("Add a song", systemImage: "plus")
-            .font(.headline)
-            .foregroundStyle(TunedInDesign.accent)
-        }
-        .disabled(draft.setlist.count == 50)
-        .padding(.vertical, 8)
-        .listRowBackground(Color.clear)
-      }
-      .listStyle(.plain)
-      .contentMargins(.horizontal, 20, for: .scrollContent)
-      .scrollContentBackground(.hidden)
-      .background(TunedInDesign.pageBackground)
-      .environment(\.editMode, .constant(.active))
+    ConcertSetlistDraftView(
+      draft: $draft,
+      idleSubtitle: "A clean read of the night, in order."
+    ) { songID in
+      catalogPickerTarget = .song(songID)
     }
   }
 
   private var sharingPage: some View {
-    ConcertPeopleView(
-      detail: workingDetail,
-      viewerRole: viewerRole,
-      viewerUsername: viewerUsername,
-      socialRepository: socialRepository,
-      concertRepository: concertRepository,
-      onChanged: { Task { await refreshSharingDetail() } },
-      pageHeader: AnyView(EmptyView())
-    )
-  }
+    ScrollView {
+      VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 4) {
+          Text("Sharing")
+            .font(.system(size: 30, weight: .bold, design: .rounded))
+            .foregroundStyle(TunedInDesign.primaryText)
+          Text("Choose who can see this after you save.")
+            .font(.subheadline)
+            .foregroundStyle(TunedInDesign.mutedText)
+        }
 
-  private func refreshSharingDetail() async {
-    do {
-      let latest = try await loadLatestDetail()
-      workingDetail = latest
-      visibility = latest.concert.visibility
-      expectedVersion = latest.concert.version
-      errorMessage = nil
-    } catch {
-      errorMessage = error.localizedDescription
+        VStack(spacing: 10) {
+          ForEach(availableVisibility, id: \.self) { option in
+            visibilityChoice(option)
+          }
+        }
+
+        TunedInFormCard {
+          Label("People stay separate", systemImage: "person.2")
+            .font(.headline)
+            .foregroundStyle(TunedInDesign.primaryText)
+          Text(
+            collaboratorDraftDescription
+          )
+          .font(.subheadline)
+          .foregroundStyle(TunedInDesign.mutedText)
+        }
+      }
+      .padding(.horizontal, 20)
+      .padding(.top, 10)
+      .padding(.bottom, TunedInDesign.scrollContentBottomInset)
     }
   }
 
   private var availableVisibility: [ConcertVisibility] {
     canMakePrivate ? ConcertVisibility.allCases : [.collaborators, .friends]
+  }
+
+  private var collaboratorDraftDescription: String {
+    guard !workingDetail.collaborators.isEmpty else {
+      return "No one is tagged. Add editors from the People view after you save."
+    }
+
+    let editorSuffix = workingDetail.collaborators.count == 1 ? "" : "s"
+    return "\(workingDetail.collaborators.count) tagged editor\(editorSuffix). "
+      + "Manage them from the People view so access changes never hide inside this draft."
   }
 
   private func visibilityChoice(_ option: ConcertVisibility) -> some View {
@@ -571,7 +586,11 @@ struct ConcertEditView: View {
         systemImage: "chevron.backward",
         accessibilityLabel: "Cancel editing"
       ) {
-        dismiss()
+        if hasUnsavedChanges {
+          isShowingDiscardConfirmation = true
+        } else {
+          dismiss()
+        }
       }
       .disabled(isSaving)
     } center: {
@@ -608,18 +627,30 @@ struct ConcertEditView: View {
       }
       .frame(maxWidth: 252)
     } trailing: {
-      TunedInFloatingAction(
+      TunedInGlassTextButton(
+        isSaving ? "Saving" : "Save",
         systemImage: isSaving ? "ellipsis" : "checkmark",
-        accessibilityLabel: isSaving ? "Saving concert" : "Save concert",
-        accessibilityHint: "Saves this version and returns to the concert",
+        accessibilityHint: "Saves the complete draft and returns to the concert",
         action: save
       )
-      .disabled(!draft.canSave || isSaving)
-      .opacity(draft.canSave && !isSaving ? 1 : 0.45)
+      .disabled(!canSaveDraft)
+      .opacity(canSaveDraft ? 1 : 0.45)
     }
     .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
     .padding(.top, 8)
     .padding(.bottom, TunedInDesign.bottomControlInset)
+  }
+
+  private var hasMetadataChanges: Bool {
+    draft != originalDraft || visibility != originalVisibility
+  }
+
+  private var hasUnsavedChanges: Bool {
+    hasMetadataChanges || photoDraftChange != .unchanged
+  }
+
+  private var canSaveDraft: Bool {
+    draft.canSave && hasUnsavedChanges && !isSaving && !isProcessingPhoto
   }
 
   private var isShowingError: Binding<Bool> {
@@ -644,8 +675,8 @@ struct ConcertEditView: View {
 
   private var accessRestrictionDescription: String {
     pendingVisibilityNarrowing == .private
-      ? "Everyone you tagged will lose access immediately. You will be the only person who can see this concert."
-      : "Friends who are not tagged editors will lose access. Tagged editors keep their role."
+      ? "When you save, everyone you tagged will lose access and only you will be able to see this concert."
+      : "When you save, friends who are not tagged editors will lose access. Tagged editors keep their role."
   }
 
   private func cancelAccessRestrictionTitle(for option: ConcertVisibility) -> String {
@@ -764,16 +795,42 @@ struct ConcertEditView: View {
 
   private func save() {
     draft.hasAttemptedSave = true
-    guard let input = draft.updateInput(
-      concertID: detail.concert.id,
-      expectedVersion: expectedVersion,
-      visibility: visibility
-    ) else { return }
+    guard canSaveDraft else { return }
     isSaving = true
     let startedAt = ContinuousClock.now
     Task {
+      var updatedConcert = workingDetail.concert
+      var metadataWasSaved = false
+      defer { isSaving = false }
+
       do {
-        let updated = try await concertRepository.updateConcert(input)
+        if hasMetadataChanges {
+          guard let input = draft.updateInput(
+            concertID: detail.concert.id,
+            expectedVersion: expectedVersion,
+            visibility: visibility
+          ) else { return }
+          updatedConcert = try await concertRepository.updateConcert(input)
+          metadataWasSaved = true
+          adoptSavedMetadata(updatedConcert)
+        }
+
+        switch photoDraftChange {
+        case let .replacement(jpeg):
+          updatedConcert = try await concertRepository.setConcertPhoto(
+            jpeg,
+            concertID: detail.concert.id
+          )
+          adoptSavedPhoto(updatedConcert)
+        case .removal:
+          updatedConcert = try await concertRepository.removeConcertPhoto(
+            concertID: detail.concert.id
+          )
+          adoptSavedPhoto(updatedConcert)
+        case .unchanged:
+          break
+        }
+
         telemetry?.capture(
           .concertUpdated,
           properties: [
@@ -781,9 +838,16 @@ struct ConcertEditView: View {
             .durationMilliseconds: .integer(startedAt.duration(to: .now).editTelemetryMilliseconds)
           ]
         )
-        onSaved(updated)
+        onSaved(updatedConcert)
         dismiss()
       } catch {
+        if metadataWasSaved {
+          onSaved(updatedConcert)
+          errorMessage = "Your details are saved, but the photo couldn’t be updated. "
+            + "The photo is still ready here—tap Save to try it again."
+          return
+        }
+
         let failure = AppFailure(error)
         if failure.shouldReportToTelemetry {
           telemetry?.captureOperation(
@@ -799,8 +863,30 @@ struct ConcertEditView: View {
           errorMessage = error.localizedDescription
         }
       }
-      isSaving = false
     }
+  }
+
+  private func adoptSavedMetadata(_ concert: Concert) {
+    expectedVersion = concert.version
+    originalDraft = draft
+    originalVisibility = visibility
+    workingDetail = detailReplacingConcert(concert)
+  }
+
+  private func adoptSavedPhoto(_ concert: Concert) {
+    photoDraftChange = .unchanged
+    selectedPhoto = nil
+    workingDetail = detailReplacingConcert(concert)
+  }
+
+  private func detailReplacingConcert(_ concert: Concert) -> ConcertDetail {
+    ConcertDetail(
+      concert: concert,
+      artists: workingDetail.artists,
+      setlist: workingDetail.setlist,
+      history: workingDetail.history,
+      collaborators: workingDetail.collaborators
+    )
   }
 
   private var changeKindForTelemetry: TelemetryChangeKind {
@@ -817,9 +903,15 @@ struct ConcertEditView: View {
 
     do {
       let latest = try await loadLatestDetail()
-      draft = ConcertDraft(detail: latest)
+      let latestDraft = ConcertDraft(detail: latest)
+      draft = latestDraft
+      originalDraft = latestDraft
       visibility = latest.concert.visibility
+      originalVisibility = visibility
       expectedVersion = latest.concert.version
+      workingDetail = latest
+      photoDraftChange = .unchanged
+      selectedPhoto = nil
       conflictMessage = nil
       errorMessage = nil
     } catch {

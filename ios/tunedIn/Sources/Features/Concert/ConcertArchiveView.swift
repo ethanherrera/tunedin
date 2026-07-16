@@ -614,9 +614,6 @@ struct ConcertDetailView: View {
         ConcertEditView(
           detail: detail,
           canMakePrivate: viewerRole == .owner,
-          viewerRole: viewerRole,
-          viewerUsername: viewerUsername,
-          socialRepository: socialRepository,
           concertRepository: concertRepository,
           loadLatestDetail: {
             try await concertRepository.fetchConcertDetail(

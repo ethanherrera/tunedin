@@ -152,6 +152,22 @@ struct ConcertDraftTests {
   }
 
   @Test
+  func draftEqualityTracksMeaningfulEditsButNotValidationPresentation() {
+    var original = ConcertDraft()
+    original.setArtist(Self.artist(id: 1, name: "Big Thief"), for: original.artists[0].id)
+    original.place = Self.place
+
+    var edited = original
+    edited.hasAttemptedSave = true
+    edited.isTourExpanded.toggle()
+    edited.startTime = edited.startTime.addingTimeInterval(3_600)
+    #expect(edited == original)
+
+    edited.concertDate = edited.concertDate.addingTimeInterval(86_400)
+    #expect(edited != original)
+  }
+
+  @Test
   func venueLocalDateRoundTripsForWestOfUTCEditors() throws {
     let pacific = try #require(TimeZone(identifier: "America/Los_Angeles"))
     let date = try #require(ConcertDraft.date(from: "2026-07-10", timeZone: pacific))
