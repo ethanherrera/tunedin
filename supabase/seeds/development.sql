@@ -224,6 +224,193 @@ values (
   timestamptz '2025-01-01 12:00:00+00'
 );
 
+-- Shared community-event journeys are independent from personal concert
+-- diaries. They cover public discovery, creator-only unlisted access, a past
+-- memories-unlocked occurrence, and cancellation without deleting the source
+-- event or its immutable activity.
+do $community_event_seed$
+begin
+insert into public.catalog_events (
+  id,
+  created_by,
+  catalog_place_id,
+  catalog_area_id,
+  catalog_tour_id,
+  headliner_catalog_artist_id,
+  event_date,
+  starts_at,
+  time_zone_identifier,
+  memory_unlock_at,
+  lifecycle,
+  listing,
+  integrity,
+  row_state,
+  version,
+  venue_name_snapshot,
+  area_name_snapshot,
+  tour_name_snapshot,
+  headliner_name_snapshot,
+  search_text,
+  exact_duplicate_key,
+  created_at,
+  updated_at,
+  last_material_activity_at
+)
+values
+  (
+    'd4000000-0000-0000-0000-000000000001',
+    'd1000000-0000-0000-0000-000000000001',
+    'd3000000-0000-0000-0000-000000000103',
+    'd3000000-0000-0000-0000-000000000101',
+    'd3000000-0000-0000-0000-000000000105',
+    'd3000000-0000-0000-0000-000000000102',
+    date '2026-09-18',
+    timestamptz '2026-09-19 03:00:00+00',
+    'America/Los_Angeles',
+    timestamptz '2026-09-19 09:00:00+00',
+    'scheduled',
+    'listed',
+    'community_added',
+    'active',
+    1,
+    'The Fillmore',
+    'San Francisco',
+    'Local Fixture Tour',
+    'The Local Signals',
+    'the local signals the fillmore san francisco local fixture tour',
+    md5(
+      'listed|d3000000-0000-0000-0000-000000000103|2026-09-18|'
+      || date_trunc('second', timestamptz '2026-09-19 03:00:00+00')::text
+      || '|d3000000-0000-0000-0000-000000000102'
+    ),
+    timestamptz '2026-07-16 18:00:00+00',
+    timestamptz '2026-07-16 18:00:00+00',
+    timestamptz '2026-07-16 18:00:00+00'
+  ),
+  (
+    'd4000000-0000-0000-0000-000000000002',
+    'd1000000-0000-0000-0000-000000000002',
+    'd3000000-0000-0000-0000-000000000103',
+    'd3000000-0000-0000-0000-000000000101',
+    null,
+    'd3000000-0000-0000-0000-000000000102',
+    date '2026-05-08',
+    timestamptz '2026-05-09 03:00:00+00',
+    'America/Los_Angeles',
+    timestamptz '2026-05-09 09:00:00+00',
+    'completed',
+    'listed',
+    'corroborated',
+    'active',
+    2,
+    'The Fillmore',
+    'San Francisco',
+    null,
+    'The Local Signals',
+    'the local signals the fillmore san francisco',
+    md5(
+      'listed|d3000000-0000-0000-0000-000000000103|2026-05-08|'
+      || date_trunc('second', timestamptz '2026-05-09 03:00:00+00')::text
+      || '|d3000000-0000-0000-0000-000000000102'
+    ),
+    timestamptz '2026-05-01 18:00:00+00',
+    timestamptz '2026-05-09 09:00:00+00',
+    timestamptz '2026-05-09 09:00:00+00'
+  ),
+  (
+    'd4000000-0000-0000-0000-000000000003',
+    'd1000000-0000-0000-0000-000000000001',
+    'd3000000-0000-0000-0000-000000000103',
+    'd3000000-0000-0000-0000-000000000101',
+    null,
+    'd3000000-0000-0000-0000-000000000102',
+    date '2026-10-04',
+    timestamptz '2026-10-05 03:00:00+00',
+    'America/Los_Angeles',
+    timestamptz '2026-10-05 09:00:00+00',
+    'scheduled',
+    'unlisted',
+    'community_added',
+    'active',
+    1,
+    'The Fillmore',
+    'San Francisco',
+    null,
+    'The Local Signals',
+    'the local signals the fillmore san francisco',
+    md5(
+      'unlisted:d1000000-0000-0000-0000-000000000001|'
+      || 'd3000000-0000-0000-0000-000000000103|2026-10-04|'
+      || date_trunc('second', timestamptz '2026-10-05 03:00:00+00')::text
+      || '|d3000000-0000-0000-0000-000000000102'
+    ),
+    timestamptz '2026-07-16 19:00:00+00',
+    timestamptz '2026-07-16 19:00:00+00',
+    timestamptz '2026-07-16 19:00:00+00'
+  ),
+  (
+    'd4000000-0000-0000-0000-000000000004',
+    'd1000000-0000-0000-0000-000000000003',
+    'd3000000-0000-0000-0000-000000000103',
+    'd3000000-0000-0000-0000-000000000101',
+    null,
+    'd3000000-0000-0000-0000-000000000102',
+    date '2026-08-22',
+    timestamptz '2026-08-23 03:00:00+00',
+    'America/Los_Angeles',
+    timestamptz '2026-08-23 09:00:00+00',
+    'cancelled',
+    'listed',
+    'disputed',
+    'active',
+    3,
+    'The Fillmore',
+    'San Francisco',
+    null,
+    'The Local Signals',
+    'the local signals the fillmore san francisco',
+    md5(
+      'listed|d3000000-0000-0000-0000-000000000103|2026-08-22|'
+      || date_trunc('second', timestamptz '2026-08-23 03:00:00+00')::text
+      || '|d3000000-0000-0000-0000-000000000102'
+    ),
+    timestamptz '2026-07-10 18:00:00+00',
+    timestamptz '2026-07-15 18:00:00+00',
+    timestamptz '2026-07-15 18:00:00+00'
+  );
+
+insert into public.catalog_event_artists (
+  event_id,
+  catalog_artist_id,
+  lineup_position,
+  is_headliner,
+  artist_name_snapshot
+)
+select
+  event_id,
+  'd3000000-0000-0000-0000-000000000102',
+  1,
+  true,
+  'The Local Signals'
+from unnest(array[
+  'd4000000-0000-0000-0000-000000000001'::uuid,
+  'd4000000-0000-0000-0000-000000000002'::uuid,
+  'd4000000-0000-0000-0000-000000000003'::uuid,
+  'd4000000-0000-0000-0000-000000000004'::uuid
+]) as event(event_id);
+end
+$community_event_seed$;
+
+insert into public.social_activity_events (
+  id, actor_id, action, event_id, metadata, occurred_at
+)
+values
+  ('d4100000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', 'event_created', 'd4000000-0000-0000-0000-000000000001', '{}'::jsonb, timestamptz '2026-07-16 18:00:00+00'),
+  ('d4100000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000002', 'event_created', 'd4000000-0000-0000-0000-000000000002', '{}'::jsonb, timestamptz '2026-05-01 18:00:00+00'),
+  ('d4100000-0000-0000-0000-000000000003', 'd1000000-0000-0000-0000-000000000001', 'event_created', 'd4000000-0000-0000-0000-000000000003', '{}'::jsonb, timestamptz '2026-07-16 19:00:00+00'),
+  ('d4100000-0000-0000-0000-000000000004', 'd1000000-0000-0000-0000-000000000003', 'event_created', 'd4000000-0000-0000-0000-000000000004', '{}'::jsonb, timestamptz '2026-07-10 18:00:00+00'),
+  ('d4100000-0000-0000-0000-000000000005', 'd1000000-0000-0000-0000-000000000003', 'event_updated', 'd4000000-0000-0000-0000-000000000004', '{"version":3}'::jsonb, timestamptz '2026-07-15 18:00:00+00');
+
 insert into public.relationships (
   user_low_id,
   user_high_id,

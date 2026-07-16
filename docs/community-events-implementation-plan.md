@@ -1,10 +1,24 @@
 # Community Events Implementation Plan
 
-Status: planned; no implementation started
+Status: in progress; fixture journey and Phase 1 foundation implemented
 Decision date: 2026-07-16
 Decision owner: Ethan
 Depends on: `docs/community-events-product-design.md` and
 `docs/musicbrainz-catalog-implementation-plan.md`
+
+## Implementation progress
+
+- Phase 0 is implemented behind the Development-only `community-events`
+  scenario. It exercises Feed, Plans, concert-first discovery, MusicBrainz-backed
+  event creation, shared Event/People/Memories detail, attendance, invitations,
+  conversation, and personal diary composition without changing the live app.
+- Phase 1 database foundations are implemented in
+  `20260716180000_community_event_foundation.sql`: provider-neutral event rows,
+  catalog lineups, listed/unlisted access, merge/tombstone-ready state, immutable
+  activity, private reports/revisions, exact-duplicate locking, creation quotas,
+  and bounded search/detail/create/update/report RPCs.
+- The live iOS repository connection remains the next Phase 1 step. Phase 2 and
+  later persistence contracts have not started.
 
 ## Architecture decision
 
@@ -303,9 +317,13 @@ be reused where it still fits.
 
 ## Phased implementation
 
-Each phase should be its own focused, reviewable pull request or small PR series.
+For this execution, every major phase is a focused commit on one implementation
+branch and one cumulative draft pull request. The PR summary gains a new Major
+steps entry after each commit.
 
 ### Phase 0 — contract fixtures and navigation shell
+
+Implementation status: complete behind a Development-only launch scenario.
 
 - Inventory current screens as `reuse`, `reshape`, `split`, or `legacy-only` against
   the holistic mapping in the product design.
@@ -324,6 +342,8 @@ backend migration, the legacy archive remains reachable, and the first UI PR cle
 identifies which existing components are being reused versus replaced.
 
 ### Phase 1 — global community event foundation
+
+Implementation status: database contract complete; live iOS connection pending.
 
 - Add event, lineup, state, listing, merge/tombstone, and activity tables.
 - Add creation, detail, exact-duplicate, correction/report, and search RPCs.

@@ -21,6 +21,26 @@ public enum PublicSchema {
     case merged = "merged"
     case retired = "retired"
   }
+  public enum CatalogEventIntegrity: String, Codable, Hashable, Sendable {
+    case communityAdded = "community_added"
+    case corroborated = "corroborated"
+    case disputed = "disputed"
+  }
+  public enum CatalogEventLifecycle: String, Codable, Hashable, Sendable {
+    case scheduled = "scheduled"
+    case postponed = "postponed"
+    case cancelled = "cancelled"
+    case completed = "completed"
+  }
+  public enum CatalogEventListing: String, Codable, Hashable, Sendable {
+    case listed = "listed"
+    case unlisted = "unlisted"
+  }
+  public enum CatalogEventRowState: String, Codable, Hashable, Sendable {
+    case active = "active"
+    case merged = "merged"
+    case tombstoned = "tombstoned"
+  }
   public enum ConcertEventType: String, Codable, Hashable, Sendable {
     case concertCreated = "concert_created"
     case concertUpdated = "concert_updated"
@@ -54,6 +74,17 @@ public enum PublicSchema {
     case accepted = "accepted"
     case declined = "declined"
     case blocked = "blocked"
+  }
+  public enum SocialActivityAction: String, Codable, Hashable, Sendable {
+    case eventCreated = "event_created"
+    case eventUpdated = "event_updated"
+    case markedGoing = "marked_going"
+    case markedWent = "marked_went"
+    case invitationAccepted = "invitation_accepted"
+    case diaryPublished = "diary_published"
+    case diaryMediaAdded = "diary_media_added"
+    case eventPosted = "event_posted"
+    case eventReplied = "event_replied"
   }
   public struct CatalogAreasSelect: Codable, Hashable, Sendable {
     public let areaType: String?
@@ -245,6 +276,210 @@ public enum PublicSchema {
       case sortName = "sort_name"
       case status = "status"
       case updatedAt = "updated_at"
+    }
+  }
+  public struct CatalogEventArtistsSelect: Codable, Hashable, Sendable {
+    public let artistNameSnapshot: String
+    public let catalogArtistId: UUID
+    public let eventId: UUID
+    public let isHeadliner: Bool
+    public let lineupPosition: Int16
+    public enum CodingKeys: String, CodingKey {
+      case artistNameSnapshot = "artist_name_snapshot"
+      case catalogArtistId = "catalog_artist_id"
+      case eventId = "event_id"
+      case isHeadliner = "is_headliner"
+      case lineupPosition = "lineup_position"
+    }
+  }
+  public struct CatalogEventArtistsInsert: Codable, Hashable, Sendable {
+    public let artistNameSnapshot: String
+    public let catalogArtistId: UUID
+    public let eventId: UUID
+    public let isHeadliner: Bool?
+    public let lineupPosition: Int16
+    public enum CodingKeys: String, CodingKey {
+      case artistNameSnapshot = "artist_name_snapshot"
+      case catalogArtistId = "catalog_artist_id"
+      case eventId = "event_id"
+      case isHeadliner = "is_headliner"
+      case lineupPosition = "lineup_position"
+    }
+  }
+  public struct CatalogEventArtistsUpdate: Codable, Hashable, Sendable {
+    public let artistNameSnapshot: String?
+    public let catalogArtistId: UUID?
+    public let eventId: UUID?
+    public let isHeadliner: Bool?
+    public let lineupPosition: Int16?
+    public enum CodingKeys: String, CodingKey {
+      case artistNameSnapshot = "artist_name_snapshot"
+      case catalogArtistId = "catalog_artist_id"
+      case eventId = "event_id"
+      case isHeadliner = "is_headliner"
+      case lineupPosition = "lineup_position"
+    }
+  }
+  public struct CatalogEventsSelect: Codable, Hashable, Sendable {
+    public let areaNameSnapshot: String
+    public let catalogAreaId: UUID?
+    public let catalogPlaceId: UUID
+    public let catalogTourId: UUID?
+    public let createdAt: String
+    public let createdBy: UUID
+    public let eventDate: String
+    public let exactDuplicateKey: String
+    public let headlinerCatalogArtistId: UUID
+    public let headlinerNameSnapshot: String
+    public let id: UUID
+    public let integrity: CatalogEventIntegrity
+    public let lastMaterialActivityAt: String
+    public let lifecycle: CatalogEventLifecycle
+    public let listing: CatalogEventListing
+    public let memoryUnlockAt: String
+    public let mergedIntoEventId: UUID?
+    public let rowState: CatalogEventRowState
+    public let searchText: String
+    public let startsAt: String?
+    public let timeZoneIdentifier: String
+    public let tourNameSnapshot: String?
+    public let updatedAt: String
+    public let venueNameSnapshot: String
+    public let version: Int32
+    public enum CodingKeys: String, CodingKey {
+      case areaNameSnapshot = "area_name_snapshot"
+      case catalogAreaId = "catalog_area_id"
+      case catalogPlaceId = "catalog_place_id"
+      case catalogTourId = "catalog_tour_id"
+      case createdAt = "created_at"
+      case createdBy = "created_by"
+      case eventDate = "event_date"
+      case exactDuplicateKey = "exact_duplicate_key"
+      case headlinerCatalogArtistId = "headliner_catalog_artist_id"
+      case headlinerNameSnapshot = "headliner_name_snapshot"
+      case id = "id"
+      case integrity = "integrity"
+      case lastMaterialActivityAt = "last_material_activity_at"
+      case lifecycle = "lifecycle"
+      case listing = "listing"
+      case memoryUnlockAt = "memory_unlock_at"
+      case mergedIntoEventId = "merged_into_event_id"
+      case rowState = "row_state"
+      case searchText = "search_text"
+      case startsAt = "starts_at"
+      case timeZoneIdentifier = "time_zone_identifier"
+      case tourNameSnapshot = "tour_name_snapshot"
+      case updatedAt = "updated_at"
+      case venueNameSnapshot = "venue_name_snapshot"
+      case version = "version"
+    }
+  }
+  public struct CatalogEventsInsert: Codable, Hashable, Sendable {
+    public let areaNameSnapshot: String
+    public let catalogAreaId: UUID?
+    public let catalogPlaceId: UUID
+    public let catalogTourId: UUID?
+    public let createdAt: String?
+    public let createdBy: UUID
+    public let eventDate: String
+    public let exactDuplicateKey: String
+    public let headlinerCatalogArtistId: UUID
+    public let headlinerNameSnapshot: String
+    public let id: UUID?
+    public let integrity: CatalogEventIntegrity?
+    public let lastMaterialActivityAt: String?
+    public let lifecycle: CatalogEventLifecycle?
+    public let listing: CatalogEventListing?
+    public let memoryUnlockAt: String
+    public let mergedIntoEventId: UUID?
+    public let rowState: CatalogEventRowState?
+    public let searchText: String
+    public let startsAt: String?
+    public let timeZoneIdentifier: String
+    public let tourNameSnapshot: String?
+    public let updatedAt: String?
+    public let venueNameSnapshot: String
+    public let version: Int32?
+    public enum CodingKeys: String, CodingKey {
+      case areaNameSnapshot = "area_name_snapshot"
+      case catalogAreaId = "catalog_area_id"
+      case catalogPlaceId = "catalog_place_id"
+      case catalogTourId = "catalog_tour_id"
+      case createdAt = "created_at"
+      case createdBy = "created_by"
+      case eventDate = "event_date"
+      case exactDuplicateKey = "exact_duplicate_key"
+      case headlinerCatalogArtistId = "headliner_catalog_artist_id"
+      case headlinerNameSnapshot = "headliner_name_snapshot"
+      case id = "id"
+      case integrity = "integrity"
+      case lastMaterialActivityAt = "last_material_activity_at"
+      case lifecycle = "lifecycle"
+      case listing = "listing"
+      case memoryUnlockAt = "memory_unlock_at"
+      case mergedIntoEventId = "merged_into_event_id"
+      case rowState = "row_state"
+      case searchText = "search_text"
+      case startsAt = "starts_at"
+      case timeZoneIdentifier = "time_zone_identifier"
+      case tourNameSnapshot = "tour_name_snapshot"
+      case updatedAt = "updated_at"
+      case venueNameSnapshot = "venue_name_snapshot"
+      case version = "version"
+    }
+  }
+  public struct CatalogEventsUpdate: Codable, Hashable, Sendable {
+    public let areaNameSnapshot: String?
+    public let catalogAreaId: UUID?
+    public let catalogPlaceId: UUID?
+    public let catalogTourId: UUID?
+    public let createdAt: String?
+    public let createdBy: UUID?
+    public let eventDate: String?
+    public let exactDuplicateKey: String?
+    public let headlinerCatalogArtistId: UUID?
+    public let headlinerNameSnapshot: String?
+    public let id: UUID?
+    public let integrity: CatalogEventIntegrity?
+    public let lastMaterialActivityAt: String?
+    public let lifecycle: CatalogEventLifecycle?
+    public let listing: CatalogEventListing?
+    public let memoryUnlockAt: String?
+    public let mergedIntoEventId: UUID?
+    public let rowState: CatalogEventRowState?
+    public let searchText: String?
+    public let startsAt: String?
+    public let timeZoneIdentifier: String?
+    public let tourNameSnapshot: String?
+    public let updatedAt: String?
+    public let venueNameSnapshot: String?
+    public let version: Int32?
+    public enum CodingKeys: String, CodingKey {
+      case areaNameSnapshot = "area_name_snapshot"
+      case catalogAreaId = "catalog_area_id"
+      case catalogPlaceId = "catalog_place_id"
+      case catalogTourId = "catalog_tour_id"
+      case createdAt = "created_at"
+      case createdBy = "created_by"
+      case eventDate = "event_date"
+      case exactDuplicateKey = "exact_duplicate_key"
+      case headlinerCatalogArtistId = "headliner_catalog_artist_id"
+      case headlinerNameSnapshot = "headliner_name_snapshot"
+      case id = "id"
+      case integrity = "integrity"
+      case lastMaterialActivityAt = "last_material_activity_at"
+      case lifecycle = "lifecycle"
+      case listing = "listing"
+      case memoryUnlockAt = "memory_unlock_at"
+      case mergedIntoEventId = "merged_into_event_id"
+      case rowState = "row_state"
+      case searchText = "search_text"
+      case startsAt = "starts_at"
+      case timeZoneIdentifier = "time_zone_identifier"
+      case tourNameSnapshot = "tour_name_snapshot"
+      case updatedAt = "updated_at"
+      case venueNameSnapshot = "venue_name_snapshot"
+      case version = "version"
     }
   }
   public struct CatalogPlacesSelect: Codable, Hashable, Sendable {
@@ -1223,6 +1458,60 @@ public enum PublicSchema {
       case setPosition = "set_position"
       case songTitle = "song_title"
       case updatedAt = "updated_at"
+    }
+  }
+  public struct SocialActivityEventsSelect: Codable, Hashable, Sendable {
+    public let action: SocialActivityAction
+    public let actorId: UUID
+    public let eventId: UUID
+    public let id: UUID
+    public let metadata: AnyJSON
+    public let occurredAt: String
+    public let subjectId: UUID?
+    public enum CodingKeys: String, CodingKey {
+      case action = "action"
+      case actorId = "actor_id"
+      case eventId = "event_id"
+      case id = "id"
+      case metadata = "metadata"
+      case occurredAt = "occurred_at"
+      case subjectId = "subject_id"
+    }
+  }
+  public struct SocialActivityEventsInsert: Codable, Hashable, Sendable {
+    public let action: SocialActivityAction
+    public let actorId: UUID
+    public let eventId: UUID
+    public let id: UUID?
+    public let metadata: AnyJSON?
+    public let occurredAt: String?
+    public let subjectId: UUID?
+    public enum CodingKeys: String, CodingKey {
+      case action = "action"
+      case actorId = "actor_id"
+      case eventId = "event_id"
+      case id = "id"
+      case metadata = "metadata"
+      case occurredAt = "occurred_at"
+      case subjectId = "subject_id"
+    }
+  }
+  public struct SocialActivityEventsUpdate: Codable, Hashable, Sendable {
+    public let action: SocialActivityAction?
+    public let actorId: UUID?
+    public let eventId: UUID?
+    public let id: UUID?
+    public let metadata: AnyJSON?
+    public let occurredAt: String?
+    public let subjectId: UUID?
+    public enum CodingKeys: String, CodingKey {
+      case action = "action"
+      case actorId = "actor_id"
+      case eventId = "event_id"
+      case id = "id"
+      case metadata = "metadata"
+      case occurredAt = "occurred_at"
+      case subjectId = "subject_id"
     }
   }
 }
