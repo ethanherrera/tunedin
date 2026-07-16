@@ -55,6 +55,12 @@ enum TunedInMotion {
       : .spring(response: 0.34, dampingFraction: 0.86, blendDuration: 0.08)
   }
 
+  static func feedback(reduceMotion: Bool) -> Animation {
+    reduceMotion
+      ? .easeOut(duration: 0.12)
+      : .smooth(duration: 0.22, extraBounce: 0)
+  }
+
   static func controlSceneTransition(reduceMotion: Bool) -> AnyTransition {
     reduceMotion ? .opacity : .identity
   }

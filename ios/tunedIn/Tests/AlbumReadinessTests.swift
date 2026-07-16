@@ -77,6 +77,19 @@ struct AlbumReadinessTests {
     #expect(result.failures.map { $0.item } == [2])
     #expect(progress == [1, 2, 3])
   }
+
+  @Test
+  func uploadPhaseKeepsFailureRetryableAtTheThumbnail() {
+    let preparing = AlbumUploadPhase.preparing
+    let uploading = AlbumUploadPhase.uploading
+    let failed = AlbumUploadPhase.failed("Your photo is still here.")
+
+    #expect(preparing.isActive)
+    #expect(uploading.isActive)
+    #expect(!failed.isActive)
+    #expect(failed.canRetry)
+    #expect(!uploading.canRetry)
+  }
 }
 
 private enum TestUploadError: Error {
