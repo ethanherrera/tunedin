@@ -78,6 +78,7 @@ struct SupabaseEventDiaryContractTests {
     #expect(diary.videoCount == 1)
     #expect(diary.commentCount == 3)
     #expect(diary.audience == .friends)
+    #expect(record.nextCursor?.diaryID == diary.id)
   }
 
   @Test
@@ -171,7 +172,11 @@ struct SupabaseEventDiaryContractTests {
       "video_count":1,
       "comment_count":3,
       "audience":"friends",
-      "published_at":"2026-07-16T20:00:00Z"
+      "published_at":"2026-07-16T20:00:00Z",
+      "next_cursor":{
+        "published_at":"2026-07-16T20:00:00Z",
+        "diary_id":"30000000-0000-0000-0000-000000000001"
+      }
     }
     """#
   }

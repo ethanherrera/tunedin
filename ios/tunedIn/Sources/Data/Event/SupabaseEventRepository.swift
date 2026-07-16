@@ -77,6 +77,64 @@ struct SupabaseEventRepository: EventRepository {
     }
   }
 
+  func eventAttendances(
+    eventID: UUID,
+    viewerID _: UUID,
+    cursor: EventAttendanceCursor?,
+    limit: Int
+  ) async throws -> EventAttendancePage {
+    try await withAppFailure {
+      let pageSize = max(1, min(limit, 49))
+      let response: PostgrestResponse<[CatalogEventAttendeeRPCRecord]> = try await client
+        .rpc(
+          "list_catalog_event_attendees",
+          params: ListCatalogEventAttendeesParameters(
+            eventID: eventID,
+            cursor: cursor?.requestValue,
+            limit: pageSize + 1
+          )
+        )
+        .execute()
+      let pageRecords = Array(response.value.prefix(pageSize))
+      let nextCursor = response.value.count > pageSize
+        ? try pageRecords.last?.attendanceCursor()
+        : nil
+      return EventAttendancePage(
+        items: try pageRecords.map(EventAttendance.init(databaseRecord:)),
+        nextCursor: nextCursor
+      )
+    }
+  }
+
+  func eventDiaries(
+    eventID: UUID,
+    viewerID _: UUID,
+    cursor: EventDiaryCursor?,
+    limit: Int
+  ) async throws -> EventDiaryPage {
+    try await withAppFailure {
+      let pageSize = max(1, min(limit, 49))
+      let response: PostgrestResponse<[CatalogEventDiaryRPCRecord]> = try await client
+        .rpc(
+          "list_catalog_event_diaries",
+          params: ListCatalogEventDiariesParameters(
+            eventID: eventID,
+            cursor: cursor?.requestValue,
+            limit: pageSize + 1
+          )
+        )
+        .execute()
+      let pageRecords = Array(response.value.prefix(pageSize))
+      let nextCursor = response.value.count > pageSize
+        ? try pageRecords.last?.diaryCursor()
+        : nil
+      return EventDiaryPage(
+        items: try pageRecords.map(EventDiaryPreview.init(databaseRecord:)),
+        nextCursor: nextCursor
+      )
+    }
+  }
+
   func plans(viewerID _: UUID) async throws -> [CommunityEventSummary] {
     try await withAppFailure {
       let response: PostgrestResponse<[CatalogEventRPCRecord]> = try await client
@@ -773,6 +831,7 @@ struct CatalogEventAttendeeRPCRecord: Decodable, Equatable, Sendable {
   let status: EventAttendanceStatus
   let audience: EventAudience
   let updatedAt: String
+  let nextCursor: CatalogEventAttendanceCursorRPCRecord?
 
   enum CodingKeys: String, CodingKey {
     case id, username, relationship, status, audience
@@ -780,6 +839,17 @@ struct CatalogEventAttendeeRPCRecord: Decodable, Equatable, Sendable {
     case avatarObjectPath = "avatar_object_path"
     case avatarVersion = "avatar_version"
     case updatedAt = "updated_at"
+    case nextCursor = "next_cursor"
+  }
+}
+
+struct CatalogEventAttendanceCursorRPCRecord: Decodable, Equatable, Sendable {
+  let updatedAt: String
+  let profileID: UUID
+
+  enum CodingKeys: String, CodingKey {
+    case updatedAt = "updated_at"
+    case profileID = "profile_id"
   }
 }
 
@@ -982,6 +1052,25 @@ extension EventAttendance {
       audience: databaseRecord.audience,
       updatedAt: updatedAt
     )
+  }
+}
+
+private extension EventAttendanceCursor {
+  var requestValue: [String: String] {
+    [
+      "updated_at": CommunityEventDateCoding.dateTimeString(updatedAt),
+      "profile_id": profileID.uuidString
+    ]
+  }
+}
+
+private extension CatalogEventAttendeeRPCRecord {
+  func attendanceCursor() throws -> EventAttendanceCursor? {
+    guard let nextCursor else { return nil }
+    guard let updatedAt = CommunityEventDateCoding.dateTime(from: nextCursor.updatedAt) else {
+      throw AppFailure.unexpected
+    }
+    return EventAttendanceCursor(updatedAt: updatedAt, profileID: nextCursor.profileID)
   }
 }
 

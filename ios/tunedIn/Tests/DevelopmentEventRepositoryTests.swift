@@ -77,6 +77,45 @@
     }
 
     @Test
+    func packedConcertCollectionsPageWithoutDuplicates() async throws {
+      let repository = DevelopmentEventRepository(now: now)
+      let viewerID = DevelopmentSocialFixture.currentUserID
+
+      let firstPosts = try await repository.eventDiaries(
+        eventID: DevelopmentEventFixture.mitskiMemoryID,
+        viewerID: viewerID,
+        cursor: nil,
+        limit: 4
+      )
+      let secondPosts = try await repository.eventDiaries(
+        eventID: DevelopmentEventFixture.mitskiMemoryID,
+        viewerID: viewerID,
+        cursor: firstPosts.nextCursor,
+        limit: 4
+      )
+      let firstPeople = try await repository.eventAttendances(
+        eventID: DevelopmentEventFixture.mitskiMemoryID,
+        viewerID: viewerID,
+        cursor: nil,
+        limit: 6
+      )
+      let secondPeople = try await repository.eventAttendances(
+        eventID: DevelopmentEventFixture.mitskiMemoryID,
+        viewerID: viewerID,
+        cursor: firstPeople.nextCursor,
+        limit: 6
+      )
+
+      #expect(firstPosts.items.count == 4)
+      #expect(secondPosts.items.count == 4)
+      #expect(Set(firstPosts.items.map(\.id)).isDisjoint(with: secondPosts.items.map(\.id)))
+      #expect(firstPeople.items.count == 6)
+      #expect(secondPeople.items.count == 5)
+      #expect(Set(firstPeople.items.map(\.id)).isDisjoint(with: secondPeople.items.map(\.id)))
+      #expect(secondPeople.nextCursor == nil)
+    }
+
+    @Test
     func attendanceMutationDoesNotCreateADiary() async throws {
       let repository = DevelopmentEventRepository(now: now)
       let viewerID = DevelopmentSocialFixture.currentUserID

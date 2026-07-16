@@ -33,6 +33,7 @@ struct CommunityEventDetailView: View {
   @State private var errorMessage: String?
   @State private var isPresentingInvites = false
   @State private var isPresentingReport = false
+  @State private var isPresentingAttendanceDirectory = false
 
   var body: some View {
     ZStack {
@@ -54,6 +55,7 @@ struct CommunityEventDetailView: View {
             CommunityEventHero(
               detail: detail,
               allowsAttendance: repository.capabilities.contains(.attendance),
+              onViewAllAttendance: { isPresentingAttendanceDirectory = true },
               onSetAttendance: { status, audience in
                 Task { await setAttendance(status, audience: audience) }
               },
@@ -74,7 +76,11 @@ struct CommunityEventDetailView: View {
             }
 
             if repository.capabilities.contains(.attendance) {
-              EventPeoplePage(detail: detail, viewerID: viewerID)
+              EventPeoplePage(
+                detail: detail,
+                viewerID: viewerID,
+                onViewAll: { isPresentingAttendanceDirectory = true }
+              )
             }
 
             EventOverviewPage(
@@ -135,6 +141,16 @@ struct CommunityEventDetailView: View {
       )
       .presentationDetents([.medium, .large])
       .presentationDragIndicator(.visible)
+    }
+    .fullScreenCover(isPresented: $isPresentingAttendanceDirectory) {
+      if let detail {
+        EventAttendanceDirectoryView(
+          event: detail.summary,
+          viewerID: viewerID,
+          repository: repository,
+          onDismiss: { isPresentingAttendanceDirectory = false }
+        )
+      }
     }
   }
 
@@ -219,6 +235,7 @@ struct CommunityEventDetailView: View {
 private struct CommunityEventHero: View {
   let detail: CommunityEventDetail
   let allowsAttendance: Bool
+  let onViewAllAttendance: () -> Void
   let onSetAttendance: (EventAttendanceStatus?, EventAudience) -> Void
   let onConfirmCancelledPerformance: (EventAudience) -> Void
 
@@ -260,6 +277,10 @@ private struct CommunityEventHero: View {
           Text(friendLine)
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(TunedInDesign.primaryText)
+          Spacer(minLength: 4)
+          Button("View all", action: onViewAllAttendance)
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(TunedInDesign.accent)
         }
       }
 
@@ -454,7 +475,7 @@ private struct EventOverviewPage: View {
             .foregroundStyle(TunedInDesign.primaryText)
 
           if detail.summary.phase() == .memories {
-            Text("This discussion is read-only now. Concert posts appear below.")
+            Text("This discussion is read-only after the show.")
               .font(.caption)
               .foregroundStyle(TunedInDesign.mutedText)
           }
@@ -606,6 +627,7 @@ private struct EventOverviewPage: View {
 private struct EventPeoplePage: View {
   let detail: CommunityEventDetail
   let viewerID: UUID
+  let onViewAll: () -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -614,9 +636,11 @@ private struct EventPeoplePage: View {
           .font(.headline)
           .foregroundStyle(TunedInDesign.primaryText)
         Spacer()
-        Text("\(detail.attendances.count) visible")
-          .font(.caption)
-          .foregroundStyle(TunedInDesign.mutedText)
+        if !detail.attendances.isEmpty {
+          Button("View all", action: onViewAll)
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(TunedInDesign.accent)
+        }
       }
 
       if detail.attendances.isEmpty {
@@ -627,7 +651,7 @@ private struct EventPeoplePage: View {
       } else {
         ScrollView(.horizontal, showsIndicators: false) {
           HStack(alignment: .top, spacing: 14) {
-            ForEach(sortedAttendances) { attendance in
+            ForEach(sortedAttendances.prefix(8)) { attendance in
               SocialProfileButton(profile: attendance.profile) {
                 VStack(spacing: 6) {
                   ProfileAvatarView(profile: attendance.profile, size: 54)
@@ -669,6 +693,7 @@ private struct EventMemoriesPage: View {
   let onSaved: () -> Void
 
   @State private var isPresentingDiary = false
+  @State private var isPresentingAllPosts = false
   @State private var selectedDiary: EventDiaryPreview?
   @State private var didOpenInitialDiary = false
 
@@ -724,25 +749,40 @@ private struct EventMemoriesPage: View {
             .foregroundStyle(TunedInDesign.mutedText)
             .padding(.vertical, 12)
         } else {
-          if let myDiary {
-            Text("Your post")
-              .font(.subheadline.weight(.bold))
-              .foregroundStyle(TunedInDesign.mutedText)
-            memoryButton(myDiary)
-          }
-
-          if !otherDiaries.isEmpty {
-            Text("From friends and the community")
-              .font(.subheadline.weight(.bold))
-              .foregroundStyle(TunedInDesign.mutedText)
-              .padding(.top, myDiary == nil ? 0 : 4)
-
-            ForEach(otherDiaries) { diary in
-              memoryButton(diary)
-              if diary.id != otherDiaries.last?.id {
-                Divider().overlay(TunedInDesign.cardBorder)
+          if let concertRepository {
+            LazyVGrid(
+              columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3),
+              spacing: 2
+            ) {
+              ForEach(previewDiaries) { diary in
+                EventPostGridTile(
+                  post: diary,
+                  viewerID: viewerID,
+                  concertRepository: concertRepository,
+                  onOpen: { selectedDiary = diary }
+                )
               }
             }
+            .padding(.horizontal, -20)
+          } else {
+            ForEach(previewDiaries) { diary in
+              EventDiaryPreviewCard(diary: diary)
+            }
+          }
+
+          if shouldShowAllPosts {
+            Button { isPresentingAllPosts = true } label: {
+              HStack {
+                Text("View all \(detail.summary.diaryCount) posts")
+                Spacer()
+                Image(systemName: "chevron.right")
+              }
+              .font(.subheadline.weight(.bold))
+              .foregroundStyle(TunedInDesign.primaryText)
+              .padding(.vertical, 11)
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
           }
         }
       }
@@ -773,6 +813,16 @@ private struct EventMemoriesPage: View {
         )
       }
     }
+    .fullScreenCover(isPresented: $isPresentingAllPosts) {
+      EventPostGalleryView(
+        event: detail.summary,
+        viewerID: viewerID,
+        repository: repository,
+        concertRepository: concertRepository,
+        onChanged: onSaved,
+        onDismiss: { isPresentingAllPosts = false }
+      )
+    }
     .task(id: initialDiaryID) {
       guard !didOpenInitialDiary,
             let initialDiaryID,
@@ -801,79 +851,12 @@ private struct EventMemoriesPage: View {
     sortedDiaries.first(where: { $0.author.id == viewerID })
   }
 
-  private var otherDiaries: [EventDiaryPreview] {
-    sortedDiaries.filter { $0.author.id != viewerID }
+  private var previewDiaries: [EventDiaryPreview] {
+    Array(sortedDiaries.prefix(6))
   }
 
-  @ViewBuilder
-  private func memoryButton(_ diary: EventDiaryPreview) -> some View {
-    if let concertRepository {
-      EventMemoryRow(
-        diary: diary,
-        concertRepository: concertRepository,
-        onOpen: { selectedDiary = diary }
-      )
-    } else {
-      EventDiaryPreviewCard(diary: diary)
-    }
-  }
-}
-
-private struct EventMemoryRow: View {
-  let diary: EventDiaryPreview
-  let concertRepository: any ConcertRepository
-  let onOpen: () -> Void
-
-  var body: some View {
-    HStack(alignment: .top, spacing: 14) {
-      Button(action: onOpen) {
-        DiaryMediaPreview(
-          diaryID: diary.id,
-          reportedPhotoCount: diary.photoCount,
-          concertRepository: concertRepository,
-          height: 112,
-          maximumVisiblePhotos: 1
-        )
-        .frame(width: 112)
-      }
-      .buttonStyle(TunedInPosterButtonStyle())
-      .accessibilityLabel("Open \(diary.author.displayName)’s post")
-
-      VStack(alignment: .leading, spacing: 6) {
-        HStack(alignment: .firstTextBaseline) {
-          SocialProfileButton(profile: diary.author) {
-            Text(diary.author.displayName)
-              .font(.subheadline.weight(.bold))
-              .foregroundStyle(TunedInDesign.primaryText)
-              .lineLimit(1)
-          }
-          Spacer(minLength: 8)
-          if let score = diary.score {
-            CommunityEventScoreBadge(score: score)
-          }
-        }
-
-        Button(action: onOpen) {
-          VStack(alignment: .leading, spacing: 6) {
-            if let note = diary.note {
-              Text(note)
-                .font(.subheadline)
-                .foregroundStyle(TunedInDesign.primaryText)
-                .lineLimit(3)
-            }
-
-            DiaryEngagementLine(diary: diary)
-          }
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .contentShape(Rectangle())
-        }
-        .buttonStyle(TunedInPosterButtonStyle())
-        .accessibilityLabel("Open \(diary.author.displayName)’s post")
-      }
-      .padding(.vertical, 4)
-    }
-    .frame(maxWidth: .infinity, alignment: .leading)
-    .contentShape(Rectangle())
+  private var shouldShowAllPosts: Bool {
+    detail.summary.diaryCount > previewDiaries.count
   }
 }
 

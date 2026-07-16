@@ -361,7 +361,11 @@ extension SupabaseEventRepositoryContractTests {
         "avatar_version":0,
         "status":"going",
         "audience":"community",
-        "updated_at":"2026-07-16T20:00:00Z"
+        "updated_at":"2026-07-16T20:00:00Z",
+        "next_cursor":{
+          "updated_at":"2026-07-16T20:00:00Z",
+          "profile_id":"60000000-0000-0000-0000-000000000001"
+        }
       }
       """#.utf8
     )
@@ -377,6 +381,7 @@ extension SupabaseEventRepositoryContractTests {
     #expect(summary.publicGoingCount == 7)
     #expect(attendee.profile.relationship == .friends)
     #expect(attendee.audience == .community)
+    #expect(attendeeRecord.nextCursor?.profileID == attendee.id)
   }
 
   @Test

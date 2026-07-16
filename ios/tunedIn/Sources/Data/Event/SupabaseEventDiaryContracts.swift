@@ -137,6 +137,7 @@ struct CatalogEventDiaryRPCRecord: Decodable, Equatable, Sendable {
   let commentCount: Int64
   let audience: EventAudience
   let publishedAt: String
+  let nextCursor: CatalogEventDiaryCursorRPCRecord?
 
   enum CodingKeys: String, CodingKey {
     case audience
@@ -154,6 +155,17 @@ struct CatalogEventDiaryRPCRecord: Decodable, Equatable, Sendable {
     case videoCount = "video_count"
     case commentCount = "comment_count"
     case publishedAt = "published_at"
+    case nextCursor = "next_cursor"
+  }
+}
+
+struct CatalogEventDiaryCursorRPCRecord: Decodable, Equatable, Sendable {
+  let publishedAt: String
+  let diaryID: UUID
+
+  enum CodingKeys: String, CodingKey {
+    case publishedAt = "published_at"
+    case diaryID = "diary_id"
   }
 }
 
@@ -208,5 +220,24 @@ extension EventDiaryPreview {
       audience: databaseRecord.audience,
       publishedAt: publishedAt
     )
+  }
+}
+
+extension EventDiaryCursor {
+  var requestValue: [String: String] {
+    [
+      "published_at": CommunityEventDateCoding.dateTimeString(publishedAt),
+      "diary_id": diaryID.uuidString
+    ]
+  }
+}
+
+extension CatalogEventDiaryRPCRecord {
+  func diaryCursor() throws -> EventDiaryCursor? {
+    guard let nextCursor else { return nil }
+    guard let publishedAt = CommunityEventDateCoding.dateTime(from: nextCursor.publishedAt) else {
+      throw AppFailure.unexpected
+    }
+    return EventDiaryCursor(publishedAt: publishedAt, diaryID: nextCursor.diaryID)
   }
 }

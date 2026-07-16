@@ -130,6 +130,16 @@ struct EventAttendance: Codable, Equatable, Identifiable, Sendable {
   var id: UUID { profile.id }
 }
 
+struct EventAttendanceCursor: Equatable, Sendable {
+  let updatedAt: Date
+  let profileID: UUID
+}
+
+struct EventAttendancePage: Equatable, Sendable {
+  let items: [EventAttendance]
+  let nextCursor: EventAttendanceCursor?
+}
+
 struct EventPost: Codable, Equatable, Identifiable, Sendable {
   let id: UUID
   let parentPostID: UUID?
@@ -151,6 +161,16 @@ struct EventDiaryPreview: Codable, Equatable, Identifiable, Sendable {
   let commentCount: Int
   let audience: EventAudience
   let publishedAt: Date
+}
+
+struct EventDiaryCursor: Equatable, Sendable {
+  let publishedAt: Date
+  let diaryID: UUID
+}
+
+struct EventDiaryPage: Equatable, Sendable {
+  let items: [EventDiaryPreview]
+  let nextCursor: EventDiaryCursor?
 }
 
 struct EventProfileDiary: Equatable, Identifiable, Sendable {

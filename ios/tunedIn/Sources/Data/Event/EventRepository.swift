@@ -33,6 +33,18 @@ protocol EventRepository: Sendable {
     viewerID: UUID
   ) async throws -> [CommunityEventSummary]
   func eventDetail(id: UUID, viewerID: UUID) async throws -> CommunityEventDetail
+  func eventAttendances(
+    eventID: UUID,
+    viewerID: UUID,
+    cursor: EventAttendanceCursor?,
+    limit: Int
+  ) async throws -> EventAttendancePage
+  func eventDiaries(
+    eventID: UUID,
+    viewerID: UUID,
+    cursor: EventDiaryCursor?,
+    limit: Int
+  ) async throws -> EventDiaryPage
   func plans(viewerID: UUID) async throws -> [CommunityEventSummary]
   func activityFeed(viewerID: UUID) async throws -> [EventActivity]
   func setAttendance(
@@ -92,6 +104,52 @@ extension EventRepository {
 
   func plans(viewerID _: UUID) async throws -> [CommunityEventSummary] {
     throw CommunityEventError.featureUnavailable("Plans")
+  }
+
+  func eventAttendances(
+    eventID: UUID,
+    viewerID: UUID,
+    cursor: EventAttendanceCursor?,
+    limit: Int
+  ) async throws -> EventAttendancePage {
+    let detail = try await eventDetail(id: eventID, viewerID: viewerID)
+    let sorted = detail.attendances.sorted { lhs, rhs in
+      if lhs.updatedAt != rhs.updatedAt { return lhs.updatedAt > rhs.updatedAt }
+      return lhs.profile.id.uuidString < rhs.profile.id.uuidString
+    }
+    let start = cursor.flatMap { cursor in
+      sorted.firstIndex(where: { $0.profile.id == cursor.profileID }).map { $0 + 1 }
+    } ?? 0
+    let pageSize = max(1, min(limit, 50))
+    let items = Array(sorted.dropFirst(start).prefix(pageSize))
+    let hasMore = start + items.count < sorted.count
+    let nextCursor = hasMore ? items.last.map {
+      EventAttendanceCursor(updatedAt: $0.updatedAt, profileID: $0.profile.id)
+    } : nil
+    return EventAttendancePage(items: items, nextCursor: nextCursor)
+  }
+
+  func eventDiaries(
+    eventID: UUID,
+    viewerID: UUID,
+    cursor: EventDiaryCursor?,
+    limit: Int
+  ) async throws -> EventDiaryPage {
+    let detail = try await eventDetail(id: eventID, viewerID: viewerID)
+    let sorted = detail.diaryPreviews.sorted { lhs, rhs in
+      if lhs.publishedAt != rhs.publishedAt { return lhs.publishedAt > rhs.publishedAt }
+      return lhs.id.uuidString < rhs.id.uuidString
+    }
+    let start = cursor.flatMap { cursor in
+      sorted.firstIndex(where: { $0.id == cursor.diaryID }).map { $0 + 1 }
+    } ?? 0
+    let pageSize = max(1, min(limit, 50))
+    let items = Array(sorted.dropFirst(start).prefix(pageSize))
+    let hasMore = start + items.count < sorted.count
+    let nextCursor = hasMore ? items.last.map {
+      EventDiaryCursor(publishedAt: $0.publishedAt, diaryID: $0.id)
+    } : nil
+    return EventDiaryPage(items: items, nextCursor: nextCursor)
   }
 
   func activityFeed(viewerID _: UUID) async throws -> [EventActivity] {
