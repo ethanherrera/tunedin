@@ -1,6 +1,8 @@
 # Community Events Implementation Plan
 
-Status: in progress; Phases 1–5 implemented for the disposable Local environment
+Status: implementation and interactive iPhone 13 verification complete for Phases 0–5
+in the Development fixture and disposable Local environments; hosted Development remains
+undeployed
 Decision date: 2026-07-16
 Decision owner: Ethan
 Depends on: `docs/community-events-product-design.md` and
@@ -28,8 +30,8 @@ Depends on: `docs/community-events-product-design.md` and
   chronological Plans, a compact calendar toggle, post-show confirmation, immutable
   activity, mutation quotas, and unlisted-event retention. Seeded-session REST,
   database authorization, generated-type, Local build, and repository contract
-  verification pass. The final interactive iPhone 13 click-through is pending a
-  manually unlocked Mac; hosted Development remains unchanged.
+  verification pass. The interactive iPhone 13 pass verifies Plans, the complete
+  attendee list, and privacy-aware friend context; hosted Development remains unchanged.
 - Phase 3 is implemented in
   `20260716230000_catalog_event_invitations_posts.sql` and the Local iOS
   repository: private friend invitations, an inbox whose bounded response includes
@@ -38,9 +40,9 @@ Depends on: `docs/community-events-product-design.md` and
   revocation, notification-safe opaque outbox events, and a privacy-filtered event
   activity feed. Invitation and post quotas are enforced in Postgres. Seeded
   sessions verify invite, reply, accept, inbox, Plans, and feed behavior; 449 pgTAP
-  tests, generated-type checks, Local build, and repository tests pass. Interactive
-  iPhone 13 visual inspection remains pending a manually unlocked Mac, and hosted
-  Development remains unchanged.
+  tests, generated-type checks, Local build, and repository tests pass. The interactive
+  iPhone 13 pass verifies invitation state, upcoming posts/replies, and corresponding
+  feed activity; hosted Development remains unchanged.
 - Phase 4 is implemented in `20260717010000_catalog_event_diaries.sql` and the
   Local iOS repository: independent personal diaries linked to Went attendance,
   fixed half-point overall/performance scores, normalized reviews, current album
@@ -50,8 +52,9 @@ Depends on: `docs/community-events-product-design.md` and
   block, and one-diary-per-person rules are enforced in Postgres. The legacy shared
   archive excludes these new personal records. The clean upgrade path, deterministic
   seed, authenticated REST journey, generated types, 493 pgTAP tests, Local build,
-  and 179 iOS tests pass. Interactive iPhone 13 visual inspection remains pending a
-  manually unlocked Mac; hosted Development remains unchanged.
+  and the current 184-test iOS suite pass. The interactive iPhone 13 pass verifies
+  separate Went and Diary history, direct diary routing, scores, audiences, album
+  actions, and authorized comments; hosted Development remains unchanged.
 - Phase 5 is implemented in
   `20260717030000_catalog_event_integrity_operations.sql`: protected operator
   review, optimistic event versions, non-destructive canonical merges, redirect
@@ -64,6 +67,18 @@ Depends on: `docs/community-events-product-design.md` and
   `runbooks/community-event-integrity.md`. The new 48-check authorization and
   lifecycle matrix and the full 541-check database suite pass locally; hosted
   Development remains unchanged.
+- The product-exit pass is implemented in
+  `20260717050000_catalog_event_product_exit.sql` and the current Local iOS
+  repository: exact occurrence identity no longer depends on start time; memory
+  unlock follows venue-local timing; duplicate candidates remain warnings; event
+  creation does not imply attendance; profile Going, friend-only activity with
+  authorized diary previews, direct diary routing, remembered post audience,
+  photo-only diaries, sensitive-location reports, and explicit
+  cancelled-but-performed confirmation are complete. A fresh full verification now
+  passes 567 pgTAP checks, 184 Swift tests, generated-type freshness, Storage
+  authorization, and a repeatable two-session REST product journey. The exact
+  requirement mapping and completed fixture/authenticated Local iPhone 13 audit are
+  recorded in `docs/community-events-completion-audit.md`.
 
 ## Architecture decision
 
@@ -403,9 +418,9 @@ an exact duplicate race cannot create two canonical rows.
 
 ### Phase 2 — Going, attendee discovery, and Plans
 
-Implementation status: complete in the disposable Local environment, with the
-interactive iPhone 13 click-through still pending a manually unlocked Mac. Hosted
-Development remains gated until the reviewed migrations are deployed.
+Implementation status: complete in the disposable Local environment and verified
+interactively on iPhone 13. Hosted Development remains gated until the reviewed
+migrations are deployed.
 
 - Add attendance tables/RPCs and audience-aware attendee/profile reads.
 - Implement one-tap Going, audience control, cancellation, and Went confirmation.
@@ -418,9 +433,9 @@ permitted rows, and retain an attendance-only Went history.
 
 ### Phase 3 — invitations and upcoming conversation
 
-Implementation status: complete in the disposable Local environment, with the
-interactive iPhone 13 click-through still pending a manually unlocked Mac. Hosted
-Development remains gated until the reviewed migrations are deployed.
+Implementation status: complete in the disposable Local environment and verified
+interactively on iPhone 13. Hosted Development remains gated until the reviewed
+migrations are deployed.
 
 - Add invitations, event posts/replies, rate limits, soft deletion, and private
   notification outbox events.
@@ -433,8 +448,8 @@ state, and blocked or unauthorized users cannot read or mutate the records.
 
 ### Phase 4 — link personal diaries to events
 
-Implemented for disposable Local Supabase and the Local iOS repository. The
-interactive iPhone 13 visual pass remains pending a manually unlocked Mac.
+Implemented for disposable Local Supabase and the Local iOS repository, including an
+authenticated interactive iPhone 13 pass.
 
 - Expand `concerts` with event/attendance/model/audience/publication fields and add
   `diary_reviews`.
