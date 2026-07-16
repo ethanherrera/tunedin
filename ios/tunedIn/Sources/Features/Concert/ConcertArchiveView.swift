@@ -15,6 +15,7 @@ struct ConcertArchiveView: View {
   let refreshToken: Int
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Namespace private var concertTransitionNamespace
 
   var body: some View {
     @Bindable var model = model
@@ -76,10 +77,18 @@ struct ConcertArchiveView: View {
                   concertRepository: concertRepository,
                   socialRepository: socialRepository
                 )
+                .tunedInNavigationZoom(
+                  sourceID: preview.id,
+                  in: concertTransitionNamespace
+                )
               } label: {
                 ConcertArchiveRow(preview: preview, repository: concertRepository)
+                  .tunedInMatchedNavigationSource(
+                    id: preview.id,
+                    in: concertTransitionNamespace
+                  )
               }
-              .buttonStyle(.plain)
+              .buttonStyle(TunedInPosterButtonStyle())
               .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
               .accessibilityLabel("Open \(preview.primaryArtistName)")
             }
@@ -430,6 +439,33 @@ enum ConcertDetailPage: CaseIterable, Hashable {
   }
 }
 
+private struct ConcertHeroScrollPositionKey: PreferenceKey {
+  static let defaultValue: CGFloat = 0
+
+  static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+    value = nextValue()
+  }
+}
+
+private struct ConcertHeroScrollTrackingModifier: ViewModifier {
+  @Binding var progress: CGFloat
+
+  @ViewBuilder
+  func body(content: Content) -> some View {
+    if #available(iOS 18.0, *) {
+      content.onScrollGeometryChange(for: CGFloat.self) { geometry in
+        max(geometry.contentOffset.y + geometry.contentInsets.top, 0)
+      } action: { _, offset in
+        progress = min(max(offset / 420, 0), 1)
+      }
+    } else {
+      content.onPreferenceChange(ConcertHeroScrollPositionKey.self) { minY in
+        progress = min(max(-minY / 420, 0), 1)
+      }
+    }
+  }
+}
+
 // swiftlint:disable:next type_body_length
 struct ConcertDetailView: View {
   private enum ArtworkStyle: Equatable {
@@ -445,6 +481,7 @@ struct ConcertDetailView: View {
 
   @Environment(\.dismiss) private var dismiss
   @Environment(\.telemetry) private var telemetry
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @EnvironmentObject private var concertFloatingControls: ConcertFloatingControls
   @State private var detail: ConcertDetail?
   @State private var errorMessage: String?
@@ -456,6 +493,7 @@ struct ConcertDetailView: View {
   @State private var hasRemoteChanges = false
   @State private var isApplyingRemoteChanges = false
   @State private var albumRefreshToken = 0
+  @State private var heroCollapseProgress: CGFloat = 0
   @State private var commentsModel: ConcertCommentsModel
 
   init(
@@ -539,11 +577,25 @@ struct ConcertDetailView: View {
       }
     }
     .overlay(alignment: .top) {
-      if hasRemoteChanges {
-        updatesAvailableButton
-          .padding(.horizontal, 20)
-          .padding(.top, 10)
+      VStack(spacing: 8) {
+        if hasRemoteChanges {
+          updatesAvailableButton
+        }
+        if let detail,
+           selectedPage == .concert,
+           heroCollapseProgress >= 0.82 {
+          compactConcertIdentity(detail)
+            .transition(
+              TunedInMotion.compactIdentityTransition(reduceMotion: reduceMotion)
+            )
+        }
       }
+      .padding(.horizontal, 20)
+      .padding(.top, 10)
+      .animation(
+        TunedInMotion.navigation(reduceMotion: reduceMotion),
+        value: heroCollapseProgress >= 0.82
+      )
     }
     .toolbar(.hidden, for: .navigationBar)
     .onAppear { configureFloatingControls() }
@@ -640,7 +692,43 @@ struct ConcertDetailView: View {
       .padding(.horizontal, 20)
       .padding(.bottom, 24)
     }
+    .scaleEffect(
+      x: 1 - (heroCollapseProgress * 0.045),
+      y: 1 - (heroCollapseProgress * 0.045),
+      anchor: .top
+    )
+    .opacity(1 - (heroCollapseProgress * 0.18))
     .accessibilityElement(children: .combine)
+  }
+
+  private func compactConcertIdentity(_ detail: ConcertDetail) -> some View {
+    let artistName = detail.artists.first(where: \.isPrimary)?.name ?? "A saved night"
+    let location = [detail.concert.venueName, detail.concert.city]
+      .compactMap(\.self)
+      .joined(separator: " · ")
+
+    return TunedInGlassIdentitySurface {
+      HStack(spacing: 10) {
+        Image(systemName: "music.note")
+          .font(.caption.weight(.bold))
+          .foregroundStyle(TunedInDesign.selectedControlForeground)
+          .frame(width: 28, height: 28)
+          .background(TunedInDesign.accentTint, in: Circle())
+
+        VStack(alignment: .leading, spacing: 1) {
+          Text(artistName)
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
+            .lineLimit(1)
+          Text(location)
+            .font(.caption2)
+            .foregroundStyle(TunedInDesign.mutedText)
+            .lineLimit(1)
+        }
+      }
+    }
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel("\(artistName), \(location)")
   }
 
   private func concertPreview(_ detail: ConcertDetail) -> some View {
@@ -682,6 +770,14 @@ struct ConcertDetailView: View {
     ScrollView {
       LazyVStack(alignment: .leading, spacing: 0) {
         concertHeader(detail, artworkStyle: .full)
+          .background {
+            GeometryReader { proxy in
+              Color.clear.preference(
+                key: ConcertHeroScrollPositionKey.self,
+                value: proxy.frame(in: .named("concert-detail-scroll")).minY
+              )
+            }
+          }
         concertEditorialSections(detail)
           .padding(.horizontal, 20)
           .padding(.top, 24)
@@ -689,6 +785,8 @@ struct ConcertDetailView: View {
       }
       .frame(maxWidth: .infinity, alignment: .leading)
     }
+    .coordinateSpace(name: "concert-detail-scroll")
+    .modifier(ConcertHeroScrollTrackingModifier(progress: $heroCollapseProgress))
     .ignoresSafeArea(edges: .top)
     .refreshable {
       await loadDetail(policy: .refresh)

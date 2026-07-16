@@ -112,6 +112,12 @@ enum TunedInDesign {
 }
 
 enum TunedInMotion {
+  static func press(reduceMotion: Bool) -> Animation {
+    reduceMotion
+      ? .easeOut(duration: 0.08)
+      : .easeOut(duration: 0.14)
+  }
+
   static func selection(reduceMotion: Bool) -> Animation {
     reduceMotion
       ? .easeOut(duration: 0.12)
@@ -126,6 +132,12 @@ enum TunedInMotion {
 
   static func controlSceneTransition(reduceMotion: Bool) -> AnyTransition {
     reduceMotion ? .opacity : .identity
+  }
+
+  static func compactIdentityTransition(reduceMotion: Bool) -> AnyTransition {
+    reduceMotion
+      ? .opacity
+      : .move(edge: .top).combined(with: .opacity)
   }
 }
 
@@ -192,6 +204,31 @@ struct TunedInSelectionLens: View {
             .strokeBorder(TunedInDesign.accent.opacity(0.2))
         }
     }
+  }
+}
+
+struct TunedInPosterButtonStyle: ButtonStyle {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
+      .opacity(configuration.isPressed ? 0.92 : 1)
+      .animation(
+        TunedInMotion.press(reduceMotion: reduceMotion),
+        value: configuration.isPressed
+      )
+  }
+}
+
+struct TunedInGlassIdentitySurface<Content: View>: View {
+  @ViewBuilder let content: Content
+
+  var body: some View {
+    content
+      .padding(.horizontal, 14)
+      .padding(.vertical, 10)
+      .modifier(TunedInLiquidGlassIdentitySurface())
   }
 }
 
@@ -776,6 +813,55 @@ private struct TunedInLiquidGlassBottomBarSurface: ViewModifier {
   }
 }
 
+private struct TunedInLiquidGlassIdentitySurface: ViewModifier {
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+  func body(content: Content) -> some View {
+    if #available(iOS 26.0, *), !reduceTransparency {
+      content
+        .glassEffect(.regular, in: Capsule())
+    } else {
+      content
+        .background(.ultraThinMaterial, in: Capsule())
+        .background(TunedInDesign.cardBackground.opacity(0.9), in: Capsule())
+        .overlay {
+          Capsule()
+            .strokeBorder(TunedInDesign.cardBorder.opacity(0.85))
+        }
+    }
+  }
+}
+
+private struct TunedInMatchedNavigationSourceModifier<SourceID: Hashable>: ViewModifier {
+  let id: SourceID
+  let namespace: Namespace.ID
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  func body(content: Content) -> some View {
+    if #available(iOS 18.0, *), !reduceMotion {
+      content
+        .matchedTransitionSource(id: id, in: namespace)
+    } else {
+      content
+    }
+  }
+}
+
+private struct TunedInNavigationZoomModifier<SourceID: Hashable>: ViewModifier {
+  let sourceID: SourceID
+  let namespace: Namespace.ID
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  func body(content: Content) -> some View {
+    if #available(iOS 18.0, *), !reduceMotion {
+      content
+        .navigationTransition(.zoom(sourceID: sourceID, in: namespace))
+    } else {
+      content
+    }
+  }
+}
+
 private struct TunedInKeyboardDismissControl: View {
   var body: some View {
     Button {
@@ -873,6 +959,20 @@ private struct TunedInKeyboardPresentationModifier: ViewModifier {
 }
 
 extension View {
+  func tunedInMatchedNavigationSource<SourceID: Hashable>(
+    id: SourceID,
+    in namespace: Namespace.ID
+  ) -> some View {
+    modifier(TunedInMatchedNavigationSourceModifier(id: id, namespace: namespace))
+  }
+
+  func tunedInNavigationZoom<SourceID: Hashable>(
+    sourceID: SourceID,
+    in namespace: Namespace.ID
+  ) -> some View {
+    modifier(TunedInNavigationZoomModifier(sourceID: sourceID, namespace: namespace))
+  }
+
   func tunedInSelectionFeedback<Trigger: Equatable>(trigger: Trigger) -> some View {
     sensoryFeedback(.selection, trigger: trigger)
   }
