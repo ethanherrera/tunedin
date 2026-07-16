@@ -242,13 +242,11 @@ struct CommunityActivityFeedView: View {
           } else {
             LazyVStack(spacing: 20) {
               ForEach(activities) { activity in
-                Button { onOpenActivity(activity) } label: {
-                  CommunityActivityCard(
-                    activity: activity,
-                    concertRepository: concertRepository
-                  )
-                }
-                .buttonStyle(TunedInPosterButtonStyle())
+                CommunityActivityCard(
+                  activity: activity,
+                  concertRepository: concertRepository,
+                  onOpenActivity: { onOpenActivity(activity) }
+                )
               }
             }
           }
@@ -433,14 +431,18 @@ private struct EventInvitationCard: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
       HStack(spacing: 10) {
-        ProfileAvatarView(profile: invitation.sender, size: 42)
-        VStack(alignment: .leading, spacing: 3) {
-          Text("\(invitation.sender.displayName) invited you")
-            .font(.subheadline.weight(.bold))
-            .foregroundStyle(TunedInDesign.primaryText)
-          Text(invitation.createdAt, style: .relative)
-            .font(.caption)
-            .foregroundStyle(TunedInDesign.mutedText)
+        SocialProfileButton(profile: invitation.sender) {
+          HStack(spacing: 10) {
+            ProfileAvatarView(profile: invitation.sender, size: 42)
+            VStack(alignment: .leading, spacing: 3) {
+              Text("\(invitation.sender.displayName) invited you")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(TunedInDesign.primaryText)
+              Text(invitation.createdAt, style: .relative)
+                .font(.caption)
+                .foregroundStyle(TunedInDesign.mutedText)
+            }
+          }
         }
       }
 

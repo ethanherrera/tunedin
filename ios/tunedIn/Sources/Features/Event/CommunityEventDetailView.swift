@@ -424,15 +424,9 @@ private struct CommunityEventHero: View {
   }
 
   private var friendLine: String {
-    let names = detail.summary.friendPreviews.prefix(2).map { $0.profile.displayName }
     let total = detail.summary.friendPreviews.count
     let verb = detail.summary.phase() == .memories ? "went" : "are going"
-    if total == 1, let name = names.first {
-      return detail.summary.phase() == .memories ? name + " went" : name + " is going"
-    }
-    let remainder = total - names.count
-    return names.joined(separator: " and ")
-      + (remainder > 0 ? " + \(remainder) more \(verb)" : " \(verb)")
+    return "\(total) friend\(total == 1 ? "" : "s") \(verb)"
   }
 }
 
@@ -469,8 +463,12 @@ private struct EventOverviewPage: View {
             if let replyTo {
               HStack(spacing: 8) {
                 Image(systemName: "arrowshape.turn.up.left.fill")
-                Text("Replying to \(replyTo.author.displayName)")
-                  .lineLimit(1)
+                Text("Replying to")
+                SocialProfileButton(profile: replyTo.author) {
+                  Text(replyTo.author.displayName)
+                    .fontWeight(.bold)
+                    .lineLimit(1)
+                }
                 Spacer()
                 Button("Cancel") { self.replyTo = nil }
               }
@@ -630,17 +628,19 @@ private struct EventPeoplePage: View {
         ScrollView(.horizontal, showsIndicators: false) {
           HStack(alignment: .top, spacing: 14) {
             ForEach(sortedAttendances) { attendance in
-              VStack(spacing: 6) {
-                ProfileAvatarView(profile: attendance.profile, size: 54)
-                Text(attendance.profile.id == viewerID ? "You" : attendance.profile.displayName)
-                  .font(.caption.weight(.semibold))
-                  .foregroundStyle(TunedInDesign.primaryText)
-                  .lineLimit(1)
-                Text(attendance.profile.relationship == .friends ? "Friend" : "Community")
-                  .font(.caption2)
-                  .foregroundStyle(TunedInDesign.mutedText)
+              SocialProfileButton(profile: attendance.profile) {
+                VStack(spacing: 6) {
+                  ProfileAvatarView(profile: attendance.profile, size: 54)
+                  Text(attendance.profile.id == viewerID ? "You" : attendance.profile.displayName)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(TunedInDesign.primaryText)
+                    .lineLimit(1)
+                  Text(attendance.profile.relationship == .friends ? "Friend" : "Community")
+                    .font(.caption2)
+                    .foregroundStyle(TunedInDesign.mutedText)
+                }
+                .frame(width: 72)
               }
-              .frame(width: 72)
             }
           }
           .padding(.horizontal, 1)
@@ -808,10 +808,11 @@ private struct EventMemoriesPage: View {
   @ViewBuilder
   private func memoryButton(_ diary: EventDiaryPreview) -> some View {
     if let concertRepository {
-      Button { selectedDiary = diary } label: {
-        EventMemoryRow(diary: diary, concertRepository: concertRepository)
-      }
-      .buttonStyle(TunedInPosterButtonStyle())
+      EventMemoryRow(
+        diary: diary,
+        concertRepository: concertRepository,
+        onOpen: { selectedDiary = diary }
+      )
     } else {
       EventDiaryPreviewCard(diary: diary)
     }
@@ -821,38 +822,53 @@ private struct EventMemoriesPage: View {
 private struct EventMemoryRow: View {
   let diary: EventDiaryPreview
   let concertRepository: any ConcertRepository
+  let onOpen: () -> Void
 
   var body: some View {
     HStack(alignment: .top, spacing: 14) {
-      DiaryMediaPreview(
-        diaryID: diary.id,
-        reportedPhotoCount: diary.photoCount,
-        concertRepository: concertRepository,
-        height: 112,
-        maximumVisiblePhotos: 1
-      )
-      .frame(width: 112)
+      Button(action: onOpen) {
+        DiaryMediaPreview(
+          diaryID: diary.id,
+          reportedPhotoCount: diary.photoCount,
+          concertRepository: concertRepository,
+          height: 112,
+          maximumVisiblePhotos: 1
+        )
+        .frame(width: 112)
+      }
+      .buttonStyle(TunedInPosterButtonStyle())
+      .accessibilityLabel("Open \(diary.author.displayName)’s post")
 
       VStack(alignment: .leading, spacing: 6) {
         HStack(alignment: .firstTextBaseline) {
-          Text(diary.author.displayName)
-            .font(.subheadline.weight(.bold))
-            .foregroundStyle(TunedInDesign.primaryText)
-            .lineLimit(1)
+          SocialProfileButton(profile: diary.author) {
+            Text(diary.author.displayName)
+              .font(.subheadline.weight(.bold))
+              .foregroundStyle(TunedInDesign.primaryText)
+              .lineLimit(1)
+          }
           Spacer(minLength: 8)
           if let score = diary.score {
             CommunityEventScoreBadge(score: score)
           }
         }
 
-        if let note = diary.note {
-          Text(note)
-            .font(.subheadline)
-            .foregroundStyle(TunedInDesign.primaryText)
-            .lineLimit(3)
-        }
+        Button(action: onOpen) {
+          VStack(alignment: .leading, spacing: 6) {
+            if let note = diary.note {
+              Text(note)
+                .font(.subheadline)
+                .foregroundStyle(TunedInDesign.primaryText)
+                .lineLimit(3)
+            }
 
-        DiaryEngagementLine(diary: diary)
+            DiaryEngagementLine(diary: diary)
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(TunedInPosterButtonStyle())
+        .accessibilityLabel("Open \(diary.author.displayName)’s post")
       }
       .padding(.vertical, 4)
     }
@@ -1380,30 +1396,41 @@ private struct EventInviteView: View {
               )
             } else {
               ForEach(candidates) { candidate in
-                Button { toggle(candidate) } label: {
-                  HStack(spacing: 12) {
-                    ProfileAvatarView(profile: candidate.profile, size: 44)
-                    VStack(alignment: .leading, spacing: 3) {
-                      Text(candidate.profile.displayName)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(TunedInDesign.primaryText)
-                      Text(candidateStatus(candidate))
-                        .font(.caption)
-                        .foregroundStyle(TunedInDesign.mutedText)
+                HStack(spacing: 12) {
+                  SocialProfileButton(profile: candidate.profile) {
+                    HStack(spacing: 12) {
+                      ProfileAvatarView(profile: candidate.profile, size: 44)
+                      VStack(alignment: .leading, spacing: 3) {
+                        Text(candidate.profile.displayName)
+                          .font(.body.weight(.semibold))
+                          .foregroundStyle(TunedInDesign.primaryText)
+                        Text(candidateStatus(candidate))
+                          .font(.caption)
+                          .foregroundStyle(TunedInDesign.mutedText)
+                      }
                     }
-                    Spacer()
+                  }
+                  Spacer()
+                  Button { toggle(candidate) } label: {
                     Image(
                       systemName: selection.contains(candidate.id) ? "checkmark.circle.fill" : "circle"
                     )
+                    .font(.title3)
                     .foregroundStyle(
                       selection.contains(candidate.id) ? TunedInDesign.accent : TunedInDesign.mutedText
                     )
+                    .frame(width: 44, height: 44)
                   }
-                  .padding(12)
-                  .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 18))
+                  .buttonStyle(.plain)
+                  .disabled(candidate.attendanceStatus != nil || candidate.isAlreadyInvited)
+                  .accessibilityLabel(
+                    selection.contains(candidate.id)
+                      ? "Remove \(candidate.profile.displayName) from invites"
+                      : "Invite \(candidate.profile.displayName)"
+                  )
                 }
-                .buttonStyle(.plain)
-                .disabled(candidate.attendanceStatus != nil || candidate.isAlreadyInvited)
+                .padding(12)
+                .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 18))
               }
             }
 

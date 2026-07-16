@@ -60,15 +60,20 @@ struct CommunityEventRow: View {
 struct CommunityActivityCard: View {
   let activity: EventActivity
   let concertRepository: any ConcertRepository
+  let onOpenActivity: () -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       HStack(spacing: 10) {
-        ProfileAvatarView(profile: activity.actor, size: 42)
+        SocialProfileButton(profile: activity.actor) {
+          ProfileAvatarView(profile: activity.actor, size: 42)
+        }
         VStack(alignment: .leading, spacing: 2) {
-          Text(activity.actor.displayName)
-            .font(.subheadline.weight(.bold))
-            .foregroundStyle(TunedInDesign.primaryText)
+          SocialProfileButton(profile: activity.actor) {
+            Text(activity.actor.displayName)
+              .font(.subheadline.weight(.bold))
+              .foregroundStyle(TunedInDesign.primaryText)
+          }
           Text(activity.message)
             .font(.caption)
             .foregroundStyle(TunedInDesign.mutedText)
@@ -82,7 +87,23 @@ struct CommunityActivityCard: View {
       .padding(.horizontal, 18)
       .padding(.bottom, 12)
 
-      if let diary = activity.diary {
+      Button(action: onOpenActivity) {
+        activityContent
+      }
+      .buttonStyle(TunedInPosterButtonStyle())
+      .accessibilityLabel("Open \(activity.event.title)")
+
+      Divider()
+        .overlay(TunedInDesign.cardBorder)
+        .padding(.top, 18)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+  }
+
+  @ViewBuilder
+  private var activityContent: some View {
+    if let diary = activity.diary {
+      VStack(alignment: .leading, spacing: 0) {
         if diary.photoCount > 0 {
           DiaryMediaPreview(
             diaryID: diary.id,
@@ -119,38 +140,33 @@ struct CommunityActivityCard: View {
         }
         .padding(.horizontal, 18)
         .padding(.top, diary.photoCount > 0 ? 12 : 2)
-      } else {
-        HStack(spacing: 14) {
-          EventDateTile(date: activity.event.eventDate)
-          VStack(alignment: .leading, spacing: 4) {
-            Text(activity.event.title)
-              .font(.headline)
-              .foregroundStyle(TunedInDesign.primaryText)
-            Text("\(activity.event.venueName) · \(activity.event.areaName)")
-              .font(.subheadline)
-              .foregroundStyle(TunedInDesign.mutedText)
-            if !activity.event.friendPreviews.isEmpty {
-              HStack(spacing: 8) {
-                EventAvatarStack(profiles: activity.event.friendPreviews.map(\.profile))
-                Text("\(activity.event.friendPreviews.count) in your circle")
-                  .font(.caption.weight(.semibold))
-                  .foregroundStyle(TunedInDesign.mutedText)
-              }
-            }
-          }
-          Spacer(minLength: 0)
-          Image(systemName: "chevron.right")
-            .font(.caption.weight(.bold))
-            .foregroundStyle(TunedInDesign.mutedText)
-        }
-        .padding(.horizontal, 18)
       }
-
-      Divider()
-        .overlay(TunedInDesign.cardBorder)
-        .padding(.top, 18)
+    } else {
+      HStack(spacing: 14) {
+        EventDateTile(date: activity.event.eventDate)
+        VStack(alignment: .leading, spacing: 4) {
+          Text(activity.event.title)
+            .font(.headline)
+            .foregroundStyle(TunedInDesign.primaryText)
+          Text("\(activity.event.venueName) · \(activity.event.areaName)")
+            .font(.subheadline)
+            .foregroundStyle(TunedInDesign.mutedText)
+          if !activity.event.friendPreviews.isEmpty {
+            Label(
+              "\(activity.event.friendPreviews.count) in your circle",
+              systemImage: "person.2.fill"
+            )
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(TunedInDesign.mutedText)
+          }
+        }
+        Spacer(minLength: 0)
+        Image(systemName: "chevron.right")
+          .font(.caption.weight(.bold))
+          .foregroundStyle(TunedInDesign.mutedText)
+      }
+      .padding(.horizontal, 18)
     }
-    .frame(maxWidth: .infinity, alignment: .leading)
   }
 }
 
@@ -167,14 +183,18 @@ struct EventDiaryPreviewCard: View {
     VStack(alignment: .leading, spacing: 12) {
       if showsAuthor {
         HStack(spacing: 10) {
-          ProfileAvatarView(profile: diary.author, size: 42)
-          VStack(alignment: .leading, spacing: 2) {
-            Text(diary.author.displayName)
-              .font(.subheadline.weight(.bold))
-              .foregroundStyle(TunedInDesign.primaryText)
-            Text("@\(diary.author.username)")
-              .font(.caption)
-              .foregroundStyle(TunedInDesign.mutedText)
+          SocialProfileButton(profile: diary.author) {
+            HStack(spacing: 10) {
+              ProfileAvatarView(profile: diary.author, size: 42)
+              VStack(alignment: .leading, spacing: 2) {
+                Text(diary.author.displayName)
+                  .font(.subheadline.weight(.bold))
+                  .foregroundStyle(TunedInDesign.primaryText)
+                Text("@\(diary.author.username)")
+                  .font(.caption)
+                  .foregroundStyle(TunedInDesign.mutedText)
+              }
+            }
           }
           Spacer()
           score
@@ -394,11 +414,16 @@ struct EventPostRow: View {
           .foregroundStyle(TunedInDesign.mutedText)
           .frame(width: 16, height: 38)
       }
-      ProfileAvatarView(profile: post.author, size: 38)
+      SocialProfileButton(profile: post.author) {
+        ProfileAvatarView(profile: post.author, size: 38)
+      }
       VStack(alignment: .leading, spacing: 4) {
         HStack {
-          Text(post.author.displayName)
-            .font(.subheadline.weight(.bold))
+          SocialProfileButton(profile: post.author) {
+            Text(post.author.displayName)
+              .font(.subheadline.weight(.bold))
+              .foregroundStyle(TunedInDesign.primaryText)
+          }
           Image(systemName: post.audience.icon)
             .font(.caption2)
             .foregroundStyle(TunedInDesign.mutedText)
@@ -501,8 +526,10 @@ struct EventAvatarStack: View {
   var body: some View {
     HStack(spacing: -9) {
       ForEach(profiles.prefix(3)) { profile in
-        ProfileAvatarView(profile: profile, size: 34)
-          .overlay(Circle().stroke(TunedInDesign.cardBackground, lineWidth: 2))
+        SocialProfileButton(profile: profile) {
+          ProfileAvatarView(profile: profile, size: 34)
+            .overlay(Circle().stroke(TunedInDesign.cardBackground, lineWidth: 2))
+        }
       }
     }
   }

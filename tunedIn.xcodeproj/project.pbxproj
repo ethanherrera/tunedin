@@ -77,6 +77,7 @@
 		7A9E943A4D2A0A5CD8AF0398 /* ConcertCreationFormSections.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD75288821322770423012C4 /* ConcertCreationFormSections.swift */; };
 		7C5E39EEC50F78A16D6351E4 /* CatalogSearchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E9515DFEDEC6E1303CB06D2 /* CatalogSearchModel.swift */; };
 		7E03A226F0EED2E524823CCB /* CommunityEventScoreBandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00DA77E3859E50CB230AF182 /* CommunityEventScoreBandTests.swift */; };
+		7E742A26BF83C4207418A3BB /* SocialProfileNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 515418BE8BFEA8F6CABA8B36 /* SocialProfileNavigation.swift */; };
 		7F900D7F871E8EB8BF235637 /* afterglow-stage.png in Resources */ = {isa = PBXBuildFile; fileRef = EA95DDDDA02A9205456F296D /* afterglow-stage.png */; };
 		8146C0397EE86EEBFECFEC93 /* ConcertAlbumUploadViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29F350EB61842D6DA5FE0C2A /* ConcertAlbumUploadViews.swift */; };
 		83A9DCB96622FE84342F37C4 /* TunedInAppearanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93B17BB128F3EE14857B0AEB /* TunedInAppearanceTests.swift */; };
@@ -214,6 +215,7 @@
 		4B185CD800E6B9369C52FD98 /* AlbumReadinessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumReadinessTests.swift; sourceTree = "<group>"; };
 		4CF150C1DA53FD37E240893D /* EventDiaryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDiaryDetailView.swift; sourceTree = "<group>"; };
 		4F9B1A4D54544CD7AA15C942 /* TunedInKeyboardPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunedInKeyboardPresentationTests.swift; sourceTree = "<group>"; };
+		515418BE8BFEA8F6CABA8B36 /* SocialProfileNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialProfileNavigation.swift; sourceTree = "<group>"; };
 		51C9239ADDF5ED1FD84086B4 /* CatalogSearchSupportingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogSearchSupportingViews.swift; sourceTree = "<group>"; };
 		52FC5FA5CC195C96AC2F7E11 /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
 		531CDC9DE20342FF17125961 /* TelemetryClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryClient.swift; sourceTree = "<group>"; };
@@ -486,6 +488,7 @@
 				74193CBB4CFA490AEC77ACC8 /* PersonProfileView.swift */,
 				B583B6D8C84821B5F36ABC1A /* ProfileAvatarView.swift */,
 				E0FBCDF44CFFCD6B78B8DD54 /* ProfileTabView.swift */,
+				515418BE8BFEA8F6CABA8B36 /* SocialProfileNavigation.swift */,
 				9C0DDFE97BC599D751B4B028 /* TelemetrySettingsView.swift */,
 			);
 			path = Profile;
@@ -891,6 +894,7 @@
 				1F370D3E3BCB807C700E18B0 /* ProfileTabView.swift in Sources */,
 				57F081E618CAF393AF471A66 /* RootView.swift in Sources */,
 				8E89ADE92E9EC969C9642D6B /* SignedURLCache.swift in Sources */,
+				7E742A26BF83C4207418A3BB /* SocialProfileNavigation.swift in Sources */,
 				688D1000AEFBC476BB11BD63 /* SocialProfileSearchCache.swift in Sources */,
 				578D26050C3AABF525F572E7 /* SocialRepository.swift in Sources */,
 				2AEC9C708B7ADD5C38F331BE /* SupabaseAuthenticationRepository.swift in Sources */,

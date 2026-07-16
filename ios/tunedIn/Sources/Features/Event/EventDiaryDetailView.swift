@@ -61,11 +61,16 @@ struct EventDiaryDetailView: View {
 
   private var diaryAuthorHeader: some View {
     HStack(spacing: 12) {
-      ProfileAvatarView(profile: diary.author, size: 44)
+      SocialProfileButton(profile: diary.author) {
+        ProfileAvatarView(profile: diary.author, size: 44)
+      }
       VStack(alignment: .leading, spacing: 3) {
         HStack(spacing: 5) {
-          Text(diary.author.displayName)
-            .fontWeight(.bold)
+          SocialProfileButton(profile: diary.author) {
+            Text(diary.author.displayName)
+              .fontWeight(.bold)
+              .foregroundStyle(TunedInDesign.primaryText)
+          }
           Image(systemName: diary.audience.icon)
             .font(.caption2)
         }
@@ -173,21 +178,7 @@ struct EventDiaryDetailView: View {
           .foregroundStyle(TunedInDesign.mutedText)
       } else {
         ForEach(comments) { comment in
-          HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "person.crop.circle.fill")
-              .font(.title2)
-              .foregroundStyle(TunedInDesign.mutedText)
-            VStack(alignment: .leading, spacing: 3) {
-              Text(comment.displayName)
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(TunedInDesign.primaryText)
-              Text(comment.body ?? "Comment removed")
-                .font(.subheadline)
-                .foregroundStyle(comment.isDeleted ? TunedInDesign.mutedText : TunedInDesign.primaryText)
-            }
-            Spacer(minLength: 0)
-          }
-          .padding(.vertical, 8)
+          EventDiaryCommentRow(comment: comment)
           Divider().overlay(TunedInDesign.cardBorder)
         }
       }
@@ -261,5 +252,31 @@ struct EventDiaryDetailView: View {
     } catch {
       errorMessage = error.localizedDescription
     }
+  }
+}
+
+private struct EventDiaryCommentRow: View {
+  let comment: ConcertComment
+
+  var body: some View {
+    HStack(alignment: .top, spacing: 10) {
+      SocialProfileButton(profile: comment.socialProfile) {
+        Image(systemName: "person.crop.circle.fill")
+          .font(.title2)
+          .foregroundStyle(TunedInDesign.mutedText)
+      }
+      VStack(alignment: .leading, spacing: 3) {
+        SocialProfileButton(profile: comment.socialProfile) {
+          Text(comment.displayName)
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
+        }
+        Text(comment.body ?? "Comment removed")
+          .font(.subheadline)
+          .foregroundStyle(comment.isDeleted ? TunedInDesign.mutedText : TunedInDesign.primaryText)
+      }
+      Spacer(minLength: 0)
+    }
+    .padding(.vertical, 8)
   }
 }

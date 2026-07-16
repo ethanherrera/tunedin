@@ -110,7 +110,10 @@ struct MainTabView: View {
           )
         }
       }
-      .fullScreenCover(item: $presentedCommunityEvent) { route in
+      .fullScreenCover(
+        item: $presentedCommunityEvent,
+        onDismiss: presentPendingProfileDestination
+      ) { route in
         if let eventRepository {
           CommunityEventDetailView(
             eventID: route.event.id,
@@ -156,6 +159,12 @@ struct MainTabView: View {
         }
       }
       .tint(TunedInDesign.accent)
+      .environment(
+        \.openSocialProfile,
+        OpenSocialProfileAction { requestedProfile in
+          openSocialProfile(requestedProfile)
+        }
+      )
       .tunedInSelectionFeedback(trigger: selectionFeedbackTrigger)
       .task {
         session.telemetry.captureAppBecameUsable(destination: "main_tabs")
@@ -265,9 +274,44 @@ struct MainTabView: View {
   }
 
   private func presentPendingProfileDestination() {
-    guard let pendingCommunityEvent else { return }
-    self.pendingCommunityEvent = nil
-    presentedCommunityEvent = pendingCommunityEvent
+    if let pendingSearchedProfile {
+      self.pendingSearchedProfile = nil
+      presentedSearchedProfile = pendingSearchedProfile
+      return
+    }
+    if let pendingCommunityEvent {
+      self.pendingCommunityEvent = nil
+      presentedCommunityEvent = pendingCommunityEvent
+    }
+  }
+
+  private func openSocialProfile(_ requestedProfile: SocialProfile) {
+    Task { @MainActor in
+      let resolvedProfile = (try? await socialRepository.profile(
+        username: requestedProfile.username
+      )) ?? requestedProfile
+      routeToSocialProfile(resolvedProfile)
+    }
+  }
+
+  @MainActor
+  private func routeToSocialProfile(_ requestedProfile: SocialProfile) {
+    if requestedProfile.id == profile.id {
+      pendingSearchedProfile = nil
+      selectedTab = .profile
+      profileNavigationID = UUID()
+      presentedCommunityEvent = nil
+      presentedSearchedProfile = nil
+      return
+    }
+
+    if presentedCommunityEvent != nil || presentedSearchedProfile != nil {
+      pendingSearchedProfile = requestedProfile
+      presentedCommunityEvent = nil
+      presentedSearchedProfile = nil
+    } else {
+      presentedSearchedProfile = requestedProfile
+    }
   }
 
   @ViewBuilder

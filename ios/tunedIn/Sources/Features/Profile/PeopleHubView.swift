@@ -740,16 +740,18 @@ private struct FriendRequestCard: View {
 
   var body: some View {
     TunedInGlassSection {
-      HStack(spacing: 12) {
-        ProfileAvatarView(profile: profile, size: 46)
-        VStack(alignment: .leading, spacing: 2) {
-          Text(profile.displayName)
-            .font(.headline)
-            .foregroundStyle(TunedInDesign.primaryText)
-          Text("@\(profile.username) wants in on your concert life.")
-            .font(.caption)
-            .foregroundStyle(TunedInDesign.mutedText)
-            .lineLimit(2)
+      SocialProfileButton(profile: profile) {
+        HStack(spacing: 12) {
+          ProfileAvatarView(profile: profile, size: 46)
+          VStack(alignment: .leading, spacing: 2) {
+            Text(profile.displayName)
+              .font(.headline)
+              .foregroundStyle(TunedInDesign.primaryText)
+            Text("@\(profile.username) wants in on your concert life.")
+              .font(.caption)
+              .foregroundStyle(TunedInDesign.mutedText)
+              .lineLimit(2)
+          }
         }
       }
 
