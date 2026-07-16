@@ -64,10 +64,18 @@
     func duplicateCreationReturnsTheCanonicalEventCandidate() async throws {
       let repository = DevelopmentEventRepository(now: now)
       let catalog = DevelopmentMusicCatalogRepository()
-      let artist = try #require(await catalog.entity(id: DevelopmentMusicCatalogFixture.mitskiID)?.artist)
-      let place = try #require(
-        await catalog.entity(id: DevelopmentMusicCatalogFixture.greekTheatreBerkeleyID)?.place
+      let artistEntity = try #require(await catalog.entity(id: DevelopmentMusicCatalogFixture.mitskiID))
+      let placeEntity = try #require(
+        await catalog.entity(id: DevelopmentMusicCatalogFixture.greekTheatreBerkeleyID)
       )
+      guard case let .artist(artist) = artistEntity else {
+        Issue.record("Expected the fixture to resolve to an artist")
+        return
+      }
+      guard case let .place(place) = placeEntity else {
+        Issue.record("Expected the fixture to resolve to a place")
+        return
+      }
       let existing = try #require(
         await repository.searchEvents(
           query: "Mitski",

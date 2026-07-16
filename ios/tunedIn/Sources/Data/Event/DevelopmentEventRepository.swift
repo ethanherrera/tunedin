@@ -37,7 +37,7 @@
             || stored.summary.venueName.lowercased().contains(normalized)
             || stored.summary.areaName.lowercased().contains(normalized)
         }
-        .map(\.summary)
+        .map { refreshedSummary($0, viewerID: viewerID) }
         .sorted(by: Self.eventSort)
     }
 
@@ -55,7 +55,7 @@
             $0.profile.id == viewerID && ($0.status == .going || $0.status == .went)
           }
         }
-        .map(\.summary)
+        .map { refreshedSummary($0, viewerID: viewerID) }
         .sorted(by: Self.eventSort)
     }
 
