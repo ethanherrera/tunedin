@@ -443,6 +443,10 @@ enum CommunityEventDateText {
     formatter(dateStyle: .full).string(from: date)
   }
 
+  static func compactDate(_ date: Date) -> String {
+    formatter(dateStyle: .medium).string(from: date)
+  }
+
   static func time(_ date: Date, timeZoneIdentifier: String) -> String {
     formatter(
       dateStyle: .none,

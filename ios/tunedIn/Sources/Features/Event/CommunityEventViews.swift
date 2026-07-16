@@ -62,7 +62,15 @@ struct CommunityProfileHistorySection: View {
                 )
               }
               .buttonStyle(TunedInPosterButtonStyle())
-              .accessibilityLabel("Open post about \(entry.event.title)")
+              .accessibilityLabel(
+                "Open post about \(entry.event.title), "
+                  + CommunityEventDateText.compactDate(entry.event.eventDate)
+              )
+              .accessibilityValue(
+                entry.diary.score.map {
+                  "Score \($0.formatted(.number.precision(.fractionLength(1))))"
+                } ?? "Not scored"
+              )
             }
           }
           .padding(.horizontal, -20)
@@ -139,6 +147,10 @@ private struct ProfileDiaryGridTile: View {
           Text(entry.event.title)
             .font(.caption2.weight(.semibold))
             .lineLimit(2)
+          Text(CommunityEventDateText.compactDate(entry.event.eventDate))
+            .font(.caption2)
+            .foregroundStyle(.white.opacity(0.86))
+            .lineLimit(1)
         }
         .foregroundStyle(.white)
         .padding(8)
