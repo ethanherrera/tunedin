@@ -314,7 +314,6 @@ returns table (
   community_went_count integer
 )
 language plpgsql
-stable
 security definer
 set search_path = ''
 as $$
@@ -407,7 +406,6 @@ returns table (
   next_cursor jsonb
 )
 language plpgsql
-stable
 security definer
 set search_path = ''
 as $$
@@ -523,7 +521,6 @@ returns table (
   next_cursor jsonb
 )
 language plpgsql
-stable
 security definer
 set search_path = ''
 as $$
