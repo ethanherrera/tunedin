@@ -2,18 +2,54 @@ import PhotosUI
 import SwiftUI
 
 struct EventDiscoveryView: View {
+  private enum SearchScope: String, CaseIterable, Hashable {
+    case concerts = "Concerts"
+    case people = "People"
+  }
+
+  private struct SearchRequest: Hashable {
+    let scope: SearchScope
+    let query: String
+  }
+
   let viewerID: UUID
   let eventRepository: any EventRepository
   let musicCatalogRepository: any MusicCatalogRepository
   let onOpenEvent: (CommunityEventSummary) -> Void
-  let onSearchPeople: () -> Void
+  let onOpenProfile: (SocialProfile) -> Void
   let onDismiss: () -> Void
 
   @State private var query = ""
+  @State private var selectedScope = SearchScope.concerts
   @State private var results: [CommunityEventSummary] = []
-  @State private var isLoading = true
-  @State private var errorMessage: String?
+  @State private var isLoadingEvents = true
+  @State private var eventErrorMessage: String?
   @State private var isPresentingCreation = false
+  @State private var peopleModel: PeopleHubModel
+
+  init(
+    viewerID: UUID,
+    eventRepository: any EventRepository,
+    musicCatalogRepository: any MusicCatalogRepository,
+    socialRepository: any SocialRepository,
+    currentUsername: String,
+    onOpenEvent: @escaping (CommunityEventSummary) -> Void,
+    onOpenProfile: @escaping (SocialProfile) -> Void,
+    onDismiss: @escaping () -> Void
+  ) {
+    self.viewerID = viewerID
+    self.eventRepository = eventRepository
+    self.musicCatalogRepository = musicCatalogRepository
+    self.onOpenEvent = onOpenEvent
+    self.onOpenProfile = onOpenProfile
+    self.onDismiss = onDismiss
+    _peopleModel = State(
+      initialValue: PeopleHubModel(
+        repository: socialRepository,
+        currentUsername: currentUsername
+      )
+    )
+  }
 
   var body: some View {
     ZStack {
@@ -21,75 +57,58 @@ struct EventDiscoveryView: View {
 
       ScrollView {
         VStack(alignment: .leading, spacing: 18) {
-          EventScreenHeader(
-            eyebrow: "Find your next show",
-            title: "Concerts",
-            subtitle: "Search concerts first. Add one only when it isn’t here."
+          Text("Search")
+            .font(.system(size: 34, weight: .bold))
+            .foregroundStyle(TunedInDesign.primaryText)
+
+          TunedInGlassSearchField(
+            text: $query,
+            prompt: "Artist, venue, city, or @username"
           )
 
-          TunedInGlassSearchField(text: $query, prompt: "Artist, venue, or city")
-
-          Button(action: onSearchPeople) {
-            Label("Looking for a person? Search people", systemImage: "person.crop.circle.badge.magnifyingglass")
-              .font(.subheadline.weight(.semibold))
-              .foregroundStyle(TunedInDesign.primaryText)
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .padding(14)
-              .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 16))
-          }
-          .buttonStyle(.plain)
-
-          if isLoading {
-            ForEach(0 ..< 4, id: \.self) { _ in
-              TunedInSkeletonBlock(cornerRadius: TunedInDesign.cornerRadius)
-                .frame(height: 126)
-            }
-          } else if let errorMessage {
-            EventFailureView(message: errorMessage) { Task { await search() } }
-          } else if results.isEmpty {
-            EventEmptyView(
-              systemImage: "music.note.list",
-              title: query.isEmpty ? "No concerts yet" : "No matching concert",
-              message: "If the concert isn’t here, add it for the community using the music catalog."
-            )
-          } else {
-            LazyVStack(spacing: 12) {
-              eventSection(title: "Upcoming", events: upcomingResults)
-              eventSection(title: "Past", events: pastResults)
+          Picker("Search category", selection: $selectedScope) {
+            ForEach(SearchScope.allCases, id: \.self) { scope in
+              Text(scope.rawValue).tag(scope)
             }
           }
+          .pickerStyle(.segmented)
 
-          Button { isPresentingCreation = true } label: {
-            Label("Add a concert", systemImage: "plus.circle.fill")
-              .font(.headline)
-              .foregroundStyle(TunedInDesign.actionForeground)
-              .frame(maxWidth: .infinity)
-              .padding(.vertical, 15)
-              .background(TunedInDesign.accent, in: Capsule())
+          searchResults
+
+          if selectedScope == .concerts {
+            Button { isPresentingCreation = true } label: {
+              Label("Add a concert", systemImage: "plus.circle.fill")
+                .font(.headline)
+                .foregroundStyle(TunedInDesign.actionForeground)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 15)
+                .background(TunedInDesign.accent, in: Capsule())
+            }
+            .buttonStyle(TunedInPosterButtonStyle())
+            .padding(.top, 4)
           }
-          .buttonStyle(TunedInPosterButtonStyle())
-          .padding(.top, 4)
         }
         .padding(.horizontal, 20)
         .padding(.top, 18)
         .padding(.bottom, 24)
       }
+      .refreshable { await refreshSelectedScope() }
     }
     .toolbar(.hidden, for: .navigationBar)
     .safeAreaInset(edge: .bottom, spacing: 0) {
       TunedInPersistentControlRegion {
-        TunedInSubscreenBackBar(title: "Find concerts", action: onDismiss)
+        TunedInSubscreenBackBar(title: "Search", action: onDismiss)
           .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
           .padding(.top, 8)
           .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
-    .task(id: query) {
+    .task(id: searchRequest) {
       if !query.isEmpty {
         try? await Task.sleep(for: .milliseconds(250))
         guard !Task.isCancelled else { return }
       }
-      await search()
+      await searchSelectedScope()
     }
     .fullScreenCover(isPresented: $isPresentingCreation) {
       CommunityEventCreationView(
@@ -103,6 +122,93 @@ struct EventDiscoveryView: View {
         onDismiss: { isPresentingCreation = false }
       )
     }
+  }
+
+  @ViewBuilder
+  private var searchResults: some View {
+    switch selectedScope {
+    case .concerts:
+      concertResults
+    case .people:
+      peopleResults
+    }
+  }
+
+  @ViewBuilder
+  private var concertResults: some View {
+    if isLoadingEvents {
+      ForEach(0 ..< 4, id: \.self) { _ in
+        TunedInSkeletonBlock(cornerRadius: TunedInDesign.cornerRadius)
+          .frame(height: 126)
+      }
+    } else if let eventErrorMessage {
+      EventFailureView(message: eventErrorMessage) { Task { await searchEvents() } }
+    } else if results.isEmpty {
+      EventEmptyView(
+        systemImage: "music.note.list",
+        title: query.isEmpty ? "No concerts yet" : "No matching concert",
+        message: "If the concert isn’t here, add it for the community using the music catalog."
+      )
+    } else {
+      LazyVStack(spacing: 12) {
+        eventSection(title: "Upcoming", events: upcomingResults)
+        eventSection(title: "Past", events: pastResults)
+      }
+    }
+  }
+
+  @ViewBuilder
+  private var peopleResults: some View {
+    let normalizedQuery = ProfileInput.normalizedSearchQuery(query)
+    if normalizedQuery.isEmpty {
+      EventEmptyView(
+        systemImage: "person.2",
+        title: "Find people",
+        message: "Search by @username to find friends and public profiles."
+      )
+    } else if peopleModel.isSearching {
+      VStack(spacing: 8) {
+        ForEach(0 ..< 5, id: \.self) { _ in
+          HStack(spacing: 12) {
+            TunedInSkeletonBlock(cornerRadius: 26).frame(width: 52, height: 52)
+            VStack(alignment: .leading, spacing: 7) {
+              TunedInSkeletonBlock(cornerRadius: 5).frame(width: 132, height: 15)
+              TunedInSkeletonBlock(cornerRadius: 5).frame(width: 180, height: 12)
+            }
+            Spacer()
+          }
+          .padding(.vertical, 8)
+        }
+      }
+      .accessibilityLabel("Searching people")
+    } else if let errorMessage = peopleModel.errorMessage {
+      EventFailureView(message: errorMessage) { Task { await searchPeople(refresh: true) } }
+    } else if peopleModel.searchResults.isEmpty {
+      EventEmptyView(
+        systemImage: "person.crop.circle.badge.questionmark",
+        title: "No people found",
+        message: "Try another @username."
+      )
+    } else {
+      LazyVStack(spacing: 0) {
+        ForEach(peopleModel.searchResults) { profile in
+          Button { onOpenProfile(profile) } label: {
+            PeopleSearchResultRow(profile: profile)
+          }
+          .buttonStyle(.plain)
+
+          if profile.id != peopleModel.searchResults.last?.id {
+            Divider()
+              .overlay(TunedInDesign.cardBorder.opacity(0.7))
+              .padding(.leading, 64)
+          }
+        }
+      }
+    }
+  }
+
+  private var searchRequest: SearchRequest {
+    SearchRequest(scope: selectedScope, query: query)
   }
 
   private var upcomingResults: [CommunityEventSummary] {
@@ -135,14 +241,44 @@ struct EventDiscoveryView: View {
   }
 
   @MainActor
-  private func search() async {
-    isLoading = results.isEmpty
-    defer { isLoading = false }
+  private func searchSelectedScope() async {
+    switch selectedScope {
+    case .concerts:
+      await searchEvents()
+    case .people:
+      await searchPeople()
+    }
+  }
+
+  @MainActor
+  private func refreshSelectedScope() async {
+    switch selectedScope {
+    case .concerts:
+      await searchEvents()
+    case .people:
+      await searchPeople(refresh: true)
+    }
+  }
+
+  @MainActor
+  private func searchEvents() async {
+    isLoadingEvents = results.isEmpty
+    defer { isLoadingEvents = false }
     do {
       results = try await eventRepository.searchEvents(query: query, viewerID: viewerID)
-      errorMessage = nil
+      eventErrorMessage = nil
     } catch {
-      errorMessage = error.localizedDescription
+      eventErrorMessage = error.localizedDescription
+    }
+  }
+
+  @MainActor
+  private func searchPeople(refresh: Bool = false) async {
+    peopleModel.query = query
+    if refresh {
+      await peopleModel.refreshSearch()
+    } else {
+      await peopleModel.search()
     }
   }
 }

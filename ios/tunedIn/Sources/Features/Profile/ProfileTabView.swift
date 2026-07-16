@@ -29,8 +29,6 @@ struct MainTabView: View {
   @State private var isPresentingConcertCreation = false
   @State private var isPresentingEventDiscovery = false
   @State private var isPresentingCommunityEventCreation = false
-  @State private var isPresentingPeopleSearch = false
-  @State private var shouldPresentPeopleSearchAfterDiscovery = false
   @State private var pendingCommunityEvent: CommunityEventRoute?
   @State private var presentedCommunityEvent: CommunityEventRoute?
   @State private var pendingSearchedProfile: SocialProfile?
@@ -81,12 +79,14 @@ struct MainTabView: View {
             viewerID: profile.id,
             eventRepository: eventRepository,
             musicCatalogRepository: musicCatalogRepository,
+            socialRepository: socialRepository,
+            currentUsername: profile.username ?? "",
             onOpenEvent: { event in
               pendingCommunityEvent = CommunityEventRoute(event: event, diaryID: nil)
               isPresentingEventDiscovery = false
             },
-            onSearchPeople: {
-              shouldPresentPeopleSearchAfterDiscovery = true
+            onOpenProfile: { searchedProfile in
+              pendingSearchedProfile = searchedProfile
               isPresentingEventDiscovery = false
             },
             onDismiss: { isPresentingEventDiscovery = false }
@@ -124,12 +124,6 @@ struct MainTabView: View {
             onDismiss: { presentedCommunityEvent = nil }
           )
         }
-      }
-      .sheet(
-        isPresented: $isPresentingPeopleSearch,
-        onDismiss: presentPendingSearchedProfile
-      ) {
-        peopleSearchDrawer
       }
       .fullScreenCover(
         item: $presentedSearchedProfile,
@@ -197,14 +191,12 @@ struct MainTabView: View {
         TunedInGlassTraversalLayout(glassNamespace: bottomGlassNamespace) {
           TunedInGlassIconButton(
             systemImage: "magnifyingglass",
-            accessibilityLabel: eventRepository == nil ? "Search people" : "Find concerts"
+            accessibilityLabel: "Search"
           ) {
-            if eventRepository == nil {
-              isPresentingPeopleSearch = true
-            } else {
-              isPresentingEventDiscovery = true
-            }
+            guard eventRepository != nil else { return }
+            isPresentingEventDiscovery = true
           }
+          .disabled(eventRepository == nil)
         } center: {
           TunedInGlassBottomBar {
             HStack(spacing: 2) {
@@ -235,41 +227,15 @@ struct MainTabView: View {
     )
   }
 
-  private var peopleSearchDrawer: some View {
-    NavigationStack {
-      FriendSearchView(
-        currentUserID: profile.id,
-        currentUsername: profile.username ?? "",
-        socialRepository: socialRepository,
-        concertRepository: concertRepository,
-        presentation: .drawer,
-        onSelectProfile: { searchedProfile in
-          pendingSearchedProfile = searchedProfile
-          isPresentingPeopleSearch = false
-        }
-      )
-    }
-    .environmentObject(concertFloatingControls)
-    .tunedInKeyboardManaged()
-    .presentationDetents([.medium, .large])
-    .presentationDragIndicator(.visible)
-  }
-
-  private func presentPendingSearchedProfile() {
-    guard let pendingSearchedProfile else { return }
-    self.pendingSearchedProfile = nil
-    presentedSearchedProfile = pendingSearchedProfile
-  }
-
   private func presentPendingDiscoveryDestination() {
     if let pendingCommunityEvent {
       self.pendingCommunityEvent = nil
       presentedCommunityEvent = pendingCommunityEvent
       return
     }
-    if shouldPresentPeopleSearchAfterDiscovery {
-      shouldPresentPeopleSearchAfterDiscovery = false
-      isPresentingPeopleSearch = true
+    if let pendingSearchedProfile {
+      self.pendingSearchedProfile = nil
+      presentedSearchedProfile = pendingSearchedProfile
     }
   }
 
