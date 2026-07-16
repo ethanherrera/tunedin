@@ -47,10 +47,15 @@ metrics="$(docker exec "$database_container" psql -U postgres -d postgres -v ON_
     (select count(*) from public.catalog_event_artists where event_id between 'd4000000-0000-0000-0000-000000000001'::uuid and 'd4000000-0000-0000-0000-000000000004'::uuid),
     (select count(*) from public.social_activity_events where id between 'd4100000-0000-0000-0000-000000000001'::uuid and 'd4100000-0000-0000-0000-000000000005'::uuid),
     (select count(*) from public.catalog_events where id between 'd4000000-0000-0000-0000-000000000001'::uuid and 'd4000000-0000-0000-0000-000000000004'::uuid and listing = 'unlisted'),
-    ((select count(*) from public.catalog_events as event join public.catalog_entities as place on place.id = event.catalog_place_id where event.id between 'd4000000-0000-0000-0000-000000000001'::uuid and 'd4000000-0000-0000-0000-000000000004'::uuid and event.venue_name_snapshot is distinct from place.display_name) + (select count(*) from public.catalog_event_artists as lineup join public.catalog_entities as artist on artist.id = lineup.catalog_artist_id where lineup.event_id between 'd4000000-0000-0000-0000-000000000001'::uuid and 'd4000000-0000-0000-0000-000000000004'::uuid and lineup.artist_name_snapshot is distinct from artist.display_name));
+    ((select count(*) from public.catalog_events as event join public.catalog_entities as place on place.id = event.catalog_place_id where event.id between 'd4000000-0000-0000-0000-000000000001'::uuid and 'd4000000-0000-0000-0000-000000000004'::uuid and event.venue_name_snapshot is distinct from place.display_name) + (select count(*) from public.catalog_event_artists as lineup join public.catalog_entities as artist on artist.id = lineup.catalog_artist_id where lineup.event_id between 'd4000000-0000-0000-0000-000000000001'::uuid and 'd4000000-0000-0000-0000-000000000004'::uuid and lineup.artist_name_snapshot is distinct from artist.display_name)),
+    (select count(*) from public.catalog_event_attendance where event_id between 'd4000000-0000-0000-0000-000000000001'::uuid and 'd4000000-0000-0000-0000-000000000004'::uuid),
+    (select count(*) from public.catalog_event_attendance where profile_id = 'd1000000-0000-0000-0000-000000000001'::uuid and status in ('going', 'went')),
+    (select count(*) from public.catalog_event_attendance where event_id = 'd4000000-0000-0000-0000-000000000001'::uuid and audience = 'community'),
+    (select count(*) from public.catalog_event_attendance where event_id = 'd4000000-0000-0000-0000-000000000001'::uuid and audience = 'private'),
+    (select count(*) from public.social_activity_events where id between 'd4100000-0000-0000-0000-000000000101'::uuid and 'd4100000-0000-0000-0000-000000000108'::uuid);
 ")"
 
-expected="16|16|16|16|15|1|5|1|1|1|6|24|8|12|73|0|0|1|2|11|1|5|5|10|2|0|0|0|0|4|4|5|1|0"
+expected="16|16|16|16|15|1|5|1|1|1|6|24|8|12|73|0|0|1|2|11|1|5|5|10|2|0|0|0|0|4|4|5|1|0|9|3|2|1|8"
 if [[ "$metrics" != "$expected" ]]; then
   echo "Local Supabase seed integrity check failed (expected ${expected}; received ${metrics})." >&2
   exit 1

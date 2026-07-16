@@ -85,6 +85,7 @@ struct CommunityEventSummary: Codable, Equatable, Identifiable, Sendable {
   let rowState: CommunityEventRowState
   let sourceLabel: String
   let currentUserAttendance: EventAttendanceStatus?
+  let currentUserAudience: EventAudience?
   let friendPreviews: [EventFriendPreview]
   let publicGoingCount: Int
   let publicWentCount: Int

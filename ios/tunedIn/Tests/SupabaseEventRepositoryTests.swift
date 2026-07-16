@@ -4,28 +4,16 @@ import Testing
 
 struct SupabaseEventRepositoryContractTests {
   @Test
-  func phaseOneCapabilitiesExposeOnlyImplementedDiscoveryBehavior() async {
-    let repository = PhaseOneEventRepositoryDouble()
+  func phaseTwoCapabilitiesExposeDiscoveryPlansAndAttendanceOnly() {
+    let repository = PhaseTwoEventRepositoryDouble()
 
-    #expect(repository.capabilities == .phase1Discovery)
+    #expect(repository.capabilities == .phase2Attendance)
     #expect(repository.capabilities.contains(.discovery))
-    #expect(!repository.capabilities.contains(.plans))
-    #expect(!repository.capabilities.contains(.attendance))
+    #expect(repository.capabilities.contains(.plans))
+    #expect(repository.capabilities.contains(.attendance))
     #expect(!repository.capabilities.contains(.conversation))
     #expect(!repository.capabilities.contains(.invitations))
     #expect(!repository.capabilities.contains(.diaries))
-
-    await #expect(throws: CommunityEventError.featureUnavailable("Plans")) {
-      try await repository.plans(viewerID: UUID())
-    }
-    await #expect(throws: CommunityEventError.featureUnavailable("Going and Went")) {
-      try await repository.setAttendance(
-        eventID: UUID(),
-        viewerID: UUID(),
-        status: .going,
-        audience: .friends
-      )
-    }
   }
 
   @Test
@@ -42,6 +30,38 @@ struct SupabaseEventRepositoryContractTests {
     #expect(search["p_limit"] as? Int == 25)
     #expect(Set(detail.keys) == ["p_event_id"])
     #expect(detail["p_event_id"] as? String == eventID.uuidString)
+  }
+
+  @Test
+  func attendanceAndPlansParametersUseExactRPCContractKeys() throws {
+    let eventID = UUID(uuidString: "10000000-0000-0000-0000-000000000001")!
+    let otherEventID = UUID(uuidString: "10000000-0000-0000-0000-000000000002")!
+    let summaries = try encodedObject(
+      CatalogEventSocialSummariesParameters(eventIDs: [eventID, otherEventID])
+    )
+    let attendees = try encodedObject(ListCatalogEventAttendeesParameters(eventID: eventID))
+    let plans = try encodedObject(CatalogEventPageParameters(limit: 25))
+    let attendance = try encodedObject(SetCatalogEventAttendanceParameters(
+      eventID: eventID,
+      status: .going,
+      audience: .friends
+    ))
+    let cleared = try encodedObject(SetCatalogEventAttendanceParameters(
+      eventID: eventID,
+      status: nil,
+      audience: .community
+    ))
+
+    #expect(Set(summaries.keys) == ["p_event_ids"])
+    #expect((summaries["p_event_ids"] as? [String]) == [eventID.uuidString, otherEventID.uuidString])
+    #expect(Set(attendees.keys) == ["p_event_id", "p_scope", "p_limit"])
+    #expect(attendees["p_scope"] as? String == "all")
+    #expect(Set(plans.keys) == ["p_limit"])
+    #expect(plans["p_limit"] as? Int == 25)
+    #expect(Set(attendance.keys) == ["p_event_id", "p_status", "p_audience"])
+    #expect(attendance["p_status"] as? String == "going")
+    #expect(attendance["p_audience"] as? String == "friends")
+    #expect(Set(cleared.keys) == ["p_event_id", "p_audience"])
   }
 
   @Test
@@ -122,6 +142,84 @@ struct SupabaseEventRepositoryContractTests {
   }
 
   @Test
+  func viewerSpecificSocialRecordsEnrichEventAndAttendeeModels() throws {
+    let eventData = Data(
+      #"""
+      {
+        "event_id":"50000000-0000-0000-0000-000000000001",
+        "artists":[{
+          "catalog_artist_id":"20000000-0000-0000-0000-000000000001",
+          "display_name":"Mitski",
+          "position":0,
+          "is_headliner":true
+        }],
+        "catalog_place_id":"30000000-0000-0000-0000-000000000001",
+        "catalog_area_id":"40000000-0000-0000-0000-000000000001",
+        "catalog_tour_id":null,
+        "venue_name":"The Anthem",
+        "area_name":"Washington, D.C.",
+        "event_date":"2026-09-17",
+        "starts_at":"2026-09-17T23:30:00Z",
+        "time_zone_identifier":"America/New_York",
+        "memory_unlock_at":"2026-09-18T08:00:00Z",
+        "lifecycle":"scheduled",
+        "listing":"listed",
+        "integrity":"community_added",
+        "row_state":"active",
+        "source_label":"Community made"
+      }
+      """#.utf8
+    )
+    let socialData = Data(
+      #"""
+      {
+        "event_id":"50000000-0000-0000-0000-000000000001",
+        "current_user_status":"going",
+        "current_user_audience":"friends",
+        "friend_previews":[{
+          "profile_id":"60000000-0000-0000-0000-000000000001",
+          "username":"morgan",
+          "display_name":"Morgan",
+          "relationship":"friends",
+          "avatar_object_path":null,
+          "avatar_version":0,
+          "status":"going"
+        }],
+        "community_going_count":7,
+        "community_went_count":0
+      }
+      """#.utf8
+    )
+    let attendeeData = Data(
+      #"""
+      {
+        "id":"60000000-0000-0000-0000-000000000001",
+        "username":"morgan",
+        "display_name":"Morgan",
+        "relationship":"friends",
+        "avatar_object_path":null,
+        "avatar_version":0,
+        "status":"going",
+        "audience":"community",
+        "updated_at":"2026-07-16T20:00:00Z"
+      }
+      """#.utf8
+    )
+    let record = try JSONDecoder().decode(CatalogEventRPCRecord.self, from: eventData)
+    let social = try JSONDecoder().decode(CatalogEventSocialSummaryRPCRecord.self, from: socialData)
+    let attendeeRecord = try JSONDecoder().decode(CatalogEventAttendeeRPCRecord.self, from: attendeeData)
+    let summary = try CommunityEventSummary(databaseRecord: record, socialRecord: social)
+    let attendee = try EventAttendance(databaseRecord: attendeeRecord)
+
+    #expect(summary.currentUserAttendance == .going)
+    #expect(summary.currentUserAudience == .friends)
+    #expect(summary.friendPreviews.map(\.profile.username) == ["morgan"])
+    #expect(summary.publicGoingCount == 7)
+    #expect(attendee.profile.relationship == .friends)
+    #expect(attendee.audience == .community)
+  }
+
+  @Test
   func changingVenueTimeZonePreservesTheEnteredWallClockTime() throws {
     let losAngeles = try #require(TimeZone(identifier: "America/Los_Angeles"))
     let newYork = try #require(TimeZone(identifier: "America/New_York"))
@@ -173,8 +271,8 @@ struct SupabaseEventRepositoryContractTests {
   }
 }
 
-private struct PhaseOneEventRepositoryDouble: EventRepository {
-  let capabilities = EventRepositoryCapabilities.phase1Discovery
+private struct PhaseTwoEventRepositoryDouble: EventRepository {
+  let capabilities = EventRepositoryCapabilities.phase2Attendance
 
   func searchEvents(query _: String, viewerID _: UUID) async throws -> [CommunityEventSummary] {
     []

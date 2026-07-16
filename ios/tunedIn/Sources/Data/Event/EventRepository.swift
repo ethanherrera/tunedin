@@ -12,6 +12,7 @@ struct EventRepositoryCapabilities: OptionSet, Equatable, Sendable {
   static let diaries = Self(rawValue: 1 << 6)
 
   static let phase1Discovery: Self = [.discovery]
+  static let phase2Attendance: Self = [.discovery, .plans, .attendance]
   static let complete: Self = [
     .discovery, .plans, .activityFeed, .attendance, .conversation, .invitations, .diaries
   ]

@@ -1,6 +1,6 @@
 # Community Events Implementation Plan
 
-Status: in progress; Phase 1 implemented for the disposable Local environment
+Status: in progress; Phases 1–2 implemented for the disposable Local environment
 Decision date: 2026-07-16
 Decision owner: Ethan
 Depends on: `docs/community-events-product-design.md` and
@@ -22,7 +22,15 @@ Depends on: `docs/community-events-product-design.md` and
   Capability gating keeps later-phase controls out of the live surface, while the
   fixture scenario retains the complete product journey for design work. Hosted
   Development remains unchanged until this migration is reviewed and deployed.
-- Phase 2 and later persistence contracts have not started.
+- Phase 2 is implemented in `20260716210000_catalog_event_attendance.sql` and the
+  Local iOS repository: independent Going/Went/Did not go state, attendance
+  audiences, viewer-specific friend previews and community counts, attendee reads,
+  chronological Plans, a compact calendar toggle, post-show confirmation, immutable
+  activity, mutation quotas, and unlisted-event retention. Seeded-session REST,
+  database authorization, generated-type, Local build, and repository contract
+  verification pass. The final interactive iPhone 13 click-through is pending a
+  manually unlocked Mac; hosted Development remains unchanged.
+- Phase 3 and later persistence contracts have not started.
 
 ## Architecture decision
 
@@ -361,6 +369,10 @@ Exit: a signed-in user can search, add, reopen, and safely view a community even
 an exact duplicate race cannot create two canonical rows.
 
 ### Phase 2 — Going, attendee discovery, and Plans
+
+Implementation status: complete in the disposable Local environment, with the
+interactive iPhone 13 click-through still pending a manually unlocked Mac. Hosted
+Development remains gated until the reviewed migrations are deployed.
 
 - Add attendance tables/RPCs and audience-aware attendee/profile reads.
 - Implement one-tap Going, audience control, cancellation, and Went confirmation.

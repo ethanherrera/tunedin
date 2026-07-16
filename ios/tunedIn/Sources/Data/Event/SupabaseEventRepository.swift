@@ -2,7 +2,7 @@ import Foundation
 import Supabase
 
 struct SupabaseEventRepository: EventRepository {
-  let capabilities = EventRepositoryCapabilities.phase1Discovery
+  let capabilities = EventRepositoryCapabilities.phase2Attendance
 
   private let client: SupabaseClient
 
@@ -19,7 +19,7 @@ struct SupabaseEventRepository: EventRepository {
           params: SearchCatalogEventsParameters(query: normalized.isEmpty ? nil : normalized)
         )
         .execute()
-      return try response.value.map(CommunityEventSummary.init(databaseRecord:))
+      return try await summaries(from: response.value)
     }
   }
 
@@ -29,12 +29,50 @@ struct SupabaseEventRepository: EventRepository {
         .rpc("get_catalog_event_detail", params: CatalogEventIDParameters(eventID: id))
         .single()
         .execute()
+      let summary = try await summaries(from: [response.value]).first
+      guard let summary else { throw AppFailure.unexpected }
+      let attendees: PostgrestResponse<[CatalogEventAttendeeRPCRecord]> = try await client
+        .rpc(
+          "list_catalog_event_attendees",
+          params: ListCatalogEventAttendeesParameters(eventID: id)
+        )
+        .execute()
       return CommunityEventDetail(
-        summary: try CommunityEventSummary(databaseRecord: response.value),
-        attendances: [],
+        summary: summary,
+        attendances: try attendees.value.map(EventAttendance.init(databaseRecord:)),
         posts: [],
         diaryPreviews: []
       )
+    }
+  }
+
+  func plans(viewerID _: UUID) async throws -> [CommunityEventSummary] {
+    try await withAppFailure {
+      let response: PostgrestResponse<[CatalogEventRPCRecord]> = try await client
+        .rpc("list_my_catalog_event_plans", params: CatalogEventPageParameters())
+        .execute()
+      return try await summaries(from: response.value)
+    }
+  }
+
+  func setAttendance(
+    eventID: UUID,
+    viewerID: UUID,
+    status: EventAttendanceStatus?,
+    audience: EventAudience
+  ) async throws -> CommunityEventDetail {
+    try await withAppFailure {
+      _ = try await client
+        .rpc(
+          "set_catalog_event_attendance",
+          params: SetCatalogEventAttendanceParameters(
+            eventID: eventID,
+            status: status,
+            audience: audience
+          )
+        )
+        .execute()
+      return try await eventDetail(id: eventID, viewerID: viewerID)
     }
   }
 
@@ -61,6 +99,22 @@ struct SupabaseEventRepository: EventRepository {
     }
     return try await eventDetail(id: created.eventID, viewerID: creatorID)
   }
+
+  private func summaries(
+    from records: [CatalogEventRPCRecord]
+  ) async throws -> [CommunityEventSummary] {
+    guard !records.isEmpty else { return [] }
+    let response: PostgrestResponse<[CatalogEventSocialSummaryRPCRecord]> = try await client
+      .rpc(
+        "get_catalog_event_social_summaries",
+        params: CatalogEventSocialSummariesParameters(eventIDs: records.map(\.eventID))
+      )
+      .execute()
+    let socialByEventID = Dictionary(uniqueKeysWithValues: response.value.map { ($0.eventID, $0) })
+    return try records.map {
+      try CommunityEventSummary(databaseRecord: $0, socialRecord: socialByEventID[$0.eventID])
+    }
+  }
 }
 
 struct SearchCatalogEventsParameters: Encodable, Equatable, Sendable {
@@ -86,6 +140,67 @@ struct CatalogEventIDParameters: Encodable, Equatable, Sendable {
 
   enum CodingKeys: String, CodingKey {
     case eventID = "p_event_id"
+  }
+}
+
+struct CatalogEventSocialSummariesParameters: Encodable, Equatable, Sendable {
+  let eventIDs: [UUID]
+
+  enum CodingKeys: String, CodingKey {
+    case eventIDs = "p_event_ids"
+  }
+}
+
+struct CatalogEventPageParameters: Encodable, Equatable, Sendable {
+  let cursor: [String: String]?
+  let limit: Int
+
+  init(cursor: [String: String]? = nil, limit: Int = 50) {
+    self.cursor = cursor
+    self.limit = limit
+  }
+
+  enum CodingKeys: String, CodingKey {
+    case cursor = "p_cursor"
+    case limit = "p_limit"
+  }
+}
+
+struct ListCatalogEventAttendeesParameters: Encodable, Equatable, Sendable {
+  let eventID: UUID
+  let scope: String
+  let cursor: [String: String]?
+  let limit: Int
+
+  init(
+    eventID: UUID,
+    scope: String = "all",
+    cursor: [String: String]? = nil,
+    limit: Int = 50
+  ) {
+    self.eventID = eventID
+    self.scope = scope
+    self.cursor = cursor
+    self.limit = limit
+  }
+
+  enum CodingKeys: String, CodingKey {
+    case eventID = "p_event_id"
+    case scope = "p_scope"
+    case cursor = "p_cursor"
+    case limit = "p_limit"
+  }
+}
+
+struct SetCatalogEventAttendanceParameters: Encodable, Equatable, Sendable {
+  let eventID: UUID
+  let status: EventAttendanceStatus?
+  let audience: EventAudience
+
+  enum CodingKeys: String, CodingKey {
+    case eventID = "p_event_id"
+    case status = "p_status"
+    case audience = "p_audience"
   }
 }
 
@@ -198,8 +313,67 @@ struct CatalogEventArtistRPCRecord: Decodable, Equatable, Sendable {
   }
 }
 
+struct CatalogEventSocialSummaryRPCRecord: Decodable, Equatable, Sendable {
+  let eventID: UUID
+  let currentUserStatus: EventAttendanceStatus?
+  let currentUserAudience: EventAudience?
+  let friendPreviews: [CatalogEventFriendPreviewRPCRecord]
+  let communityGoingCount: Int
+  let communityWentCount: Int
+
+  enum CodingKeys: String, CodingKey {
+    case eventID = "event_id"
+    case currentUserStatus = "current_user_status"
+    case currentUserAudience = "current_user_audience"
+    case friendPreviews = "friend_previews"
+    case communityGoingCount = "community_going_count"
+    case communityWentCount = "community_went_count"
+  }
+}
+
+struct CatalogEventFriendPreviewRPCRecord: Decodable, Equatable, Sendable {
+  let profileID: UUID
+  let username: String
+  let displayName: String
+  let relationship: String
+  let avatarObjectPath: String?
+  let avatarVersion: Int64
+  let status: EventAttendanceStatus
+
+  enum CodingKeys: String, CodingKey {
+    case username, relationship, status
+    case profileID = "profile_id"
+    case displayName = "display_name"
+    case avatarObjectPath = "avatar_object_path"
+    case avatarVersion = "avatar_version"
+  }
+}
+
+struct CatalogEventAttendeeRPCRecord: Decodable, Equatable, Sendable {
+  let id: UUID
+  let username: String
+  let displayName: String
+  let relationship: String
+  let avatarObjectPath: String?
+  let avatarVersion: Int64
+  let status: EventAttendanceStatus
+  let audience: EventAudience
+  let updatedAt: String
+
+  enum CodingKeys: String, CodingKey {
+    case id, username, relationship, status, audience
+    case displayName = "display_name"
+    case avatarObjectPath = "avatar_object_path"
+    case avatarVersion = "avatar_version"
+    case updatedAt = "updated_at"
+  }
+}
+
 extension CommunityEventSummary {
-  init(databaseRecord: CatalogEventRPCRecord) throws {
+  init(
+    databaseRecord: CatalogEventRPCRecord,
+    socialRecord: CatalogEventSocialSummaryRPCRecord? = nil
+  ) throws {
     guard
       let eventDate = CommunityEventDateCoding.date(from: databaseRecord.eventDate),
       let memoryUnlockAt = CommunityEventDateCoding.dateTime(from: databaseRecord.memoryUnlockAt)
@@ -237,12 +411,50 @@ extension CommunityEventSummary {
       integrity: databaseRecord.integrity,
       rowState: databaseRecord.rowState,
       sourceLabel: databaseRecord.sourceLabel,
-      currentUserAttendance: nil,
-      friendPreviews: [],
-      publicGoingCount: 0,
-      publicWentCount: 0,
+      currentUserAttendance: socialRecord?.currentUserStatus,
+      currentUserAudience: socialRecord?.currentUserAudience,
+      friendPreviews: socialRecord?.friendPreviews.map(EventFriendPreview.init(databaseRecord:)) ?? [],
+      publicGoingCount: socialRecord?.communityGoingCount ?? 0,
+      publicWentCount: socialRecord?.communityWentCount ?? 0,
       diaryCount: 0,
       duplicateCandidateEventID: nil
+    )
+  }
+}
+
+private extension EventFriendPreview {
+  init(databaseRecord: CatalogEventFriendPreviewRPCRecord) {
+    self.init(
+      profile: SocialProfile(
+        id: databaseRecord.profileID,
+        username: databaseRecord.username,
+        displayName: databaseRecord.displayName,
+        relationship: RelationshipState(rawValue: databaseRecord.relationship) ?? .none,
+        avatarObjectPath: databaseRecord.avatarObjectPath,
+        avatarVersion: databaseRecord.avatarVersion
+      ),
+      status: databaseRecord.status
+    )
+  }
+}
+
+extension EventAttendance {
+  init(databaseRecord: CatalogEventAttendeeRPCRecord) throws {
+    guard let updatedAt = CommunityEventDateCoding.dateTime(from: databaseRecord.updatedAt) else {
+      throw AppFailure.unexpected
+    }
+    self.init(
+      profile: SocialProfile(
+        id: databaseRecord.id,
+        username: databaseRecord.username,
+        displayName: databaseRecord.displayName,
+        relationship: RelationshipState(rawValue: databaseRecord.relationship) ?? .none,
+        avatarObjectPath: databaseRecord.avatarObjectPath,
+        avatarVersion: databaseRecord.avatarVersion
+      ),
+      status: databaseRecord.status,
+      audience: databaseRecord.audience,
+      updatedAt: updatedAt
     )
   }
 }

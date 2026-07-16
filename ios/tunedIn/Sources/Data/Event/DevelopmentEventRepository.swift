@@ -267,6 +267,7 @@
         rowState: .active,
         sourceLabel: "Community made",
         currentUserAttendance: attendance.status,
+        currentUserAudience: attendance.audience,
         friendPreviews: [],
         publicGoingCount: attendance.status == .going ? 1 : 0,
         publicWentCount: attendance.status == .went ? 1 : 0,
@@ -314,7 +315,7 @@
     }
 
     private func refreshedSummary(_ stored: StoredEvent, viewerID: UUID) -> CommunityEventSummary {
-      let own = stored.attendances.first(where: { $0.profile.id == viewerID })?.status
+      let ownAttendance = stored.attendances.first(where: { $0.profile.id == viewerID })
       let friends = stored.attendances.filter {
         $0.profile.relationship == .friends && $0.profile.id != viewerID && $0.audience != .privateOnly
       }
@@ -335,7 +336,8 @@
         integrity: stored.summary.integrity,
         rowState: stored.summary.rowState,
         sourceLabel: stored.summary.sourceLabel,
-        currentUserAttendance: own,
+        currentUserAttendance: ownAttendance?.status,
+        currentUserAudience: ownAttendance?.audience,
         friendPreviews: friends.map { EventFriendPreview(profile: $0.profile, status: $0.status) },
         publicGoingCount: stored.attendances.filter { $0.status == .going && $0.audience == .community }.count,
         publicWentCount: stored.attendances.filter { $0.status == .went && $0.audience == .community }.count,
@@ -430,6 +432,7 @@
         rowState: .merged,
         sourceLabel: "Community made",
         currentUserAttendance: nil,
+        currentUserAudience: nil,
         friendPreviews: [],
         publicGoingCount: 0,
         publicWentCount: 0,
@@ -559,6 +562,7 @@
         rowState: .active,
         sourceLabel: "Community made",
         currentUserAttendance: nil,
+        currentUserAudience: nil,
         friendPreviews: [],
         publicGoingCount: 0,
         publicWentCount: 0,

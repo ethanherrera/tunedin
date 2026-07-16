@@ -211,19 +211,34 @@ private struct CommunityEventHero: View {
 
       Divider().overlay(TunedInDesign.cardBorder)
 
-      if allowsAttendance {
+      if allowsAttendance,
+         detail.summary.phase() != .cancelled || detail.summary.currentUserAttendance != nil {
         HStack(spacing: 12) {
-          Button {
-            onSetAttendance(nextAttendance, audience)
-          } label: {
-            Label(attendanceTitle, systemImage: attendanceIcon)
-              .font(.headline)
-              .foregroundStyle(TunedInDesign.actionForeground)
-              .frame(maxWidth: .infinity)
-              .padding(.vertical, 13)
-              .background(TunedInDesign.accent, in: Capsule())
+          if detail.summary.phase() == .memories {
+            Menu {
+              Button("I went", systemImage: "checkmark.circle") {
+                onSetAttendance(.went, audience)
+              }
+              Button("I didn’t go", systemImage: "xmark.circle") {
+                onSetAttendance(.didNotGo, audience)
+              }
+              if detail.summary.currentUserAttendance != nil {
+                Divider()
+                Button("Remove from my history", systemImage: "trash", role: .destructive) {
+                  onSetAttendance(nil, audience)
+                }
+              }
+            } label: {
+              attendanceLabel
+            }
+          } else {
+            Button {
+              onSetAttendance(nextAttendance, audience)
+            } label: {
+              attendanceLabel
+            }
+            .buttonStyle(TunedInPosterButtonStyle())
           }
-          .buttonStyle(TunedInPosterButtonStyle())
 
           Menu {
             ForEach(EventAudience.allCases, id: \.self) { option in
@@ -273,11 +288,30 @@ private struct CommunityEventHero: View {
       RoundedRectangle(cornerRadius: TunedInDesign.largeCornerRadius, style: .continuous)
         .strokeBorder(TunedInDesign.cardBorder.opacity(0.55))
     }
+    .task(id: detail.summary.currentUserAudience) {
+      audience = detail.summary.currentUserAudience ?? .friends
+    }
+  }
+
+  private var attendanceLabel: some View {
+    Label(attendanceTitle, systemImage: attendanceIcon)
+      .font(.headline)
+      .foregroundStyle(TunedInDesign.actionForeground)
+      .frame(maxWidth: .infinity)
+      .padding(.vertical, 13)
+      .background(TunedInDesign.accent, in: Capsule())
   }
 
   private var attendanceTitle: String {
-    if detail.summary.currentUserAttendance != nil { return "Added to my plans" }
-    return detail.summary.phase() == .memories ? "I went" : "I’m going"
+    if detail.summary.phase() == .memories {
+      switch detail.summary.currentUserAttendance {
+      case .going: return "Confirm attendance"
+      case .went: return "I went"
+      case .didNotGo: return "I didn’t go"
+      case nil: return "Add to my history"
+      }
+    }
+    return detail.summary.currentUserAttendance == nil ? "I’m going" : "Added to my plans"
   }
 
   private var attendanceIcon: String {
@@ -286,7 +320,7 @@ private struct CommunityEventHero: View {
 
   private var nextAttendance: EventAttendanceStatus? {
     guard detail.summary.currentUserAttendance == nil else { return nil }
-    return detail.summary.phase() == .memories ? .went : .going
+    return .going
   }
 
   private var audienceIcon: String {

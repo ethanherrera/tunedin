@@ -21,6 +21,16 @@ public enum PublicSchema {
     case merged = "merged"
     case retired = "retired"
   }
+  public enum CatalogEventAttendanceStatus: String, Codable, Hashable, Sendable {
+    case going = "going"
+    case went = "went"
+    case didNotGo = "did_not_go"
+  }
+  public enum CatalogEventAudience: String, Codable, Hashable, Sendable {
+    case `private` = "private"
+    case friends = "friends"
+    case community = "community"
+  }
   public enum CatalogEventIntegrity: String, Codable, Hashable, Sendable {
     case communityAdded = "community_added"
     case corroborated = "corroborated"
@@ -318,6 +328,54 @@ public enum PublicSchema {
       case eventId = "event_id"
       case isHeadliner = "is_headliner"
       case lineupPosition = "lineup_position"
+    }
+  }
+  public struct CatalogEventAttendanceSelect: Codable, Hashable, Sendable {
+    public let audience: CatalogEventAudience
+    public let createdAt: String
+    public let eventId: UUID
+    public let profileId: UUID
+    public let status: CatalogEventAttendanceStatus
+    public let updatedAt: String
+    public enum CodingKeys: String, CodingKey {
+      case audience = "audience"
+      case createdAt = "created_at"
+      case eventId = "event_id"
+      case profileId = "profile_id"
+      case status = "status"
+      case updatedAt = "updated_at"
+    }
+  }
+  public struct CatalogEventAttendanceInsert: Codable, Hashable, Sendable {
+    public let audience: CatalogEventAudience?
+    public let createdAt: String?
+    public let eventId: UUID
+    public let profileId: UUID
+    public let status: CatalogEventAttendanceStatus
+    public let updatedAt: String?
+    public enum CodingKeys: String, CodingKey {
+      case audience = "audience"
+      case createdAt = "created_at"
+      case eventId = "event_id"
+      case profileId = "profile_id"
+      case status = "status"
+      case updatedAt = "updated_at"
+    }
+  }
+  public struct CatalogEventAttendanceUpdate: Codable, Hashable, Sendable {
+    public let audience: CatalogEventAudience?
+    public let createdAt: String?
+    public let eventId: UUID?
+    public let profileId: UUID?
+    public let status: CatalogEventAttendanceStatus?
+    public let updatedAt: String?
+    public enum CodingKeys: String, CodingKey {
+      case audience = "audience"
+      case createdAt = "created_at"
+      case eventId = "event_id"
+      case profileId = "profile_id"
+      case status = "status"
+      case updatedAt = "updated_at"
     }
   }
   public struct CatalogEventsSelect: Codable, Hashable, Sendable {
