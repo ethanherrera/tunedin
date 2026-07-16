@@ -705,7 +705,7 @@ private struct ConcertEditorPickerView: View {
   }
 
   private var filteredFriends: [SocialProfile] {
-    let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    let normalizedQuery = ProfileInput.normalizedSearchQuery(query)
     guard !normalizedQuery.isEmpty else { return friends }
 
     return friends.filter { friend in

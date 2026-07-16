@@ -11,6 +11,12 @@ struct ProfileInputTests {
   }
 
   @Test
+  func peopleSearchAcceptsAUsernameWithLeadingAtSign() {
+    #expect(ProfileInput.normalizedSearchQuery("  @River_SIDE  ") == "river_side")
+    #expect(ProfileInput.normalizedSearchQuery("River Side") == "river side")
+  }
+
+  @Test
   func displayNameNormalizesWhitespaceAndRejectsControlCharacters() {
     #expect(ProfileInput.normalizedDisplayName("  River   Side  ") == "River Side")
     #expect(ProfileInput.isDisplayNameValid("River Side"))

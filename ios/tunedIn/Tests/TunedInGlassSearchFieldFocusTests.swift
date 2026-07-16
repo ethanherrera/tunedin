@@ -18,12 +18,12 @@ struct TunedInGlassSearchFieldFocusTests {
   }
 
   @Test
-  func nestedKeyboardManagersRegisterAndUnregisterWithSharedCoordinator() async {
+  func nestedKeyboardManagersRegisterAndUnregisterWithSharedAccessoryCoordinator() async {
     let model = NestedKeyboardManagerHarness()
-    let coordinator = TunedInKeyboardDismissControlCoordinator()
+    let coordinator = TunedInKeyboardAccessoryCoordinator()
     let host = UIHostingController(
       rootView: NestedKeyboardManagerHarnessView(model: model)
-        .environment(\.tunedInKeyboardDismissControlCoordinator, coordinator)
+        .environment(\.tunedInKeyboardAccessoryCoordinator, coordinator)
     )
     let previousKeyWindow = UIApplication.shared.connectedScenes
       .compactMap { $0 as? UIWindowScene }
@@ -108,7 +108,7 @@ struct TunedInGlassSearchFieldFocusTests {
 
   private func registeredOwnerCount(
     _ expectedCount: Int,
-    in coordinator: TunedInKeyboardDismissControlCoordinator
+    in coordinator: TunedInKeyboardAccessoryCoordinator
   ) async -> Int {
     for _ in 0..<50 {
       let count = coordinator.registeredOwnerCount

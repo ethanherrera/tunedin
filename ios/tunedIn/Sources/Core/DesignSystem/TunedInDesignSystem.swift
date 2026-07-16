@@ -1,79 +1,5 @@
-import Combine
-import Observation
 import SwiftUI
 import UIKit
-
-enum TunedInKeyboardPresentation: Equatable {
-  case hidden
-  case presented
-
-  func update(to candidate: Self) -> Self? {
-    candidate == self ? nil : candidate
-  }
-
-  static func resolved(endFrame: CGRect, screenBounds: CGRect) -> Self {
-    endFrame.minY < screenBounds.maxY && endFrame.intersects(screenBounds)
-      ? .presented
-      : .hidden
-  }
-
-  static var immediateTransaction: Transaction {
-    var transaction = Transaction(animation: nil)
-    transaction.disablesAnimations = true
-    return transaction
-  }
-
-  var showsPersistentGlass: Bool {
-    self == .hidden
-  }
-
-  var showsDismissControl: Bool {
-    self == .presented
-  }
-}
-
-private struct TunedInKeyboardPresentationKey: EnvironmentKey {
-  static let defaultValue = TunedInKeyboardPresentation.hidden
-}
-
-@MainActor
-@Observable
-final class TunedInKeyboardDismissControlCoordinator {
-  private var owners: [UUID] = []
-
-  var registeredOwnerCount: Int {
-    owners.count
-  }
-
-  func register(_ owner: UUID) {
-    owners.removeAll { $0 == owner }
-    owners.append(owner)
-  }
-
-  func unregister(_ owner: UUID) {
-    owners.removeAll { $0 == owner }
-  }
-
-  func isActive(_ owner: UUID) -> Bool {
-    owners.last == owner
-  }
-}
-
-private struct TunedInKeyboardDismissCoordinatorKey: EnvironmentKey {
-  static let defaultValue: TunedInKeyboardDismissControlCoordinator? = nil
-}
-
-extension EnvironmentValues {
-  var tunedInKeyboardPresentation: TunedInKeyboardPresentation {
-    get { self[TunedInKeyboardPresentationKey.self] }
-    set { self[TunedInKeyboardPresentationKey.self] = newValue }
-  }
-
-  var tunedInKeyboardDismissControlCoordinator: TunedInKeyboardDismissControlCoordinator? {
-    get { self[TunedInKeyboardDismissCoordinatorKey.self] }
-    set { self[TunedInKeyboardDismissCoordinatorKey.self] = newValue }
-  }
-}
 
 enum TunedInDesign {
   static let accent = Color(red: 1.0, green: 0.31, blue: 0.15)
@@ -98,7 +24,6 @@ enum TunedInDesign {
   static let bottomControlInset: CGFloat = 8
   static let bottomControlHorizontalInset: CGFloat = 14
   static let scrollContentBottomInset: CGFloat = 24
-  static let keyboardDismissControlClearance: CGFloat = 68
 
   private static func adaptive(light: Int, dark: Int) -> Color {
     Color(
@@ -468,6 +393,7 @@ struct TunedInGlassSearchField: View {
   let prompt: String
   let style: Style
   @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
+  @FocusState private var isFocused: Bool
 
   init(text: Binding<String>, prompt: String, style: Style = .standard) {
     _text = text
@@ -477,33 +403,46 @@ struct TunedInGlassSearchField: View {
 
   var body: some View {
     HStack(spacing: 10) {
-      Image(systemName: "magnifyingglass")
-        .foregroundStyle(TunedInDesign.mutedText)
+      HStack(spacing: 10) {
+        Image(systemName: "magnifyingglass")
+          .foregroundStyle(TunedInDesign.mutedText)
 
-      TextField(prompt, text: $text)
-        .textInputAutocapitalization(.never)
-        .autocorrectionDisabled()
-        .foregroundStyle(TunedInDesign.primaryText)
+        TextField(prompt, text: $text)
+          .textInputAutocapitalization(.never)
+          .autocorrectionDisabled()
+          .submitLabel(.search)
+          .focused($isFocused)
+          .onSubmit { isFocused = false }
+          .foregroundStyle(TunedInDesign.primaryText)
 
-      if !text.isEmpty {
-        Button {
-          text = ""
-        } label: {
-          Image(systemName: "xmark.circle.fill")
-            .foregroundStyle(TunedInDesign.mutedText)
+        if !text.isEmpty {
+          Button {
+            text = ""
+          } label: {
+            Image(systemName: "xmark.circle.fill")
+              .foregroundStyle(TunedInDesign.mutedText)
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel("Clear search")
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Clear search")
+      }
+      .padding(.horizontal, 14)
+      .padding(.vertical, 13)
+      .modifier(
+        TunedInLiquidGlassSearchSurface(
+          style: style,
+          isGlassEnabled: keyboardPresentation.showsPersistentGlass
+        )
+      )
+
+      if isFocused {
+        Button("Done") { isFocused = false }
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(TunedInDesign.accent)
+          .transition(.opacity)
+          .accessibilityHint("Keeps the current search results visible")
       }
     }
-    .padding(.horizontal, 14)
-    .padding(.vertical, 13)
-    .modifier(
-      TunedInLiquidGlassSearchSurface(
-        style: style,
-        isGlassEnabled: keyboardPresentation.showsPersistentGlass
-      )
-    )
   }
 }
 
@@ -862,102 +801,6 @@ private struct TunedInNavigationZoomModifier<SourceID: Hashable>: ViewModifier {
   }
 }
 
-private struct TunedInKeyboardDismissControl: View {
-  var body: some View {
-    Button {
-      UIApplication.shared.sendAction(
-        #selector(UIResponder.resignFirstResponder),
-        to: nil,
-        from: nil,
-        for: nil
-      )
-    } label: {
-      Image(systemName: "xmark")
-        .font(.body.weight(.bold))
-        .foregroundStyle(TunedInDesign.primaryText)
-        .frame(width: TunedInDesign.controlSize, height: TunedInDesign.controlSize)
-        .contentShape(Circle())
-        .modifier(TunedInLiquidGlassIconSurface(style: .neutral))
-    }
-    .buttonStyle(.plain)
-    .accessibilityLabel("Dismiss keyboard")
-  }
-}
-
-private struct TunedInKeyboardPresentationModifier: ViewModifier {
-  let showsDismissControl: Bool
-  @Environment(\.tunedInKeyboardDismissControlCoordinator) private var inheritedCoordinator
-  @State private var presentation = TunedInKeyboardPresentation.hidden
-  @State private var localCoordinator = TunedInKeyboardDismissControlCoordinator()
-  @State private var dismissControlOwner = UUID()
-
-  func body(content: Content) -> some View {
-    content
-      .environment(\.tunedInKeyboardPresentation, presentation)
-      .environment(\.tunedInKeyboardDismissControlCoordinator, coordinator)
-      .safeAreaInset(edge: .bottom, spacing: 0) {
-        if presentation.showsDismissControl
-          && showsDismissControl
-          && coordinator.isActive(dismissControlOwner) {
-          HStack {
-            Spacer(minLength: 0)
-            TunedInKeyboardDismissControl()
-          }
-          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
-          .padding(.vertical, 8)
-        }
-      }
-      .onAppear {
-        guard showsDismissControl else { return }
-        coordinator.register(dismissControlOwner)
-      }
-      .onDisappear {
-        guard showsDismissControl else { return }
-        coordinator.unregister(dismissControlOwner)
-      }
-      .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
-        setPresentation(.presented)
-      }
-      .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in
-        setPresentation(.hidden)
-      }
-      .onReceive(
-        NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)
-      ) { notification in
-        guard presentation(for: notification) == .presented else { return }
-        setPresentation(.presented)
-      }
-  }
-
-  private var coordinator: TunedInKeyboardDismissControlCoordinator {
-    inheritedCoordinator ?? localCoordinator
-  }
-
-  private func presentation(for notification: Notification) -> TunedInKeyboardPresentation {
-    guard
-      let endFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
-      let screenBounds = UIApplication.shared.connectedScenes
-        .compactMap({ ($0 as? UIWindowScene)?.screen.bounds })
-        .first
-    else {
-      return presentation
-    }
-
-    return TunedInKeyboardPresentation.resolved(
-      endFrame: endFrame,
-      screenBounds: screenBounds
-    )
-  }
-
-  private func setPresentation(_ newPresentation: TunedInKeyboardPresentation) {
-    guard let updatedPresentation = presentation.update(to: newPresentation) else { return }
-
-    withTransaction(TunedInKeyboardPresentation.immediateTransaction) {
-      presentation = updatedPresentation
-    }
-  }
-}
-
 extension View {
   func tunedInMatchedNavigationSource<SourceID: Hashable>(
     id: SourceID,
@@ -977,7 +820,4 @@ extension View {
     sensoryFeedback(.selection, trigger: trigger)
   }
 
-  func tunedInKeyboardManaged(showsDismissControl: Bool = true) -> some View {
-    modifier(TunedInKeyboardPresentationModifier(showsDismissControl: showsDismissControl))
-  }
 }

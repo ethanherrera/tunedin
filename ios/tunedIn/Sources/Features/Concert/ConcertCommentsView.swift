@@ -9,8 +9,6 @@ struct ConcertCommentsView: View {
   let model: ConcertCommentsModel
 
   @Environment(\.telemetry) private var telemetry
-  @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
-
   @State private var draft = ""
   @State private var editingCommentID: UUID?
   @State private var editDraft = ""
@@ -126,6 +124,8 @@ struct ConcertCommentsView: View {
         TextField("Leave a comment…", text: $draft, axis: .vertical)
           .lineLimit(1 ... 4)
           .textInputAutocapitalization(.sentences)
+          .submitLabel(.send)
+          .onSubmit(send)
           .padding(.leading, 14)
           .padding(.vertical, 10)
 
@@ -147,12 +147,6 @@ struct ConcertCommentsView: View {
       }
       .padding(5)
       .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 23, style: .continuous))
-      .padding(
-        .trailing,
-        keyboardPresentation.showsDismissControl
-          ? TunedInDesign.keyboardDismissControlClearance
-          : 0
-      )
     }
     .padding(.vertical, 4)
   }
