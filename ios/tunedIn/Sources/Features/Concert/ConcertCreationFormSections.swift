@@ -258,57 +258,11 @@ struct ConcertCreationDetailsView: View {
   }
 
   private var setlistPage: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      pageHeading(
-        title: "Setlist",
-        subtitle: "Add songs in the order you remember."
-      )
-
-      List {
-        ForEach(draft.setlist) { item in
-          HStack {
-            Button {
-              catalogPickerTarget = .song(item.id)
-            } label: {
-              HStack {
-                Text(item.title)
-                  .foregroundStyle(TunedInDesign.primaryText)
-                Spacer()
-                Image(systemName: "magnifyingglass")
-                  .foregroundStyle(TunedInDesign.accent)
-              }
-              .contentShape(.interaction, Rectangle())
-            }
-            .buttonStyle(.plain)
-          }
-          .swipeActions {
-            Button(role: .destructive) { draft.removeSetlistItem(item.id) } label: {
-              Label("Remove", systemImage: "trash")
-            }
-          }
-          .padding(.vertical, 6)
-          .listRowBackground(Color.clear)
-        }
-        .onMove { source, destination in
-          draft.moveSetlist(from: source, to: destination)
-        }
-
-        Button {
-          catalogPickerTarget = .song(nil)
-        } label: {
-          Label("Add a song", systemImage: "plus")
-            .font(.headline)
-            .foregroundStyle(TunedInDesign.accent)
-        }
-        .disabled(draft.setlist.count == 50)
-        .padding(.vertical, 8)
-        .listRowBackground(Color.clear)
-      }
-      .listStyle(.plain)
-      .contentMargins(.horizontal, 20, for: .scrollContent)
-      .scrollContentBackground(.hidden)
-      .background(TunedInDesign.pageBackground)
-      .environment(\.editMode, .constant(.active))
+    ConcertSetlistDraftView(
+      draft: $draft,
+      idleSubtitle: "Add songs in the order you remember."
+    ) { songID in
+      catalogPickerTarget = .song(songID)
     }
   }
 

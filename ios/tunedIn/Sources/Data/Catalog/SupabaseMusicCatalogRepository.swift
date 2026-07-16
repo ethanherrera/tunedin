@@ -175,7 +175,13 @@ struct SupabaseMusicCatalogRepository: MusicCatalogRepository {
         if status == 429 || envelope.error.code.contains("rate") {
           return .rateLimited(retryAfterSeconds: envelope.error.retryAfterSeconds)
         }
-        return .rejected(message: envelope.error.message, retryable: envelope.error.retryable)
+        return .rejected(
+          message: CatalogGatewayErrorCopy.message(
+            code: envelope.error.code,
+            fallback: envelope.error.message
+          ),
+          retryable: envelope.error.retryable
+        )
       }
       if status == 429 {
         return .rateLimited(retryAfterSeconds: nil)
@@ -252,6 +258,25 @@ private struct CatalogGatewayErrorEnvelope: Decodable, Sendable {
   }
 
   let error: Detail
+}
+
+enum CatalogGatewayErrorCopy {
+  static func message(code: String, fallback: String) -> String {
+    switch code {
+    case "upstream_timeout":
+      "Search took too long. Please try again."
+    case "upstream_rate_limited", "queue_timeout":
+      "Search is busy. Please try again shortly."
+    case "upstream_unavailable":
+      "Search is temporarily unavailable."
+    case "upstream_invalid_response":
+      "Search returned an unexpected response. Please try again."
+    default:
+      fallback.localizedCaseInsensitiveContains("musicbrainz")
+        ? "Search could not be completed. Please try again."
+        : fallback
+    }
+  }
 }
 
 private struct CatalogCustomRPCRecord: Decodable, Sendable {

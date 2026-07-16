@@ -12,19 +12,20 @@ struct ConcertAlbumView: View {
 
   @EnvironmentObject private var concertFloatingControls: ConcertFloatingControls
   @Environment(\.telemetry) private var telemetry
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   @State private var photos: [ConcertAlbumPhoto] = []
-  @State private var failedUploads: [FailedAlbumUpload] = []
+  @State private var pendingUploads: [PendingAlbumUpload] = []
   @State private var selectedPhotoID: UUID?
   @State private var isLoading = true
   @State private var isLoadingMore = false
   @State private var isUploading = false
-  @State private var uploadProgress = 0
-  @State private var uploadTotal = 0
   @State private var canLoadMore = false
   @State private var policy: ConcertAlbumPolicy?
   @State private var loadErrorMessage: String?
   @State private var errorMessage: String?
+  @State private var successFeedback = 0
+  @State private var failureFeedback = 0
 
   private let columns = [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)]
 
@@ -40,36 +41,29 @@ struct ConcertAlbumView: View {
           Spacer()
         }
 
-        if isUploading {
-          ProgressView(value: Double(uploadProgress), total: Double(max(uploadTotal, 1))) {
-            Text("Adding photo \(min(uploadProgress + 1, uploadTotal)) of \(uploadTotal)")
-              .font(.caption.weight(.semibold))
-          }
-          .padding(14)
-          .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
         if let errorMessage {
-          Text(errorMessage).font(.caption).foregroundStyle(.red)
+          Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.orange)
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14))
         }
-        if !failedUploads.isEmpty {
-          Button {
-            Task { await retryFailures() }
-          } label: {
-            Label(
-              "Retry \(failedUploads.count) failed \(failedUploads.count == 1 ? "photo" : "photos")",
-              systemImage: "arrow.clockwise"
+
+        if !pendingUploads.isEmpty {
+          uploadShelf
+            .transition(
+              reduceMotion
+                ? .opacity
+                : .move(edge: .top).combined(with: .opacity)
             )
-          }
-          .font(.subheadline.weight(.bold))
-          .foregroundStyle(TunedInDesign.accent)
-          .disabled(isUploading)
         }
 
         if isLoading {
           LazyVGrid(columns: columns, spacing: 6) {
             ForEach(0 ..< 6, id: \.self) { _ in
               TunedInSkeletonBlock()
-                .aspectRatio(1, contentMode: .fit)
+                .aspectRatio(CGSize(width: 4, height: 5), contentMode: .fit)
             }
           }
           .accessibilityLabel("Opening album")
@@ -84,17 +78,11 @@ struct ConcertAlbumView: View {
             }
           }
           .padding(.vertical, 32)
-        } else if photos.isEmpty {
-          ContentUnavailableView(
-            "No photos yet",
-            systemImage: "photo.on.rectangle.angled",
-            description: Text(
-              viewerRole.canEdit
-                ? "Add the first photo from this night."
-                : "The editors haven’t added photos yet."
-            )
+        } else if photos.isEmpty, pendingUploads.isEmpty {
+          ConcertAlbumEmptyState(
+            detail: detail,
+            viewerCanAddPhotos: viewerRole.canEdit
           )
-          .padding(.vertical, 48)
         } else {
           LazyVGrid(columns: columns, spacing: 6) {
             ForEach(photos) { photo in
@@ -122,7 +110,8 @@ struct ConcertAlbumView: View {
     .task(id: refreshToken) { await load(policy: .automatic) }
     .onChange(of: concertFloatingControls.pendingPhotoSelections) { _, items in
       guard !items.isEmpty else { return }
-      Task { await upload(items.map { FailedAlbumUpload(photoID: UUID(), item: $0, reservation: nil) }) }
+      stage(items)
+      concertFloatingControls.pendingPhotoSelections = []
     }
     .fullScreenCover(isPresented: viewerPresented) {
       ConcertAlbumViewer(
@@ -133,8 +122,13 @@ struct ConcertAlbumView: View {
         repository: concertRepository
       )
     }
+    .animation(TunedInMotion.feedback(reduceMotion: reduceMotion), value: pendingUploads.map(\.phase))
+    .sensoryFeedback(.success, trigger: successFeedback)
+    .sensoryFeedback(.error, trigger: failureFeedback)
   }
+}
 
+private extension ConcertAlbumView {
   private var albumContext: String {
     let count = photos.count
     guard count > 0 else { return "A shared album for this night" }
@@ -148,6 +142,59 @@ struct ConcertAlbumView: View {
         selectedPhotoID = nil
       }
     })
+  }
+
+  private var uploadShelf: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(alignment: .firstTextBaseline) {
+        VStack(alignment: .leading, spacing: 2) {
+          Text(uploadShelfTitle)
+            .font(.headline.weight(.bold))
+          Text("Progress and recovery stay with each photo.")
+            .font(.caption)
+            .foregroundStyle(TunedInDesign.mutedText)
+        }
+        Spacer()
+        if pendingUploads.allSatisfy({ $0.phase.canRetry }), !isUploading {
+          Button("Retry all") {
+            retry(pendingUploads.map(\.id))
+          }
+          .font(.caption.weight(.bold))
+          .foregroundStyle(TunedInDesign.accent)
+        }
+      }
+
+      ScrollView(.horizontal) {
+        LazyHStack(spacing: 10) {
+          ForEach(pendingUploads) { upload in
+            PendingAlbumUploadTile(upload: upload) {
+              retry([upload.id])
+            }
+            .frame(width: 128)
+          }
+        }
+        .scrollTargetLayout()
+      }
+      .scrollIndicators(.hidden)
+    }
+    .padding(14)
+    .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    .overlay {
+      RoundedRectangle(cornerRadius: 20, style: .continuous)
+        .strokeBorder(TunedInDesign.cardBorder.opacity(0.6))
+    }
+  }
+
+  private var uploadShelfTitle: String {
+    let activeCount = pendingUploads.filter { $0.phase.isActive }.count
+    let failedCount = pendingUploads.filter { $0.phase.canRetry }.count
+    if activeCount > 0 {
+      return "Adding \(activeCount) \(activeCount == 1 ? "photo" : "photos")"
+    }
+    if failedCount > 0 {
+      return "\(failedCount) \(failedCount == 1 ? "photo needs" : "photos need") attention"
+    }
+    return "Saved to this night"
   }
 
   private func load(policy readPolicy: CacheReadPolicy) async {
@@ -196,79 +243,145 @@ struct ConcertAlbumView: View {
     isLoadingMore = false
   }
 
-  private func upload(_ uploads: [FailedAlbumUpload]) async {
+  private func stage(_ items: [PhotosPickerItem]) {
+    let uploads = items.map {
+      PendingAlbumUpload(
+        id: UUID(),
+        item: $0,
+        previewData: nil,
+        processedData: nil,
+        reservation: nil,
+        phase: .preparing
+      )
+    }
+    pendingUploads.append(contentsOf: uploads)
+    Task { await upload(uploads.map(\.id), isRetry: false) }
+  }
+
+  private func retry(_ uploadIDs: [UUID]) {
+    Task { await upload(uploadIDs, isRetry: true) }
+  }
+
+  private func upload(_ uploadIDs: [UUID], isRetry: Bool) async {
+    guard !uploadIDs.isEmpty, !isUploading else { return }
     let startedAt = ContinuousClock.now
-    let isRetry = uploads.contains { $0.reservation != nil }
     isUploading = true
     concertFloatingControls.setInteractionLocked(true)
     defer {
       isUploading = false
       concertFloatingControls.setInteractionLocked(false)
     }
-    uploadProgress = 0; uploadTotal = uploads.count; failedUploads = []; errorMessage = nil
-    let result = await AlbumUploadBatchExecutor.run(uploads) { upload in
-      var reservation = upload.reservation
+    errorMessage = nil
+    var successes: [ConcertAlbumPhoto] = []
+    var failures: [any Error] = []
+
+    for uploadID in uploadIDs {
       do {
-        guard let source = try await upload.item.loadTransferable(type: Data.self) else {
-          throw AlbumPickerError.unreadable
-        }
-        let data = try await ConcertAlbumImageProcessor.process(source)
-        if reservation == nil {
-          reservation = try await concertRepository.reserveAlbumPhoto(
-            concertID: detail.concert.id,
-            photoID: upload.photoID
-          )
-        }
-        guard let reservation else { throw AlbumPickerError.unreadable }
-        let photo = try await concertRepository.uploadReservedAlbumPhoto(data, reservation: reservation)
-        return .success(photo)
+        let photo = try await uploadPhoto(id: uploadID)
+        successes.append(photo)
       } catch {
-        let failed = FailedAlbumUpload(
-          photoID: upload.photoID,
-          item: upload.item,
-          reservation: reservation
-        )
-        return .failure(AlbumUploadAttemptError(item: failed, underlying: error))
+        failures.append(error)
       }
-    } progress: { completed, _ in
-      uploadProgress = completed
     }
-    photos.insert(contentsOf: result.successes.reversed(), at: 0)
-    failedUploads = result.failures.map(\.item)
+
+    if !successes.isEmpty {
+      successFeedback += 1
+      try? await Task.sleep(for: .milliseconds(reduceMotion ? 250 : 850))
+      let succeededIDs = Set(successes.map(\.id))
+      pendingUploads.removeAll { upload in
+        guard case let .saved(photo) = upload.phase else { return false }
+        return succeededIDs.contains(photo.id)
+      }
+      photos.insert(contentsOf: successes.reversed(), at: 0)
+    }
+
+    if !failures.isEmpty {
+      failureFeedback += 1
+    }
+    if failures.count > 1 {
+      errorMessage = "Some photos need attention. Retry them here without selecting them again."
+    }
+
     telemetry?.capture(
       .photoUploadCompleted,
       properties: [
-        .attemptedCount: .integer(uploads.count),
-        .succeededCount: .integer(result.successes.count),
-        .partialSuccess: .boolean(!result.successes.isEmpty && !result.failures.isEmpty),
+        .attemptedCount: .integer(uploadIDs.count),
+        .succeededCount: .integer(successes.count),
+        .partialSuccess: .boolean(!successes.isEmpty && !failures.isEmpty),
         .retryUsed: .boolean(isRetry),
         .outcome: .string(
-          result.failures.isEmpty
+          failures.isEmpty
             ? TelemetryOutcome.succeeded.rawValue
-            : (result.successes.isEmpty ? TelemetryOutcome.failed.rawValue : TelemetryOutcome.partial.rawValue)
+            : (successes.isEmpty ? TelemetryOutcome.failed.rawValue : TelemetryOutcome.partial.rawValue)
         ),
         .durationMilliseconds: .integer(startedAt.duration(to: .now).albumTelemetryMilliseconds),
-        .failureCategory: result.failures.first.map {
-          .string(TelemetryFailureCategory($0.error.appFailure).rawValue)
+        .failureCategory: failures.first.map {
+          .string(TelemetryFailureCategory($0.appFailure).rawValue)
         } ?? .string("none")
       ]
     )
-    if let failure = result.failures.first {
-      switch failure.error.appFailure {
-      case .offline:
-        errorMessage = "You’re offline. Successful photos are already in the album."
-      case .retryable:
-        errorMessage = "The server did not respond in time. Successful photos are already in the album."
-      default:
-        errorMessage = "Some photos could not be added. Successful photos are already in the album."
-      }
-    }
-    concertFloatingControls.pendingPhotoSelections = []
   }
 
-  private func retryFailures() async {
-    let failures = failedUploads; failedUploads = []
-    await upload(failures)
+  private func uploadPhoto(id: UUID) async throws -> ConcertAlbumPhoto {
+    guard let initialIndex = pendingUploads.firstIndex(where: { $0.id == id }) else {
+      throw AlbumPickerError.unreadable
+    }
+    pendingUploads[initialIndex].phase = pendingUploads[initialIndex].processedData == nil ? .preparing : .uploading
+
+    do {
+      let data: Data
+      if let processed = pendingUploads[initialIndex].processedData {
+        data = processed
+      } else {
+        guard let source = try await pendingUploads[initialIndex].item.loadTransferable(type: Data.self) else {
+          throw AlbumPickerError.unreadable
+        }
+        if let currentIndex = pendingUploads.firstIndex(where: { $0.id == id }) {
+          pendingUploads[currentIndex].previewData = source
+        }
+        data = try await ConcertAlbumImageProcessor.process(source)
+        if let currentIndex = pendingUploads.firstIndex(where: { $0.id == id }) {
+          pendingUploads[currentIndex].processedData = data
+          pendingUploads[currentIndex].phase = .uploading
+        }
+      }
+
+      guard let currentIndex = pendingUploads.firstIndex(where: { $0.id == id }) else {
+        throw AlbumPickerError.unreadable
+      }
+      var reservation = pendingUploads[currentIndex].reservation
+      if reservation == nil {
+        reservation = try await concertRepository.reserveAlbumPhoto(
+          concertID: detail.concert.id,
+          photoID: id
+        )
+        if let reservation, let refreshedIndex = pendingUploads.firstIndex(where: { $0.id == id }) {
+          pendingUploads[refreshedIndex].reservation = reservation
+        }
+      }
+      guard let reservation else { throw AlbumPickerError.unreadable }
+      let photo = try await concertRepository.uploadReservedAlbumPhoto(data, reservation: reservation)
+      if let refreshedIndex = pendingUploads.firstIndex(where: { $0.id == id }) {
+        pendingUploads[refreshedIndex].phase = .saved(photo)
+      }
+      return photo
+    } catch {
+      if let currentIndex = pendingUploads.firstIndex(where: { $0.id == id }) {
+        pendingUploads[currentIndex].phase = .failed(albumUploadFailureMessage(error))
+      }
+      throw error
+    }
+  }
+}
+
+private func albumUploadFailureMessage(_ error: any Error) -> String {
+  switch error.appFailure {
+  case .offline:
+    "You’re offline. Retry when you’re connected."
+  case .retryable:
+    "The upload timed out. Your photo is still here."
+  default:
+    "This photo couldn’t be added. Your selection is still here."
   }
 }
 
@@ -279,16 +392,13 @@ private extension Duration {
   }
 }
 
-private struct FailedAlbumUpload: Identifiable {
-  let photoID: UUID
-  let item: PhotosPickerItem
-  let reservation: ConcertPhotoReservation?
-  var id: UUID {
-    photoID
+private enum AlbumPickerError: LocalizedError {
+  case unreadable
+
+  var errorDescription: String? {
+    "That photo could not be read."
   }
 }
-
-private enum AlbumPickerError: LocalizedError { case unreadable }
 
 private struct AlbumPhotoTile: View {
   let photo: ConcertAlbumPhoto

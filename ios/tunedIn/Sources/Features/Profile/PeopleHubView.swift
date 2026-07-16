@@ -227,7 +227,7 @@ struct FriendsListView: View {
   }
 
   private var filteredFriends: [SocialProfile] {
-    let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+    let normalizedQuery = ProfileInput.normalizedSearchQuery(query)
     guard !normalizedQuery.isEmpty else { return model.friends }
 
     return model.friends.filter { profile in
@@ -566,7 +566,7 @@ final class PeopleHubModel {
   }
 
   private func search(policy: CacheReadPolicy) async {
-    let requestedQuery = ProfileInput.normalizedUsername(query)
+    let requestedQuery = ProfileInput.normalizedSearchQuery(query)
     guard !requestedQuery.isEmpty else {
       isSearching = false
       searchResults = []
@@ -576,7 +576,7 @@ final class PeopleHubModel {
 
     isSearching = true
     defer {
-      if ProfileInput.normalizedUsername(query) == requestedQuery {
+      if ProfileInput.normalizedSearchQuery(query) == requestedQuery {
         isSearching = false
       }
     }
@@ -586,13 +586,13 @@ final class PeopleHubModel {
         policy: policy
       )
       try Task.checkCancellation()
-      guard ProfileInput.normalizedUsername(query) == requestedQuery else { return }
+      guard ProfileInput.normalizedSearchQuery(query) == requestedQuery else { return }
       searchResults = results
       errorMessage = nil
     } catch is CancellationError {
       return
     } catch {
-      guard ProfileInput.normalizedUsername(query) == requestedQuery else { return }
+      guard ProfileInput.normalizedSearchQuery(query) == requestedQuery else { return }
       errorMessage = error.localizedDescription
     }
   }

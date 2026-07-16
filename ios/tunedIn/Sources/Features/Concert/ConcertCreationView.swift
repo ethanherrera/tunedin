@@ -14,72 +14,59 @@ struct ConcertCreationView: View {
   @State var isShowingDetails = false
   @State private var isShowingDiscardConfirmation = false
   @State private var saveError: String?
-  @State private var savedConcert: Concert?
-  @State private var savedPrimaryArtistName = ""
+  @State private var createdConcertAwaitingPhoto: Concert?
   @State private var selectedPhoto: PhotosPickerItem?
   @State private var concertPhotoData: Data?
   @State private var isProcessingPhoto = false
   @State private var catalogPickerTarget: ConcertCatalogPickerTarget?
 
   var body: some View {
-    Group {
-      if let savedConcert {
-        ConcertSavedView(
-          concert: savedConcert,
-          primaryArtistName: savedPrimaryArtistName,
-          concertRepository: concertRepository,
-          onDone: { dismiss() }
-        )
-        .transition(.opacity)
-      } else {
-        NavigationStack {
-          ZStack {
-            TunedInDesign.pageBackground
-              .ignoresSafeArea()
+    NavigationStack {
+      ZStack {
+        TunedInDesign.pageBackground
+          .ignoresSafeArea()
 
-            ScrollView {
-              VStack(alignment: .leading, spacing: 0) {
-                captureHeader
-                quickCaptureCard
-                  .padding(.top, 22)
-                detailsPrompt
-                  .padding(.top, 12)
-              }
-              .padding(.bottom, 24)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 18)
+        ScrollView {
+          VStack(alignment: .leading, spacing: 0) {
+            captureHeader
+            quickCaptureCard
+              .padding(.top, 22)
+            detailsPrompt
+              .padding(.top, 12)
           }
-          .navigationBarTitleDisplayMode(.inline)
-          .safeAreaInset(edge: .bottom, spacing: 0) {
-            TunedInPersistentControlRegion {
-              saveBar
-            }
-          }
-          .alert("Discard this concert?", isPresented: $isShowingDiscardConfirmation) {
-            Button("Keep Editing", role: .cancel) {}
-            Button("Discard", role: .destructive) {
-              dismiss()
-            }
-          } message: {
-            Text("Your unsaved concert details will be lost.")
-          }
-          .alert("Couldn’t save your concert", isPresented: isShowingSaveError) {
-            Button("OK", role: .cancel) {}
-          } message: {
-            Text(saveError ?? "Please try again.")
-          }
-          .sheet(isPresented: $isShowingDetails) {
-            ConcertCreationDetailsView(draft: $draft)
-          }
-          .fullScreenCover(item: $catalogPickerTarget) { target in
-            catalogPicker(for: target)
-          }
-          .onChange(of: selectedPhoto) { _, item in
-            guard let item else { return }
-            Task { await processPhoto(item) }
-          }
+          .padding(.bottom, 24)
         }
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+      }
+      .navigationBarTitleDisplayMode(.inline)
+      .safeAreaInset(edge: .bottom, spacing: 0) {
+        TunedInPersistentControlRegion {
+          saveBar
+        }
+      }
+      .alert(discardTitle, isPresented: $isShowingDiscardConfirmation) {
+        Button("Keep Editing", role: .cancel) {}
+        Button(discardActionTitle, role: .destructive) {
+          dismiss()
+        }
+      } message: {
+        Text(discardMessage)
+      }
+      .alert("Couldn’t finish saving", isPresented: isShowingSaveError) {
+        Button("OK", role: .cancel) {}
+      } message: {
+        Text(saveError ?? "Please try again.")
+      }
+      .sheet(isPresented: $isShowingDetails) {
+        ConcertCreationDetailsView(draft: $draft)
+      }
+      .fullScreenCover(item: $catalogPickerTarget) { target in
+        catalogPicker(for: target)
+      }
+      .onChange(of: selectedPhoto) { _, item in
+        guard let item else { return }
+        Task { await processPhoto(item) }
       }
     }
     .tint(TunedInDesign.accent)
@@ -98,20 +85,24 @@ struct ConcertCreationView: View {
     } center: {
       EmptyView()
     } trailing: {
-      TunedInFloatingAction(
+      TunedInGlassTextButton(
+        isSaving ? "Saving" : "Save",
         systemImage: isSaving ? "ellipsis" : "checkmark",
-        accessibilityLabel: isSaving ? "Saving concert" : "Save concert privately",
         accessibilityHint: draft.canSave
           ? "Saves this concert privately"
           : "Enter an artist and venue to save this concert",
         action: save
       )
-      .disabled(!draft.canSave || isSaving)
-      .opacity(draft.canSave && !isSaving ? 1 : 0.45)
+      .disabled(!canSaveCapture)
+      .opacity(canSaveCapture ? 1 : 0.45)
     }
     .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
     .padding(.top, 8)
     .padding(.bottom, TunedInDesign.bottomControlInset)
+  }
+
+  private var canSaveCapture: Bool {
+    draft.canSave && !isSaving && !isProcessingPhoto
   }
 
   private var isShowingSaveError: Binding<Bool> {
@@ -146,7 +137,7 @@ struct ConcertCreationView: View {
 
   private var quickCaptureCard: some View {
     VStack(alignment: .leading, spacing: 12) {
-      VStack(alignment: .leading, spacing: 10) {
+      HStack(alignment: .center, spacing: 14) {
         PhotosPicker(selection: $selectedPhoto, matching: .images) {
           ZStack(alignment: .bottomTrailing) {
             Group {
@@ -156,27 +147,44 @@ struct ConcertCreationView: View {
                 ConcertArtworkImage(artistName: draft.primaryArtist?.displayName ?? "Concert")
               }
             }
-            .frame(maxWidth: .infinity)
-            .aspectRatio(CGSize(width: 3, height: 4), contentMode: .fit)
+            .frame(width: 96, height: 120)
             .clipped()
-            Label(concertPhotoData == nil ? "Add a photo" : "Change photo", systemImage: "photo")
+            Image(systemName: "camera.fill")
               .font(.caption.weight(.bold))
-              .padding(.horizontal, 11)
-              .padding(.vertical, 9)
+              .frame(width: 30, height: 30)
               .foregroundStyle(.white)
-              .background(.black.opacity(0.62), in: Capsule())
-              .padding(12)
+              .background(.black.opacity(0.66), in: Circle())
+              .padding(8)
           }
-          .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-          .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+          .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+          .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .disabled(isProcessingPhoto)
-        if isProcessingPhoto {
-          ProgressView("Preparing photo…")
+
+        VStack(alignment: .leading, spacing: 6) {
+          Text(concertPhotoData == nil ? "Add the feeling later" : "Photo ready")
+            .font(.headline)
+            .foregroundStyle(TunedInDesign.primaryText)
+          Text("Add a photo if it helps you remember the room. You can always do this later.")
             .font(.caption)
             .foregroundStyle(TunedInDesign.mutedText)
+          if isProcessingPhoto {
+            ProgressView("Preparing photo…")
+              .font(.caption)
+              .foregroundStyle(TunedInDesign.mutedText)
+          } else {
+            Label(
+              concertPhotoData == nil ? "Optional photo" : "Tap artwork to change",
+              systemImage: concertPhotoData == nil ? "photo" : "checkmark.circle.fill"
+            )
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(TunedInDesign.accent)
+          }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
       }
+      .padding(12)
+      .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
 
       VStack(spacing: 0) {
         VStack(alignment: .leading, spacing: 5) {
@@ -307,11 +315,25 @@ struct ConcertCreationView: View {
   }
 
   private func requestDismissal() {
-    if draft.hasEnteredContent {
+    if draft.hasEnteredContent || createdConcertAwaitingPhoto != nil {
       isShowingDiscardConfirmation = true
     } else {
       dismiss()
     }
+  }
+
+  private var discardTitle: String {
+    createdConcertAwaitingPhoto == nil ? "Discard this concert?" : "Leave without the photo?"
+  }
+
+  private var discardActionTitle: String {
+    createdConcertAwaitingPhoto == nil ? "Discard" : "Close"
+  }
+
+  private var discardMessage: String {
+    createdConcertAwaitingPhoto == nil
+      ? "Your unsaved concert details will be lost."
+      : "The concert is already saved privately. The photo has not been added."
   }
 
   private func save() {
@@ -322,18 +344,30 @@ struct ConcertCreationView: View {
     let startedAt = ContinuousClock.now
 
     Task {
+      defer { isSaving = false }
       do {
-        var concert = try await concertRepository.createPrivateConcert(input)
-        if let concertPhotoData {
-          concert = try await concertRepository.setConcertPhoto(concertPhotoData, concertID: concert.id)
+        var concert: Concert
+        if let createdConcertAwaitingPhoto {
+          concert = createdConcertAwaitingPhoto
+        } else {
+          concert = try await concertRepository.createPrivateConcert(input)
+          createdConcertAwaitingPhoto = concert
         }
-        savedPrimaryArtistName = draft.primaryArtist?.displayName ?? "Concert"
-        savedConcert = concert
+        if let concertPhotoData {
+          do {
+            concert = try await concertRepository.setConcertPhoto(concertPhotoData, concertID: concert.id)
+          } catch {
+            saveError = "Your concert is saved, but the photo didn’t upload. "
+              + "The photo is still ready here—tap Save to try it again."
+            return
+          }
+        }
+        createdConcertAwaitingPhoto = nil
         telemetry?.capture(
           .concertCreated,
           properties: [.durationMilliseconds: .integer(startedAt.duration(to: .now).creationTelemetryMilliseconds)]
         )
-        isSaving = false
+        dismiss()
       } catch {
         let failure = AppFailure(error)
         if failure.shouldReportToTelemetry {
@@ -344,7 +378,6 @@ struct ConcertCreationView: View {
             failure: failure
           )
         }
-        isSaving = false
         saveError = error.localizedDescription
       }
     }
@@ -411,94 +444,4 @@ private extension Duration {
     let components = components
     return Int(components.seconds * 1000 + components.attoseconds / 1_000_000_000_000_000)
   }
-}
-
-private struct ConcertSavedView: View {
-  let concert: Concert
-  let primaryArtistName: String
-  let concertRepository: any ConcertRepository
-  let onDone: () -> Void
-
-  var body: some View {
-    ZStack {
-      TunedInDesign.pageBackground
-        .ignoresSafeArea()
-
-      VStack(alignment: .leading, spacing: 14) {
-        Text("Saved")
-          .font(.system(size: 42, weight: .bold, design: .rounded))
-          .foregroundStyle(TunedInDesign.primaryText)
-        Text("Your concert is private until you decide to share it.")
-          .font(.subheadline)
-          .foregroundStyle(TunedInDesign.mutedText)
-
-        ZStack(alignment: .bottomLeading) {
-          ConcertPhotoView(concert: concert, artistName: primaryArtistName, repository: concertRepository)
-            .frame(maxWidth: .infinity)
-            .aspectRatio(CGSize(width: 3, height: 4), contentMode: .fit)
-            .overlay {
-              LinearGradient(
-                colors: [.clear, .black.opacity(0.1), .black.opacity(0.82)],
-                startPoint: .top,
-                endPoint: .bottom
-              )
-            }
-
-          VStack(alignment: .leading, spacing: 5) {
-            Label("Private concert", systemImage: "checkmark.circle.fill")
-              .font(.caption.weight(.bold))
-              .foregroundStyle(.white.opacity(0.86))
-            Text(primaryArtistName)
-              .font(.system(size: 32, weight: .bold, design: .serif))
-              .foregroundStyle(.white)
-              .lineLimit(2)
-            Text("\(concert.venueName) · \(formattedConcertDate)")
-              .font(.subheadline.weight(.semibold))
-              .foregroundStyle(.white.opacity(0.9))
-              .lineLimit(1)
-          }
-          .padding(18)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-
-        Spacer()
-
-        Button("Done", action: onDone)
-          .font(.headline)
-          .foregroundStyle(TunedInDesign.actionForeground)
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 16)
-          .background(TunedInDesign.accent, in: Capsule())
-      }
-      .padding(.horizontal, 20)
-      .padding(.top, 18)
-      .padding(.bottom, 8)
-    }
-  }
-
-  private var formattedConcertDate: String {
-    guard let date = Self.storageDateFormatter.date(from: concert.concertDate) else {
-      return concert.concertDate
-    }
-
-    return Self.displayDateFormatter.string(from: date).uppercased()
-  }
-
-  private static let storageDateFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.calendar = Calendar(identifier: .iso8601)
-    formatter.locale = Locale(identifier: "en_US_POSIX")
-    formatter.timeZone = TimeZone(secondsFromGMT: 0)
-    formatter.dateFormat = "yyyy-MM-dd"
-    return formatter
-  }()
-
-  private static let displayDateFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.calendar = Calendar(identifier: .iso8601)
-    formatter.locale = Locale(identifier: "en_US_POSIX")
-    formatter.timeZone = TimeZone(secondsFromGMT: 0)
-    formatter.dateFormat = "MMM d, yyyy"
-    return formatter
-  }()
 }

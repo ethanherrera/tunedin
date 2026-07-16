@@ -9,15 +9,13 @@ struct TunedInKeyboardPresentationTests {
     let presentation = TunedInKeyboardPresentation.hidden
 
     #expect(presentation.showsPersistentGlass)
-    #expect(!presentation.showsDismissControl)
   }
 
   @Test
-  func presentedKeyboardExchangesPersistentGlassForDismissControl() {
+  func presentedKeyboardTemporarilyHidesPersistentGlass() {
     let presentation = TunedInKeyboardPresentation.presented
 
     #expect(!presentation.showsPersistentGlass)
-    #expect(presentation.showsDismissControl)
   }
 
   @Test
@@ -64,8 +62,8 @@ struct TunedInKeyboardPresentationTests {
 
   @Test
   @MainActor
-  func nestedDismissOwnershipKeepsOneActiveOwnerAndRestoresOuterOwner() {
-    let coordinator = TunedInKeyboardDismissControlCoordinator()
+  func nestedAccessoryOwnershipKeepsOneActiveOwnerAndRestoresOuterOwner() {
+    let coordinator = TunedInKeyboardAccessoryCoordinator()
     let outerOwner = UUID()
     let innerOwner = UUID()
 

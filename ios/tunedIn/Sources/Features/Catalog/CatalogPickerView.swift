@@ -35,6 +35,7 @@ struct CatalogPickerView: View {
   @State private var isPresentingCustomEntry = false
   @State private var isUsingArtistContext = true
   @State private var selectionTask: Task<Void, Never>?
+  @State private var recentSearches: [String]
 
   init(
     repository: any MusicCatalogRepository,
@@ -51,6 +52,9 @@ struct CatalogPickerView: View {
         artistContextIDs: configuration.artistContext.map(\.id),
         concertContextID: configuration.concertContextID
       )
+    )
+    _recentSearches = State(
+      initialValue: CatalogRecentSearchStore.values(for: configuration.kind)
     )
   }
 
@@ -122,7 +126,7 @@ struct CatalogPickerView: View {
       .onChange(of: isUsingArtistContext) { _, enabled in
         model.setArtistContextEnabled(enabled)
       }
-      .accessibilityHint("Choose whether MusicBrainz recording results are filtered to the concert lineup.")
+      .accessibilityHint("Choose whether recording results are filtered to the concert lineup.")
     }
   }
 
@@ -169,19 +173,22 @@ struct CatalogPickerView: View {
   private var phaseContent: some View {
     switch model.phase {
     case .idle:
-      statusView(
-        title: "Start with two characters",
-        description: "Search tunedIn and MusicBrainz for the exact \(configuration.kind.singularTitle.lowercased()).",
-        systemImage: "magnifyingglass"
-      )
-    case .loading:
-      VStack(spacing: 12) {
-        ProgressView()
-        Text("Searching the catalog…")
-          .font(.subheadline)
-          .foregroundStyle(TunedInDesign.mutedText)
+      if recentSearches.isEmpty {
+        statusView(
+          title: "Start with two characters",
+          description: "Search artists, venues, tours, and songs in tunedIn.",
+          systemImage: "magnifyingglass"
+        )
+      } else {
+        CatalogRecentSearchesView(
+          kind: configuration.kind,
+          values: recentSearches,
+          onSelect: updateQuery,
+          onAddCustom: showCustomEntry
+        )
       }
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
+    case .loading:
+      catalogLoadingView
     case .results:
       resultsList
     case .empty:
@@ -200,8 +207,8 @@ struct CatalogPickerView: View {
       retryStatus(
         title: "Search is taking a beat",
         description: retryAfterSeconds.map {
-          "MusicBrainz asked us to wait about \(max(1, Int($0.rounded(.up)))) seconds."
-        } ?? "MusicBrainz asked us to wait before searching again.",
+          "tunedIn search is busy. Try again in about \(max(1, Int($0.rounded(.up)))) seconds."
+        } ?? "tunedIn search is busy. Please try again shortly.",
         systemImage: "clock.badge.exclamationmark"
       )
     case let .failed(message, retryable):
@@ -214,106 +221,17 @@ struct CatalogPickerView: View {
   }
 
   private var resultsList: some View {
-    List {
-      if model.isPartial {
-        Section {
-          Label(
-            "MusicBrainz is unavailable. Showing saved tunedIn results; you can still add a custom fallback.",
-            systemImage: "wifi.exclamationmark"
-          )
-          .font(.caption)
-          .foregroundStyle(TunedInDesign.mutedText)
-        }
-        .listRowBackground(TunedInDesign.raisedSurface)
-      }
-
-      if !configuration.artistContext.isEmpty,
-         configuration.kind == .song,
-         isUsingArtistContext
-      {
-        Section {
-          Text("Prioritizing results for \(configuration.artistContext.map(\.displayName).joined(separator: ", ")).")
-            .font(.caption)
-            .foregroundStyle(TunedInDesign.mutedText)
-        }
-        .listRowBackground(TunedInDesign.raisedSurface)
-      }
-
-      Section {
-        ForEach(model.results) { result in
-          Button {
-            select(result)
-          } label: {
-            CatalogResultRow(
-              result: result,
-              isResolving: model.resolvingResultID == result.id
-            )
-          }
-          .buttonStyle(.plain)
-          .disabled(model.resolvingResultID != nil)
-          .onAppear {
-            guard result.id == model.results.last?.id,
-                  model.hasMore,
-                  model.paginationErrorMessage == nil
-            else { return }
-            Task { await model.loadMore() }
-          }
-          .listRowBackground(TunedInDesign.cardBackground)
-        }
-
-        if model.isLoadingMore {
-          HStack {
-            Spacer()
-            ProgressView("Loading more…")
-            Spacer()
-          }
-          .listRowBackground(TunedInDesign.cardBackground)
-        } else if let paginationErrorMessage = model.paginationErrorMessage {
-          VStack(alignment: .leading, spacing: 8) {
-            Text(paginationErrorMessage)
-              .font(.caption)
-              .foregroundStyle(TunedInDesign.mutedText)
-            Button("Retry loading more") {
-              Task { await model.loadMore() }
-            }
-            .font(.caption.weight(.semibold))
-          }
-          .listRowBackground(TunedInDesign.cardBackground)
-        }
-      }
-
-      Section {
-        customAction
-      }
-      .listRowBackground(TunedInDesign.raisedSurface)
-
-      Section {
-        VStack(alignment: .leading, spacing: 4) {
-          Label("Data from MusicBrainz", systemImage: "music.note")
-            .font(.caption.weight(.semibold))
-          Text("MusicBrainz results are resolved into a stable tunedIn catalog entry before selection.")
-            .font(.caption2)
-        }
-        .foregroundStyle(TunedInDesign.mutedText)
-      }
-      .listRowBackground(Color.clear)
-    }
-    .listStyle(.insetGrouped)
-    .scrollContentBackground(.hidden)
-    .background(TunedInDesign.pageBackground)
+    CatalogResultsList(
+      model: model,
+      configuration: configuration,
+      isUsingArtistContext: isUsingArtistContext,
+      onSelect: select,
+      onAddCustom: showCustomEntry
+    )
   }
 
   private var customAction: some View {
-    Button {
-      isPresentingCustomEntry = true
-    } label: {
-      Label("Can’t find it? Add to tunedIn catalog", systemImage: "plus.circle.fill")
-        .font(.headline)
-        .foregroundStyle(TunedInDesign.accent)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 4)
-    }
-    .buttonStyle(.plain)
+    CatalogCustomEntryAction(action: showCustomEntry)
   }
 
   private func statusView(title: String, description: String, systemImage: String) -> some View {
@@ -332,6 +250,7 @@ struct CatalogPickerView: View {
     } description: {
       Text(description)
     } actions: {
+      Button("Clear search") { updateQuery("") }
       customAction
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -346,10 +265,28 @@ struct CatalogPickerView: View {
     } actions: {
       Button("Try again") { model.retry() }
         .buttonStyle(.borderedProminent)
+      Button("Clear search") { updateQuery("") }
       customAction
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .padding(.horizontal, 20)
+  }
+
+  private var catalogLoadingView: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      Text("Searching tunedIn…")
+        .font(.subheadline)
+        .foregroundStyle(TunedInDesign.mutedText)
+
+      ForEach(0 ..< 4, id: \.self) { _ in
+        TunedInSkeletonBlock(cornerRadius: 16)
+          .frame(height: 68)
+      }
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    .padding(.horizontal, 20)
+    .padding(.top, 12)
+    .accessibilityLabel("Searching the catalog")
   }
 
   private var disambiguationHint: String {
@@ -378,9 +315,23 @@ struct CatalogPickerView: View {
     selectionTask = Task { @MainActor in
       guard let entity = await model.resolve(result) else { return }
       guard !Task.isCancelled else { return }
+      recentSearches = CatalogRecentSearchStore.record(
+        entity.displayName,
+        for: configuration.kind
+      )
       onSelect(entity)
       dismiss()
     }
+  }
+
+  private func updateQuery(_ query: String) {
+    selectionTask?.cancel()
+    selectionTask = nil
+    model.updateQuery(query)
+  }
+
+  private func showCustomEntry() {
+    isPresentingCustomEntry = true
   }
 
   private func cancelSelection() {
@@ -392,51 +343,5 @@ struct CatalogPickerView: View {
   private func cancelSelectionAndDismiss() {
     cancelSelection()
     dismiss()
-  }
-}
-
-private struct CatalogResultRow: View {
-  let result: CatalogResult
-  let isResolving: Bool
-
-  var body: some View {
-    HStack(alignment: .top, spacing: 12) {
-      VStack(alignment: .leading, spacing: 5) {
-        Text(result.displayName)
-          .font(.headline)
-          .foregroundStyle(TunedInDesign.primaryText)
-          .multilineTextAlignment(.leading)
-
-        if let subtitle = result.subtitle, !subtitle.isEmpty {
-          Text(subtitle)
-            .font(.subheadline)
-            .foregroundStyle(TunedInDesign.mutedText)
-            .multilineTextAlignment(.leading)
-        }
-        if let disambiguation = result.disambiguation, !disambiguation.isEmpty {
-          Text(disambiguation)
-            .font(.caption)
-            .foregroundStyle(TunedInDesign.mutedText)
-            .multilineTextAlignment(.leading)
-        }
-        Text(result.origin == .musicBrainz ? "MusicBrainz" : "Your catalog")
-          .font(.caption2.weight(.bold))
-          .foregroundStyle(result.origin == .musicBrainz ? TunedInDesign.mutedText : TunedInDesign.accent)
-          .padding(.horizontal, 8)
-          .padding(.vertical, 3)
-          .background(TunedInDesign.accentTint.opacity(0.7), in: Capsule())
-      }
-      Spacer(minLength: 8)
-      if isResolving {
-        ProgressView().controlSize(.small)
-      } else {
-        Image(systemName: "chevron.forward")
-          .font(.caption.weight(.bold))
-          .foregroundStyle(TunedInDesign.mutedText)
-          .padding(.top, 4)
-      }
-    }
-    .contentShape(.interaction, Rectangle())
-    .padding(.vertical, 5)
   }
 }

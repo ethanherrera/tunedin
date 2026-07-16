@@ -22,7 +22,10 @@ struct MainTabView: View {
   @State private var feedNavigationID = UUID()
   @State private var profileNavigationID = UUID()
   @State private var isPresentingConcertEditMenu = false
+  @State private var selectionFeedbackTrigger = 0
   @StateObject private var concertFloatingControls = ConcertFloatingControls()
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Namespace private var bottomGlassNamespace
   @Namespace private var tabSelectionNamespace
 
@@ -75,6 +78,7 @@ struct MainTabView: View {
         }
       }
       .tint(TunedInDesign.accent)
+      .tunedInSelectionFeedback(trigger: selectionFeedbackTrigger)
       .task {
         session.telemetry.captureAppBecameUsable(destination: "main_tabs")
       }
@@ -90,10 +94,10 @@ struct MainTabView: View {
           glassNamespace: bottomGlassNamespace,
           fallbackToProfile: { activateTab(.profile) }
         )
-        .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
+        .transition(TunedInMotion.controlSceneTransition(reduceMotion: reduceMotion))
       case let .backOnly(title):
         subscreenBottomBar(title: title)
-          .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
+          .transition(TunedInMotion.controlSceneTransition(reduceMotion: reduceMotion))
       case .none:
         TunedInGlassTraversalLayout(glassNamespace: bottomGlassNamespace) {
           TunedInGlassIconButton(
@@ -109,7 +113,7 @@ struct MainTabView: View {
               tabButton(.profile, title: "Profile", icon: "person.crop.circle")
             }
           }
-          .animation(.smooth(duration: 0.24, extraBounce: 0), value: selectedTab)
+          .animation(TunedInMotion.selection(reduceMotion: reduceMotion), value: selectedTab)
         } trailing: {
           TunedInGlassIconButton(
             systemImage: "plus",
@@ -119,11 +123,14 @@ struct MainTabView: View {
             isPresentingConcertCreation = true
           }
         }
-        .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .bottom)))
+        .transition(TunedInMotion.controlSceneTransition(reduceMotion: reduceMotion))
       }
     }
     .frame(maxWidth: .infinity, alignment: .center)
-    .animation(.smooth(duration: 0.28, extraBounce: 0), value: concertFloatingControls.navigationContext)
+    .animation(
+      TunedInMotion.navigation(reduceMotion: reduceMotion),
+      value: concertFloatingControls.navigationContext
+    )
   }
 
   private var peopleSearchDrawer: some View {
@@ -186,9 +193,13 @@ struct MainTabView: View {
     }
     .buttonStyle(.plain)
     .contentShape(.interaction, Capsule())
+    .accessibilityLabel(title)
   }
 
   private func activateTab(_ tab: Tab) {
+    if selectedTab != tab {
+      selectionFeedbackTrigger += 1
+    }
     concertFloatingControls.reset()
 
     switch tab {
@@ -216,30 +227,38 @@ struct MainTabView: View {
           tabButton(.profile, title: "Profile", icon: "person.crop.circle")
         }
       }
-      .animation(.smooth(duration: 0.24, extraBounce: 0), value: selectedTab)
+      .animation(TunedInMotion.selection(reduceMotion: reduceMotion), value: selectedTab)
     } trailing: {
       EmptyView()
     }
   }
 
   private func navigationLabel(title: String, icon: String, isSelected: Bool) -> some View {
-    HStack(spacing: 6) {
-      Image(systemName: icon)
-        .font(.caption.weight(.bold))
-      Text(title)
-        .font(.caption.weight(.bold))
+    Group {
+      if dynamicTypeSize.isAccessibilitySize {
+        Image(systemName: icon)
+          .font(.title3.weight(.bold))
+          .accessibilityHidden(true)
+      } else {
+        HStack(spacing: 6) {
+          Image(systemName: icon)
+            .font(.caption.weight(.bold))
+          Text(title)
+            .font(.caption.weight(.bold))
+        }
+      }
     }
-    .foregroundStyle(isSelected ? TunedInDesign.actionForeground : TunedInDesign.primaryText)
-    .frame(minWidth: 78, minHeight: 44)
+    .foregroundStyle(isSelected ? TunedInDesign.selectedControlForeground : TunedInDesign.primaryText)
+    .frame(minWidth: dynamicTypeSize.isAccessibilitySize ? 58 : 78, minHeight: 44)
     .padding(.horizontal, 2)
     .background {
       if isSelected {
-        Capsule()
-          .fill(TunedInDesign.accent)
+        TunedInSelectionLens()
           .matchedGeometryEffect(id: "main-tab-selection", in: tabSelectionNamespace)
       }
     }
     .contentShape(.interaction, Capsule())
+    .accessibilityAddTraits(isSelected ? .isSelected : [])
   }
 }
 
@@ -272,47 +291,41 @@ final class ConcertFloatingControls: ObservableObject {
     edit: (() -> Void)?,
     delete: (() -> Void)?
   ) {
-    withAnimation(.smooth(duration: 0.28, extraBounce: 0)) {
-      self.selectedPage = selectedPage
-      backAction = back
-      selectPageAction = selectPage
-      editAction = edit
-      deleteAction = delete
-      backControlOwner = nil
-      canDelete = delete != nil
-      isShowingEditMenu = edit != nil
-      navigationContext = .concert
-    }
+    self.selectedPage = selectedPage
+    backAction = back
+    selectPageAction = selectPage
+    editAction = edit
+    deleteAction = delete
+    backControlOwner = nil
+    canDelete = delete != nil
+    isShowingEditMenu = edit != nil
+    navigationContext = .concert
   }
 
   func configureBackOnly(title: String, owner: UUID, back: @escaping () -> Void) {
-    withAnimation(.smooth(duration: 0.28, extraBounce: 0)) {
-      backAction = back
-      selectPageAction = nil
-      editAction = nil
-      deleteAction = nil
-      backControlOwner = owner
-      canDelete = false
-      isShowingEditMenu = false
-      navigationContext = .backOnly(title)
-    }
+    backAction = back
+    selectPageAction = nil
+    editAction = nil
+    deleteAction = nil
+    backControlOwner = owner
+    canDelete = false
+    isShowingEditMenu = false
+    navigationContext = .backOnly(title)
   }
 
   func reset() {
-    withAnimation(.smooth(duration: 0.28, extraBounce: 0)) {
-      backAction = nil
-      selectPageAction = nil
-      editAction = nil
-      deleteAction = nil
-      backControlOwner = nil
-      canDelete = false
-      isShowingEditMenu = false
-      navigationContext = .none
-      selectedPage = .concert
-      isInteractionLocked = false
-      albumPickerLimit = nil
-      pendingPhotoSelections = []
-    }
+    backAction = nil
+    selectPageAction = nil
+    editAction = nil
+    deleteAction = nil
+    backControlOwner = nil
+    canDelete = false
+    isShowingEditMenu = false
+    navigationContext = .none
+    selectedPage = .concert
+    isInteractionLocked = false
+    albumPickerLimit = nil
+    pendingPhotoSelections = []
   }
 
   func resetBackOnly(owner: UUID) {
@@ -331,10 +344,8 @@ final class ConcertFloatingControls: ObservableObject {
 
   func select(page: ConcertDetailPage) {
     guard !isInteractionLocked else { return }
-    withAnimation(.smooth(duration: 0.24, extraBounce: 0)) {
-      selectedPage = page
-      selectPageAction?(page)
-    }
+    selectedPage = page
+    selectPageAction?(page)
   }
 
   func edit() {
@@ -362,6 +373,9 @@ private struct ConcertContextBottomBar: View {
   let glassNamespace: Namespace.ID
   let fallbackToProfile: () -> Void
   @Namespace private var selectionNamespace
+  @State private var selectionFeedbackTrigger = 0
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   var body: some View {
     TunedInGlassTraversalLayout(glassNamespace: glassNamespace) {
@@ -377,25 +391,37 @@ private struct ConcertContextBottomBar: View {
         HStack(spacing: 2) {
           ForEach(ConcertDetailPage.allCases, id: \.self) { page in
             Button {
+              if controls.selectedPage != page {
+                selectionFeedbackTrigger += 1
+              }
               controls.select(page: page)
             } label: {
-              VStack(spacing: 2) {
-                Image(systemName: page.icon)
-                  .font(.caption.weight(.bold))
-                Text(page.title)
-                  .font(.caption2.weight(.bold))
-                  .lineLimit(1)
-                  .minimumScaleFactor(0.75)
+              Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                  Image(systemName: page.icon)
+                    .font(.body.weight(.bold))
+                    .accessibilityHidden(true)
+                } else {
+                  VStack(spacing: 2) {
+                    Image(systemName: page.icon)
+                      .font(.caption.weight(.bold))
+                    Text(page.title)
+                      .font(.caption2.weight(.bold))
+                      .lineLimit(1)
+                      .minimumScaleFactor(0.75)
+                  }
+                }
               }
               .foregroundStyle(
-                controls.selectedPage == page ? TunedInDesign.actionForeground : TunedInDesign.primaryText
+                controls.selectedPage == page
+                  ? TunedInDesign.selectedControlForeground
+                  : TunedInDesign.primaryText
               )
               .frame(minWidth: 0, maxWidth: .infinity)
               .frame(height: 48)
               .background {
                 if controls.selectedPage == page {
-                  Capsule()
-                    .fill(TunedInDesign.accent)
+                  TunedInSelectionLens()
                     .matchedGeometryEffect(id: "concert-context-selection", in: selectionNamespace)
                 }
               }
@@ -405,10 +431,15 @@ private struct ConcertContextBottomBar: View {
             .contentShape(.interaction, Capsule())
             .disabled(controls.isInteractionLocked)
             .accessibilityLabel("Show \(page.title.lowercased())")
+            .accessibilityAddTraits(controls.selectedPage == page ? .isSelected : [])
           }
         }
       }
       .frame(maxWidth: 252)
+      .animation(
+        TunedInMotion.selection(reduceMotion: reduceMotion),
+        value: controls.selectedPage
+      )
     } trailing: {
       if controls.isShowingEditMenu {
         if controls.selectedPage == .photos {
@@ -477,6 +508,7 @@ private struct ConcertContextBottomBar: View {
         }
       }
     }
+    .tunedInSelectionFeedback(trigger: selectionFeedbackTrigger)
   }
 }
 

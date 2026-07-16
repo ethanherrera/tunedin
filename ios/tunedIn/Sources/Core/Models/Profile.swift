@@ -107,6 +107,11 @@ enum ProfileInput {
     value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
   }
 
+  static func normalizedSearchQuery(_ value: String) -> String {
+    let normalized = normalizedUsername(value)
+    return normalized.hasPrefix("@") ? String(normalized.dropFirst()) : normalized
+  }
+
   static func normalizedDisplayName(_ value: String) -> String {
     value.split(whereSeparator: \.isWhitespace).joined(separator: " ")
   }

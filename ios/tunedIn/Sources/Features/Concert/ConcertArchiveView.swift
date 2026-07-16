@@ -15,6 +15,7 @@ struct ConcertArchiveView: View {
   let refreshToken: Int
 
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Namespace private var concertTransitionNamespace
 
   var body: some View {
     @Bindable var model = model
@@ -76,10 +77,18 @@ struct ConcertArchiveView: View {
                   concertRepository: concertRepository,
                   socialRepository: socialRepository
                 )
+                .tunedInNavigationZoom(
+                  sourceID: preview.id,
+                  in: concertTransitionNamespace
+                )
               } label: {
                 ConcertArchiveRow(preview: preview, repository: concertRepository)
+                  .tunedInMatchedNavigationSource(
+                    id: preview.id,
+                    in: concertTransitionNamespace
+                  )
               }
-              .buttonStyle(.plain)
+              .buttonStyle(TunedInPosterButtonStyle())
               .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
               .accessibilityLabel("Open \(preview.primaryArtistName)")
             }
@@ -430,6 +439,33 @@ enum ConcertDetailPage: CaseIterable, Hashable {
   }
 }
 
+private struct ConcertHeroScrollPositionKey: PreferenceKey {
+  static let defaultValue: CGFloat = 0
+
+  static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+    value = nextValue()
+  }
+}
+
+private struct ConcertHeroScrollTrackingModifier: ViewModifier {
+  @Binding var progress: CGFloat
+
+  @ViewBuilder
+  func body(content: Content) -> some View {
+    if #available(iOS 18.0, *) {
+      content.onScrollGeometryChange(for: CGFloat.self) { geometry in
+        max(geometry.contentOffset.y + geometry.contentInsets.top, 0)
+      } action: { _, offset in
+        progress = min(max(offset / 420, 0), 1)
+      }
+    } else {
+      content.onPreferenceChange(ConcertHeroScrollPositionKey.self) { minY in
+        progress = min(max(-minY / 420, 0), 1)
+      }
+    }
+  }
+}
+
 // swiftlint:disable:next type_body_length
 struct ConcertDetailView: View {
   private enum ArtworkStyle: Equatable {
@@ -445,10 +481,13 @@ struct ConcertDetailView: View {
 
   @Environment(\.dismiss) private var dismiss
   @Environment(\.telemetry) private var telemetry
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @EnvironmentObject private var concertFloatingControls: ConcertFloatingControls
   @State private var detail: ConcertDetail?
   @State private var errorMessage: String?
   @State private var isShowingEditor = false
+  @State private var isShowingMoments = false
+  @State private var momentsDetent = PresentationDetent.medium
   @State private var selectedPage: ConcertDetailPage = .concert
   @State private var isShowingDeleteConfirmation = false
   @State private var isShowingFinalDeleteConfirmation = false
@@ -456,6 +495,7 @@ struct ConcertDetailView: View {
   @State private var hasRemoteChanges = false
   @State private var isApplyingRemoteChanges = false
   @State private var albumRefreshToken = 0
+  @State private var heroCollapseProgress: CGFloat = 0
   @State private var commentsModel: ConcertCommentsModel
 
   init(
@@ -539,11 +579,25 @@ struct ConcertDetailView: View {
       }
     }
     .overlay(alignment: .top) {
-      if hasRemoteChanges {
-        updatesAvailableButton
-          .padding(.horizontal, 20)
-          .padding(.top, 10)
+      VStack(spacing: 8) {
+        if hasRemoteChanges {
+          updatesAvailableButton
+        }
+        if let detail,
+           selectedPage == .concert,
+           heroCollapseProgress >= 0.82 {
+          compactConcertIdentity(detail)
+            .transition(
+              TunedInMotion.compactIdentityTransition(reduceMotion: reduceMotion)
+            )
+        }
       }
+      .padding(.horizontal, 20)
+      .padding(.top, 10)
+      .animation(
+        TunedInMotion.navigation(reduceMotion: reduceMotion),
+        value: heroCollapseProgress >= 0.82
+      )
     }
     .toolbar(.hidden, for: .navigationBar)
     .onAppear { configureFloatingControls() }
@@ -562,9 +616,6 @@ struct ConcertDetailView: View {
         ConcertEditView(
           detail: detail,
           canMakePrivate: viewerRole == .owner,
-          viewerRole: viewerRole,
-          viewerUsername: viewerUsername,
-          socialRepository: socialRepository,
           concertRepository: concertRepository,
           loadLatestDetail: {
             try await concertRepository.fetchConcertDetail(
@@ -578,6 +629,19 @@ struct ConcertDetailView: View {
           }
         )
       }
+    }
+    .sheet(isPresented: $isShowingMoments) {
+      ConcertCommentsView(
+        concertID: concertID,
+        viewerID: viewerID,
+        viewerUsername: viewerUsername,
+        concertRepository: concertRepository,
+        model: commentsModel,
+        selectedDetent: $momentsDetent
+      )
+      .presentationDetents([.medium, .large], selection: $momentsDetent)
+      .presentationDragIndicator(.visible)
+      .presentationCornerRadius(30)
     }
     .confirmationDialog(
       "Delete this concert?",
@@ -640,7 +704,43 @@ struct ConcertDetailView: View {
       .padding(.horizontal, 20)
       .padding(.bottom, 24)
     }
+    .scaleEffect(
+      x: 1 - (heroCollapseProgress * 0.045),
+      y: 1 - (heroCollapseProgress * 0.045),
+      anchor: .top
+    )
+    .opacity(1 - (heroCollapseProgress * 0.18))
     .accessibilityElement(children: .combine)
+  }
+
+  private func compactConcertIdentity(_ detail: ConcertDetail) -> some View {
+    let artistName = detail.artists.first(where: \.isPrimary)?.name ?? "A saved night"
+    let location = [detail.concert.venueName, detail.concert.city]
+      .compactMap(\.self)
+      .joined(separator: " · ")
+
+    return TunedInGlassIdentitySurface {
+      HStack(spacing: 10) {
+        Image(systemName: "music.note")
+          .font(.caption.weight(.bold))
+          .foregroundStyle(TunedInDesign.selectedControlForeground)
+          .frame(width: 28, height: 28)
+          .background(TunedInDesign.accentTint, in: Circle())
+
+        VStack(alignment: .leading, spacing: 1) {
+          Text(artistName)
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
+            .lineLimit(1)
+          Text(location)
+            .font(.caption2)
+            .foregroundStyle(TunedInDesign.mutedText)
+            .lineLimit(1)
+        }
+      }
+    }
+    .accessibilityElement(children: .combine)
+    .accessibilityLabel("\(artistName), \(location)")
   }
 
   private func concertPreview(_ detail: ConcertDetail) -> some View {
@@ -679,27 +779,45 @@ struct ConcertDetailView: View {
   }
 
   private func concertContent(_ detail: ConcertDetail) -> some View {
-    ScrollView {
-      LazyVStack(alignment: .leading, spacing: 0) {
-        concertHeader(detail, artworkStyle: .full)
-        concertEditorialSections(detail)
+    ScrollViewReader { scrollProxy in
+      ScrollView {
+        LazyVStack(alignment: .leading, spacing: 0) {
+          concertHeader(detail, artworkStyle: .full)
+            .id("concert-hero")
+            .background {
+              GeometryReader { proxy in
+                Color.clear.preference(
+                  key: ConcertHeroScrollPositionKey.self,
+                  value: proxy.frame(in: .named("concert-detail-scroll")).minY
+                )
+              }
+            }
+          concertEditorialSections(detail) {
+            openMoments(from: scrollProxy)
+          }
           .padding(.horizontal, 20)
           .padding(.top, 24)
           .padding(.bottom, TunedInDesign.scrollContentBottomInset + 28)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
       }
-      .frame(maxWidth: .infinity, alignment: .leading)
-    }
-    .ignoresSafeArea(edges: .top)
-    .refreshable {
-      await loadDetail(policy: .refresh)
-      await commentsModel.loadComments(policy: .refresh)
-      if errorMessage == nil, commentsModel.loadErrorMessage == nil {
-        hasRemoteChanges = false
+      .coordinateSpace(name: "concert-detail-scroll")
+      .modifier(ConcertHeroScrollTrackingModifier(progress: $heroCollapseProgress))
+      .ignoresSafeArea(edges: .top)
+      .refreshable {
+        await loadDetail(policy: .refresh)
+        await commentsModel.loadComments(policy: .refresh)
+        if errorMessage == nil, commentsModel.loadErrorMessage == nil {
+          hasRemoteChanges = false
+        }
       }
     }
   }
 
-  private func concertEditorialSections(_ detail: ConcertDetail) -> some View {
+  private func concertEditorialSections(
+    _ detail: ConcertDetail,
+    openMoments: @escaping () -> Void
+  ) -> some View {
     VStack(alignment: .leading, spacing: 26) {
       if let tour = detail.concert.tour {
         HStack(spacing: 8) {
@@ -746,7 +864,7 @@ struct ConcertDetailView: View {
         venueRow(detail)
       }
 
-      commentsSection
+      commentsSection(openMoments: openMoments)
     }
   }
 
@@ -789,20 +907,62 @@ struct ConcertDetailView: View {
     }
   }
 
-  private var commentsSection: some View {
+  private func commentsSection(openMoments: @escaping () -> Void) -> some View {
     VStack(alignment: .leading, spacing: 14) {
       Divider()
         .overlay(TunedInDesign.cardBorder.opacity(0.55))
-      Text("Moments")
-        .font(.title2.weight(.bold))
-        .foregroundStyle(TunedInDesign.primaryText)
-      ConcertCommentsView(
-        concertID: concertID,
-        viewerID: viewerID,
-        concertRepository: concertRepository,
-        pageHeader: AnyView(EmptyView()),
-        model: commentsModel
-      )
+      Button(action: openMoments) {
+        HStack(spacing: 13) {
+          Image(systemName: "bubble.left.and.bubble.right.fill")
+            .font(.headline)
+            .foregroundStyle(TunedInDesign.accent)
+            .frame(width: 44, height: 44)
+            .background(TunedInDesign.accentTint, in: Circle())
+
+          VStack(alignment: .leading, spacing: 3) {
+            Text("Moments")
+              .font(.title3.weight(.bold))
+              .foregroundStyle(TunedInDesign.primaryText)
+            Text(momentsSummary)
+              .font(.subheadline)
+              .foregroundStyle(TunedInDesign.mutedText)
+          }
+          Spacer()
+          Image(systemName: "chevron.up")
+            .font(.caption.weight(.bold))
+            .foregroundStyle(TunedInDesign.mutedText)
+        }
+        .padding(16)
+        .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 20))
+      }
+      .buttonStyle(.plain)
+      .accessibilityHint("Opens the conversation while keeping this concert visible")
+    }
+  }
+
+  private var momentsSummary: String {
+    if commentsModel.isLoading {
+      return "Open the conversation from this night."
+    }
+
+    let count = commentsModel.comments.count + commentsModel.optimisticComments.count
+    return count == 0
+      ? "Add the first detail from this night."
+      : "\(count) \(count == 1 ? "moment" : "moments") shared from this night."
+  }
+
+  private func openMoments(from scrollProxy: ScrollViewProxy) {
+    momentsDetent = .medium
+    if reduceMotion {
+      scrollProxy.scrollTo("concert-hero", anchor: .top)
+      isShowingMoments = true
+      return
+    }
+
+    withAnimation(TunedInMotion.navigation(reduceMotion: false)) {
+      scrollProxy.scrollTo("concert-hero", anchor: .top)
+    } completion: {
+      isShowingMoments = true
     }
   }
 

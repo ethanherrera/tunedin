@@ -1,79 +1,5 @@
-import Combine
-import Observation
 import SwiftUI
 import UIKit
-
-enum TunedInKeyboardPresentation: Equatable {
-  case hidden
-  case presented
-
-  func update(to candidate: Self) -> Self? {
-    candidate == self ? nil : candidate
-  }
-
-  static func resolved(endFrame: CGRect, screenBounds: CGRect) -> Self {
-    endFrame.minY < screenBounds.maxY && endFrame.intersects(screenBounds)
-      ? .presented
-      : .hidden
-  }
-
-  static var immediateTransaction: Transaction {
-    var transaction = Transaction(animation: nil)
-    transaction.disablesAnimations = true
-    return transaction
-  }
-
-  var showsPersistentGlass: Bool {
-    self == .hidden
-  }
-
-  var showsDismissControl: Bool {
-    self == .presented
-  }
-}
-
-private struct TunedInKeyboardPresentationKey: EnvironmentKey {
-  static let defaultValue = TunedInKeyboardPresentation.hidden
-}
-
-@MainActor
-@Observable
-final class TunedInKeyboardDismissControlCoordinator {
-  private var owners: [UUID] = []
-
-  var registeredOwnerCount: Int {
-    owners.count
-  }
-
-  func register(_ owner: UUID) {
-    owners.removeAll { $0 == owner }
-    owners.append(owner)
-  }
-
-  func unregister(_ owner: UUID) {
-    owners.removeAll { $0 == owner }
-  }
-
-  func isActive(_ owner: UUID) -> Bool {
-    owners.last == owner
-  }
-}
-
-private struct TunedInKeyboardDismissCoordinatorKey: EnvironmentKey {
-  static let defaultValue: TunedInKeyboardDismissControlCoordinator? = nil
-}
-
-extension EnvironmentValues {
-  var tunedInKeyboardPresentation: TunedInKeyboardPresentation {
-    get { self[TunedInKeyboardPresentationKey.self] }
-    set { self[TunedInKeyboardPresentationKey.self] = newValue }
-  }
-
-  var tunedInKeyboardDismissControlCoordinator: TunedInKeyboardDismissControlCoordinator? {
-    get { self[TunedInKeyboardDismissCoordinatorKey.self] }
-    set { self[TunedInKeyboardDismissCoordinatorKey.self] = newValue }
-  }
-}
 
 enum TunedInDesign {
   static let accent = Color(red: 1.0, green: 0.31, blue: 0.15)
@@ -84,6 +10,7 @@ enum TunedInDesign {
   static let raisedSurface = adaptive(light: 0xECE9E2, dark: 0x252522)
   static let primaryText = adaptive(light: 0x191815, dark: 0xF7F4EF)
   static let mutedText = adaptive(light: 0x68645D, dark: 0xAAA59C)
+  static let selectedControlForeground = adaptive(light: 0x74270F, dark: 0xFFB29D)
   static let cardBorder = adaptive(light: 0xDDD8CE, dark: 0x3A3935)
   static let ink = Color(red: 0.08, green: 0.08, blue: 0.075)
   static let actionForeground = adaptive(light: 0x24120C, dark: 0xFFF9F5)
@@ -97,7 +24,6 @@ enum TunedInDesign {
   static let bottomControlInset: CGFloat = 8
   static let bottomControlHorizontalInset: CGFloat = 14
   static let scrollContentBottomInset: CGFloat = 24
-  static let keyboardDismissControlClearance: CGFloat = 68
 
   private static func adaptive(light: Int, dark: Int) -> Color {
     Color(
@@ -107,6 +33,42 @@ enum TunedInDesign {
         )
       }
     )
+  }
+}
+
+enum TunedInMotion {
+  static func press(reduceMotion: Bool) -> Animation {
+    reduceMotion
+      ? .easeOut(duration: 0.08)
+      : .easeOut(duration: 0.14)
+  }
+
+  static func selection(reduceMotion: Bool) -> Animation {
+    reduceMotion
+      ? .easeOut(duration: 0.12)
+      : .smooth(duration: 0.24, extraBounce: 0)
+  }
+
+  static func navigation(reduceMotion: Bool) -> Animation {
+    reduceMotion
+      ? .easeOut(duration: 0.14)
+      : .spring(response: 0.34, dampingFraction: 0.86, blendDuration: 0.08)
+  }
+
+  static func feedback(reduceMotion: Bool) -> Animation {
+    reduceMotion
+      ? .easeOut(duration: 0.12)
+      : .smooth(duration: 0.22, extraBounce: 0)
+  }
+
+  static func controlSceneTransition(reduceMotion: Bool) -> AnyTransition {
+    reduceMotion ? .opacity : .identity
+  }
+
+  static func compactIdentityTransition(reduceMotion: Bool) -> AnyTransition {
+    reduceMotion
+      ? .opacity
+      : .move(edge: .top).combined(with: .opacity)
   }
 }
 
@@ -151,6 +113,56 @@ struct TunedInFloatingAction: View {
       .accessibilityLabel(accessibilityLabel)
       .accessibilityHint(accessibilityHint)
     }
+  }
+}
+
+struct TunedInSelectionLens: View {
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+  var body: some View {
+    if #available(iOS 26.0, *), !reduceTransparency {
+      Capsule()
+        .fill(.clear)
+        .glassEffect(
+          .regular.tint(TunedInDesign.accent.opacity(0.14)),
+          in: Capsule()
+        )
+    } else {
+      Capsule()
+        .fill(TunedInDesign.accentTint)
+        .overlay {
+          Capsule()
+            .strokeBorder(
+              TunedInDesign.accent.opacity(colorSchemeContrast == .increased ? 0.72 : 0.2)
+            )
+        }
+    }
+  }
+}
+
+struct TunedInPosterButtonStyle: ButtonStyle {
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
+      .opacity(configuration.isPressed ? 0.92 : 1)
+      .animation(
+        TunedInMotion.press(reduceMotion: reduceMotion),
+        value: configuration.isPressed
+      )
+  }
+}
+
+struct TunedInGlassIdentitySurface<Content: View>: View {
+  @ViewBuilder let content: Content
+
+  var body: some View {
+    content
+      .padding(.horizontal, 14)
+      .padding(.vertical, 10)
+      .modifier(TunedInLiquidGlassIdentitySurface())
   }
 }
 
@@ -278,12 +290,18 @@ struct TunedInGlassTraversalLayout<Leading: View, Center: View, Trailing: View>:
 private struct TunedInGlassEffectIdentity: ViewModifier {
   let id: String
   let namespace: Namespace.ID
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   func body(content: Content) -> some View {
     if #available(iOS 26.0, *) {
-      content
-        .glassEffectID(id, in: namespace)
-        .glassEffectTransition(.matchedGeometry)
+      if reduceMotion {
+        content
+          .glassEffectID(id, in: namespace)
+      } else {
+        content
+          .glassEffectID(id, in: namespace)
+          .glassEffectTransition(.matchedGeometry)
+      }
     } else {
       content
     }
@@ -303,9 +321,11 @@ struct TunedInPersistentControlRegion<Content: View>: View {
 
 private struct TunedInLiquidGlassIconSurface: ViewModifier {
   let style: TunedInGlassIconButton.Style
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
   func body(content: Content) -> some View {
-    if #available(iOS 26.0, *) {
+    if #available(iOS 26.0, *), !reduceTransparency {
       if style == .accent {
         content.glassEffect(.regular.tint(TunedInDesign.accent.opacity(0.22)).interactive(), in: .circle)
       } else {
@@ -313,26 +333,47 @@ private struct TunedInLiquidGlassIconSurface: ViewModifier {
       }
     } else {
       content
-        .background(.ultraThinMaterial, in: Circle())
+        .background {
+          if reduceTransparency {
+            Circle().fill(style == .accent ? TunedInDesign.accentTint : TunedInDesign.raisedSurface)
+          } else {
+            Circle().fill(.ultraThinMaterial)
+          }
+        }
         .background(style == .accent ? TunedInDesign.accent.opacity(0.14) : .clear, in: Circle())
-        .overlay { Circle().strokeBorder(.white.opacity(0.42)) }
+        .overlay {
+          Circle().strokeBorder(
+            TunedInDesign.cardBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.85)
+          )
+        }
         .shadow(color: style == .accent ? TunedInDesign.accent.opacity(0.2) : .clear, radius: 10, y: 5)
     }
   }
 }
 
 private struct TunedInLiquidGlassActionSurface: ViewModifier {
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
   func body(content: Content) -> some View {
-    if #available(iOS 26.0, *) {
+    if #available(iOS 26.0, *), !reduceTransparency {
       content
         .glassEffect(.regular.tint(TunedInDesign.accent.opacity(0.22)).interactive(), in: .circle)
     } else {
       content
-        .background(.ultraThinMaterial, in: Circle())
+        .background {
+          if reduceTransparency {
+            Circle().fill(TunedInDesign.accent)
+          } else {
+            Circle().fill(.ultraThinMaterial)
+          }
+        }
         .background(TunedInDesign.accent.opacity(0.14), in: Circle())
         .overlay {
           Circle()
-            .strokeBorder(.white.opacity(0.52))
+            .strokeBorder(
+              TunedInDesign.cardBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.85)
+            )
         }
         .shadow(color: TunedInDesign.accent.opacity(0.2), radius: 12, y: 6)
     }
@@ -384,6 +425,7 @@ struct TunedInGlassSearchField: View {
   let prompt: String
   let style: Style
   @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
+  @FocusState private var isFocused: Bool
 
   init(text: Binding<String>, prompt: String, style: Style = .standard) {
     _text = text
@@ -393,33 +435,46 @@ struct TunedInGlassSearchField: View {
 
   var body: some View {
     HStack(spacing: 10) {
-      Image(systemName: "magnifyingglass")
-        .foregroundStyle(TunedInDesign.mutedText)
+      HStack(spacing: 10) {
+        Image(systemName: "magnifyingglass")
+          .foregroundStyle(TunedInDesign.mutedText)
 
-      TextField(prompt, text: $text)
-        .textInputAutocapitalization(.never)
-        .autocorrectionDisabled()
-        .foregroundStyle(TunedInDesign.primaryText)
+        TextField(prompt, text: $text)
+          .textInputAutocapitalization(.never)
+          .autocorrectionDisabled()
+          .submitLabel(.search)
+          .focused($isFocused)
+          .onSubmit { isFocused = false }
+          .foregroundStyle(TunedInDesign.primaryText)
 
-      if !text.isEmpty {
-        Button {
-          text = ""
-        } label: {
-          Image(systemName: "xmark.circle.fill")
-            .foregroundStyle(TunedInDesign.mutedText)
+        if !text.isEmpty {
+          Button {
+            text = ""
+          } label: {
+            Image(systemName: "xmark.circle.fill")
+              .foregroundStyle(TunedInDesign.mutedText)
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel("Clear search")
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Clear search")
+      }
+      .padding(.horizontal, 14)
+      .padding(.vertical, 13)
+      .modifier(
+        TunedInLiquidGlassSearchSurface(
+          style: style,
+          isGlassEnabled: keyboardPresentation.showsPersistentGlass
+        )
+      )
+
+      if isFocused {
+        Button("Done") { isFocused = false }
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(TunedInDesign.accent)
+          .transition(.opacity)
+          .accessibilityHint("Keeps the current search results visible")
       }
     }
-    .padding(.horizontal, 14)
-    .padding(.vertical, 13)
-    .modifier(
-      TunedInLiquidGlassSearchSurface(
-        style: style,
-        isGlassEnabled: keyboardPresentation.showsPersistentGlass
-      )
-    )
   }
 }
 
@@ -604,6 +659,8 @@ private struct TunedInLiquidGlassSectionSurface: ViewModifier {
 private struct TunedInLiquidGlassSearchSurface: ViewModifier {
   let style: TunedInGlassSearchField.Style
   let isGlassEnabled: Bool
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
   func body(content: Content) -> some View {
     content
@@ -615,11 +672,11 @@ private struct TunedInLiquidGlassSearchSurface: ViewModifier {
   private var surfaceBackground: some View {
     if #available(iOS 26.0, *) {
       ZStack {
-        Capsule().fill(isGlassEnabled ? .clear : TunedInDesign.raisedSurface)
+        Capsule().fill(effectiveGlassEnabled ? .clear : TunedInDesign.raisedSurface)
         Capsule()
           .fill(.clear)
           .glassEffect(.regular.tint(tint).interactive(), in: Capsule())
-          .opacity(isGlassEnabled ? 1 : 0)
+          .opacity(effectiveGlassEnabled ? 1 : 0)
       }
       .allowsHitTesting(false)
     } else {
@@ -630,21 +687,19 @@ private struct TunedInLiquidGlassSearchSurface: ViewModifier {
   @ViewBuilder
   private var surfaceBorder: some View {
     if #available(iOS 26.0, *) {
-      if !isGlassEnabled {
-        Capsule().strokeBorder(TunedInDesign.cardBorder.opacity(0.72))
+      if !effectiveGlassEnabled {
+        Capsule().strokeBorder(TunedInDesign.cardBorder.opacity(borderOpacity))
       }
     } else {
       Capsule().strokeBorder(
-        isGlassEnabled
-          ? TunedInDesign.cardBorder.opacity(0.85)
-          : TunedInDesign.cardBorder.opacity(0.72)
+        TunedInDesign.cardBorder.opacity(borderOpacity)
       )
     }
   }
 
   @ViewBuilder
   private var fallbackBackground: some View {
-    if isGlassEnabled {
+    if effectiveGlassEnabled {
       ZStack {
         Capsule().fill(backgroundTint)
         Capsule().fill(.ultraThinMaterial)
@@ -661,10 +716,20 @@ private struct TunedInLiquidGlassSearchSurface: ViewModifier {
   private var backgroundTint: Color {
     style == .neutralPopover ? .white.opacity(0.06) : TunedInDesign.cardBackground.opacity(0.84)
   }
+
+  private var effectiveGlassEnabled: Bool {
+    isGlassEnabled && !reduceTransparency
+  }
+
+  private var borderOpacity: Double {
+    colorSchemeContrast == .increased ? 1 : (effectiveGlassEnabled ? 0.85 : 0.72)
+  }
 }
 
 private struct TunedInLiquidGlassPopoverSurface: ViewModifier {
   let isGlassEnabled: Bool
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
   func body(content: Content) -> some View {
     content
@@ -680,11 +745,11 @@ private struct TunedInLiquidGlassPopoverSurface: ViewModifier {
   private var surfaceBackground: some View {
     if #available(iOS 26.0, *) {
       ZStack {
-        popoverShape.fill(isGlassEnabled ? .clear : TunedInDesign.cardBackground)
+        popoverShape.fill(effectiveGlassEnabled ? .clear : TunedInDesign.cardBackground)
         popoverShape
           .fill(.clear)
           .glassEffect(.regular, in: popoverShape)
-          .opacity(isGlassEnabled ? 1 : 0)
+          .opacity(effectiveGlassEnabled ? 1 : 0)
       }
       .allowsHitTesting(false)
     } else {
@@ -694,7 +759,7 @@ private struct TunedInLiquidGlassPopoverSurface: ViewModifier {
 
   @ViewBuilder
   private var fallbackBackground: some View {
-    if isGlassEnabled {
+    if effectiveGlassEnabled {
       ZStack {
         popoverShape.fill(.white.opacity(0.05))
         popoverShape.fill(.ultraThinMaterial)
@@ -706,127 +771,121 @@ private struct TunedInLiquidGlassPopoverSurface: ViewModifier {
 
   @ViewBuilder
   private var surfaceBorder: some View {
-    if #unavailable(iOS 26.0), isGlassEnabled {
-      popoverShape.strokeBorder(.white.opacity(0.34))
+    if !effectiveGlassEnabled || colorSchemeContrast == .increased {
+      popoverShape.strokeBorder(
+        TunedInDesign.cardBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.72)
+      )
     }
+  }
+
+  private var effectiveGlassEnabled: Bool {
+    isGlassEnabled && !reduceTransparency
   }
 }
 
 private struct TunedInLiquidGlassBottomBarSurface: ViewModifier {
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
   func body(content: Content) -> some View {
-    if #available(iOS 26.0, *) {
+    if #available(iOS 26.0, *), !reduceTransparency {
       content
         .glassEffect(.regular, in: Capsule())
     } else {
       content
-        .background(.ultraThinMaterial, in: Capsule())
+        .background {
+          if reduceTransparency {
+            Capsule().fill(TunedInDesign.cardBackground)
+          } else {
+            Capsule().fill(.ultraThinMaterial)
+          }
+        }
         .background(TunedInDesign.cardBackground.opacity(0.86), in: Capsule())
         .overlay {
           Capsule()
-            .strokeBorder(TunedInDesign.cardBorder.opacity(0.85))
+            .strokeBorder(
+              TunedInDesign.cardBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.85)
+            )
         }
     }
   }
 }
 
-private struct TunedInKeyboardDismissControl: View {
-  var body: some View {
-    Button {
-      UIApplication.shared.sendAction(
-        #selector(UIResponder.resignFirstResponder),
-        to: nil,
-        from: nil,
-        for: nil
-      )
-    } label: {
-      Image(systemName: "xmark")
-        .font(.body.weight(.bold))
-        .foregroundStyle(TunedInDesign.primaryText)
-        .frame(width: TunedInDesign.controlSize, height: TunedInDesign.controlSize)
-        .contentShape(Circle())
-        .modifier(TunedInLiquidGlassIconSurface(style: .neutral))
-    }
-    .buttonStyle(.plain)
-    .accessibilityLabel("Dismiss keyboard")
-  }
-}
-
-private struct TunedInKeyboardPresentationModifier: ViewModifier {
-  let showsDismissControl: Bool
-  @Environment(\.tunedInKeyboardDismissControlCoordinator) private var inheritedCoordinator
-  @State private var presentation = TunedInKeyboardPresentation.hidden
-  @State private var localCoordinator = TunedInKeyboardDismissControlCoordinator()
-  @State private var dismissControlOwner = UUID()
+private struct TunedInLiquidGlassIdentitySurface: ViewModifier {
+  @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+  @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
   func body(content: Content) -> some View {
-    content
-      .environment(\.tunedInKeyboardPresentation, presentation)
-      .environment(\.tunedInKeyboardDismissControlCoordinator, coordinator)
-      .safeAreaInset(edge: .bottom, spacing: 0) {
-        if presentation.showsDismissControl
-          && showsDismissControl
-          && coordinator.isActive(dismissControlOwner) {
-          HStack {
-            Spacer(minLength: 0)
-            TunedInKeyboardDismissControl()
+    if #available(iOS 26.0, *), !reduceTransparency {
+      content
+        .glassEffect(.regular, in: Capsule())
+    } else {
+      content
+        .background {
+          if reduceTransparency {
+            Capsule().fill(TunedInDesign.cardBackground)
+          } else {
+            Capsule().fill(.ultraThinMaterial)
           }
-          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
-          .padding(.vertical, 8)
         }
-      }
-      .onAppear {
-        guard showsDismissControl else { return }
-        coordinator.register(dismissControlOwner)
-      }
-      .onDisappear {
-        guard showsDismissControl else { return }
-        coordinator.unregister(dismissControlOwner)
-      }
-      .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
-        setPresentation(.presented)
-      }
-      .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidHideNotification)) { _ in
-        setPresentation(.hidden)
-      }
-      .onReceive(
-        NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)
-      ) { notification in
-        guard presentation(for: notification) == .presented else { return }
-        setPresentation(.presented)
-      }
-  }
-
-  private var coordinator: TunedInKeyboardDismissControlCoordinator {
-    inheritedCoordinator ?? localCoordinator
-  }
-
-  private func presentation(for notification: Notification) -> TunedInKeyboardPresentation {
-    guard
-      let endFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
-      let screenBounds = UIApplication.shared.connectedScenes
-        .compactMap({ ($0 as? UIWindowScene)?.screen.bounds })
-        .first
-    else {
-      return presentation
+        .background(TunedInDesign.cardBackground.opacity(0.9), in: Capsule())
+        .overlay {
+          Capsule()
+            .strokeBorder(
+              TunedInDesign.cardBorder.opacity(colorSchemeContrast == .increased ? 1 : 0.85)
+            )
+        }
     }
-
-    return TunedInKeyboardPresentation.resolved(
-      endFrame: endFrame,
-      screenBounds: screenBounds
-    )
   }
+}
 
-  private func setPresentation(_ newPresentation: TunedInKeyboardPresentation) {
-    guard let updatedPresentation = presentation.update(to: newPresentation) else { return }
+private struct TunedInMatchedNavigationSourceModifier<SourceID: Hashable>: ViewModifier {
+  let id: SourceID
+  let namespace: Namespace.ID
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    withTransaction(TunedInKeyboardPresentation.immediateTransaction) {
-      presentation = updatedPresentation
+  func body(content: Content) -> some View {
+    if #available(iOS 18.0, *), !reduceMotion {
+      content
+        .matchedTransitionSource(id: id, in: namespace)
+    } else {
+      content
+    }
+  }
+}
+
+private struct TunedInNavigationZoomModifier<SourceID: Hashable>: ViewModifier {
+  let sourceID: SourceID
+  let namespace: Namespace.ID
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  func body(content: Content) -> some View {
+    if #available(iOS 18.0, *), !reduceMotion {
+      content
+        .navigationTransition(.zoom(sourceID: sourceID, in: namespace))
+    } else {
+      content
     }
   }
 }
 
 extension View {
-  func tunedInKeyboardManaged(showsDismissControl: Bool = true) -> some View {
-    modifier(TunedInKeyboardPresentationModifier(showsDismissControl: showsDismissControl))
+  func tunedInMatchedNavigationSource<SourceID: Hashable>(
+    id: SourceID,
+    in namespace: Namespace.ID
+  ) -> some View {
+    modifier(TunedInMatchedNavigationSourceModifier(id: id, namespace: namespace))
   }
+
+  func tunedInNavigationZoom<SourceID: Hashable>(
+    sourceID: SourceID,
+    in namespace: Namespace.ID
+  ) -> some View {
+    modifier(TunedInNavigationZoomModifier(sourceID: sourceID, namespace: namespace))
+  }
+
+  func tunedInSelectionFeedback<Trigger: Equatable>(trigger: Trigger) -> some View {
+    sensoryFeedback(.selection, trigger: trigger)
+  }
+
 }
