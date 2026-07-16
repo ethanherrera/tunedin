@@ -1,6 +1,9 @@
 #if DEBUG
   import Foundation
 
+  // The development actor owns the complete cross-phase fixture matrix.
+  // swiftlint:disable file_length type_body_length
+
   enum DevelopmentEventFixture {
     static let mitskiGreekID = UUID(uuidString: "E0000000-0000-0000-0000-000000000001")!
     static let bigThiefMasonicID = UUID(uuidString: "E0000000-0000-0000-0000-000000000002")!
@@ -73,7 +76,7 @@
           actor: morgan,
           event: upcoming,
           occurredAt: now.addingTimeInterval(-3_600),
-          message: "is going to (upcoming.headlinerName)"
+          message: "is going to " + upcoming.headlinerName
         ),
         EventActivity(
           id: Self.uuid(value: 2, prefix: "EA"),
@@ -81,7 +84,7 @@
           actor: ava,
           event: memory,
           occurredAt: now.addingTimeInterval(-86_400),
-          message: "shared a memory from (memory.headlinerName)"
+          message: "shared a memory from " + memory.headlinerName
         )
       ]
     }
@@ -162,6 +165,48 @@
       }
       stored.invitedProfileIDs.formUnion(recipientIDs)
       events[eventID] = stored
+    }
+
+    func saveDiary(
+      eventID: UUID,
+      authorID: UUID,
+      input: EventDiaryInput
+    ) async throws -> CommunityEventDetail {
+      guard var stored = events[eventID], canView(stored, viewerID: authorID) else {
+        throw CommunityEventError.eventUnavailable
+      }
+      let summary = refreshedSummary(stored, viewerID: authorID)
+      guard summary.phase(at: now) == .memories else {
+        throw CommunityEventError.invalidEvent("Diaries unlock after the concert.")
+      }
+      guard summary.currentUserAttendance == .went else {
+        throw CommunityEventError.invalidEvent("Mark that you went before creating a diary.")
+      }
+      if let score = input.score, !(0 ... 10).contains(score) {
+        throw CommunityEventError.invalidEvent("Scores must be between 0 and 10.")
+      }
+      let note = input.note.flatMap(CatalogInput.optionalNormalizedText)
+      if let note, note.count > 4_000 {
+        throw CommunityEventError.invalidEvent("Diary notes can be up to 4,000 characters.")
+      }
+      let existing = stored.diaryPreviews.first(where: { $0.author.id == authorID })
+      stored.diaryPreviews.removeAll(where: { $0.author.id == authorID })
+      stored.diaryPreviews.append(
+        EventDiaryPreview(
+          id: existing?.id ?? Self.uuid(value: nextCreatedEventValue + 1, prefix: "ED"),
+          author: Self.profile(authorID),
+          score: input.score,
+          note: note,
+          photoCount: existing?.photoCount ?? 0,
+          videoCount: existing?.videoCount ?? 0,
+          audience: input.audience,
+          publishedAt: now
+        )
+      )
+      nextCreatedEventValue += 1
+      stored.summary = refreshedSummary(stored, viewerID: authorID)
+      events[eventID] = stored
+      return detail(from: stored, viewerID: authorID)
     }
 
     func createEvent(
@@ -301,14 +346,20 @@
       lhs.eventDate < rhs.eventDate
     }
 
+    // swiftlint:disable:next function_body_length
     private static func makeFixtures(now: Date) -> [UUID: StoredEvent] {
       let current = profile(DevelopmentSocialFixture.currentUserID)
       let morgan = profile(DevelopmentSocialFixture.morganID)
       let ava = profile(DevelopmentSocialFixture.avaID)
-      let future = now.addingTimeInterval(18 * 24 * 3_600)
-      let soon = now.addingTimeInterval(7 * 24 * 3_600)
-      let cancelledDate = now.addingTimeInterval(28 * 24 * 3_600)
-      let past = now.addingTimeInterval(-45 * 24 * 3_600)
+      let calendar = Calendar(identifier: .gregorian)
+      func fixtureDate(daysFromNow: Int, hour: Int, minute: Int = 30) -> Date {
+        let shifted = calendar.date(byAdding: .day, value: daysFromNow, to: now) ?? now
+        return calendar.date(bySettingHour: hour, minute: minute, second: 0, of: shifted) ?? shifted
+      }
+      let future = fixtureDate(daysFromNow: 18, hour: 19)
+      let soon = fixtureDate(daysFromNow: 7, hour: 20)
+      let cancelledDate = fixtureDate(daysFromNow: 28, hour: 19)
+      let past = fixtureDate(daysFromNow: -45, hour: 20)
 
       let upcoming = baseSummary(
         id: DevelopmentEventFixture.mitskiGreekID,
@@ -467,6 +518,7 @@
       ]
     }
 
+    // swiftlint:disable:next function_parameter_count
     private static func baseSummary(
       id: UUID,
       artistID: UUID,

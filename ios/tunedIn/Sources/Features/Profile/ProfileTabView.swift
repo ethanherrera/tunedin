@@ -1,9 +1,13 @@
 import PhotosUI
 import SwiftUI
 
+// Main-tab transition code temporarily shares this file with the existing profile surfaces.
+// swiftlint:disable file_length
+
 struct MainTabView: View {
   private enum Tab: Hashable {
     case feed
+    case plans
     case profile
   }
 
@@ -15,18 +19,24 @@ struct MainTabView: View {
   let socialRepository: any SocialRepository
 
   @State private var isPresentingConcertCreation = false
+  @State private var isPresentingEventDiscovery = false
   @State private var isPresentingPeopleSearch = false
+  @State private var shouldPresentPeopleSearchAfterDiscovery = false
+  @State private var pendingCommunityEvent: CommunityEventSummary?
+  @State private var presentedCommunityEvent: CommunityEventSummary?
   @State private var pendingSearchedProfile: SocialProfile?
   @State private var presentedSearchedProfile: SocialProfile?
   @State private var archiveRefreshToken = 0
   @State private var selectedTab: Tab = .feed
   @State private var feedNavigationID = UUID()
+  @State private var plansNavigationID = UUID()
   @State private var profileNavigationID = UUID()
   @State private var isPresentingConcertEditMenu = false
   @State private var selectionFeedbackTrigger = 0
   @StateObject private var concertFloatingControls = ConcertFloatingControls()
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  @Environment(\.musicCatalogRepository) private var musicCatalogRepository
   @Namespace private var bottomGlassNamespace
   @Namespace private var tabSelectionNamespace
 
@@ -53,6 +63,37 @@ struct MainTabView: View {
         onDismiss: { archiveRefreshToken += 1 },
         content: { ConcertCreationView(concertRepository: concertRepository) }
       )
+      .fullScreenCover(
+        isPresented: $isPresentingEventDiscovery,
+        onDismiss: presentPendingDiscoveryDestination
+      ) {
+        if let eventRepository {
+          EventDiscoveryView(
+            viewerID: profile.id,
+            eventRepository: eventRepository,
+            musicCatalogRepository: musicCatalogRepository,
+            onOpenEvent: { event in
+              pendingCommunityEvent = event
+              isPresentingEventDiscovery = false
+            },
+            onSearchPeople: {
+              shouldPresentPeopleSearchAfterDiscovery = true
+              isPresentingEventDiscovery = false
+            },
+            onDismiss: { isPresentingEventDiscovery = false }
+          )
+        }
+      }
+      .fullScreenCover(item: $presentedCommunityEvent) { event in
+        if let eventRepository {
+          CommunityEventDetailView(
+            eventID: event.id,
+            viewerID: profile.id,
+            repository: eventRepository,
+            onDismiss: { presentedCommunityEvent = nil }
+          )
+        }
+      }
       .sheet(
         isPresented: $isPresentingPeopleSearch,
         onDismiss: presentPendingSearchedProfile
@@ -103,25 +144,32 @@ struct MainTabView: View {
         TunedInGlassTraversalLayout(glassNamespace: bottomGlassNamespace) {
           TunedInGlassIconButton(
             systemImage: "magnifyingglass",
-            accessibilityLabel: "Search people"
+            accessibilityLabel: eventRepository == nil ? "Search people" : "Find concerts"
           ) {
-            isPresentingPeopleSearch = true
+            if eventRepository == nil {
+              isPresentingPeopleSearch = true
+            } else {
+              isPresentingEventDiscovery = true
+            }
           }
         } center: {
           TunedInGlassBottomBar {
             HStack(spacing: 2) {
-              tabButton(.feed, title: "Feed", icon: "music.note.house")
-              tabButton(.profile, title: "Profile", icon: "person.crop.circle")
+              mainTabButtons
             }
           }
           .animation(TunedInMotion.selection(reduceMotion: reduceMotion), value: selectedTab)
         } trailing: {
           TunedInGlassIconButton(
             systemImage: "plus",
-            accessibilityLabel: "Log concert",
+            accessibilityLabel: eventRepository == nil ? "Log concert" : "Find or add concert",
             style: .accent
           ) {
-            isPresentingConcertCreation = true
+            if eventRepository == nil {
+              isPresentingConcertCreation = true
+            } else {
+              isPresentingEventDiscovery = true
+            }
           }
         }
         .transition(TunedInMotion.controlSceneTransition(reduceMotion: reduceMotion))
@@ -160,19 +208,50 @@ struct MainTabView: View {
     presentedSearchedProfile = pendingSearchedProfile
   }
 
+  private func presentPendingDiscoveryDestination() {
+    if let pendingCommunityEvent {
+      self.pendingCommunityEvent = nil
+      presentedCommunityEvent = pendingCommunityEvent
+      return
+    }
+    if shouldPresentPeopleSearchAfterDiscovery {
+      shouldPresentPeopleSearchAfterDiscovery = false
+      isPresentingPeopleSearch = true
+    }
+  }
+
   @ViewBuilder
   private var selectedContent: some View {
     switch selectedTab {
     case .feed:
-      NavigationStack {
-        FriendsActivityFeedView(
-          viewerID: profile.id,
-          viewerUsername: profile.username ?? "",
-          concertRepository: concertRepository,
-          socialRepository: socialRepository
-        )
+      Group {
+        if let eventRepository {
+          CommunityActivityFeedView(
+            viewerID: profile.id,
+            repository: eventRepository,
+            onOpenEvent: { presentedCommunityEvent = $0 }
+          )
+        } else {
+          NavigationStack {
+            FriendsActivityFeedView(
+              viewerID: profile.id,
+              viewerUsername: profile.username ?? "",
+              concertRepository: concertRepository,
+              socialRepository: socialRepository
+            )
+          }
+        }
       }
       .id(feedNavigationID)
+    case .plans:
+      if let eventRepository {
+        CommunityPlansView(
+          viewerID: profile.id,
+          repository: eventRepository,
+          onOpenEvent: { presentedCommunityEvent = $0 }
+        )
+        .id(plansNavigationID)
+      }
     case .profile:
       ProfileTabView(
         session: session,
@@ -184,6 +263,15 @@ struct MainTabView: View {
       )
       .id(profileNavigationID)
     }
+  }
+
+  @ViewBuilder
+  private var mainTabButtons: some View {
+    tabButton(.feed, title: "Feed", icon: "music.note.house")
+    if eventRepository != nil {
+      tabButton(.plans, title: "Plans", icon: "calendar")
+    }
+    tabButton(.profile, title: "Profile", icon: "person.crop.circle")
   }
 
   private func tabButton(_ tab: Tab, title: String, icon: String) -> some View {
@@ -206,6 +294,8 @@ struct MainTabView: View {
     switch tab {
     case .feed:
       feedNavigationID = UUID()
+    case .plans:
+      plansNavigationID = UUID()
     case .profile:
       profileNavigationID = UUID()
     }
@@ -224,8 +314,7 @@ struct MainTabView: View {
     } center: {
       TunedInGlassBottomBar {
         HStack(spacing: 2) {
-          tabButton(.feed, title: "Feed", icon: "music.note.house")
-          tabButton(.profile, title: "Profile", icon: "person.crop.circle")
+          mainTabButtons
         }
       }
       .animation(TunedInMotion.selection(reduceMotion: reduceMotion), value: selectedTab)
@@ -250,7 +339,8 @@ struct MainTabView: View {
       }
     }
     .foregroundStyle(isSelected ? TunedInDesign.selectedControlForeground : TunedInDesign.primaryText)
-    .frame(minWidth: dynamicTypeSize.isAccessibilitySize ? 58 : 78, minHeight: 44)
+    .frame(width: dynamicTypeSize.isAccessibilitySize ? 52 : (eventRepository == nil ? 78 : 68))
+    .frame(minHeight: 44)
     .padding(.horizontal, 2)
     .background {
       if isSelected {

@@ -193,6 +193,12 @@ struct CommunityEventCreationInput: Equatable, Sendable {
   var tourCatalogID: UUID? { tour?.id }
 }
 
+struct EventDiaryInput: Equatable, Sendable {
+  let score: Double?
+  let note: String?
+  let audience: EventAudience
+}
+
 enum CommunityEventError: LocalizedError, Equatable {
   case eventUnavailable
   case invalidEvent(String)

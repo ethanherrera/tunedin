@@ -61,6 +61,27 @@
     }
 
     @Test
+    func wentAttendanceCanCreateAPersonalDiaryWithItsOwnAudience() async throws {
+      let repository = DevelopmentEventRepository(now: now)
+      let viewerID = DevelopmentSocialFixture.currentUserID
+
+      let detail = try await repository.saveDiary(
+        eventID: DevelopmentEventFixture.mitskiMemoryID,
+        authorID: viewerID,
+        input: EventDiaryInput(
+          score: 9.4,
+          note: "A night I want to remember.",
+          audience: .privateOnly
+        )
+      )
+
+      let diary = try #require(detail.diaryPreviews.first(where: { $0.author.id == viewerID }))
+      #expect(diary.score == 9.4)
+      #expect(diary.audience == .privateOnly)
+      #expect(detail.summary.currentUserAttendance == .went)
+    }
+
+    @Test
     func duplicateCreationReturnsTheCanonicalEventCandidate() async throws {
       let repository = DevelopmentEventRepository(now: now)
       let catalog = DevelopmentMusicCatalogRepository()

@@ -19,5 +19,10 @@ protocol EventRepository: Sendable {
   ) async throws -> EventPost
   func inviteCandidates(eventID: UUID, viewerID: UUID) async throws -> [EventInviteCandidate]
   func sendInvitations(eventID: UUID, senderID: UUID, recipientIDs: [UUID]) async throws
+  func saveDiary(
+    eventID: UUID,
+    authorID: UUID,
+    input: EventDiaryInput
+  ) async throws -> CommunityEventDetail
   func createEvent(_ input: CommunityEventCreationInput, creatorID: UUID) async throws -> CommunityEventDetail
 }
