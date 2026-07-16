@@ -92,6 +92,8 @@ protocol EventRepository: Sendable {
     note: String?
   ) async throws
   func createEvent(_ input: CommunityEventCreationInput, creatorID: UUID) async throws -> CommunityEventDetail
+  func setEventCover(_ jpegData: Data, eventID: UUID, creatorID: UUID) async throws -> CommunityEventDetail
+  func eventCoverURL(eventID: UUID, objectPath: String, version: Int64) async throws -> URL
 }
 
 extension EventRepository {
@@ -234,5 +236,22 @@ extension EventRepository {
     note _: String?
   ) async throws {
     throw CommunityEventError.featureUnavailable("Concert reports")
+  }
+
+  func setEventCover(
+    _ jpegData: Data,
+    eventID _: UUID,
+    creatorID _: UUID
+  ) async throws -> CommunityEventDetail {
+    guard !jpegData.isEmpty else { throw CommunityEventError.invalidEvent("Choose a valid cover photo.") }
+    throw CommunityEventError.featureUnavailable("Concert cover photos")
+  }
+
+  func eventCoverURL(
+    eventID _: UUID,
+    objectPath _: String,
+    version _: Int64
+  ) async throws -> URL {
+    throw CommunityEventError.featureUnavailable("Concert cover photos")
   }
 }

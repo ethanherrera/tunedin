@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 
 struct EventDiscoveryView: View {
@@ -105,11 +106,15 @@ struct EventDiscoveryView: View {
   }
 
   private var upcomingResults: [CommunityEventSummary] {
-    results.filter { $0.phase() != .memories }
+    results
+      .filter { $0.phase() != .memories }
+      .sorted { $0.eventDate < $1.eventDate }
   }
 
   private var pastResults: [CommunityEventSummary] {
-    results.filter { $0.phase() == .memories }
+    results
+      .filter { $0.phase() == .memories }
+      .sorted { $0.eventDate > $1.eventDate }
   }
 
   @ViewBuilder
@@ -122,7 +127,7 @@ struct EventDiscoveryView: View {
         .padding(.top, title == "Past" ? 8 : 0)
       ForEach(events) { event in
         Button { onOpenEvent(event) } label: {
-          CommunityEventRow(event: event, showsSource: true)
+          CommunityEventRow(event: event, showsSource: true, eventRepository: eventRepository)
         }
         .buttonStyle(TunedInPosterButtonStyle())
       }
@@ -142,6 +147,7 @@ struct EventDiscoveryView: View {
   }
 }
 
+// swiftlint:disable:next type_body_length
 struct CommunityEventCreationView: View {
   let creatorID: UUID
   let eventRepository: any EventRepository
@@ -159,6 +165,9 @@ struct CommunityEventCreationView: View {
   @State private var pickerKind: CatalogEntityKind?
   @State private var isPresentingTimeZonePicker = false
   @State private var isSaving = false
+  @State private var selectedCoverPhoto: PhotosPickerItem?
+  @State private var coverPhotoData: Data?
+  @State private var isProcessingCover = false
   @State private var duplicateCandidates: [CommunityEventSummary] = []
   @State private var isCheckingDuplicates = false
   @State private var errorMessage: String?
@@ -197,6 +206,8 @@ struct CommunityEventCreationView: View {
               kind: .tour
             )
           }
+
+          coverPhotoPicker
 
           TunedInFormCard {
             DatePicker(
@@ -260,7 +271,11 @@ struct CommunityEventCreationView: View {
                 .foregroundStyle(TunedInDesign.mutedText)
               ForEach(duplicateCandidates) { candidate in
                 Button { onCreated(candidate) } label: {
-                  CommunityEventRow(event: candidate, showsSource: true)
+                  CommunityEventRow(
+                    event: candidate,
+                    showsSource: true,
+                    eventRepository: eventRepository
+                  )
                 }
                 .buttonStyle(TunedInPosterButtonStyle())
               }
@@ -335,9 +350,22 @@ struct CommunityEventCreationView: View {
       guard !Task.isCancelled else { return }
       await checkDuplicates()
     }
+    .onChange(of: selectedCoverPhoto) { _, item in
+      guard let item else { return }
+      Task { await processCoverPhoto(item) }
+    }
   }
 
-  private var canSubmit: Bool { artist != nil && place != nil }
+  private var canSubmit: Bool { artist != nil && place != nil && !isProcessingCover }
+
+  private var coverPhotoPicker: some View {
+    CommunityEventCoverPicker(
+      selection: $selectedCoverPhoto,
+      photoData: coverPhotoData,
+      isProcessing: isProcessingCover,
+      isDisabled: isProcessingCover || isSaving
+    )
+  }
 
   private var selectedTimeZone: TimeZone {
     TimeZone(identifier: timeZoneIdentifier) ?? .current
@@ -409,16 +437,43 @@ struct CommunityEventCreationView: View {
     isSaving = true
     defer { isSaving = false }
     do {
-      let detail = try await eventRepository.createEvent(input, creatorID: creatorID)
+      var detail = try await eventRepository.createEvent(input, creatorID: creatorID)
+      if let coverPhotoData {
+        detail = try await eventRepository.setEventCover(
+          coverPhotoData,
+          eventID: detail.id,
+          creatorID: creatorID
+        )
+      }
       errorMessage = nil
       onCreated(detail.summary)
     } catch let CommunityEventError.duplicateEvent(eventID) {
       do {
-        let detail = try await eventRepository.eventDetail(id: eventID, viewerID: creatorID)
+        var detail = try await eventRepository.eventDetail(id: eventID, viewerID: creatorID)
+        if let coverPhotoData {
+          detail = try await eventRepository.setEventCover(
+            coverPhotoData,
+            eventID: detail.id,
+            creatorID: creatorID
+          )
+        }
         onCreated(detail.summary)
       } catch {
         errorMessage = error.localizedDescription
       }
+    } catch {
+      errorMessage = error.localizedDescription
+    }
+  }
+
+  @MainActor
+  private func processCoverPhoto(_ item: PhotosPickerItem) async {
+    isProcessingCover = true
+    defer { isProcessingCover = false }
+    do {
+      guard let data = try await item.loadTransferable(type: Data.self) else { return }
+      coverPhotoData = try await AvatarImageProcessor.processEventCover(data)
+      errorMessage = nil
     } catch {
       errorMessage = error.localizedDescription
     }
@@ -475,5 +530,65 @@ struct CommunityEventCreationView: View {
     case .tour: tour?.displayName
     case .area, .song: nil
     }
+  }
+}
+
+private struct CommunityEventCoverPicker: View {
+  @Binding var selection: PhotosPickerItem?
+  let photoData: Data?
+  let isProcessing: Bool
+  let isDisabled: Bool
+
+  var body: some View {
+    TunedInFormCard {
+      PhotosPicker(selection: $selection, matching: .images) {
+        VStack(alignment: .leading, spacing: 12) {
+          CommunityEventCoverPreview(photoData: photoData)
+          HStack(spacing: 12) {
+            Image(systemName: photoData == nil ? "camera.fill" : "checkmark.circle.fill")
+              .foregroundStyle(TunedInDesign.accent)
+              .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+              Text(photoData == nil ? "Add a cover photo" : "Cover photo ready")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(TunedInDesign.primaryText)
+              Text(isProcessing ? "Preparing photo…" : "Optional · tap to choose or change")
+                .font(.caption)
+                .foregroundStyle(TunedInDesign.mutedText)
+            }
+            Spacer()
+          }
+        }
+      }
+      .buttonStyle(.plain)
+      .disabled(isDisabled)
+    }
+  }
+
+}
+
+private struct CommunityEventCoverPreview: View {
+  let photoData: Data?
+
+  var body: some View {
+    Group {
+      if let photoData, let image = UIImage(data: photoData) {
+        Image(uiImage: image).resizable().scaledToFill()
+      } else {
+        ZStack {
+          LinearGradient(
+            colors: [TunedInDesign.accent.opacity(0.85), Color.purple.opacity(0.72)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+          )
+          Image(systemName: "photo.badge.plus")
+            .font(.system(size: 30, weight: .semibold))
+            .foregroundStyle(.white)
+        }
+      }
+    }
+    .frame(maxWidth: .infinity)
+    .frame(height: 150)
+    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
   }
 }

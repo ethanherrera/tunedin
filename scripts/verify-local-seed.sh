@@ -70,10 +70,23 @@ metrics="$(docker exec "$database_container" psql -U postgres -d postgres -v ON_
     (select count(*) from public.catalog_event_attendance where event_id = 'd4000000-0000-0000-0000-000000000001'::uuid),
     (select count(*) from public.catalog_event_posts where event_id = 'd4000000-0000-0000-0000-000000000001'::uuid),
     (select count(*) from public.catalog_event_attendance where event_id = 'd4000000-0000-0000-0000-000000000002'::uuid),
-    (select count(*) from public.concerts where catalog_event_id = 'd4000000-0000-0000-0000-000000000002'::uuid and record_model = 'personal_diary');
+    (select count(*) from public.concerts where catalog_event_id = 'd4000000-0000-0000-0000-000000000002'::uuid and record_model = 'personal_diary'),
+    (select count(*) from public.catalog_artists where id between 'd3000000-0000-0000-0000-000000000106'::uuid and 'd3000000-0000-0000-0000-000000000109'::uuid),
+    (select count(*) from public.catalog_events where id between 'd4000000-0000-0000-0000-000000000007'::uuid and 'd4000000-0000-0000-0000-000000000010'::uuid),
+    (select count(*) from public.catalog_event_artists where event_id between 'd4000000-0000-0000-0000-000000000007'::uuid and 'd4000000-0000-0000-0000-000000000010'::uuid),
+    (select count(*) from public.catalog_event_attendance where id between 'd4050000-0000-0000-0000-000000000026'::uuid and 'd4050000-0000-0000-0000-000000000037'::uuid),
+    (select count(*) from public.social_activity_events where id between 'd4100000-0000-0000-0000-000000000125'::uuid and 'd4100000-0000-0000-0000-000000000132'::uuid),
+    (select count(*) from public.catalog_event_attendance as attendance join public.catalog_events as event on event.id = attendance.event_id where attendance.profile_id = 'd1000000-0000-0000-0000-000000000001'::uuid and attendance.status = 'going' and event.event_date >= date '2026-07-16'),
+    (select count(*) from public.catalog_events where id in ('d4000000-0000-0000-0000-000000000001'::uuid, 'd4000000-0000-0000-0000-000000000002'::uuid, 'd4000000-0000-0000-0000-000000000007'::uuid, 'd4000000-0000-0000-0000-000000000008'::uuid, 'd4000000-0000-0000-0000-000000000009'::uuid, 'd4000000-0000-0000-0000-000000000010'::uuid) and cover_source = 'community' and cover_object_path is not null and cover_version = 1),
+    (select count(*) from public.catalog_events where id between 'd4000000-0000-0000-0000-000000000003'::uuid and 'd4000000-0000-0000-0000-000000000006'::uuid and cover_source is null and cover_object_path is null),
+    (select count(*) from storage.objects where bucket_id = 'images' and name like 'event-covers/%/cover.jpg'),
+    (select count(*) from private.catalog_entity_provenance where entity_id between 'd3000000-0000-0000-0000-000000000106'::uuid and 'd3000000-0000-0000-0000-000000000109'::uuid and creator_id = 'd1000000-0000-0000-0000-000000000001'::uuid),
+    (select count(*) from (select event.event_date from public.catalog_event_attendance as attendance join public.catalog_events as event on event.id = attendance.event_id where attendance.profile_id = 'd1000000-0000-0000-0000-000000000001'::uuid and attendance.status = 'going' and event.event_date >= date '2026-07-16' order by event.event_date asc) as chronological),
+    (select count(distinct event_id) from (select event_id from public.social_activity_events order by occurred_at desc limit 8) as varied_feed),
+    (select count(*) where (select max(occurred_at) from public.social_activity_events where action = 'diary_media_added' and event_id = 'd4000000-0000-0000-0000-000000000002'::uuid) < (select min(occurred_at) from public.social_activity_events where id between 'd4100000-0000-0000-0000-000000000125'::uuid and 'd4100000-0000-0000-0000-000000000132'::uuid));
 ")"
 
-expected="24|24|24|24|23|1|13|1|1|1|6|24|8|12|73|0|0|1|2|11|1|5|5|10|12|0|0|0|0|6|6|7|1|0|25|3|6|1|24|2|12|12|3|25|10|10|10|10|2|12|0|0|2|13|12|11|10"
+expected="24|24|24|24|23|1|13|1|1|1|6|24|8|12|73|0|0|1|2|15|1|5|5|14|12|0|0|0|0|6|6|7|1|0|25|7|6|1|24|2|12|12|3|25|10|10|10|10|2|12|0|0|2|13|12|11|10|4|4|4|12|8|6|6|4|6|4|6|4|1"
 if [[ "$metrics" != "$expected" ]]; then
   echo "Local Supabase seed integrity check failed (expected ${expected}; received ${metrics})." >&2
   exit 1

@@ -5,6 +5,7 @@ struct SignedURLCacheKey: Hashable, Sendable {
     case avatar
     case concertPhoto = "concert-photo"
     case albumPhoto = "album-photo"
+    case eventCover = "event-cover"
   }
 
   let kind: Kind
@@ -21,6 +22,10 @@ struct SignedURLCacheKey: Hashable, Sendable {
 
   static func albumPhoto(photoID: UUID, version: Int64) -> Self {
     Self(kind: .albumPhoto, id: photoID, version: version)
+  }
+
+  static func eventCover(eventID: UUID, version: Int64) -> Self {
+    Self(kind: .eventCover, id: eventID, version: version)
   }
 }
 

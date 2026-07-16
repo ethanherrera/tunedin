@@ -9,9 +9,11 @@ struct SupabaseEventRepository: EventRepository {
   let capabilities = EventRepositoryCapabilities.phase4Memories
 
   private let client: SupabaseClient
+  private let signedURLs: SignedURLCache
 
-  init(client: SupabaseClient) {
+  init(client: SupabaseClient, signedURLs: SignedURLCache = SignedURLCache()) {
     self.client = client
+    self.signedURLs = signedURLs
   }
 
   func searchEvents(query: String, viewerID _: UUID) async throws -> [CommunityEventSummary] {
@@ -423,6 +425,35 @@ struct SupabaseEventRepository: EventRepository {
     return try await eventDetail(id: created.eventID, viewerID: creatorID)
   }
 
+  func setEventCover(
+    _ jpegData: Data,
+    eventID: UUID,
+    creatorID: UUID
+  ) async throws -> CommunityEventDetail {
+    let path = "event-covers/\(eventID.uuidString.lowercased())/cover.jpg"
+    return try await withAppFailure {
+      let options = FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: true)
+      try await client.storage.from("images").upload(path, data: jpegData, options: options)
+      let _: PostgrestResponse<Void> = try await client
+        .rpc("set_catalog_event_cover", params: CatalogEventIDParameters(eventID: eventID))
+        .execute()
+      await signedURLs.remove(kind: .eventCover, id: eventID)
+      return try await eventDetail(id: eventID, viewerID: creatorID)
+    }
+  }
+
+  func eventCoverURL(eventID: UUID, objectPath: String, version: Int64) async throws -> URL {
+    try await withAppFailure {
+      try await signedURLs.value(for: .eventCover(eventID: eventID, version: version)) {
+        try await client.storage.from("images").createSignedURL(
+          path: objectPath,
+          expiresIn: 3600,
+          cacheNonce: String(version)
+        )
+      }
+    }
+  }
+
   private func summaries(
     from records: [CatalogEventRPCRecord]
   ) async throws -> [CommunityEventSummary] {
@@ -776,12 +807,28 @@ struct CatalogEventArtistRPCRecord: Decodable, Equatable, Sendable {
   let displayName: String
   let position: Int
   let isHeadliner: Bool
+  let eventCover: CommunityEventCover?
+
+  init(
+    catalogArtistID: UUID,
+    displayName: String,
+    position: Int,
+    isHeadliner: Bool,
+    eventCover: CommunityEventCover? = nil
+  ) {
+    self.catalogArtistID = catalogArtistID
+    self.displayName = displayName
+    self.position = position
+    self.isHeadliner = isHeadliner
+    self.eventCover = eventCover
+  }
 
   enum CodingKeys: String, CodingKey {
     case position
     case catalogArtistID = "catalog_artist_id"
     case displayName = "display_name"
     case isHeadliner = "is_headliner"
+    case eventCover = "event_cover"
   }
 }
 
@@ -992,6 +1039,7 @@ extension CommunityEventSummary {
           isHeadliner: $0.isHeadliner
         )
       },
+      cover: databaseRecord.artists.compactMap(\.eventCover).first,
       catalogPlaceID: databaseRecord.catalogPlaceID,
       catalogAreaID: databaseRecord.catalogAreaID,
       catalogTourID: databaseRecord.catalogTourID,

@@ -68,7 +68,7 @@ final class AppContainer {
       cache: dataCache
     )
     eventRepository = configuration.usesLocalSimulatorAuthStorage
-      ? SupabaseEventRepository(client: client)
+      ? SupabaseEventRepository(client: client, signedURLs: mediaCache.signedURLs)
       : nil
     musicCatalogRepository = SupabaseMusicCatalogRepository(client: client)
     socialRepository = CachingSocialRepository(

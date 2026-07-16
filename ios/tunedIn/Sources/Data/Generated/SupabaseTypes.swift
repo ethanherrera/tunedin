@@ -543,6 +543,15 @@ public enum PublicSchema {
     public let catalogAreaId: UUID?
     public let catalogPlaceId: UUID
     public let catalogTourId: UUID?
+    public let coverAttribution: String?
+    public let coverLicenseName: String?
+    public let coverLicenseUrl: String?
+    public let coverObjectPath: String?
+    public let coverProviderName: String?
+    public let coverRemoteUrl: String?
+    public let coverSource: String?
+    public let coverSourcePageUrl: String?
+    public let coverVersion: Int64
     public let createdAt: String
     public let createdBy: UUID
     public let eventDate: String
@@ -569,6 +578,15 @@ public enum PublicSchema {
       case catalogAreaId = "catalog_area_id"
       case catalogPlaceId = "catalog_place_id"
       case catalogTourId = "catalog_tour_id"
+      case coverAttribution = "cover_attribution"
+      case coverLicenseName = "cover_license_name"
+      case coverLicenseUrl = "cover_license_url"
+      case coverObjectPath = "cover_object_path"
+      case coverProviderName = "cover_provider_name"
+      case coverRemoteUrl = "cover_remote_url"
+      case coverSource = "cover_source"
+      case coverSourcePageUrl = "cover_source_page_url"
+      case coverVersion = "cover_version"
       case createdAt = "created_at"
       case createdBy = "created_by"
       case eventDate = "event_date"
@@ -597,6 +615,15 @@ public enum PublicSchema {
     public let catalogAreaId: UUID?
     public let catalogPlaceId: UUID
     public let catalogTourId: UUID?
+    public let coverAttribution: String?
+    public let coverLicenseName: String?
+    public let coverLicenseUrl: String?
+    public let coverObjectPath: String?
+    public let coverProviderName: String?
+    public let coverRemoteUrl: String?
+    public let coverSource: String?
+    public let coverSourcePageUrl: String?
+    public let coverVersion: Int64?
     public let createdAt: String?
     public let createdBy: UUID
     public let eventDate: String
@@ -623,6 +650,15 @@ public enum PublicSchema {
       case catalogAreaId = "catalog_area_id"
       case catalogPlaceId = "catalog_place_id"
       case catalogTourId = "catalog_tour_id"
+      case coverAttribution = "cover_attribution"
+      case coverLicenseName = "cover_license_name"
+      case coverLicenseUrl = "cover_license_url"
+      case coverObjectPath = "cover_object_path"
+      case coverProviderName = "cover_provider_name"
+      case coverRemoteUrl = "cover_remote_url"
+      case coverSource = "cover_source"
+      case coverSourcePageUrl = "cover_source_page_url"
+      case coverVersion = "cover_version"
       case createdAt = "created_at"
       case createdBy = "created_by"
       case eventDate = "event_date"
@@ -651,6 +687,15 @@ public enum PublicSchema {
     public let catalogAreaId: UUID?
     public let catalogPlaceId: UUID?
     public let catalogTourId: UUID?
+    public let coverAttribution: String?
+    public let coverLicenseName: String?
+    public let coverLicenseUrl: String?
+    public let coverObjectPath: String?
+    public let coverProviderName: String?
+    public let coverRemoteUrl: String?
+    public let coverSource: String?
+    public let coverSourcePageUrl: String?
+    public let coverVersion: Int64?
     public let createdAt: String?
     public let createdBy: UUID?
     public let eventDate: String?
@@ -677,6 +722,15 @@ public enum PublicSchema {
       case catalogAreaId = "catalog_area_id"
       case catalogPlaceId = "catalog_place_id"
       case catalogTourId = "catalog_tour_id"
+      case coverAttribution = "cover_attribution"
+      case coverLicenseName = "cover_license_name"
+      case coverLicenseUrl = "cover_license_url"
+      case coverObjectPath = "cover_object_path"
+      case coverProviderName = "cover_provider_name"
+      case coverRemoteUrl = "cover_remote_url"
+      case coverSource = "cover_source"
+      case coverSourcePageUrl = "cover_source_page_url"
+      case coverVersion = "cover_version"
       case createdAt = "created_at"
       case createdBy = "created_by"
       case eventDate = "event_date"

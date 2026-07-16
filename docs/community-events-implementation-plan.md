@@ -144,11 +144,21 @@ One canonical shared occurrence:
 - row state: `active`, `merged`, or `tombstoned`, with nullable
   `merged_into_event_id`;
 - monotonic `version`, timestamps, and last material activity time;
+- nullable event-cover source plus exactly one private object path or trusted HTTPS
+  remote URL, attribution/provider/license provenance, and an independent cache
+  version;
 - server-derived venue, city, tour, date, and time-zone snapshots for cheap display
   and future resilience.
 
 Foreign keys to a merged catalog artist/place/tour resolve to its canonical entity
 at write time. Event rows do not call MusicBrainz directly.
+
+Event covers are occurrence metadata, not catalog-artist metadata. Community
+creation may attach an optional JPEG after the canonical event is created, using a
+fixed private Storage path and creator-only hardened RPC. Imported events may later
+store a trusted HTTPS image plus provider, attribution, source-page, and license
+fields. A missing cover is a valid first-class state and keeps the existing
+date-led row/detail treatment; clients must not synthesize artist artwork.
 
 ### `catalog_event_artists`
 

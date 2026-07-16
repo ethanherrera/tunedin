@@ -248,6 +248,36 @@ values (
   timestamptz '2025-01-01 12:00:00+00'
 );
 
+-- Distinct community-built artists make discovery and profile collections
+-- visually and semantically varied without pretending they came from
+-- MusicBrainz. Their event covers are attached through the same protected
+-- Storage/RPC path as a real creator upload after the SQL seed completes.
+insert into public.catalog_entities (
+  id, kind, origin, status, display_name, sort_name, disambiguation,
+  musicbrainz_mbid, created_at, updated_at
+)
+values
+  ('d3000000-0000-0000-0000-000000000106', 'artist', 'tunedin_custom', 'active', 'Neon Orchard', 'Neon Orchard', 'Local visual journey fixture', null, timestamptz '2026-07-16 12:00:00+00', timestamptz '2026-07-16 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000107', 'artist', 'tunedin_custom', 'active', 'Blue Hour Club', 'Blue Hour Club', 'Local visual journey fixture', null, timestamptz '2026-07-16 12:00:00+00', timestamptz '2026-07-16 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000108', 'artist', 'tunedin_custom', 'active', 'Juniper Static', 'Juniper Static', 'Local visual journey fixture', null, timestamptz '2026-07-16 12:00:00+00', timestamptz '2026-07-16 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000109', 'artist', 'tunedin_custom', 'active', 'Velvet Transit', 'Velvet Transit', 'Local visual journey fixture', null, timestamptz '2026-07-16 12:00:00+00', timestamptz '2026-07-16 12:00:00+00');
+
+insert into public.catalog_artists (id, artist_type, area_id, area_name)
+values
+  ('d3000000-0000-0000-0000-000000000106', 'Group', 'd3000000-0000-0000-0000-000000000101', 'San Francisco'),
+  ('d3000000-0000-0000-0000-000000000107', 'Group', 'd3000000-0000-0000-0000-000000000101', 'San Francisco'),
+  ('d3000000-0000-0000-0000-000000000108', 'Group', 'd3000000-0000-0000-0000-000000000101', 'San Francisco'),
+  ('d3000000-0000-0000-0000-000000000109', 'Group', 'd3000000-0000-0000-0000-000000000101', 'San Francisco');
+
+insert into private.catalog_entity_provenance (
+  entity_id, kind, creator_id, dedupe_key, created_at
+)
+values
+  ('d3000000-0000-0000-0000-000000000106', 'artist', 'd1000000-0000-0000-0000-000000000001', 'artist|neon orchard|type:group|area:d3000000-0000-0000-0000-000000000101|disambiguation:local visual journey fixture', timestamptz '2026-07-16 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000107', 'artist', 'd1000000-0000-0000-0000-000000000001', 'artist|blue hour club|type:group|area:d3000000-0000-0000-0000-000000000101|disambiguation:local visual journey fixture', timestamptz '2026-07-16 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000108', 'artist', 'd1000000-0000-0000-0000-000000000001', 'artist|juniper static|type:group|area:d3000000-0000-0000-0000-000000000101|disambiguation:local visual journey fixture', timestamptz '2026-07-16 12:00:00+00'),
+  ('d3000000-0000-0000-0000-000000000109', 'artist', 'd1000000-0000-0000-0000-000000000001', 'artist|velvet transit|type:group|area:d3000000-0000-0000-0000-000000000101|disambiguation:local visual journey fixture', timestamptz '2026-07-16 12:00:00+00');
+
 -- Shared community-event journeys are independent from personal concert
 -- posts. They cover public discovery, creator-only unlisted access, packed and
 -- empty upcoming/completed occurrences, and cancellation without deleting the
@@ -481,6 +511,29 @@ from unnest(array[
 end
 $community_event_seed$;
 
+insert into public.catalog_events (
+  id, created_by, catalog_place_id, catalog_area_id, catalog_tour_id,
+  headliner_catalog_artist_id, event_date, starts_at, time_zone_identifier,
+  memory_unlock_at, lifecycle, listing, integrity, row_state, version,
+  venue_name_snapshot, area_name_snapshot, tour_name_snapshot,
+  headliner_name_snapshot, search_text, exact_duplicate_key,
+  created_at, updated_at, last_material_activity_at
+)
+values
+  ('d4000000-0000-0000-0000-000000000007', 'd1000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-0000-000000000103', 'd3000000-0000-0000-0000-000000000101', null, 'd3000000-0000-0000-0000-000000000106', date '2026-08-02', timestamptz '2026-08-03 02:30:00+00', 'America/Los_Angeles', timestamptz '2026-08-03 06:30:00+00', 'scheduled', 'listed', 'community_added', 'active', 1, 'The Fillmore', 'San Francisco', null, 'Neon Orchard', 'neon orchard the fillmore san francisco', md5('listed|d3000000-0000-0000-0000-000000000103|2026-08-02|d3000000-0000-0000-0000-000000000106'), timestamptz '2026-07-16 21:00:00+00', timestamptz '2026-07-16 21:00:00+00', timestamptz '2026-07-16 21:00:00+00'),
+  ('d4000000-0000-0000-0000-000000000008', 'd1000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-0000-000000000103', 'd3000000-0000-0000-0000-000000000101', null, 'd3000000-0000-0000-0000-000000000107', date '2026-08-27', timestamptz '2026-08-28 03:00:00+00', 'America/Los_Angeles', timestamptz '2026-08-28 07:00:00+00', 'scheduled', 'listed', 'community_added', 'active', 1, 'The Fillmore', 'San Francisco', null, 'Blue Hour Club', 'blue hour club the fillmore san francisco', md5('listed|d3000000-0000-0000-0000-000000000103|2026-08-27|d3000000-0000-0000-0000-000000000107'), timestamptz '2026-07-16 21:01:00+00', timestamptz '2026-07-16 21:01:00+00', timestamptz '2026-07-16 21:01:00+00'),
+  ('d4000000-0000-0000-0000-000000000009', 'd1000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-0000-000000000103', 'd3000000-0000-0000-0000-000000000101', null, 'd3000000-0000-0000-0000-000000000108', date '2026-10-23', timestamptz '2026-10-24 03:00:00+00', 'America/Los_Angeles', timestamptz '2026-10-24 07:00:00+00', 'scheduled', 'listed', 'community_added', 'active', 1, 'The Fillmore', 'San Francisco', null, 'Juniper Static', 'juniper static the fillmore san francisco', md5('listed|d3000000-0000-0000-0000-000000000103|2026-10-23|d3000000-0000-0000-0000-000000000108'), timestamptz '2026-07-16 21:02:00+00', timestamptz '2026-07-16 21:02:00+00', timestamptz '2026-07-16 21:02:00+00'),
+  ('d4000000-0000-0000-0000-000000000010', 'd1000000-0000-0000-0000-000000000001', 'd3000000-0000-0000-0000-000000000103', 'd3000000-0000-0000-0000-000000000101', null, 'd3000000-0000-0000-0000-000000000109', date '2026-12-05', timestamptz '2026-12-06 04:00:00+00', 'America/Los_Angeles', timestamptz '2026-12-06 08:00:00+00', 'scheduled', 'listed', 'community_added', 'active', 1, 'The Fillmore', 'San Francisco', null, 'Velvet Transit', 'velvet transit the fillmore san francisco', md5('listed|d3000000-0000-0000-0000-000000000103|2026-12-05|d3000000-0000-0000-0000-000000000109'), timestamptz '2026-07-16 21:03:00+00', timestamptz '2026-07-16 21:03:00+00', timestamptz '2026-07-16 21:03:00+00');
+
+insert into public.catalog_event_artists (
+  event_id, catalog_artist_id, lineup_position, is_headliner, artist_name_snapshot
+)
+values
+  ('d4000000-0000-0000-0000-000000000007', 'd3000000-0000-0000-0000-000000000106', 1, true, 'Neon Orchard'),
+  ('d4000000-0000-0000-0000-000000000008', 'd3000000-0000-0000-0000-000000000107', 1, true, 'Blue Hour Club'),
+  ('d4000000-0000-0000-0000-000000000009', 'd3000000-0000-0000-0000-000000000108', 1, true, 'Juniper Static'),
+  ('d4000000-0000-0000-0000-000000000010', 'd3000000-0000-0000-0000-000000000109', 1, true, 'Velvet Transit');
+
 insert into public.social_activity_events (
   id, actor_id, action, event_id, metadata, occurred_at
 )
@@ -591,6 +644,26 @@ values
   ('d4050000-0000-0000-0000-000000000024', 'd4000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000023', 'went', 'friends', timestamptz '2026-05-09 09:16:00+00', timestamptz '2026-05-09 09:16:00+00'),
   ('d4050000-0000-0000-0000-000000000025', 'd4000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000024', 'went', 'community', timestamptz '2026-05-09 09:17:00+00', timestamptz '2026-05-09 09:17:00+00');
 
+-- The primary profile has six upcoming plans total. Each added concert also
+-- has a small, different friend group so the feed proves visual variety while
+-- the original Local Signals event remains the intentionally packed case.
+insert into public.catalog_event_attendance (
+  id, event_id, profile_id, status, audience, created_at, updated_at
+)
+values
+  ('d4050000-0000-0000-0000-000000000026', 'd4000000-0000-0000-0000-000000000007', 'd1000000-0000-0000-0000-000000000001', 'going', 'friends', timestamptz '2026-07-16 21:04:00+00', timestamptz '2026-07-16 21:04:00+00'),
+  ('d4050000-0000-0000-0000-000000000027', 'd4000000-0000-0000-0000-000000000008', 'd1000000-0000-0000-0000-000000000001', 'going', 'friends', timestamptz '2026-07-16 21:05:00+00', timestamptz '2026-07-16 21:05:00+00'),
+  ('d4050000-0000-0000-0000-000000000028', 'd4000000-0000-0000-0000-000000000009', 'd1000000-0000-0000-0000-000000000001', 'going', 'friends', timestamptz '2026-07-16 21:06:00+00', timestamptz '2026-07-16 21:06:00+00'),
+  ('d4050000-0000-0000-0000-000000000029', 'd4000000-0000-0000-0000-000000000010', 'd1000000-0000-0000-0000-000000000001', 'going', 'friends', timestamptz '2026-07-16 21:07:00+00', timestamptz '2026-07-16 21:07:00+00'),
+  ('d4050000-0000-0000-0000-000000000030', 'd4000000-0000-0000-0000-000000000007', 'd1000000-0000-0000-0000-000000000002', 'going', 'community', timestamptz '2026-07-16 21:08:00+00', timestamptz '2026-07-16 21:08:00+00'),
+  ('d4050000-0000-0000-0000-000000000031', 'd4000000-0000-0000-0000-000000000007', 'd1000000-0000-0000-0000-000000000017', 'going', 'friends', timestamptz '2026-07-16 21:09:00+00', timestamptz '2026-07-16 21:09:00+00'),
+  ('d4050000-0000-0000-0000-000000000032', 'd4000000-0000-0000-0000-000000000008', 'd1000000-0000-0000-0000-000000000018', 'going', 'community', timestamptz '2026-07-16 21:10:00+00', timestamptz '2026-07-16 21:10:00+00'),
+  ('d4050000-0000-0000-0000-000000000033', 'd4000000-0000-0000-0000-000000000008', 'd1000000-0000-0000-0000-000000000019', 'going', 'friends', timestamptz '2026-07-16 21:11:00+00', timestamptz '2026-07-16 21:11:00+00'),
+  ('d4050000-0000-0000-0000-000000000034', 'd4000000-0000-0000-0000-000000000009', 'd1000000-0000-0000-0000-000000000020', 'going', 'community', timestamptz '2026-07-16 21:12:00+00', timestamptz '2026-07-16 21:12:00+00'),
+  ('d4050000-0000-0000-0000-000000000035', 'd4000000-0000-0000-0000-000000000009', 'd1000000-0000-0000-0000-000000000021', 'going', 'friends', timestamptz '2026-07-16 21:13:00+00', timestamptz '2026-07-16 21:13:00+00'),
+  ('d4050000-0000-0000-0000-000000000036', 'd4000000-0000-0000-0000-000000000010', 'd1000000-0000-0000-0000-000000000022', 'going', 'community', timestamptz '2026-07-16 21:14:00+00', timestamptz '2026-07-16 21:14:00+00'),
+  ('d4050000-0000-0000-0000-000000000037', 'd4000000-0000-0000-0000-000000000010', 'd1000000-0000-0000-0000-000000000023', 'going', 'friends', timestamptz '2026-07-16 21:15:00+00', timestamptz '2026-07-16 21:15:00+00');
+
 insert into public.social_activity_events (
   id, actor_id, action, event_id, metadata, occurred_at
 )
@@ -619,6 +692,11 @@ values
   ('d4100000-0000-0000-0000-000000000122', 'd1000000-0000-0000-0000-000000000022', 'marked_went', 'd4000000-0000-0000-0000-000000000002', '{"audience":"community"}'::jsonb, timestamptz '2026-05-09 09:15:00+00'),
   ('d4100000-0000-0000-0000-000000000123', 'd1000000-0000-0000-0000-000000000023', 'marked_went', 'd4000000-0000-0000-0000-000000000002', '{"audience":"friends"}'::jsonb, timestamptz '2026-05-09 09:16:00+00'),
   ('d4100000-0000-0000-0000-000000000124', 'd1000000-0000-0000-0000-000000000024', 'marked_went', 'd4000000-0000-0000-0000-000000000002', '{"audience":"community"}'::jsonb, timestamptz '2026-05-09 09:17:00+00');
+
+-- The eight varied upcoming-event activities are inserted by
+-- scripts/seed-local-diary-media.sh after its production-path photo uploads.
+-- Creating them last keeps the first Local feed screen visually representative
+-- without mutating immutable activity rows or hiding the packed past concert.
 
 -- Phase 3 social journeys include a normal invitation, an invitation that
 -- grants access to an unlisted event, and a mixed-audience conversation with

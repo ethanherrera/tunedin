@@ -24,6 +24,34 @@ enum CommunityEventRowState: String, Codable, CaseIterable, Equatable, Sendable 
   case tombstoned
 }
 
+enum CommunityEventCoverSource: String, Codable, Equatable, Sendable {
+  case community
+  case provider
+  case wikimedia
+}
+
+struct CommunityEventCover: Codable, Equatable, Sendable {
+  let source: CommunityEventCoverSource
+  let objectPath: String?
+  let remoteURL: URL?
+  let providerName: String?
+  let attribution: String?
+  let sourcePageURL: URL?
+  let licenseName: String?
+  let licenseURL: URL?
+  let version: Int64
+
+  enum CodingKeys: String, CodingKey {
+    case source, attribution, version
+    case objectPath = "object_path"
+    case remoteURL = "remote_url"
+    case providerName = "provider_name"
+    case sourcePageURL = "source_page_url"
+    case licenseName = "license_name"
+    case licenseURL = "license_url"
+  }
+}
+
 enum EventAttendanceStatus: String, Codable, CaseIterable, Equatable, Sendable {
   case going
   case went
@@ -70,6 +98,7 @@ struct EventFriendPreview: Codable, Equatable, Identifiable, Sendable {
 struct CommunityEventSummary: Codable, Equatable, Identifiable, Sendable {
   let id: UUID
   let artists: [CommunityEventArtist]
+  let cover: CommunityEventCover?
   let catalogPlaceID: UUID?
   let catalogAreaID: UUID?
   let catalogTourID: UUID?
@@ -118,6 +147,36 @@ struct CommunityEventSummary: Codable, Equatable, Identifiable, Sendable {
     let memoriesAreAvailable = phase(at: date) == .memories
       || (lifecycle == .cancelled && date >= memoryUnlockAt)
     return memoriesAreAvailable && currentUserAttendance == .went
+  }
+
+  func replacingCover(_ cover: CommunityEventCover?) -> Self {
+    Self(
+      id: id,
+      artists: artists,
+      cover: cover,
+      catalogPlaceID: catalogPlaceID,
+      catalogAreaID: catalogAreaID,
+      catalogTourID: catalogTourID,
+      venueName: venueName,
+      areaName: areaName,
+      eventDate: eventDate,
+      startsAt: startsAt,
+      timeZoneIdentifier: timeZoneIdentifier,
+      memoryUnlockAt: memoryUnlockAt,
+      lifecycle: lifecycle,
+      listing: listing,
+      integrity: integrity,
+      rowState: rowState,
+      sourceLabel: sourceLabel,
+      currentUserAttendance: currentUserAttendance,
+      currentUserAudience: currentUserAudience,
+      friendPreviews: friendPreviews,
+      publicGoingCount: publicGoingCount,
+      publicWentCount: publicWentCount,
+      diaryCount: diaryCount,
+      averageDiaryScore: averageDiaryScore,
+      duplicateCandidateEventID: duplicateCandidateEventID
+    )
   }
 }
 

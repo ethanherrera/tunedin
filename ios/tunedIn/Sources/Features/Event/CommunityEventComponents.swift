@@ -3,10 +3,33 @@ import SwiftUI
 struct CommunityEventRow: View {
   let event: CommunityEventSummary
   let showsSource: Bool
+  let eventRepository: (any EventRepository)?
+
+  init(
+    event: CommunityEventSummary,
+    showsSource: Bool,
+    eventRepository: (any EventRepository)? = nil
+  ) {
+    self.event = event
+    self.showsSource = showsSource
+    self.eventRepository = eventRepository
+  }
 
   var body: some View {
-    HStack(spacing: 14) {
-      EventDateTile(date: event.eventDate)
+    HStack(spacing: 13) {
+      if event.cover != nil {
+        ZStack(alignment: .topLeading) {
+          CommunityEventCoverImage(event: event, repository: eventRepository)
+            .frame(width: 106, height: 92)
+
+          EventDatePill(date: event.eventDate)
+            .padding(7)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+      } else {
+        EventDateTile(date: event.eventDate)
+      }
+
       VStack(alignment: .leading, spacing: 5) {
         Text(event.title)
           .font(.headline)
@@ -29,7 +52,7 @@ struct CommunityEventRow: View {
         .font(.caption.weight(.bold))
         .foregroundStyle(TunedInDesign.mutedText)
     }
-    .padding(.vertical, 12)
+    .padding(.vertical, 8)
     .contentShape(Rectangle())
   }
 
@@ -59,6 +82,7 @@ struct CommunityEventRow: View {
 
 struct CommunityActivityCard: View {
   let activity: EventActivity
+  let eventRepository: any EventRepository
   let concertRepository: any ConcertRepository
   let onOpenActivity: () -> Void
 
@@ -142,31 +166,168 @@ struct CommunityActivityCard: View {
         .padding(.top, diary.photoCount > 0 ? 12 : 2)
       }
     } else {
-      HStack(spacing: 14) {
-        EventDateTile(date: activity.event.eventDate)
-        VStack(alignment: .leading, spacing: 4) {
-          Text(activity.event.title)
-            .font(.headline)
-            .foregroundStyle(TunedInDesign.primaryText)
-          Text("\(activity.event.venueName) · \(activity.event.areaName)")
-            .font(.subheadline)
+      if activity.event.cover != nil {
+        ZStack(alignment: .bottomLeading) {
+          CommunityEventCoverImage(event: activity.event, repository: eventRepository)
+            .frame(maxWidth: .infinity)
+            .frame(height: 210)
+
+          LinearGradient(
+            colors: [.clear, .black.opacity(0.84)],
+            startPoint: .center,
+            endPoint: .bottom
+          )
+
+          VStack(alignment: .leading, spacing: 5) {
+            EventDatePill(date: activity.event.eventDate)
+            Text(activity.event.title)
+              .font(.title3.weight(.bold))
+              .foregroundStyle(.white)
+            Text("\(activity.event.venueName) · \(activity.event.areaName)")
+              .font(.subheadline)
+              .foregroundStyle(.white.opacity(0.86))
+            if !activity.event.friendPreviews.isEmpty {
+              Label(
+                "\(activity.event.friendPreviews.count) in your circle",
+                systemImage: "person.2.fill"
+              )
+              .font(.caption.weight(.semibold))
+              .foregroundStyle(.white.opacity(0.86))
+            }
+          }
+          .padding(16)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .padding(.horizontal, 18)
+      } else {
+        HStack(spacing: 14) {
+          EventDateTile(date: activity.event.eventDate)
+          VStack(alignment: .leading, spacing: 4) {
+            Text(activity.event.title)
+              .font(.headline)
+              .foregroundStyle(TunedInDesign.primaryText)
+            Text("\(activity.event.venueName) · \(activity.event.areaName)")
+              .font(.subheadline)
+              .foregroundStyle(TunedInDesign.mutedText)
+            if !activity.event.friendPreviews.isEmpty {
+              Label(
+                "\(activity.event.friendPreviews.count) in your circle",
+                systemImage: "person.2.fill"
+              )
+              .font(.caption.weight(.semibold))
+              .foregroundStyle(TunedInDesign.mutedText)
+            }
+          }
+          Spacer(minLength: 0)
+          Image(systemName: "chevron.right")
+            .font(.caption.weight(.bold))
             .foregroundStyle(TunedInDesign.mutedText)
-          if !activity.event.friendPreviews.isEmpty {
-            Label(
-              "\(activity.event.friendPreviews.count) in your circle",
-              systemImage: "person.2.fill"
-            )
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(TunedInDesign.mutedText)
+        }
+        .padding(.horizontal, 18)
+      }
+    }
+  }
+}
+
+struct CommunityEventCoverImage: View {
+  let event: CommunityEventSummary
+  let repository: (any EventRepository)?
+
+  @State private var signedURL: URL?
+  @State private var didFail = false
+
+  var body: some View {
+    Group {
+      if let cover = event.cover, let url = cover.remoteURL ?? signedURL {
+        CachedRemoteImage(
+          url: url,
+          resource: .eventCover(eventID: event.id, version: cover.version)
+        ) { phase in
+          switch phase {
+          case let .success(image):
+            image.resizable().scaledToFill()
+          case .empty:
+            fallback.overlay { ProgressView().tint(.white) }
+          case .failure:
+            fallback
+          @unknown default:
+            fallback
           }
         }
-        Spacer(minLength: 0)
-        Image(systemName: "chevron.right")
-          .font(.caption.weight(.bold))
-          .foregroundStyle(TunedInDesign.mutedText)
+      } else {
+        fallback
       }
-      .padding(.horizontal, 18)
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .clipped()
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel("Cover for \(event.title)")
+    .task(id: coverLoadID) {
+      signedURL = nil
+      didFail = false
+      guard
+        let cover = event.cover,
+        cover.remoteURL == nil,
+        let objectPath = cover.objectPath,
+        let repository
+      else { return }
+      do {
+        signedURL = try await repository.eventCoverURL(
+          eventID: event.id,
+          objectPath: objectPath,
+          version: cover.version
+        )
+      } catch {
+        didFail = true
+      }
+    }
+  }
+
+  private var coverLoadID: String {
+    guard let cover = event.cover else { return "\(event.id)-fallback" }
+    return "\(event.id)-\(cover.version)-\(cover.objectPath ?? cover.remoteURL?.absoluteString ?? "fallback")"
+  }
+
+  private var fallback: some View {
+    ZStack {
+      LinearGradient(
+        colors: fallbackColors,
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+      )
+      Circle()
+        .fill(.white.opacity(0.12))
+        .frame(width: 150, height: 150)
+        .offset(x: 60, y: -50)
+      Image(systemName: didFail ? "photo.badge.exclamationmark" : "waveform")
+        .font(.system(size: 30, weight: .semibold))
+        .foregroundStyle(.white.opacity(0.9))
+    }
+  }
+
+  private var fallbackColors: [Color] {
+    let options: [[Color]] = [
+      [Color(red: 0.28, green: 0.16, blue: 0.75), Color(red: 0.89, green: 0.27, blue: 0.55)],
+      [Color(red: 0.02, green: 0.38, blue: 0.49), Color(red: 0.18, green: 0.12, blue: 0.47)],
+      [Color(red: 0.73, green: 0.25, blue: 0.10), Color(red: 0.24, green: 0.08, blue: 0.24)],
+      [Color(red: 0.07, green: 0.42, blue: 0.25), Color(red: 0.02, green: 0.18, blue: 0.25)]
+    ]
+    let checksum = event.id.uuidString.utf8.reduce(0) { $0 + Int($1) }
+    return options[checksum % options.count]
+  }
+}
+
+private struct EventDatePill: View {
+  let date: Date
+
+  var body: some View {
+    Text(date.formatted(.dateTime.month(.abbreviated).day()))
+      .font(.caption2.weight(.heavy))
+      .textCase(.uppercase)
+      .foregroundStyle(.white)
+      .padding(.horizontal, 8)
+      .padding(.vertical, 5)
+      .background(.black.opacity(0.58), in: Capsule())
   }
 }
 

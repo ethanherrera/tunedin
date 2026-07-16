@@ -71,6 +71,13 @@ The shared event supplies context. It must not become a group-owned diary. Two
 friends at the same show may rate it differently, attach different media, write
 different reviews, and choose different audiences.
 
+The shared event may also have one event-specific cover image. A community creator
+can add it during concert creation; a future trusted importer can supply it with
+provider and license provenance. The cover belongs to the dated event, not the
+artist identity, because different tours and dates may need different imagery. If
+a community creator does not upload one, the interface keeps the existing compact
+date-led concert treatment rather than inventing artwork.
+
 ## Event lifecycle
 
 ### Before the show
@@ -715,6 +722,10 @@ The initial community-events implementation does not include:
 - **MusicBrainz-first identity over free-form speed.** Adding a genuinely missing
   local act or venue takes an extra explicit step, but the community normally
   converges on shared identities instead of creating spelling-based duplicates.
+- **Event cover over artist artwork.** This avoids claiming one portrait represents
+  every tour/date. Community uploads use a fixed private Storage path; sourced
+  images retain provider/license metadata. No upload leaves the familiar date-led
+  UI unchanged.
 
 ## Product exit condition
 

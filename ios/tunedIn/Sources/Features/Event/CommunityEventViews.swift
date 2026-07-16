@@ -21,21 +21,25 @@ enum CommunityProfileCollection: CaseIterable, Hashable {
 
 struct CommunityProfileHistorySection<ArchiveContent: View>: View {
   let history: CommunityProfileHistory
+  let eventRepository: any EventRepository
   let concertRepository: any ConcertRepository
   let onOpenEvent: (CommunityEventSummary, UUID?) -> Void
   let archiveContent: ArchiveContent
 
   @State private var selectedCollection = CommunityProfileCollection.posts
+  @State private var expandedConcertCollection: ProfileConcertCollection?
   @Namespace private var selectionNamespace
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   init(
     history: CommunityProfileHistory,
+    eventRepository: any EventRepository,
     concertRepository: any ConcertRepository,
     onOpenEvent: @escaping (CommunityEventSummary, UUID?) -> Void,
     @ViewBuilder archiveContent: () -> ArchiveContent
   ) {
     self.history = history
+    self.eventRepository = eventRepository
     self.concertRepository = concertRepository
     self.onOpenEvent = onOpenEvent
     self.archiveContent = archiveContent()
@@ -107,12 +111,14 @@ struct CommunityProfileHistorySection<ArchiveContent: View>: View {
         VStack(alignment: .leading, spacing: 24) {
           concertSection(
             title: "Upcoming",
-            events: history.going,
+            events: upcomingEvents,
+            collection: .upcoming,
             emptyMessage: "No upcoming concerts shared."
           )
           concertSection(
             title: "Past",
-            events: history.went,
+            events: pastEvents,
+            collection: .past,
             emptyMessage: "No past concerts shared."
           )
           archiveContent
@@ -120,11 +126,24 @@ struct CommunityProfileHistorySection<ArchiveContent: View>: View {
       }
     }
     .animation(TunedInMotion.selection(reduceMotion: reduceMotion), value: selectedCollection)
+    .fullScreenCover(item: $expandedConcertCollection) { collection in
+      ProfileConcertDirectoryView(
+        title: collection.title,
+        events: collection == .upcoming ? upcomingEvents : pastEvents,
+        eventRepository: eventRepository,
+        onOpenEvent: { event in
+          expandedConcertCollection = nil
+          onOpenEvent(event, nil)
+        },
+        onDismiss: { expandedConcertCollection = nil }
+      )
+    }
   }
 
   private func concertSection(
     title: String,
     events: [CommunityEventSummary],
+    collection: ProfileConcertCollection,
     emptyMessage: String
   ) -> some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -143,14 +162,40 @@ struct CommunityProfileHistorySection<ArchiveContent: View>: View {
       if events.isEmpty {
         emptyState(emptyMessage)
       } else {
-        ForEach(events) { event in
+        ForEach(events.prefix(3)) { event in
           Button { onOpenEvent(event, nil) } label: {
-            CommunityEventRow(event: event, showsSource: false)
+            CommunityEventRow(
+              event: event,
+              showsSource: false,
+              eventRepository: eventRepository
+            )
           }
           .buttonStyle(TunedInPosterButtonStyle())
         }
+        if events.count > 3 {
+          Button { expandedConcertCollection = collection } label: {
+            HStack {
+              Text("View all \(events.count) \(collection == .upcoming ? "upcoming" : "past")")
+                .font(.subheadline.weight(.bold))
+              Spacer()
+              Image(systemName: "chevron.right")
+                .font(.caption.weight(.bold))
+            }
+            .foregroundStyle(TunedInDesign.accent)
+            .padding(.vertical, 8)
+          }
+          .buttonStyle(.plain)
+        }
       }
     }
+  }
+
+  private var upcomingEvents: [CommunityEventSummary] {
+    history.going.sorted { $0.eventDate < $1.eventDate }
+  }
+
+  private var pastEvents: [CommunityEventSummary] {
+    history.went.sorted { $0.eventDate > $1.eventDate }
   }
 
   private func emptyState(_ message: String) -> some View {
@@ -158,6 +203,57 @@ struct CommunityProfileHistorySection<ArchiveContent: View>: View {
       .font(.subheadline)
       .foregroundStyle(TunedInDesign.mutedText)
       .frame(maxWidth: .infinity, minHeight: 96, alignment: .center)
+  }
+}
+
+private enum ProfileConcertCollection: String, Identifiable {
+  case upcoming
+  case past
+
+  var id: String { rawValue }
+  var title: String { self == .upcoming ? "Upcoming concerts" : "Past concerts" }
+}
+
+private struct ProfileConcertDirectoryView: View {
+  let title: String
+  let events: [CommunityEventSummary]
+  let eventRepository: any EventRepository
+  let onOpenEvent: (CommunityEventSummary) -> Void
+  let onDismiss: () -> Void
+
+  var body: some View {
+    ZStack {
+      TunedInDesign.pageBackground.ignoresSafeArea()
+      ScrollView {
+        LazyVStack(alignment: .leading, spacing: 8) {
+          Text(title)
+            .font(.largeTitle.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
+            .padding(.bottom, 8)
+          ForEach(events) { event in
+            Button { onOpenEvent(event) } label: {
+              CommunityEventRow(
+                event: event,
+                showsSource: false,
+                eventRepository: eventRepository
+              )
+            }
+            .buttonStyle(TunedInPosterButtonStyle())
+          }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+        .padding(.bottom, 24)
+      }
+    }
+    .safeAreaInset(edge: .bottom, spacing: 0) {
+      TunedInPersistentControlRegion {
+        TunedInSubscreenBackBar(title: title, action: onDismiss)
+          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+          .padding(.top, 8)
+          .padding(.bottom, TunedInDesign.bottomControlInset)
+      }
+    }
   }
 }
 
@@ -244,6 +340,7 @@ struct CommunityActivityFeedView: View {
               ForEach(activities) { activity in
                 CommunityActivityCard(
                   activity: activity,
+                  eventRepository: repository,
                   concertRepository: concertRepository,
                   onOpenActivity: { onOpenActivity(activity) }
                 )
@@ -309,6 +406,7 @@ struct CommunityPlansView: View {
               ForEach(invitations) { invitation in
                 EventInvitationCard(
                   invitation: invitation,
+                  eventRepository: repository,
                   isResponding: respondingInvitationID == invitation.id,
                   onOpen: { onOpenEvent(invitation.event) },
                   onAccept: { Task { await respond(to: invitation, with: .accepted) } },
@@ -370,7 +468,7 @@ struct CommunityPlansView: View {
 
         ForEach(events) { event in
           Button { onOpenEvent(event) } label: {
-            CommunityEventRow(event: event, showsSource: false)
+            CommunityEventRow(event: event, showsSource: false, eventRepository: repository)
           }
           .buttonStyle(TunedInPosterButtonStyle())
         }
@@ -379,11 +477,15 @@ struct CommunityPlansView: View {
   }
 
   private var upcoming: [CommunityEventSummary] {
-    events.filter { $0.phase() != .memories }
+    events
+      .filter { $0.phase() != .memories }
+      .sorted { $0.eventDate < $1.eventDate }
   }
 
   private var past: [CommunityEventSummary] {
-    events.filter { $0.phase() == .memories }
+    events
+      .filter { $0.phase() == .memories }
+      .sorted { $0.eventDate > $1.eventDate }
   }
 
   @MainActor
@@ -423,6 +525,7 @@ struct CommunityPlansView: View {
 
 private struct EventInvitationCard: View {
   let invitation: EventInvitation
+  let eventRepository: any EventRepository
   let isResponding: Bool
   let onOpen: () -> Void
   let onAccept: () -> Void
@@ -447,7 +550,11 @@ private struct EventInvitationCard: View {
       }
 
       Button(action: onOpen) {
-        CommunityEventRow(event: invitation.event, showsSource: false)
+        CommunityEventRow(
+          event: invitation.event,
+          showsSource: false,
+          eventRepository: eventRepository
+        )
       }
       .buttonStyle(TunedInPosterButtonStyle())
 

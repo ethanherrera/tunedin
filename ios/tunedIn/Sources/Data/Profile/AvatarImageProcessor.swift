@@ -21,6 +21,10 @@ enum AvatarImageProcessor {
     try await process(sourceData, outputSize: CGSize(width: 1200, height: 1600), maximumBytes: 3_145_728)
   }
 
+  static func processEventCover(_ sourceData: Data) async throws -> Data {
+    try await process(sourceData, outputSize: CGSize(width: 1600, height: 1000), maximumBytes: 3_145_728)
+  }
+
   private static func process(_ sourceData: Data, outputSize: CGSize, maximumBytes: Int) async throws -> Data {
     try await Task.detached(priority: .userInitiated) {
       guard let image = UIImage(data: sourceData), image.size.width > 0, image.size.height > 0 else {

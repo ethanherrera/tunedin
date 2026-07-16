@@ -37,6 +37,7 @@
 		31D622AFEF6EE9C7391285DE /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69FF7F1D63EE17CDDD562417 /* OnboardingView.swift */; };
 		36080098A9E0E7321607369C /* CommunityEventScoreBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318EFB4B5D579E645F6BD3E3 /* CommunityEventScoreBadge.swift */; };
 		395C8557A1C118C14C1806B9 /* SignedURLCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F7883953FF6E8AF449F2EEE /* SignedURLCacheTests.swift */; };
+		3A2BCF57019A750F340AD42B /* juniper-static-stage.png in Resources */ = {isa = PBXBuildFile; fileRef = 274FD05599F220A8E064E195 /* juniper-static-stage.png */; };
 		3B37A2350A0ED4EF671BB97C /* CommunityEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DDBA3FD5E32FB1492EDA83D /* CommunityEvent.swift */; };
 		3CA803A1A13C60B87E60A624 /* ConcertCommentsModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED21BAA8719FCC24B848527 /* ConcertCommentsModelTests.swift */; };
 		3DDFF6632A0FF59AA5074712 /* ConcertArchiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A439D31D760416F79E073FAB /* ConcertArchiveView.swift */; };
@@ -44,6 +45,8 @@
 		416E16CEB733DF73D5D7DD64 /* FeedbackRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F2144AD14AFB8762C4E55F1 /* FeedbackRepository.swift */; };
 		41BDB81104C4F1D219D1CEED /* CachingConcertRepositoryAssertions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92C58F63460E2CA54114828E /* CachingConcertRepositoryAssertions.swift */; };
 		439D26423A0BE361FF528EFB /* SupabaseMusicCatalogRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0C565BFA62211C3BF34AD55 /* SupabaseMusicCatalogRepository.swift */; };
+		43B968ADB12C203E08226AB9 /* neon-orchard-stage.png in Resources */ = {isa = PBXBuildFile; fileRef = 39802014035E0AA51F117288 /* neon-orchard-stage.png */; };
+		4951866A6A54D34538DA8BEF /* blue-hour-club-stage.png in Resources */ = {isa = PBXBuildFile; fileRef = 8AD6CE1BE76D1B2311F2A4EF /* blue-hour-club-stage.png */; };
 		4A58FD142ED9EDD99A299E8C /* AppDataCache+Mutation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00AA7CDE85C3B0F94346A4CA /* AppDataCache+Mutation.swift */; };
 		4A7F7564BB0EE2561B60B00F /* AppSessionPhase+Authentication.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA2D068894590F87FC06DF4D /* AppSessionPhase+Authentication.swift */; };
 		4C50EE5B4D5E5B704D7D1991 /* CommunityEventCollectionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1133A4D6583C447BE9EC5207 /* CommunityEventCollectionViews.swift */; };
@@ -152,6 +155,7 @@
 		F6BD5F9DE56156E2DDA5B1EF /* PostHogTelemetryTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D743EA872FA444B10D7F505 /* PostHogTelemetryTransport.swift */; };
 		F7FDC6308F271BC12826390A /* LocalSimulatorAuthStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32C1D6763D82D3E1FE54AAB8 /* LocalSimulatorAuthStorage.swift */; };
 		FA19D4BCBE81ABBD2AFC6813 /* ConcertCollaborationSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607F112255B95105F98C8662 /* ConcertCollaborationSheets.swift */; };
+		FBBE63F36DC93CEB8FDBB4DA /* velvet-transit-stage.png in Resources */ = {isa = PBXBuildFile; fileRef = 6993939FF2F3B31337CA3BF6 /* velvet-transit-stage.png */; };
 		FC96DCC880436B026570AB60 /* EventDiaryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CF150C1DA53FD37E240893D /* EventDiaryDetailView.swift */; };
 		FCD0EC22A0E4DEE101E3ABA5 /* CatalogSearchTestRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = A61A8D23CF454736E46B989C /* CatalogSearchTestRepository.swift */; };
 		FE51B3E883DE1D66D4D14279 /* AppCacheStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7794D077D0A6E4A286C37FFA /* AppCacheStorage.swift */; };
@@ -193,6 +197,7 @@
 		25E0AC916EDCB0067656B14C /* CachingConcertMutationTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachingConcertMutationTestSupport.swift; sourceTree = "<group>"; };
 		2644431350079CF5B9312C52 /* EmailVerificationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailVerificationView.swift; sourceTree = "<group>"; };
 		273E2C7F3756C14CC427238F /* CommunityEventComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunityEventComponents.swift; sourceTree = "<group>"; };
+		274FD05599F220A8E064E195 /* juniper-static-stage.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "juniper-static-stage.png"; sourceTree = "<group>"; };
 		29F350EB61842D6DA5FE0C2A /* ConcertAlbumUploadViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertAlbumUploadViews.swift; sourceTree = "<group>"; };
 		2AAF92EFCF48872007F2A304 /* AppCacheHardeningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCacheHardeningTests.swift; sourceTree = "<group>"; };
 		2D653AA51C36082C30B6B3EB /* DevelopmentMusicCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentMusicCatalogTests.swift; sourceTree = "<group>"; };
@@ -206,6 +211,7 @@
 		3531262D0A7C77D265C40BCC /* AvatarImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarImageProcessor.swift; sourceTree = "<group>"; };
 		36855C0A3DE0CB302D9FE025 /* AlbumUploadBatchExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumUploadBatchExecutor.swift; sourceTree = "<group>"; };
 		392C5C1729F221FD114BA53B /* AppMediaCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMediaCache.swift; sourceTree = "<group>"; };
+		39802014035E0AA51F117288 /* neon-orchard-stage.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "neon-orchard-stage.png"; sourceTree = "<group>"; };
 		3C8D7EE83773ECBDDB7AD93E /* CachedRemoteImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedRemoteImage.swift; sourceTree = "<group>"; };
 		3DE47B97A300C1CC89CD02B0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		3FDCCD256D3857937D157AEB /* MusicCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicCatalogTests.swift; sourceTree = "<group>"; };
@@ -239,6 +245,7 @@
 		61399B814DE19CDCDA167DE0 /* Concert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Concert.swift; sourceTree = "<group>"; };
 		633725CD557D467B89AF6D8A /* tunedIn-Staging.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "tunedIn-Staging.entitlements"; sourceTree = "<group>"; };
 		66ACE6CCD64E65364C095CE8 /* AppDataCache+Construction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDataCache+Construction.swift"; sourceTree = "<group>"; };
+		6993939FF2F3B31337CA3BF6 /* velvet-transit-stage.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "velvet-transit-stage.png"; sourceTree = "<group>"; };
 		69FF7F1D63EE17CDDD562417 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		6E9515DFEDEC6E1303CB06D2 /* CatalogSearchModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogSearchModel.swift; sourceTree = "<group>"; };
 		70236DF53FF5B7FB481B28B0 /* CommunityEventDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunityEventDetailView.swift; sourceTree = "<group>"; };
@@ -254,6 +261,7 @@
 		86D4D593F9FA89A04D43D945 /* DevelopmentEventRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentEventRepository.swift; sourceTree = "<group>"; };
 		887C95DD1BE38E3C830C4D80 /* AppSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSession.swift; sourceTree = "<group>"; };
 		889BD9CC3B0A992D16F66A9A /* DevelopmentScenario.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentScenario.swift; sourceTree = "<group>"; };
+		8AD6CE1BE76D1B2311F2A4EF /* blue-hour-club-stage.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "blue-hour-club-stage.png"; sourceTree = "<group>"; };
 		8B47AAA7591E2615D19B0DE8 /* SupabaseFeedbackRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseFeedbackRepository.swift; sourceTree = "<group>"; };
 		8BB6E4FE735BE91A1C03412D /* TunedInAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunedInAppearance.swift; sourceTree = "<group>"; };
 		8CE4DB3E207A0AC8993F44B3 /* ConcertMonogramViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcertMonogramViews.swift; sourceTree = "<group>"; };
@@ -389,7 +397,11 @@
 			isa = PBXGroup;
 			children = (
 				EA95DDDDA02A9205456F296D /* afterglow-stage.png */,
+				8AD6CE1BE76D1B2311F2A4EF /* blue-hour-club-stage.png */,
+				274FD05599F220A8E064E195 /* juniper-static-stage.png */,
 				4A5DDFF994E4A5513CAD3917 /* midnight-theatre.png */,
+				39802014035E0AA51F117288 /* neon-orchard-stage.png */,
+				6993939FF2F3B31337CA3BF6 /* velvet-transit-stage.png */,
 			);
 			path = Artwork;
 			sourceTree = "<group>";
@@ -811,7 +823,11 @@
 			files = (
 				01FA7370211F6DC056721116 /* Assets.xcassets in Resources */,
 				7F900D7F871E8EB8BF235637 /* afterglow-stage.png in Resources */,
+				4951866A6A54D34538DA8BEF /* blue-hour-club-stage.png in Resources */,
+				3A2BCF57019A750F340AD42B /* juniper-static-stage.png in Resources */,
 				BE7554363F72DAE88183452E /* midnight-theatre.png in Resources */,
+				43B968ADB12C203E08226AB9 /* neon-orchard-stage.png in Resources */,
+				FBBE63F36DC93CEB8FDBB4DA /* velvet-transit-stage.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

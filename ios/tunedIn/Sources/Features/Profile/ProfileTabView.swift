@@ -758,9 +758,10 @@ struct ProfileTabView: View {
           VStack(alignment: .leading, spacing: 20) {
             profileHeader
             friendCountLink
-            if eventRepository?.capabilities.contains(.diaries) == true {
+            if let eventRepository, eventRepository.capabilities.contains(.diaries) {
               CommunityProfileHistorySection(
                 history: communityHistory,
+                eventRepository: eventRepository,
                 concertRepository: concertRepository,
                 onOpenEvent: onOpenCommunityEvent
               ) {

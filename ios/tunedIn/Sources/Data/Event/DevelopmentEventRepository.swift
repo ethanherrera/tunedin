@@ -391,6 +391,7 @@
       let summary = CommunityEventSummary(
         id: id,
         artists: artists,
+        cover: nil,
         catalogPlaceID: input.place.id,
         catalogAreaID: areaID,
         catalogTourID: input.tour?.id,
@@ -423,6 +424,35 @@
       )
       events[id] = stored
       return detail(from: stored, viewerID: creatorID)
+    }
+
+    func setEventCover(
+      _ jpegData: Data,
+      eventID: UUID,
+      creatorID: UUID
+    ) async throws -> CommunityEventDetail {
+      guard !jpegData.isEmpty, var stored = events[eventID] else {
+        throw CommunityEventError.eventUnavailable
+      }
+      stored.summary = stored.summary.replacingCover(
+        CommunityEventCover(
+          source: .community,
+          objectPath: "event-covers/\(eventID.uuidString.lowercased())/cover.jpg",
+          remoteURL: nil,
+          providerName: nil,
+          attribution: nil,
+          sourcePageURL: nil,
+          licenseName: nil,
+          licenseURL: nil,
+          version: (stored.summary.cover?.version ?? 0) + 1
+        )
+      )
+      events[eventID] = stored
+      return detail(from: stored, viewerID: creatorID)
+    }
+
+    func eventCoverURL(eventID _: UUID, objectPath _: String, version _: Int64) async throws -> URL {
+      throw CommunityEventError.featureUnavailable("Development concert cover bytes")
     }
 
     func reportEvent(
@@ -487,6 +517,7 @@
       return CommunityEventSummary(
         id: stored.summary.id,
         artists: stored.summary.artists,
+        cover: stored.summary.cover,
         catalogPlaceID: stored.summary.catalogPlaceID,
         catalogAreaID: stored.summary.catalogAreaID,
         catalogTourID: stored.summary.catalogTourID,
@@ -612,6 +643,7 @@
       let duplicate = CommunityEventSummary(
         id: DevelopmentEventFixture.duplicateMitskiID,
         artists: upcoming.artists,
+        cover: upcoming.cover,
         catalogPlaceID: upcoming.catalogPlaceID,
         catalogAreaID: upcoming.catalogAreaID,
         catalogTourID: nil,
@@ -840,6 +872,7 @@
             isHeadliner: true
           )
         ],
+        cover: nil,
         catalogPlaceID: placeID,
         catalogAreaID: areaID,
         catalogTourID: artist == "Mitski" ? DevelopmentMusicCatalogFixture.landTourID : nil,

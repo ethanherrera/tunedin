@@ -74,10 +74,12 @@ struct PersonProfileView: View {
             }
           }
 
-          if eventRepository?.capabilities.contains(.diaries) == true,
+          if let eventRepository,
+             eventRepository.capabilities.contains(.diaries),
              let onOpenCommunityEvent {
             CommunityProfileHistorySection(
               history: communityHistory,
+              eventRepository: eventRepository,
               concertRepository: concertRepository,
               onOpenEvent: onOpenCommunityEvent
             ) {

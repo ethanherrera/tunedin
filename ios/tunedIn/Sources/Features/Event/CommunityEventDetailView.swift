@@ -54,6 +54,7 @@ struct CommunityEventDetailView: View {
           VStack(alignment: .leading, spacing: 18) {
             CommunityEventHero(
               detail: detail,
+              repository: repository,
               allowsAttendance: repository.capabilities.contains(.attendance),
               onViewAllAttendance: { isPresentingAttendanceDirectory = true },
               onSetAttendance: { status, audience in
@@ -234,6 +235,7 @@ struct CommunityEventDetailView: View {
 
 private struct CommunityEventHero: View {
   let detail: CommunityEventDetail
+  let repository: any EventRepository
   let allowsAttendance: Bool
   let onViewAllAttendance: () -> Void
   let onSetAttendance: (EventAttendanceStatus?, EventAudience) -> Void
@@ -243,6 +245,25 @@ private struct CommunityEventHero: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
+      if detail.summary.cover != nil {
+        CommunityEventCoverImage(event: detail.summary, repository: repository)
+          .frame(maxWidth: .infinity)
+          .frame(height: 220)
+          .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+          .overlay(alignment: .bottomTrailing) {
+            if let credit = coverCredit {
+              Text(credit)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 6)
+                .background(.black.opacity(0.58), in: Capsule())
+                .padding(10)
+            }
+          }
+      }
+
       HStack(alignment: .firstTextBaseline, spacing: 12) {
         Text(CommunityEventDateText.fullDate(detail.summary.eventDate))
           .font(.caption.weight(.bold))
@@ -356,6 +377,13 @@ private struct CommunityEventHero: View {
     .task(id: detail.summary.currentUserAudience) {
       audience = detail.summary.currentUserAudience ?? .friends
     }
+  }
+
+  private var coverCredit: String? {
+    guard let cover = detail.summary.cover else { return nil }
+    if let attribution = cover.attribution { return attribution }
+    if let providerName = cover.providerName { return "Image: \(providerName)" }
+    return cover.source == .community ? "Community photo" : nil
   }
 
   @ViewBuilder

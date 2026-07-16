@@ -154,7 +154,18 @@ struct SupabaseEventSocialContractTests {
             "catalog_artist_id":"20000000-0000-0000-0000-000000000001",
             "display_name":"Mitski",
             "position":0,
-            "is_headliner":true
+            "is_headliner":true,
+            "event_cover":{
+              "source":"community",
+              "object_path":"event-covers/50000000-0000-0000-0000-000000000001/cover.jpg",
+              "remote_url":null,
+              "provider_name":null,
+              "attribution":null,
+              "source_page_url":null,
+              "license_name":null,
+              "license_url":null,
+              "version":2
+            }
           }],
           "catalog_place_id":"30000000-0000-0000-0000-000000000001",
           "catalog_area_id":"40000000-0000-0000-0000-000000000001",
@@ -265,7 +276,18 @@ extension SupabaseEventRepositoryContractTests {
             "catalog_artist_id":"20000000-0000-0000-0000-000000000001",
             "display_name":"Mitski",
             "position":0,
-            "is_headliner":true
+            "is_headliner":true,
+            "event_cover":{
+              "source":"community",
+              "object_path":"event-covers/50000000-0000-0000-0000-000000000001/cover.jpg",
+              "remote_url":null,
+              "provider_name":null,
+              "attribution_text":null,
+              "source_page_url":null,
+              "license_name":null,
+              "license_url":null,
+              "version":2
+            }
           }
         ],
         "catalog_place_id":"30000000-0000-0000-0000-000000000001",
@@ -294,6 +316,9 @@ extension SupabaseEventRepositoryContractTests {
     #expect(summary.areaName == "Washington, D.C.")
     #expect(summary.timeZoneIdentifier == "America/New_York")
     #expect(summary.sourceLabel == "Community made")
+    #expect(summary.cover?.source == .community)
+    #expect(summary.cover?.objectPath == "event-covers/50000000-0000-0000-0000-000000000001/cover.jpg")
+    #expect(summary.cover?.version == 2)
     #expect(summary.currentUserAttendance == nil)
     #expect(summary.friendPreviews.isEmpty)
     #expect(summary.publicGoingCount == 0)
