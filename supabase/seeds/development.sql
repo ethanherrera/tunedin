@@ -162,7 +162,7 @@ from (
 where profile.id = account.id
 ;
 
--- Fixed catalog fixtures prove all three durable origins without contacting the
+-- Fixed catalog fixtures prove MusicBrainz and community-created durable origins without contacting the
 -- live MusicBrainz service. The custom Fillmore place is reused by two seeded
 -- concerts below; the remaining entries make every custom form searchable.
 insert into public.catalog_entities (
@@ -175,50 +175,38 @@ values
   ('d3000000-0000-0000-0000-000000000102', 'artist', 'tunedin_custom', 'active', 'The Local Signals', 'The Local Signals', null, null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00'),
   ('d3000000-0000-0000-0000-000000000103', 'place', 'tunedin_custom', 'active', 'The Fillmore', 'The Fillmore', 'Local reusable venue fixture', null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00'),
   ('d3000000-0000-0000-0000-000000000104', 'song', 'tunedin_custom', 'active', 'Midnight Test Signal', 'Midnight Test Signal', null, null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00'),
-  ('d3000000-0000-0000-0000-000000000105', 'tour', 'tunedin_custom', 'active', 'Local Fixture Tour', 'Local Fixture Tour', null, null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00'),
-  ('d3000000-0000-0000-0000-000000000201', 'area', 'legacy_import', 'needs_review', 'Seed Archive City', 'Seed Archive City', null, null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00'),
-  ('d3000000-0000-0000-0000-000000000202', 'artist', 'legacy_import', 'needs_review', 'Seed Archive Artist', 'Seed Archive Artist', null, null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00'),
-  ('d3000000-0000-0000-0000-000000000203', 'place', 'legacy_import', 'needs_review', 'Seed Archive Hall', 'Seed Archive Hall', null, null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00'),
-  ('d3000000-0000-0000-0000-000000000204', 'song', 'legacy_import', 'needs_review', 'Seed Archive Song', 'Seed Archive Song', null, null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00'),
-  ('d3000000-0000-0000-0000-000000000205', 'tour', 'legacy_import', 'needs_review', 'Seed Archive Tour', 'Seed Archive Tour', null, null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00');
+  ('d3000000-0000-0000-0000-000000000105', 'tour', 'tunedin_custom', 'active', 'Local Fixture Tour', 'Local Fixture Tour', null, null, timestamptz '2025-01-01 12:00:00+00', timestamptz '2025-01-01 12:00:00+00');
 
 insert into public.catalog_areas (id, country_code)
 values
   ('d3000000-0000-0000-0000-000000000001', 'US'),
-  ('d3000000-0000-0000-0000-000000000101', 'US'),
-  ('d3000000-0000-0000-0000-000000000201', 'US');
+  ('d3000000-0000-0000-0000-000000000101', 'US');
 
 insert into public.catalog_artists (id, artist_type, area_id, area_name)
 values
-  ('d3000000-0000-0000-0000-000000000102', 'Group', 'd3000000-0000-0000-0000-000000000101', 'San Francisco'),
-  ('d3000000-0000-0000-0000-000000000202', 'Group', 'd3000000-0000-0000-0000-000000000201', 'Seed Archive City');
+  ('d3000000-0000-0000-0000-000000000102', 'Group', 'd3000000-0000-0000-0000-000000000101', 'San Francisco');
 
 insert into public.catalog_places (id, area_id, place_type, address)
 values
-  ('d3000000-0000-0000-0000-000000000103', 'd3000000-0000-0000-0000-000000000101', 'Venue', '1805 Geary Blvd'),
-  ('d3000000-0000-0000-0000-000000000203', 'd3000000-0000-0000-0000-000000000201', 'Venue', null);
+  ('d3000000-0000-0000-0000-000000000103', 'd3000000-0000-0000-0000-000000000101', 'Venue', '1805 Geary Blvd');
 
 insert into public.catalog_songs (id, artist_credit)
 values
-  ('d3000000-0000-0000-0000-000000000104', 'The Local Signals'),
-  ('d3000000-0000-0000-0000-000000000204', 'Seed Archive Artist');
+  ('d3000000-0000-0000-0000-000000000104', 'The Local Signals');
 
 insert into public.catalog_song_artists (
   song_id, artist_id, credit_position, credit_name, join_phrase
 )
 values
-  ('d3000000-0000-0000-0000-000000000104', 'd3000000-0000-0000-0000-000000000102', 1, 'The Local Signals', ''),
-  ('d3000000-0000-0000-0000-000000000204', 'd3000000-0000-0000-0000-000000000202', 1, 'Seed Archive Artist', '');
+  ('d3000000-0000-0000-0000-000000000104', 'd3000000-0000-0000-0000-000000000102', 1, 'The Local Signals', '');
 
 insert into public.catalog_tours (id)
 values
-  ('d3000000-0000-0000-0000-000000000105'),
-  ('d3000000-0000-0000-0000-000000000205');
+  ('d3000000-0000-0000-0000-000000000105');
 
 insert into public.catalog_tour_artists (tour_id, artist_id, credit_position)
 values
-  ('d3000000-0000-0000-0000-000000000105', 'd3000000-0000-0000-0000-000000000102', 1),
-  ('d3000000-0000-0000-0000-000000000205', 'd3000000-0000-0000-0000-000000000202', 1);
+  ('d3000000-0000-0000-0000-000000000105', 'd3000000-0000-0000-0000-000000000102', 1);
 
 insert into private.catalog_entity_provenance (
   entity_id, kind, creator_id, dedupe_key, created_at
@@ -228,12 +216,7 @@ values
   ('d3000000-0000-0000-0000-000000000102', 'artist', 'd1000000-0000-0000-0000-000000000001', 'artist|the local signals|type:group|area:d3000000-0000-0000-0000-000000000101|disambiguation:-', timestamptz '2025-01-01 12:00:00+00'),
   ('d3000000-0000-0000-0000-000000000103', 'place', 'd1000000-0000-0000-0000-000000000001', 'place|the fillmore|area:d3000000-0000-0000-0000-000000000101', timestamptz '2025-01-01 12:00:00+00'),
   ('d3000000-0000-0000-0000-000000000104', 'song', 'd1000000-0000-0000-0000-000000000001', 'song|midnight test signal|artists:d3000000-0000-0000-0000-000000000102|disambiguation:-', timestamptz '2025-01-01 12:00:00+00'),
-  ('d3000000-0000-0000-0000-000000000105', 'tour', 'd1000000-0000-0000-0000-000000000001', 'tour|local fixture tour|artists:d3000000-0000-0000-0000-000000000102', timestamptz '2025-01-01 12:00:00+00'),
-  ('d3000000-0000-0000-0000-000000000201', 'area', 'd1000000-0000-0000-0000-000000000001', 'seed-legacy-area', timestamptz '2025-01-01 12:00:00+00'),
-  ('d3000000-0000-0000-0000-000000000202', 'artist', 'd1000000-0000-0000-0000-000000000001', 'seed-legacy-artist', timestamptz '2025-01-01 12:00:00+00'),
-  ('d3000000-0000-0000-0000-000000000203', 'place', 'd1000000-0000-0000-0000-000000000001', 'seed-legacy-place', timestamptz '2025-01-01 12:00:00+00'),
-  ('d3000000-0000-0000-0000-000000000204', 'song', 'd1000000-0000-0000-0000-000000000001', 'seed-legacy-song', timestamptz '2025-01-01 12:00:00+00'),
-  ('d3000000-0000-0000-0000-000000000205', 'tour', 'd1000000-0000-0000-0000-000000000001', 'seed-legacy-tour', timestamptz '2025-01-01 12:00:00+00');
+  ('d3000000-0000-0000-0000-000000000105', 'tour', 'd1000000-0000-0000-0000-000000000001', 'tour|local fixture tour|artists:d3000000-0000-0000-0000-000000000102', timestamptz '2025-01-01 12:00:00+00');
 
 -- Mirror the provenance written by production MusicBrainz ingestion without
 -- assigning a tunedIn creator to the external entity.
@@ -1002,229 +985,3 @@ values
     'd4500000-0000-0000-0000-000000000002',
     timestamptz '2026-05-09 10:05:00+00'
   );
-
-do $catalog_seed$
-begin
-create temporary table seed_concert_fixture as
-with fixture (
-  id,
-  owner_id,
-  artist_name,
-  venue_name,
-  city,
-  concert_date,
-  visibility,
-  tour,
-  created_at,
-  setlist
-) as (
-  values
-    ('d2000000-0000-0000-0000-000000000001'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid, 'Mitski', 'The Greek Theatre', 'Berkeley', date '2025-09-18', 'private'::public.concert_visibility, 'The Land Is Inhospitable Tour', timestamptz '2025-09-19 02:00:00+00', array['First Love / Late Spring', 'My Love Mine All Mine', 'I Bet on Losing Dogs']::text[]),
-    ('d2000000-0000-0000-0000-000000000002'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid, 'Bon Iver', 'The Masonic', 'San Francisco', date '2025-05-29', 'private'::public.concert_visibility, 'SABLE, fABLE', timestamptz '2025-05-30 03:00:00+00', array['S P E Y S I D E', 'Everything Is Peaceful Love']::text[]),
-    ('d2000000-0000-0000-0000-000000000003'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid, 'LCD Soundsystem', 'Bill Graham Civic Auditorium', 'San Francisco', date '2026-02-14', 'friends'::public.concert_visibility, 'Winter Residency', timestamptz '2026-02-15 04:00:00+00', array['Dance Yrself Clean', 'All My Friends', 'New York, I Love You but You Are Bringing Me Down']::text[]),
-    ('d2000000-0000-0000-0000-000000000004'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid, 'The National', 'Fox Theater', 'Oakland', date '2026-03-06', 'collaborators'::public.concert_visibility, 'Rome Tour', timestamptz '2026-03-07 04:00:00+00', array['Bloodbuzz Ohio', 'Fake Empire', 'Terrible Love']::text[]),
-    ('d2000000-0000-0000-0000-000000000005'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid, 'Caroline Polachek', 'The Warfield', 'San Francisco', date '2026-04-11', 'friends'::public.concert_visibility, 'Desire Tour', timestamptz '2026-04-12 04:00:00+00', array['Welcome To My Island', 'Bunny Is a Rider', 'So Hot You Are Hurting My Feelings']::text[]),
-    ('d2000000-0000-0000-0000-000000000006'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid, 'Waxahatchee', 'The Fillmore', 'San Francisco', date '2026-05-08', 'friends'::public.concert_visibility, 'Tigers Blood Tour', timestamptz '2026-05-09 04:00:00+00', array['Right Back to It', 'Crowbar', 'Fire']::text[]),
-    ('d2000000-0000-0000-0000-000000000007'::uuid, 'd1000000-0000-0000-0000-000000000002'::uuid, 'Japanese Breakfast', 'The Fillmore', 'San Francisco', date '2025-10-04', 'friends'::public.concert_visibility, 'Melancholy Tour', timestamptz '2025-10-05 04:00:00+00', array['Be Sweet', 'Paprika', 'Posing in Bondage']::text[]),
-    ('d2000000-0000-0000-0000-000000000008'::uuid, 'd1000000-0000-0000-0000-000000000002'::uuid, 'Big Thief', 'Fox Theater', 'Oakland', date '2026-01-12', 'collaborators'::public.concert_visibility, 'Dragon New Warm Mountain Tour', timestamptz '2026-01-13 04:00:00+00', array['Simulation Swarm', 'Vampire Empire', 'Not']::text[]),
-    ('d2000000-0000-0000-0000-000000000009'::uuid, 'd1000000-0000-0000-0000-000000000002'::uuid, 'Lorde', 'Chase Center', 'San Francisco', date '2026-03-22', 'friends'::public.concert_visibility, 'Ultrasound World Tour', timestamptz '2026-03-23 04:00:00+00', array['Green Light', 'Ribs', 'Supercut']::text[]),
-    ('d2000000-0000-0000-0000-000000000010'::uuid, 'd1000000-0000-0000-0000-000000000002'::uuid, 'MUNA', 'The Regency Ballroom', 'San Francisco', date '2025-11-19', 'private'::public.concert_visibility, 'Live Again', timestamptz '2025-11-20 04:00:00+00', array['Silk Chiffon', 'Anything But Me']::text[]),
-    ('d2000000-0000-0000-0000-000000000011'::uuid, 'd1000000-0000-0000-0000-000000000003'::uuid, 'Turnstile', 'The Warfield', 'San Francisco', date '2026-02-02', 'friends'::public.concert_visibility, 'Never Enough Tour', timestamptz '2026-02-03 04:00:00+00', array['BLACKOUT', 'MYSTERY', 'HOLIDAY']::text[]),
-    ('d2000000-0000-0000-0000-000000000012'::uuid, 'd1000000-0000-0000-0000-000000000003'::uuid, 'boygenius', 'Greek Theatre', 'Los Angeles', date '2025-08-15', 'collaborators'::public.concert_visibility, 'The Record Tour', timestamptz '2025-08-16 04:00:00+00', array['Not Strong Enough', 'Satanist', '$20']::text[]),
-    ('d2000000-0000-0000-0000-000000000013'::uuid, 'd1000000-0000-0000-0000-000000000003'::uuid, 'St. Vincent', 'The UC Theatre', 'Berkeley', date '2026-04-02', 'friends'::public.concert_visibility, 'All Born Screaming Tour', timestamptz '2026-04-03 04:00:00+00', array['Broken Man', 'Los Ageless', 'Digital Witness']::text[]),
-    ('d2000000-0000-0000-0000-000000000014'::uuid, 'd1000000-0000-0000-0000-000000000003'::uuid, 'FKA twigs', 'The Regency Ballroom', 'San Francisco', date '2025-06-10', 'private'::public.concert_visibility, 'EUSEXUA Tour', timestamptz '2025-06-11 04:00:00+00', array['Two Weeks', 'Cellophane']::text[]),
-    ('d2000000-0000-0000-0000-000000000015'::uuid, 'd1000000-0000-0000-0000-000000000004'::uuid, 'Charli xcx', 'Chase Center', 'San Francisco', date '2025-09-27', 'friends'::public.concert_visibility, 'BRAT Arena Tour', timestamptz '2025-09-28 04:00:00+00', array['360', 'Von dutch', 'Girl, so confusing']::text[]),
-    ('d2000000-0000-0000-0000-000000000016'::uuid, 'd1000000-0000-0000-0000-000000000004'::uuid, 'Khruangbin', 'The Greek Theatre', 'Berkeley', date '2026-05-20', 'friends'::public.concert_visibility, 'A LA SALA Tour', timestamptz '2026-05-21 04:00:00+00', array['Time (You and I)', 'August 10', 'Friday Morning']::text[]),
-    ('d2000000-0000-0000-0000-000000000017'::uuid, 'd1000000-0000-0000-0000-000000000004'::uuid, 'Fleet Foxes', 'The Masonic', 'San Francisco', date '2025-07-22', 'collaborators'::public.concert_visibility, 'Shore Tour', timestamptz '2025-07-23 04:00:00+00', array['Can I Believe You', 'Mykonos', 'Blue Ridge Mountains']::text[]),
-    ('d2000000-0000-0000-0000-000000000018'::uuid, 'd1000000-0000-0000-0000-000000000004'::uuid, 'Phoebe Bridgers', 'The Greek Theatre', 'Berkeley', date '2025-04-18', 'private'::public.concert_visibility, 'Reunion Tour', timestamptz '2025-04-19 04:00:00+00', array['Kyoto', 'I Know the End']::text[]),
-    ('d2000000-0000-0000-0000-000000000019'::uuid, 'd1000000-0000-0000-0000-000000000005'::uuid, 'Kendrick Lamar', 'Oakland Arena', 'Oakland', date '2026-01-30', 'friends'::public.concert_visibility, 'Grand National Tour', timestamptz '2026-01-31 04:00:00+00', array['DNA.', 'N95', 'HUMBLE.']::text[]),
-    ('d2000000-0000-0000-0000-000000000020'::uuid, 'd1000000-0000-0000-0000-000000000005'::uuid, 'Sampha', 'Bimbo''s 365 Club', 'San Francisco', date '2025-10-20', 'friends'::public.concert_visibility, 'Lahai Tour', timestamptz '2025-10-21 04:00:00+00', array['Spirit 2.0', 'Only', 'Treasure']::text[]),
-    ('d2000000-0000-0000-0000-000000000021'::uuid, 'd1000000-0000-0000-0000-000000000005'::uuid, 'SZA', 'Chase Center', 'San Francisco', date '2026-03-14', 'collaborators'::public.concert_visibility, 'SOS Tour', timestamptz '2026-03-15 04:00:00+00', array['Snooze', 'Kill Bill', 'Good Days']::text[]),
-    ('d2000000-0000-0000-0000-000000000022'::uuid, 'd1000000-0000-0000-0000-000000000006'::uuid, 'Radiohead', 'Bill Graham Civic Auditorium', 'San Francisco', date '2025-12-12', 'friends'::public.concert_visibility, 'The Smile Sessions', timestamptz '2025-12-13 04:00:00+00', array['Paranoid Android', 'Weird Fishes/Arpeggi', 'Karma Police']::text[]),
-    ('d2000000-0000-0000-0000-000000000023'::uuid, 'd1000000-0000-0000-0000-000000000006'::uuid, 'HAIM', 'The Fillmore', 'San Francisco', date '2026-04-25', 'friends'::public.concert_visibility, 'I quit Tour', timestamptz '2026-04-26 04:00:00+00', array['The Steps', 'The Wire', 'Want You Back']::text[]),
-    ('d2000000-0000-0000-0000-000000000024'::uuid, 'd1000000-0000-0000-0000-000000000006'::uuid, 'The xx', 'The Independent', 'San Francisco', date '2025-08-08', 'collaborators'::public.concert_visibility, 'I See You Tour', timestamptz '2025-08-09 04:00:00+00', array['Intro', 'Crystalised', 'On Hold']::text[])
-)
-select * from fixture;
-
-insert into public.concerts (
-    id,
-    owner_id,
-    venue_name,
-    city,
-    concert_date,
-    tour,
-    visibility,
-    created_at,
-    updated_at,
-    last_activity_at,
-    version
-  )
-  select
-    id,
-    owner_id,
-    venue_name,
-    city,
-    concert_date,
-    tour,
-    visibility,
-    created_at,
-    created_at + interval '3 days',
-    created_at + interval '3 days',
-    3
-from seed_concert_fixture;
-
-insert into public.concert_artists (
-    id,
-    concert_id,
-    lineup_position,
-    artist_name,
-    is_primary,
-    created_at,
-    updated_at
-  )
-  select
-    md5('artist:' || id::text)::uuid,
-    id,
-    1,
-    artist_name,
-    true,
-    created_at,
-    created_at
-from seed_concert_fixture;
-
-insert into public.setlist_items (
-    id,
-    concert_id,
-    set_position,
-    song_title,
-    created_at,
-    updated_at
-  )
-  select
-    md5('setlist:' || concert.id::text || ':' || song.ordinality::text)::uuid,
-    concert.id,
-    song.ordinality::smallint,
-    song.title,
-    concert.created_at,
-    concert.created_at
-from seed_concert_fixture as concert
-cross join lateral unnest(concert.setlist) with ordinality as song(title, ordinality);
-
--- Swap identical venue snapshots onto one reusable durable custom place
--- identity. The normal touch trigger records this as part of seed assembly.
-update public.concerts
-set catalog_place_id = 'd3000000-0000-0000-0000-000000000103'
-where id in (
-  'd2000000-0000-0000-0000-000000000006',
-  'd2000000-0000-0000-0000-000000000007'
-);
-drop table seed_concert_fixture;
-end
-$catalog_seed$;
-
-insert into public.concert_collaborators (
-  concert_id,
-  profile_id,
-  tagged_by,
-  created_at,
-  updated_at
-)
-values
-  ('d2000000-0000-0000-0000-000000000004', 'd1000000-0000-0000-0000-000000000002', 'd1000000-0000-0000-0000-000000000001', timestamptz '2026-03-07 05:00:00+00', timestamptz '2026-03-07 05:00:00+00'),
-  ('d2000000-0000-0000-0000-000000000004', 'd1000000-0000-0000-0000-000000000003', 'd1000000-0000-0000-0000-000000000001', timestamptz '2026-03-07 05:01:00+00', timestamptz '2026-03-07 05:01:00+00'),
-  ('d2000000-0000-0000-0000-000000000007', 'd1000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000002', timestamptz '2025-10-05 05:00:00+00', timestamptz '2025-10-05 05:00:00+00'),
-  ('d2000000-0000-0000-0000-000000000008', 'd1000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000002', timestamptz '2026-01-13 05:00:00+00', timestamptz '2026-01-13 05:00:00+00'),
-  ('d2000000-0000-0000-0000-000000000012', 'd1000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000003', timestamptz '2025-08-16 05:00:00+00', timestamptz '2025-08-16 05:00:00+00'),
-  ('d2000000-0000-0000-0000-000000000017', 'd1000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000004', timestamptz '2025-07-23 05:00:00+00', timestamptz '2025-07-23 05:00:00+00'),
-  ('d2000000-0000-0000-0000-000000000021', 'd1000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000005', timestamptz '2026-03-15 05:00:00+00', timestamptz '2026-03-15 05:00:00+00'),
-  ('d2000000-0000-0000-0000-000000000024', 'd1000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000006', timestamptz '2025-08-09 05:00:00+00', timestamptz '2025-08-09 05:00:00+00');
-
-insert into public.comments (id, concert_id, author_id, body, created_at, updated_at)
-select
-  md5('comment:' || key)::uuid,
-  concert_id,
-  author_id,
-  body,
-  created_at,
-  created_at
-from (
-  values
-    ('mitski-owner', 'd2000000-0000-0000-0000-000000000001'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid, 'That encore was unreal.', timestamptz '2025-09-19 05:30:00+00'),
-    ('lcd-morgan', 'd2000000-0000-0000-0000-000000000003'::uuid, 'd1000000-0000-0000-0000-000000000002'::uuid, 'The room lit up for the last song.', timestamptz '2026-02-15 06:00:00+00'),
-    ('national-ava', 'd2000000-0000-0000-0000-000000000004'::uuid, 'd1000000-0000-0000-0000-000000000003'::uuid, 'The horns were perfect from the balcony.', timestamptz '2026-03-07 06:30:00+00'),
-    ('caroline-jules', 'd2000000-0000-0000-0000-000000000005'::uuid, 'd1000000-0000-0000-0000-000000000004'::uuid, 'Still thinking about the opening run.', timestamptz '2026-04-12 06:00:00+00'),
-    ('japanese-listener', 'd2000000-0000-0000-0000-000000000007'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid, 'The set flowed beautifully.', timestamptz '2025-10-05 06:00:00+00'),
-    ('big-thief-listener', 'd2000000-0000-0000-0000-000000000008'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid, 'That closer needed a second listen immediately.', timestamptz '2026-01-13 06:00:00+00'),
-    ('turnstile-riley', 'd2000000-0000-0000-0000-000000000011'::uuid, 'd1000000-0000-0000-0000-000000000005'::uuid, 'The crowd never stopped moving.', timestamptz '2026-02-03 06:00:00+00'),
-    ('boygenius-listener', 'd2000000-0000-0000-0000-000000000012'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid, 'Three voices, one huge room.', timestamptz '2025-08-16 06:00:00+00'),
-    ('charli-morgan', 'd2000000-0000-0000-0000-000000000015'::uuid, 'd1000000-0000-0000-0000-000000000002'::uuid, 'No notes. Maximum energy.', timestamptz '2025-09-28 06:00:00+00'),
-    ('kendrick-listener', 'd2000000-0000-0000-0000-000000000019'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid, 'Every transition landed.', timestamptz '2026-01-31 06:00:00+00'),
-    ('radiohead-listener', 'd2000000-0000-0000-0000-000000000022'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid, 'The guitar line is still in my head.', timestamptz '2025-12-13 06:00:00+00'),
-    ('haim-listener', 'd2000000-0000-0000-0000-000000000023'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid, 'The whole place sang the bridge.', timestamptz '2026-04-26 06:00:00+00')
-) as fixture(key, concert_id, author_id, body, created_at);
-
-insert into public.concert_events (id, concert_id, actor_id, event_type, occurred_at, metadata)
-select
-  md5('event:created:' || id::text)::uuid,
-  id,
-  owner_id,
-  'concert_created'::public.concert_event_type,
-  created_at,
-  '{}'::jsonb
-from public.concerts
-where id between 'd2000000-0000-0000-0000-000000000001'::uuid
-  and 'd2000000-0000-0000-0000-000000000024'::uuid
-union all
-select
-  md5('event:updated:' || id::text)::uuid,
-  id,
-  owner_id,
-  'concert_updated'::public.concert_event_type,
-  created_at + interval '3 days',
-  jsonb_build_object('changed_fields', jsonb_build_array('setlist'))
-from public.concerts
-where id between 'd2000000-0000-0000-0000-000000000001'::uuid
-  and 'd2000000-0000-0000-0000-000000000024'::uuid
-union all
-select
-  md5('event:comment:' || id::text)::uuid,
-  concert_id,
-  author_id,
-  'comment_added'::public.concert_event_type,
-  created_at,
-  '{}'::jsonb
-from public.comments
-where id in (
-  select md5('comment:' || key)::uuid
-  from (
-    values
-      ('mitski-owner'), ('lcd-morgan'), ('national-ava'), ('caroline-jules'),
-      ('japanese-listener'), ('big-thief-listener'), ('turnstile-riley'),
-      ('boygenius-listener'), ('charli-morgan'), ('kendrick-listener'),
-      ('radiohead-listener'), ('haim-listener')
-  ) as seeded_comment(key)
-)
-union all
-select
-  md5('event:' || key)::uuid,
-  concert_id,
-  actor_id,
-  event_type,
-  occurred_at,
-  metadata
-from (
-  values
-    ('tag-national-morgan', 'd2000000-0000-0000-0000-000000000004'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid, 'collaborator_tagged'::public.concert_event_type, timestamptz '2026-03-07 05:00:00+00', '{}'::jsonb),
-    ('tag-national-ava', 'd2000000-0000-0000-0000-000000000004'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid, 'collaborator_tagged'::public.concert_event_type, timestamptz '2026-03-07 05:01:00+00', '{}'::jsonb),
-    ('tag-japanese-listener', 'd2000000-0000-0000-0000-000000000007'::uuid, 'd1000000-0000-0000-0000-000000000002'::uuid, 'collaborator_tagged'::public.concert_event_type, timestamptz '2025-10-05 05:00:00+00', '{}'::jsonb),
-    ('tag-big-thief-listener', 'd2000000-0000-0000-0000-000000000008'::uuid, 'd1000000-0000-0000-0000-000000000002'::uuid, 'collaborator_tagged'::public.concert_event_type, timestamptz '2026-01-13 05:00:00+00', '{}'::jsonb),
-    ('tag-boygenius-listener', 'd2000000-0000-0000-0000-000000000012'::uuid, 'd1000000-0000-0000-0000-000000000003'::uuid, 'collaborator_tagged'::public.concert_event_type, timestamptz '2025-08-16 05:00:00+00', '{}'::jsonb),
-    ('tag-fleet-foxes-listener', 'd2000000-0000-0000-0000-000000000017'::uuid, 'd1000000-0000-0000-0000-000000000004'::uuid, 'collaborator_tagged'::public.concert_event_type, timestamptz '2025-07-23 05:00:00+00', '{}'::jsonb),
-    ('tag-sza-listener', 'd2000000-0000-0000-0000-000000000021'::uuid, 'd1000000-0000-0000-0000-000000000005'::uuid, 'collaborator_tagged'::public.concert_event_type, timestamptz '2026-03-15 05:00:00+00', '{}'::jsonb),
-    ('tag-xx-listener', 'd2000000-0000-0000-0000-000000000024'::uuid, 'd1000000-0000-0000-0000-000000000006'::uuid, 'collaborator_tagged'::public.concert_event_type, timestamptz '2025-08-09 05:00:00+00', '{}'::jsonb),
-    ('visibility-lcd', 'd2000000-0000-0000-0000-000000000003'::uuid, 'd1000000-0000-0000-0000-000000000001'::uuid, 'visibility_changed'::public.concert_event_type, timestamptz '2026-02-15 05:00:00+00', jsonb_build_object('changed_fields', jsonb_build_array('visibility'))),
-    ('visibility-japanese', 'd2000000-0000-0000-0000-000000000007'::uuid, 'd1000000-0000-0000-0000-000000000002'::uuid, 'visibility_changed'::public.concert_event_type, timestamptz '2025-10-05 05:20:00+00', jsonb_build_object('changed_fields', jsonb_build_array('visibility'))),
-    ('visibility-turnstile', 'd2000000-0000-0000-0000-000000000011'::uuid, 'd1000000-0000-0000-0000-000000000003'::uuid, 'visibility_changed'::public.concert_event_type, timestamptz '2026-02-03 05:20:00+00', jsonb_build_object('changed_fields', jsonb_build_array('visibility'))),
-    ('visibility-charli', 'd2000000-0000-0000-0000-000000000015'::uuid, 'd1000000-0000-0000-0000-000000000004'::uuid, 'visibility_changed'::public.concert_event_type, timestamptz '2025-09-28 05:20:00+00', jsonb_build_object('changed_fields', jsonb_build_array('visibility'))),
-    ('visibility-kendrick', 'd2000000-0000-0000-0000-000000000019'::uuid, 'd1000000-0000-0000-0000-000000000005'::uuid, 'visibility_changed'::public.concert_event_type, timestamptz '2026-01-31 05:20:00+00', jsonb_build_object('changed_fields', jsonb_build_array('visibility')))
-) as fixture(key, concert_id, actor_id, event_type, occurred_at, metadata);

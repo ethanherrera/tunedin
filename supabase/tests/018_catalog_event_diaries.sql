@@ -1,6 +1,6 @@
 begin;
 
-select plan(44);
+select plan(41);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -199,20 +199,6 @@ select throws_ok(
   '23503', null,
   'a linked Went record cannot be deleted before its diary'
 );
-reset role;
-select throws_ok(
-  format(
-    'insert into public.concert_collaborators (concert_id, profile_id, tagged_by) values (%L, %L, %L)',
-    current_setting('test.diary_id'),
-    'e5000000-0000-4000-8000-000000000002',
-    'e5000000-0000-4000-8000-000000000001'
-  ),
-  '23514', null,
-  'personal diaries cannot gain collaborators even through a privileged write'
-);
-set local role authenticated;
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select set_config('request.jwt.claim.sub', 'e5000000-0000-4000-8000-000000000001', true);
 
 select set_config('request.jwt.claim.sub', 'e5000000-0000-4000-8000-000000000002', true);
 select is(
@@ -440,35 +426,6 @@ select is(
   ) where history_kind = 'diary'),
   1::bigint,
   'profile history exposes a visible personal diary separately'
-);
-
-select set_config('request.jwt.claim.sub', 'e5000000-0000-4000-8000-000000000001', true);
-select set_config('test.legacy_concert_id', (
-  select id::text from public.create_private_concert_v2(
-    jsonb_build_array(jsonb_build_object(
-      'catalog_artist_id', current_setting('test.diary_artist'),
-      'is_primary', true
-    )),
-    current_setting('test.diary_place')::uuid,
-    current_date - 20,
-    null,
-    null,
-    null,
-    '[]'::jsonb
-  )
-), true);
-select is(
-  (select record_model::text from public.concerts
-   where id = current_setting('test.legacy_concert_id')::uuid),
-  'legacy_shared',
-  'existing concert creation continues to produce legacy shared records'
-);
-select is(
-  (select count(*) from public.profile_concert_history(
-    'e5000000-0000-4000-8000-000000000001'
-  )),
-  1::bigint,
-  'the legacy archive excludes personal diaries shown in the new profile sections'
 );
 
 select * from finish();

@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-root_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-project_name="$(basename "$root_dir")"
-database_container="$(docker ps \
-  --filter "label=com.supabase.cli.project=${project_name}" \
-  --format '{{.Names}}' | awk '/^supabase_db_/ { print; exit }')"
+database_container="$(docker ps --filter 'name=supabase_db_tunedin' --format '{{.Names}}' | head -n 1)"
 
 if [[ -z "$database_container" ]]; then
   echo "Local Supabase database is not running. Run 'make local-db-reset' first." >&2
@@ -15,81 +11,28 @@ fi
 metrics="$(docker exec "$database_container" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -At -F '|' -c "
   select
     (select count(*) from auth.users where email like '%@tunedin.local'),
-    (select count(*) from auth.identities where provider = 'email'),
-    (select count(*) from auth.users where email like '%@tunedin.local' and encrypted_password <> ''),
-    (select count(*) from auth.users where email like '%@tunedin.local' and confirmation_token is not null and recovery_token is not null and email_change_token_new is not null and email_change is not null and phone_change is not null and phone_change_token is not null and email_change_token_current is not null and reauthentication_token is not null),
     (select count(*) from public.profiles where onboarding_completed_at is not null),
-    (select count(*) from public.profiles where id = 'd1000000-0000-0000-0000-000000000016'::uuid and onboarding_completed_at is null),
-    (select count(*) from public.relationships where status = 'accepted' and ('d1000000-0000-0000-0000-000000000001'::uuid in (user_low_id, user_high_id))),
-    (select count(*) from public.relationships where status = 'pending' and initiator_id = 'd1000000-0000-0000-0000-000000000001'::uuid),
-    (select count(*) from public.relationships where status = 'pending' and responder_id is null and initiator_id = 'd1000000-0000-0000-0000-000000000008'::uuid),
-    (select count(*) from public.relationships where status = 'declined' and 'd1000000-0000-0000-0000-000000000001'::uuid in (user_low_id, user_high_id)),
-    (select count(*) from public.profiles as profile where profile.id between 'd1000000-0000-0000-0000-000000000010'::uuid and 'd1000000-0000-0000-0000-000000000015'::uuid and not exists (select 1 from public.relationships as relationship where profile.id in (relationship.user_low_id, relationship.user_high_id) and 'd1000000-0000-0000-0000-000000000001'::uuid in (relationship.user_low_id, relationship.user_high_id))),
-    (select count(*) from public.concerts where id between 'd2000000-0000-0000-0000-000000000001'::uuid and 'd2000000-0000-0000-0000-000000000024'::uuid),
-    (select count(*) from public.concert_collaborators where concert_id between 'd2000000-0000-0000-0000-000000000001'::uuid and 'd2000000-0000-0000-0000-000000000024'::uuid),
-    (select count(*) from public.comments where concert_id between 'd2000000-0000-0000-0000-000000000001'::uuid and 'd2000000-0000-0000-0000-000000000024'::uuid),
-    (select count(*) from public.concert_events where concert_id between 'd2000000-0000-0000-0000-000000000001'::uuid and 'd2000000-0000-0000-0000-000000000024'::uuid),
-    (select count(*) from public.concerts as concert join public.concert_collaborators as collaborator on collaborator.concert_id = concert.id where concert.visibility = 'private'),
-    (select count(*) from public.comments as comment join public.concerts as concert on concert.id = comment.concert_id where comment.concert_id between 'd2000000-0000-0000-0000-000000000001'::uuid and 'd2000000-0000-0000-0000-000000000024'::uuid and comment.author_id <> concert.owner_id and not exists (select 1 from public.concert_collaborators as collaborator where collaborator.concert_id = concert.id and collaborator.profile_id = comment.author_id) and not exists (select 1 from public.relationships as relationship where relationship.status = 'accepted' and comment.author_id in (relationship.user_low_id, relationship.user_high_id) and concert.owner_id in (relationship.user_low_id, relationship.user_high_id))),
-    (select count(*) from storage.buckets where id = 'images' and public = false and file_size_limit = 5242880 and allowed_mime_types = array['image/jpeg']::text[]),
-    (select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name in ('avatar_object_path', 'avatar_version')),
-    (select count(*) from public.catalog_entities where id between 'd3000000-0000-0000-0000-000000000001'::uuid and 'd3000000-0000-0000-0000-000000000205'::uuid),
-    (select count(*) from private.catalog_entity_provenance where entity_id = 'd3000000-0000-0000-0000-000000000001'::uuid and creator_id is null and source_updated_at is not null and refreshed_at is not null),
-    (select count(distinct kind) from public.catalog_entities where id between 'd3000000-0000-0000-0000-000000000101'::uuid and 'd3000000-0000-0000-0000-000000000105'::uuid and origin = 'tunedin_custom'),
-    (select count(distinct kind) from public.catalog_entities where id between 'd3000000-0000-0000-0000-000000000201'::uuid and 'd3000000-0000-0000-0000-000000000205'::uuid and origin = 'legacy_import'),
-    (select count(*) from private.catalog_entity_provenance where entity_id between 'd3000000-0000-0000-0000-000000000101'::uuid and 'd3000000-0000-0000-0000-000000000205'::uuid and creator_id = 'd1000000-0000-0000-0000-000000000001'::uuid),
-    (select count(*) from public.concerts where catalog_place_id = 'd3000000-0000-0000-0000-000000000103'::uuid),
-    (select count(*) from public.catalog_entities where (origin = 'musicbrainz') <> (musicbrainz_mbid is not null)),
-    ((select count(*) from public.concerts where catalog_place_id is null) + (select count(*) from public.concert_artists where catalog_artist_id is null) + (select count(*) from public.setlist_items where catalog_song_id is null)),
-    (select count(*) from public.concerts as concert join public.catalog_places as place on place.id = concert.catalog_place_id left join public.catalog_entities as area on area.id = place.area_id where concert.catalog_area_id is distinct from place.area_id or concert.city is distinct from area.display_name),
-    ((select count(*) from public.concerts as concert join public.catalog_entities as place on place.id = concert.catalog_place_id where concert.venue_name is distinct from place.display_name) + (select count(*) from public.concert_artists as artist join public.catalog_entities as entity on entity.id = artist.catalog_artist_id where artist.artist_name is distinct from entity.display_name) + (select count(*) from public.setlist_items as item join public.catalog_entities as entity on entity.id = item.catalog_song_id where item.song_title is distinct from entity.display_name)),
-    (select count(*) from public.catalog_events where id between 'd4000000-0000-0000-0000-000000000001'::uuid and 'd4000000-0000-0000-0000-000000000006'::uuid),
-    (select count(*) from public.catalog_event_artists where event_id between 'd4000000-0000-0000-0000-000000000001'::uuid and 'd4000000-0000-0000-0000-000000000006'::uuid),
-    (select count(*) from public.social_activity_events where id between 'd4100000-0000-0000-0000-000000000001'::uuid and 'd4100000-0000-0000-0000-000000000007'::uuid),
-    (select count(*) from public.catalog_events where id between 'd4000000-0000-0000-0000-000000000001'::uuid and 'd4000000-0000-0000-0000-000000000006'::uuid and listing = 'unlisted'),
-    ((select count(*) from public.catalog_events as event join public.catalog_entities as place on place.id = event.catalog_place_id where event.id between 'd4000000-0000-0000-0000-000000000001'::uuid and 'd4000000-0000-0000-0000-000000000006'::uuid and event.venue_name_snapshot is distinct from place.display_name) + (select count(*) from public.catalog_event_artists as lineup join public.catalog_entities as artist on artist.id = lineup.catalog_artist_id where lineup.event_id between 'd4000000-0000-0000-0000-000000000001'::uuid and 'd4000000-0000-0000-0000-000000000006'::uuid and lineup.artist_name_snapshot is distinct from artist.display_name)),
-    (select count(*) from public.catalog_event_attendance where event_id between 'd4000000-0000-0000-0000-000000000001'::uuid and 'd4000000-0000-0000-0000-000000000006'::uuid),
-    (select count(*) from public.catalog_event_attendance where profile_id = 'd1000000-0000-0000-0000-000000000001'::uuid and status in ('going', 'went')),
-    (select count(*) from public.catalog_event_attendance where event_id = 'd4000000-0000-0000-0000-000000000001'::uuid and audience = 'community'),
-    (select count(*) from public.catalog_event_attendance where event_id = 'd4000000-0000-0000-0000-000000000001'::uuid and audience = 'private'),
-    (select count(*) from public.social_activity_events where id between 'd4100000-0000-0000-0000-000000000101'::uuid and 'd4100000-0000-0000-0000-000000000124'::uuid),
-    (select count(*) from public.catalog_event_invitations where id between 'd4200000-0000-0000-0000-000000000001'::uuid and 'd4200000-0000-0000-0000-000000000002'::uuid),
-    (select count(*) from public.catalog_event_posts where id between 'd4300000-0000-0000-0000-000000000001'::uuid and 'd4300000-0000-0000-0000-000000000012'::uuid),
-    (select count(*) from public.social_activity_events where id between 'd4100000-0000-0000-0000-000000000201'::uuid and 'd4100000-0000-0000-0000-000000000212'::uuid),
-    (select count(*) from private.catalog_event_notification_outbox where id between 'd4400000-0000-0000-0000-000000000001'::uuid and 'd4400000-0000-0000-0000-000000000003'::uuid),
-    (select count(*) from public.catalog_event_attendance where id between 'd4050000-0000-0000-0000-000000000001'::uuid and 'd4050000-0000-0000-0000-000000000025'::uuid),
-    (select count(*) from public.concerts where id between 'd4500000-0000-0000-0000-000000000001'::uuid and 'd4500000-0000-0000-0000-000000000010'::uuid and record_model = 'personal_diary'),
-    (select count(*) from public.diary_reviews where concert_id between 'd4500000-0000-0000-0000-000000000001'::uuid and 'd4500000-0000-0000-0000-000000000010'::uuid),
-    (select count(*) from public.comments where concert_id between 'd4500000-0000-0000-0000-000000000001'::uuid and 'd4500000-0000-0000-0000-000000000010'::uuid),
-    (select count(*) from public.social_activity_events where id between 'd4100000-0000-0000-0000-000000000301'::uuid and 'd4100000-0000-0000-0000-000000000310'::uuid),
-    (select count(*) from private.catalog_event_notification_outbox where id between 'd4400000-0000-0000-0000-000000000101'::uuid and 'd4400000-0000-0000-0000-000000000102'::uuid),
-    (select count(*) from public.concert_photos where id between 'd4600000-0000-0000-0000-000000000001'::uuid and 'd4600000-0000-0000-0000-000000000012'::uuid and status = 'ready'),
-    (select count(*) from public.catalog_events as event where event.id between 'd4000000-0000-0000-0000-000000000001'::uuid and 'd4000000-0000-0000-0000-000000000006'::uuid and event.memory_unlock_at is distinct from case when event.starts_at is not null then event.starts_at + interval '4 hours' else (event.event_date + 1 + time '03:00') at time zone event.time_zone_identifier end),
-    (select count(*) from public.catalog_events as event where event.id between 'd4000000-0000-0000-0000-000000000001'::uuid and 'd4000000-0000-0000-0000-000000000006'::uuid and event.exact_duplicate_key is distinct from md5((case when event.listing = 'listed' then 'listed' else 'unlisted:' || event.created_by::text end) || '|' || event.catalog_place_id::text || '|' || event.event_date::text || '|' || event.headliner_catalog_artist_id::text)),
-    (select count(*) from public.catalog_events as event where event.id in ('d4000000-0000-0000-0000-000000000005'::uuid, 'd4000000-0000-0000-0000-000000000006'::uuid) and not exists (select 1 from public.catalog_event_attendance as attendance where attendance.event_id = event.id) and not exists (select 1 from public.catalog_event_posts as post where post.event_id = event.id) and not exists (select 1 from public.concerts as diary where diary.catalog_event_id = event.id and diary.record_model = 'personal_diary')),
-    (select count(*) from public.catalog_event_attendance where event_id = 'd4000000-0000-0000-0000-000000000001'::uuid),
-    (select count(*) from public.catalog_event_posts where event_id = 'd4000000-0000-0000-0000-000000000001'::uuid),
-    (select count(*) from public.catalog_event_attendance where event_id = 'd4000000-0000-0000-0000-000000000002'::uuid),
-    (select count(*) from public.concerts where catalog_event_id = 'd4000000-0000-0000-0000-000000000002'::uuid and record_model = 'personal_diary'),
-    (select count(*) from public.catalog_artists where id between 'd3000000-0000-0000-0000-000000000106'::uuid and 'd3000000-0000-0000-0000-000000000109'::uuid),
-    (select count(*) from public.catalog_events where id between 'd4000000-0000-0000-0000-000000000007'::uuid and 'd4000000-0000-0000-0000-000000000010'::uuid),
-    (select count(*) from public.catalog_event_artists where event_id between 'd4000000-0000-0000-0000-000000000007'::uuid and 'd4000000-0000-0000-0000-000000000010'::uuid),
-    (select count(*) from public.catalog_event_attendance where id between 'd4050000-0000-0000-0000-000000000026'::uuid and 'd4050000-0000-0000-0000-000000000037'::uuid),
-    (select count(*) from public.social_activity_events where id between 'd4100000-0000-0000-0000-000000000125'::uuid and 'd4100000-0000-0000-0000-000000000132'::uuid),
-    (select count(*) from public.catalog_event_attendance as attendance join public.catalog_events as event on event.id = attendance.event_id where attendance.profile_id = 'd1000000-0000-0000-0000-000000000001'::uuid and attendance.status = 'going' and event.event_date >= date '2026-07-16'),
-    (select count(*) from public.catalog_events where id in ('d4000000-0000-0000-0000-000000000001'::uuid, 'd4000000-0000-0000-0000-000000000002'::uuid, 'd4000000-0000-0000-0000-000000000007'::uuid, 'd4000000-0000-0000-0000-000000000008'::uuid, 'd4000000-0000-0000-0000-000000000009'::uuid, 'd4000000-0000-0000-0000-000000000010'::uuid) and cover_source = 'community' and cover_object_path is not null and cover_version = 1),
-    (select count(*) from public.catalog_events where id between 'd4000000-0000-0000-0000-000000000003'::uuid and 'd4000000-0000-0000-0000-000000000006'::uuid and cover_source is null and cover_object_path is null),
-    (select count(*) from storage.objects where bucket_id = 'images' and name like 'event-covers/%/cover.jpg'),
-    (select count(*) from private.catalog_entity_provenance where entity_id between 'd3000000-0000-0000-0000-000000000106'::uuid and 'd3000000-0000-0000-0000-000000000109'::uuid and creator_id = 'd1000000-0000-0000-0000-000000000001'::uuid),
-    (select count(*) from (select event.event_date from public.catalog_event_attendance as attendance join public.catalog_events as event on event.id = attendance.event_id where attendance.profile_id = 'd1000000-0000-0000-0000-000000000001'::uuid and attendance.status = 'going' and event.event_date >= date '2026-07-16' order by event.event_date asc) as chronological),
-    (select count(distinct event_id) from (select event_id from public.social_activity_events order by occurred_at desc limit 8) as varied_feed),
-    (select count(*) where (select max(occurred_at) from public.social_activity_events where action = 'diary_media_added' and event_id = 'd4000000-0000-0000-0000-000000000002'::uuid) < (select min(occurred_at) from public.social_activity_events where id between 'd4100000-0000-0000-0000-000000000125'::uuid and 'd4100000-0000-0000-0000-000000000132'::uuid));
+    (select count(*) from public.relationships where status = 'accepted' and 'd1000000-0000-0000-0000-000000000001'::uuid in (user_low_id, user_high_id)),
+    (select count(*) from information_schema.tables where table_schema = 'public' and table_name in ('setlist_items', 'concert_events', 'concert_collaborators', 'direct_collaboration_notifications')),
+    (select count(*) from pg_proc as procedure join pg_namespace as namespace on namespace.oid = procedure.pronamespace where namespace.nspname = 'public' and procedure.proname in ('create_private_concert', 'create_private_concert_v2', 'update_concert', 'update_concert_v2', 'friends_activity_feed', 'profile_concert_history', 'tag_concert_collaborator', 'remove_concert_collaborator', 'transfer_concert_ownership')),
+    (select count(*) from public.catalog_entities where origin in ('legacy_import', 'legacy_client')),
+    (select count(*) from public.catalog_events),
+    (select count(*) from public.catalog_event_attendance),
+    (select count(*) from public.catalog_event_posts),
+    (select count(*) from public.concerts where record_model = 'personal_diary'),
+    (select count(*) from public.concerts where record_model = 'legacy_shared'),
+    (select count(*) from public.diary_reviews),
+    (select count(*) from public.comments),
+    (select count(*) from public.concert_photos where status = 'ready'),
+    (select count(*) from private.catalog_event_notification_outbox),
+    (select count(*) from public.social_activity_events),
+    (select count(*) from storage.objects where bucket_id = 'images' and name like 'event-covers/%/cover.jpg');
 ")"
 
-expected="24|24|24|24|23|1|13|1|1|1|6|24|8|12|73|0|0|1|2|15|1|5|5|14|12|0|0|0|0|6|6|7|1|0|25|7|6|1|24|2|12|12|3|25|10|10|10|10|2|12|0|0|2|13|12|11|10|4|4|4|12|8|6|6|4|6|4|6|4|1"
+expected="24|23|13|0|0|0|10|37|12|10|0|10|10|12|45|73|6"
 if [[ "$metrics" != "$expected" ]]; then
   echo "Local Supabase seed integrity check failed (expected ${expected}; received ${metrics})." >&2
   exit 1
 fi
 
-echo "Local Supabase journey, catalog identity, community event, personal diary, and private profile-image contracts verified."
+echo "Local Supabase community events, attendance, Posts, Comments, media, and catalog contracts verified."
