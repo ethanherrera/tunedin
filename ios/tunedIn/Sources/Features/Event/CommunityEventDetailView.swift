@@ -90,7 +90,7 @@ struct CommunityEventDetailView: View {
                 onPostAdded: { Task { await load() } }
               )
             case .people:
-              EventPeoplePage(detail: detail)
+              EventPeoplePage(detail: detail, viewerID: viewerID)
             case .memories:
               EventMemoriesPage(
                 detail: detail,
@@ -175,7 +175,7 @@ struct CommunityEventDetailView: View {
       }
       .frame(maxWidth: CGFloat(availablePages.count * 84))
     } trailing: {
-      if repository.capabilities.contains(.invitations) {
+      if canInvite {
         TunedInGlassIconButton(
           systemImage: "paperplane",
           accessibilityLabel: "Invite friends"
@@ -197,6 +197,12 @@ struct CommunityEventDetailView: View {
       pages.append(.memories)
     }
     return pages
+  }
+
+  private var canInvite: Bool {
+    guard repository.capabilities.contains(.invitations), let detail else { return false }
+    let phase = detail.summary.phase()
+    return phase == .upcoming || phase == .postponed
   }
 
   @MainActor
@@ -251,21 +257,35 @@ private struct CommunityEventHero: View {
   @State private var audience = EventAudience.friends
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 18) {
-      HStack(alignment: .top, spacing: 16) {
-        EventDateTile(date: detail.summary.eventDate)
-        VStack(alignment: .leading, spacing: 6) {
-          Text(detail.summary.title)
-            .font(.system(.title, design: .rounded, weight: .bold))
-            .foregroundStyle(TunedInDesign.primaryText)
-          Text("\(detail.summary.venueName) · \(detail.summary.areaName)")
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(TunedInDesign.mutedText)
-          phaseLabel
-        }
+    VStack(alignment: .leading, spacing: 16) {
+      HStack(alignment: .firstTextBaseline, spacing: 12) {
+        Text(CommunityEventDateText.fullDate(detail.summary.eventDate))
+          .font(.caption.weight(.bold))
+          .textCase(.uppercase)
+          .foregroundStyle(TunedInDesign.primaryText)
+        Spacer()
+        phaseBadge
       }
 
-      Divider().overlay(TunedInDesign.cardBorder)
+      Spacer(minLength: 18)
+
+      VStack(alignment: .leading, spacing: 6) {
+        Text(detail.summary.title)
+          .font(.system(.largeTitle, design: .rounded, weight: .bold))
+          .foregroundStyle(TunedInDesign.primaryText)
+        Text("\(detail.summary.venueName) · \(detail.summary.areaName)")
+          .font(.body.weight(.medium))
+          .foregroundStyle(TunedInDesign.mutedText)
+      }
+
+      if !detail.summary.friendPreviews.isEmpty {
+        HStack(spacing: 10) {
+          EventAvatarStack(profiles: detail.summary.friendPreviews.map(\.profile))
+          Text(friendLine)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(TunedInDesign.primaryText)
+        }
+      }
 
       if allowsAttendance, detail.summary.phase() == .cancelled {
         cancelledAttendanceControl
@@ -323,19 +343,27 @@ private struct CommunityEventHero: View {
         }
       }
 
-      if !detail.summary.friendPreviews.isEmpty {
-        HStack(spacing: 10) {
-          EventAvatarStack(profiles: detail.summary.friendPreviews.map(\.profile))
-          Text(friendLine)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(TunedInDesign.primaryText)
+      HStack(spacing: 8) {
+        if let startsAt = detail.summary.startsAt {
+          Label(
+            CommunityEventDateText.time(
+              startsAt,
+              timeZoneIdentifier: detail.summary.timeZoneIdentifier
+            ),
+            systemImage: "clock"
+          )
         }
+        Spacer()
+        Text(detail.summary.sourceLabel)
       }
+      .font(.caption2.weight(.semibold))
+      .foregroundStyle(TunedInDesign.mutedText)
     }
-    .padding(18)
+    .padding(20)
+    .frame(maxWidth: .infinity, minHeight: 280, alignment: .bottomLeading)
     .background(
       LinearGradient(
-        colors: [TunedInDesign.accentTint, TunedInDesign.cardBackground],
+        colors: [TunedInDesign.accent.opacity(0.4), TunedInDesign.accentTint, TunedInDesign.cardBackground],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
       ),
@@ -394,12 +422,12 @@ private struct CommunityEventHero: View {
     if detail.summary.phase() == .memories {
       switch detail.summary.currentUserAttendance {
       case .going: return "Confirm attendance"
-      case .went: return "I went"
-      case .didNotGo: return "I didn’t go"
-      case nil: return "Add to my history"
+      case .went: return "Went"
+      case .didNotGo: return "Didn’t go"
+      case nil: return "Add attendance"
       }
     }
-    return detail.summary.currentUserAttendance == nil ? "I’m going" : "Added to my plans"
+    return detail.summary.currentUserAttendance == nil ? "I’m going" : "Going"
   }
 
   private var attendanceIcon: String {
@@ -420,11 +448,10 @@ private struct CommunityEventHero: View {
   }
 
   @ViewBuilder
-  private var phaseLabel: some View {
+  private var phaseBadge: some View {
     switch detail.summary.phase() {
     case .upcoming:
-      Label(detail.summary.sourceLabel, systemImage: "person.3.fill")
-        .foregroundStyle(TunedInDesign.accent)
+      EmptyView()
     case .postponed:
       Label("Postponed", systemImage: "clock.badge.exclamationmark")
         .foregroundStyle(TunedInDesign.accent)
@@ -432,7 +459,7 @@ private struct CommunityEventHero: View {
       Label("Cancelled", systemImage: "xmark.circle.fill")
         .foregroundStyle(TunedInDesign.accent)
     case .memories:
-      Label("Memories unlocked", systemImage: "sparkles")
+      Label("Memories", systemImage: "sparkles")
         .foregroundStyle(TunedInDesign.accent)
     }
   }
@@ -440,12 +467,13 @@ private struct CommunityEventHero: View {
   private var friendLine: String {
     let names = detail.summary.friendPreviews.prefix(2).map { $0.profile.displayName }
     let total = detail.summary.friendPreviews.count
+    let verb = detail.summary.phase() == .memories ? "went" : "are going"
     if total == 1, let name = names.first {
-      return name + " is going"
+      return detail.summary.phase() == .memories ? name + " went" : name + " is going"
     }
     let remainder = total - names.count
     return names.joined(separator: " and ")
-      + (remainder > 0 ? " + \(remainder) more are going" : " are going")
+      + (remainder > 0 ? " + \(remainder) more \(verb)" : " \(verb)")
   }
 }
 
@@ -462,106 +490,120 @@ private struct EventOverviewPage: View {
   @State private var replyTo: EventPost?
   @State private var isPosting = false
   @State private var errorMessage: String?
+  @State private var isShowingDetails = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 18) {
-      TunedInFormCard {
-        Label("Event details", systemImage: "calendar")
+      DisclosureGroup(isExpanded: $isShowingDetails) {
+        VStack(alignment: .leading, spacing: 12) {
+          EventMetadataRow(label: "Date", value: CommunityEventDateText.fullDate(detail.summary.eventDate))
+          if let startsAt = detail.summary.startsAt {
+            EventMetadataRow(
+              label: "Starts",
+              value: CommunityEventDateText.time(
+                startsAt,
+                timeZoneIdentifier: detail.summary.timeZoneIdentifier
+              )
+            )
+          }
+          EventMetadataRow(label: "Venue", value: detail.summary.venueName)
+          EventMetadataRow(label: "Location", value: detail.summary.areaName)
+          EventMetadataRow(label: "Source", value: detail.summary.sourceLabel)
+
+          Button(action: onReport) {
+            Label("Suggest a correction", systemImage: "exclamationmark.bubble")
+              .font(.subheadline.weight(.semibold))
+              .foregroundStyle(TunedInDesign.primaryText)
+          }
+          .buttonStyle(.plain)
+        }
+        .padding(.top, 12)
+      } label: {
+        Label("Details", systemImage: "info.circle")
           .font(.headline)
           .foregroundStyle(TunedInDesign.primaryText)
-        EventMetadataRow(label: "Date", value: CommunityEventDateText.fullDate(detail.summary.eventDate))
-        if let startsAt = detail.summary.startsAt {
-          EventMetadataRow(
-            label: "Starts",
-            value: CommunityEventDateText.time(
-              startsAt,
-              timeZoneIdentifier: detail.summary.timeZoneIdentifier
-            )
-          )
-        }
-        EventMetadataRow(label: "Venue", value: detail.summary.venueName)
-        EventMetadataRow(label: "Location", value: detail.summary.areaName)
-        EventMetadataRow(label: "Source", value: detail.summary.sourceLabel)
-
-        Divider()
-        Button(action: onReport) {
-          Label("Suggest a correction", systemImage: "exclamationmark.bubble")
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(TunedInDesign.primaryText)
-        }
-        .buttonStyle(.plain)
       }
+      .tint(TunedInDesign.mutedText)
+      .padding(.vertical, 2)
 
       if allowsConversation {
         VStack(alignment: .leading, spacing: 12) {
-        Text(detail.summary.phase() == .memories ? "What people remember" : "Before the show")
-          .font(.headline)
-          .foregroundStyle(TunedInDesign.primaryText)
+          Text("Before the show")
+            .font(.headline)
+            .foregroundStyle(TunedInDesign.primaryText)
 
-        if detail.summary.phase() != .memories {
-          if let replyTo {
-            HStack(spacing: 8) {
-              Image(systemName: "arrowshape.turn.up.left.fill")
-              Text("Replying to \(replyTo.author.displayName)")
-                .lineLimit(1)
-              Spacer()
-              Button("Cancel") { self.replyTo = nil }
-            }
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(TunedInDesign.mutedText)
+          if detail.summary.phase() == .memories {
+            Text("This thread is read-only now. Post-show stories live in each person’s diary.")
+              .font(.caption)
+              .foregroundStyle(TunedInDesign.mutedText)
           }
-          HStack(spacing: 8) {
-            TextField(
-              replyTo == nil ? "What are you excited for?" : "Write a reply…",
-              text: $comment,
-              axis: .vertical
-            )
+
+          if detail.summary.phase() != .memories {
+            if let replyTo {
+              HStack(spacing: 8) {
+                Image(systemName: "arrowshape.turn.up.left.fill")
+                Text("Replying to \(replyTo.author.displayName)")
+                  .lineLimit(1)
+                Spacer()
+                Button("Cancel") { self.replyTo = nil }
+              }
+              .font(.caption.weight(.semibold))
+              .foregroundStyle(TunedInDesign.mutedText)
+            }
+            HStack(spacing: 8) {
+              TextField(
+                replyTo == nil ? "What are you excited for?" : "Write a reply…",
+                text: $comment,
+                axis: .vertical
+              )
               .lineLimit(1 ... 4)
               .padding(12)
               .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 14))
 
-            Menu {
-              ForEach([EventAudience.friends, .community], id: \.self) { option in
-                Button(option.title) {
-                  audience = option
-                  rememberPostAudience(option)
+              Menu {
+                ForEach([EventAudience.friends, .community], id: \.self) { option in
+                  Button(option.title) {
+                    audience = option
+                    rememberPostAudience(option)
+                  }
                 }
+              } label: {
+                Image(systemName: audience == .friends ? "person.2.fill" : "globe.americas.fill")
+                  .foregroundStyle(TunedInDesign.primaryText)
+                  .frame(width: 42, height: 42)
               }
-            } label: {
-              Image(systemName: audience == .friends ? "person.2.fill" : "globe.americas.fill")
-                .foregroundStyle(TunedInDesign.primaryText)
-                .frame(width: 42, height: 42)
+
+              Button { Task { await post() } } label: {
+                Image(systemName: "arrow.up.circle.fill")
+                  .font(.title2)
+                  .foregroundStyle(comment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    ? TunedInDesign.mutedText : TunedInDesign.accent)
+              }
+              .disabled(isPosting || comment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
+          }
 
-            Button { Task { await post() } } label: {
-              Image(systemName: "arrow.up.circle.fill")
-                .font(.title2)
-                .foregroundStyle(comment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                  ? TunedInDesign.mutedText : TunedInDesign.accent)
+          if let errorMessage {
+            Text(errorMessage).font(.caption).foregroundStyle(TunedInDesign.accent)
+          }
+
+          if detail.posts.isEmpty {
+            Text(detail.summary.phase() == .memories
+              ? "No one posted before the show."
+              : "Be the first to say what you’re excited for.")
+              .font(.subheadline)
+              .foregroundStyle(TunedInDesign.mutedText)
+              .padding(.vertical, 12)
+          } else {
+            ForEach(detail.posts.sorted(by: { $0.createdAt < $1.createdAt })) { post in
+              EventPostRow(
+                post: post,
+                onReply: detail.summary.phase() != .memories && post.parentPostID == nil && !post.isDeleted
+                  ? { replyTo = post }
+                  : nil
+              )
             }
-            .disabled(isPosting || comment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
           }
-        }
-
-        if let errorMessage {
-          Text(errorMessage).font(.caption).foregroundStyle(TunedInDesign.accent)
-        }
-
-        if detail.posts.isEmpty {
-          Text("No comments yet. Start the conversation with your friends.")
-            .font(.subheadline)
-            .foregroundStyle(TunedInDesign.mutedText)
-            .padding(.vertical, 12)
-        } else {
-          ForEach(detail.posts.sorted(by: { $0.createdAt < $1.createdAt })) { post in
-            EventPostRow(
-              post: post,
-              onReply: post.parentPostID == nil && !post.isDeleted
-                ? { replyTo = post }
-                : nil
-            )
-          }
-        }
         }
       }
     }
@@ -606,6 +648,7 @@ private struct EventOverviewPage: View {
 
 private struct EventPeoplePage: View {
   let detail: CommunityEventDetail
+  let viewerID: UUID
 
   var body: some View {
     VStack(alignment: .leading, spacing: 18) {
@@ -620,24 +663,52 @@ private struct EventPeoplePage: View {
           message: "Private attendance stays private. Friends and community plans appear here."
         )
       } else {
-        ForEach(detail.attendances) { attendance in
-          HStack(spacing: 12) {
-            ProfileAvatarView(profile: attendance.profile, size: 46)
-            VStack(alignment: .leading, spacing: 3) {
-              Text(attendance.profile.displayName)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(TunedInDesign.primaryText)
-              Text("@\(attendance.profile.username) · \(attendance.status.title)")
-                .font(.caption)
-                .foregroundStyle(TunedInDesign.mutedText)
-            }
-            Spacer()
-            Image(systemName: attendance.audience.icon)
+        if !circleAttendances.isEmpty {
+          attendeeSection(title: "You & friends", attendances: circleAttendances)
+        }
+        if !communityAttendances.isEmpty {
+          attendeeSection(title: "Community", attendances: communityAttendances)
+        }
+      }
+    }
+  }
+
+  private var circleAttendances: [EventAttendance] {
+    detail.attendances.filter {
+      $0.profile.id == viewerID || $0.profile.relationship == .friends
+    }
+  }
+
+  private var communityAttendances: [EventAttendance] {
+    detail.attendances.filter {
+      $0.profile.id != viewerID && $0.profile.relationship != .friends
+    }
+  }
+
+  private func attendeeSection(title: String, attendances: [EventAttendance]) -> some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text(title)
+        .font(.subheadline.weight(.bold))
+        .foregroundStyle(TunedInDesign.mutedText)
+        .padding(.bottom, 4)
+
+      ForEach(attendances) { attendance in
+        HStack(spacing: 12) {
+          ProfileAvatarView(profile: attendance.profile, size: 46)
+          VStack(alignment: .leading, spacing: 3) {
+            Text(attendance.profile.id == viewerID ? "You" : attendance.profile.displayName)
+              .font(.body.weight(.semibold))
+              .foregroundStyle(TunedInDesign.primaryText)
+            Text("@\(attendance.profile.username) · \(attendance.status.title)")
+              .font(.caption)
               .foregroundStyle(TunedInDesign.mutedText)
           }
-          .padding(14)
-          .background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 18))
+          Spacer()
+          Image(systemName: attendance.audience.icon)
+            .foregroundStyle(TunedInDesign.mutedText)
         }
+        .padding(.vertical, 10)
+        Divider().overlay(TunedInDesign.cardBorder)
       }
     }
   }
