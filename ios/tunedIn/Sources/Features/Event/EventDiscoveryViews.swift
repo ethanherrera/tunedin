@@ -1,0 +1,391 @@
+import SwiftUI
+
+struct EventDiscoveryView: View {
+  let viewerID: UUID
+  let eventRepository: any EventRepository
+  let musicCatalogRepository: any MusicCatalogRepository
+  let onOpenEvent: (CommunityEventSummary) -> Void
+  let onSearchPeople: () -> Void
+  let onDismiss: () -> Void
+
+  @State private var query = ""
+  @State private var results: [CommunityEventSummary] = []
+  @State private var isLoading = true
+  @State private var errorMessage: String?
+  @State private var isPresentingCreation = false
+
+  var body: some View {
+    ZStack {
+      TunedInDesign.pageBackground.ignoresSafeArea()
+
+      ScrollView {
+        VStack(alignment: .leading, spacing: 18) {
+          EventScreenHeader(
+            eyebrow: "Find your next show",
+            title: "Concerts",
+            subtitle: "Search shared events first. Add one only when it isn’t here."
+          )
+
+          TunedInGlassSearchField(text: $query, prompt: "Artist, venue, or city")
+
+          Button(action: onSearchPeople) {
+            Label("Looking for a person? Search people", systemImage: "person.crop.circle.badge.magnifyingglass")
+              .font(.subheadline.weight(.semibold))
+              .foregroundStyle(TunedInDesign.primaryText)
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding(14)
+              .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 16))
+          }
+          .buttonStyle(.plain)
+
+          if isLoading {
+            ForEach(0 ..< 4, id: \.self) { _ in
+              TunedInSkeletonBlock(cornerRadius: TunedInDesign.cornerRadius)
+                .frame(height: 126)
+            }
+          } else if let errorMessage {
+            EventFailureView(message: errorMessage) { Task { await search() } }
+          } else if results.isEmpty {
+            EventEmptyView(
+              systemImage: "music.note.list",
+              title: query.isEmpty ? "No shared events yet" : "No matching concert",
+              message: "If the concert isn’t here, add it for the community using the music catalog."
+            )
+          } else {
+            LazyVStack(spacing: 12) {
+              ForEach(results) { event in
+                Button { onOpenEvent(event) } label: {
+                  CommunityEventRow(event: event, showsSource: true)
+                }
+                .buttonStyle(TunedInPosterButtonStyle())
+              }
+            }
+          }
+
+          Button { isPresentingCreation = true } label: {
+            Label("Add a community event", systemImage: "plus.circle.fill")
+              .font(.headline)
+              .foregroundStyle(TunedInDesign.actionForeground)
+              .frame(maxWidth: .infinity)
+              .padding(.vertical, 15)
+              .background(TunedInDesign.accent, in: Capsule())
+          }
+          .buttonStyle(TunedInPosterButtonStyle())
+          .padding(.top, 4)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+        .padding(.bottom, 24)
+      }
+    }
+    .toolbar(.hidden, for: .navigationBar)
+    .safeAreaInset(edge: .bottom, spacing: 0) {
+      TunedInPersistentControlRegion {
+        TunedInSubscreenBackBar(title: "Find concerts", action: onDismiss)
+          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+          .padding(.top, 8)
+          .padding(.bottom, TunedInDesign.bottomControlInset)
+      }
+    }
+    .task(id: query) {
+      if !query.isEmpty {
+        try? await Task.sleep(for: .milliseconds(250))
+        guard !Task.isCancelled else { return }
+      }
+      await search()
+    }
+    .fullScreenCover(isPresented: $isPresentingCreation) {
+      CommunityEventCreationView(
+        creatorID: viewerID,
+        eventRepository: eventRepository,
+        musicCatalogRepository: musicCatalogRepository,
+        onCreated: { event in
+          isPresentingCreation = false
+          onOpenEvent(event)
+        },
+        onDismiss: { isPresentingCreation = false }
+      )
+    }
+  }
+
+  @MainActor
+  private func search() async {
+    isLoading = results.isEmpty
+    defer { isLoading = false }
+    do {
+      results = try await eventRepository.searchEvents(query: query, viewerID: viewerID)
+      errorMessage = nil
+    } catch {
+      errorMessage = error.localizedDescription
+    }
+  }
+}
+
+struct CommunityEventCreationView: View {
+  let creatorID: UUID
+  let eventRepository: any EventRepository
+  let musicCatalogRepository: any MusicCatalogRepository
+  let onCreated: (CommunityEventSummary) -> Void
+  let onDismiss: () -> Void
+
+  @State private var artist: CatalogArtist?
+  @State private var place: CatalogPlace?
+  @State private var tour: CatalogTour?
+  @State private var eventDate = Self.defaultEventDate
+  @State private var includesTime = true
+  @State private var timeZoneIdentifier = TimeZone.current.identifier
+  @State private var listing = CommunityEventListing.listed
+  @State private var pickerKind: CatalogEntityKind?
+  @State private var isPresentingTimeZonePicker = false
+  @State private var isSaving = false
+  @State private var errorMessage: String?
+
+  var body: some View {
+    ZStack {
+      TunedInDesign.pageBackground.ignoresSafeArea()
+
+      ScrollView {
+        VStack(alignment: .leading, spacing: 18) {
+          EventScreenHeader(
+            eyebrow: "Community made",
+            title: "Add a concert",
+            subtitle: "Use shared catalog entries so everyone lands on the same artist and venue."
+          )
+
+          TunedInFormCard {
+            catalogButton(
+              title: "Artist",
+              value: artist?.displayName,
+              systemImage: "music.mic",
+              kind: .artist
+            )
+            Divider()
+            catalogButton(
+              title: "Venue",
+              value: place.map { [$0.displayName, $0.areaName].compactMap(\.self).joined(separator: " · ") },
+              systemImage: "mappin.and.ellipse",
+              kind: .place
+            )
+            Divider()
+            catalogButton(
+              title: "Tour (optional)",
+              value: tour?.displayName,
+              systemImage: "point.topleft.down.to.point.bottomright.curvepath",
+              kind: .tour
+            )
+          }
+
+          TunedInFormCard {
+            DatePicker(
+              "Concert date",
+              selection: $eventDate,
+              displayedComponents: includesTime ? [.date, .hourAndMinute] : [.date]
+            )
+            .foregroundStyle(TunedInDesign.primaryText)
+            .environment(\.timeZone, selectedTimeZone)
+
+            Toggle("Start time is known", isOn: $includesTime)
+              .tint(TunedInDesign.accent)
+
+            Divider()
+
+            Button { isPresentingTimeZonePicker = true } label: {
+              HStack(spacing: 12) {
+                Image(systemName: "globe.americas")
+                  .foregroundStyle(TunedInDesign.accent)
+                  .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                  Text("Venue time zone")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(TunedInDesign.mutedText)
+                  Text(EventTimeZoneText.name(for: timeZoneIdentifier))
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(TunedInDesign.primaryText)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                  .font(.caption.weight(.bold))
+                  .foregroundStyle(TunedInDesign.mutedText)
+              }
+            }
+            .buttonStyle(.plain)
+
+            Picker("Who can find it", selection: $listing) {
+              Text("Listed").tag(CommunityEventListing.listed)
+              Text("Unlisted").tag(CommunityEventListing.unlisted)
+            }
+            .pickerStyle(.segmented)
+
+            Text(listing == .listed
+              ? "Anyone can discover this event."
+              : "Only people with access or an invitation can open it.")
+              .font(.caption)
+              .foregroundStyle(TunedInDesign.mutedText)
+          }
+
+          if let errorMessage {
+            Label(errorMessage, systemImage: "exclamationmark.triangle")
+              .font(.subheadline)
+              .foregroundStyle(TunedInDesign.accent)
+          }
+
+          Button { Task { await create() } } label: {
+            HStack {
+              if isSaving { ProgressView().tint(TunedInDesign.actionForeground) }
+              Text(isSaving ? "Checking for matches…" : "Create shared event")
+            }
+            .font(.headline)
+            .foregroundStyle(TunedInDesign.actionForeground)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 15)
+            .background(canSubmit ? TunedInDesign.accent : TunedInDesign.raisedSurface, in: Capsule())
+          }
+          .buttonStyle(TunedInPosterButtonStyle())
+          .disabled(!canSubmit || isSaving)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+        .padding(.bottom, 24)
+      }
+    }
+    .safeAreaInset(edge: .bottom, spacing: 0) {
+      TunedInPersistentControlRegion {
+        TunedInSubscreenBackBar(title: "Add concert", action: onDismiss)
+          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+          .padding(.top, 8)
+          .padding(.bottom, TunedInDesign.bottomControlInset)
+      }
+    }
+    .fullScreenCover(item: $pickerKind) { kind in
+      CatalogPickerView(
+        repository: musicCatalogRepository,
+        configuration: CatalogPickerConfiguration(
+          kind: kind,
+          title: pickerTitle(kind),
+          artistContext: artist.map { [$0] } ?? [],
+          currentSelectionName: currentSelectionName(kind)
+        )
+      ) { entity in
+        apply(entity)
+        pickerKind = nil
+      }
+    }
+    .fullScreenCover(isPresented: $isPresentingTimeZonePicker) {
+      EventTimeZonePickerView(
+        selectedIdentifier: timeZoneIdentifier,
+        referenceDate: eventDate,
+        onSelect: selectTimeZone,
+        onDismiss: { isPresentingTimeZonePicker = false }
+      )
+    }
+  }
+
+  private var canSubmit: Bool { artist != nil && place != nil }
+
+  private var selectedTimeZone: TimeZone {
+    TimeZone(identifier: timeZoneIdentifier) ?? .current
+  }
+
+  private static var defaultEventDate: Date {
+    let calendar = Calendar.current
+    let shifted = calendar.date(byAdding: .day, value: 14, to: .now) ?? .now
+    return calendar.date(bySettingHour: 19, minute: 30, second: 0, of: shifted) ?? shifted
+  }
+
+  private func catalogButton(
+    title: String,
+    value: String?,
+    systemImage: String,
+    kind: CatalogEntityKind
+  ) -> some View {
+    Button { pickerKind = kind } label: {
+      HStack(spacing: 12) {
+        Image(systemName: systemImage)
+          .foregroundStyle(TunedInDesign.accent)
+          .frame(width: 24)
+        VStack(alignment: .leading, spacing: 2) {
+          Text(title)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(TunedInDesign.mutedText)
+          Text(value ?? ("Choose " + title.lowercased()))
+            .font(.body.weight(.semibold))
+            .foregroundStyle(TunedInDesign.primaryText)
+            .lineLimit(2)
+        }
+        Spacer()
+        Image(systemName: "chevron.right")
+          .font(.caption.weight(.bold))
+          .foregroundStyle(TunedInDesign.mutedText)
+      }
+    }
+    .buttonStyle(.plain)
+  }
+
+  @MainActor
+  private func create() async {
+    guard let artist, let place else { return }
+    isSaving = true
+    defer { isSaving = false }
+    let input = CommunityEventCreationInput(
+      artists: [artist],
+      place: place,
+      tour: tour,
+      eventDate: eventDate,
+      startsAt: includesTime ? eventDate : nil,
+      timeZoneIdentifier: timeZoneIdentifier,
+      listing: listing
+    )
+    do {
+      let detail = try await eventRepository.createEvent(input, creatorID: creatorID)
+      errorMessage = nil
+      onCreated(detail.summary)
+    } catch let CommunityEventError.duplicateEvent(eventID) {
+      do {
+        let detail = try await eventRepository.eventDetail(id: eventID, viewerID: creatorID)
+        onCreated(detail.summary)
+      } catch {
+        errorMessage = error.localizedDescription
+      }
+    } catch {
+      errorMessage = error.localizedDescription
+    }
+  }
+
+  private func apply(_ entity: CatalogEntity) {
+    switch entity {
+    case let .artist(value): artist = value
+    case let .place(value): place = value
+    case let .tour(value): tour = value
+    case .area, .song: break
+    }
+  }
+
+  private func selectTimeZone(_ identifier: String) {
+    guard let newTimeZone = TimeZone(identifier: identifier) else { return }
+    eventDate = CommunityEventDateCoding.preservingWallClockTime(
+      eventDate,
+      from: selectedTimeZone,
+      to: newTimeZone
+    )
+    timeZoneIdentifier = identifier
+    isPresentingTimeZonePicker = false
+  }
+
+  private func pickerTitle(_ kind: CatalogEntityKind) -> String {
+    switch kind {
+    case .artist: "Who is playing?"
+    case .place: "Where is the concert?"
+    case .tour: "Which tour?"
+    case .area, .song: "Choose " + kind.singularTitle.lowercased()
+    }
+  }
+
+  private func currentSelectionName(_ kind: CatalogEntityKind) -> String? {
+    switch kind {
+    case .artist: artist?.displayName
+    case .place: place?.displayName
+    case .tour: tour?.displayName
+    case .area, .song: nil
+    }
+  }
+}

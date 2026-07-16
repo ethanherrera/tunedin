@@ -1,6 +1,6 @@
 # Community Events Implementation Plan
 
-Status: in progress; fixture journey and Phase 1 foundation implemented
+Status: in progress; Phase 1 implemented for the disposable Local environment
 Decision date: 2026-07-16
 Decision owner: Ethan
 Depends on: `docs/community-events-product-design.md` and
@@ -17,8 +17,12 @@ Depends on: `docs/community-events-product-design.md` and
   catalog lineups, listed/unlisted access, merge/tombstone-ready state, immutable
   activity, private reports/revisions, exact-duplicate locking, creation quotas,
   and bounded search/detail/create/update/report RPCs.
-- The live iOS repository connection remains the next Phase 1 step. Phase 2 and
-  later persistence contracts have not started.
+- The Phase 1 iOS repository is connected to disposable Local Supabase for real
+  search, detail, canonical creation, and MusicBrainz-first catalog selection.
+  Capability gating keeps later-phase controls out of the live surface, while the
+  fixture scenario retains the complete product journey for design work. Hosted
+  Development remains unchanged until this migration is reviewed and deployed.
+- Phase 2 and later persistence contracts have not started.
 
 ## Architecture decision
 
@@ -343,7 +347,8 @@ identifies which existing components are being reused versus replaced.
 
 ### Phase 1 — global community event foundation
 
-Implementation status: database contract complete; live iOS connection pending.
+Implementation status: complete in the disposable Local environment; hosted
+Development remains gated until the reviewed migration is deployed.
 
 - Add event, lineup, state, listing, merge/tombstone, and activity tables.
 - Add creation, detail, exact-duplicate, correction/report, and search RPCs.

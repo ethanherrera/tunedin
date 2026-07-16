@@ -126,6 +126,14 @@ struct MainTabView: View {
       }
   }
 
+  private var supportsEventActivity: Bool {
+    eventRepository?.capabilities.contains(.activityFeed) == true
+  }
+
+  private var supportsPlans: Bool {
+    eventRepository?.capabilities.contains(.plans) == true
+  }
+
   private var bottomControls: some View {
     ZStack(alignment: .bottom) {
       switch concertFloatingControls.navigationContext {
@@ -225,7 +233,7 @@ struct MainTabView: View {
     switch selectedTab {
     case .feed:
       Group {
-        if let eventRepository {
+        if let eventRepository, supportsEventActivity {
           CommunityActivityFeedView(
             viewerID: profile.id,
             repository: eventRepository,
@@ -244,13 +252,15 @@ struct MainTabView: View {
       }
       .id(feedNavigationID)
     case .plans:
-      if let eventRepository {
+      if let eventRepository, supportsPlans {
         CommunityPlansView(
           viewerID: profile.id,
           repository: eventRepository,
           onOpenEvent: { presentedCommunityEvent = $0 }
         )
         .id(plansNavigationID)
+      } else {
+        Color.clear
       }
     case .profile:
       ProfileTabView(
@@ -268,7 +278,7 @@ struct MainTabView: View {
   @ViewBuilder
   private var mainTabButtons: some View {
     tabButton(.feed, title: "Feed", icon: "music.note.house")
-    if eventRepository != nil {
+    if supportsPlans {
       tabButton(.plans, title: "Plans", icon: "calendar")
     }
     tabButton(.profile, title: "Profile", icon: "person.crop.circle")
@@ -339,7 +349,7 @@ struct MainTabView: View {
       }
     }
     .foregroundStyle(isSelected ? TunedInDesign.selectedControlForeground : TunedInDesign.primaryText)
-    .frame(width: dynamicTypeSize.isAccessibilitySize ? 52 : (eventRepository == nil ? 78 : 68))
+    .frame(width: dynamicTypeSize.isAccessibilitySize ? 52 : (supportsPlans ? 68 : 78))
     .frame(minHeight: 44)
     .padding(.horizontal, 2)
     .background {

@@ -204,6 +204,7 @@ enum CommunityEventError: LocalizedError, Equatable {
   case invalidEvent(String)
   case duplicateEvent(UUID)
   case invitationUnavailable
+  case featureUnavailable(String)
 
   var errorDescription: String? {
     switch self {
@@ -215,6 +216,8 @@ enum CommunityEventError: LocalizedError, Equatable {
       "A matching event already exists. Open it instead of creating another."
     case .invitationUnavailable:
       "That invitation is no longer available."
+    case let .featureUnavailable(feature):
+      "\(feature) will be available in a later community events phase."
     }
   }
 }

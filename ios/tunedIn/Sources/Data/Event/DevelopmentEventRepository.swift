@@ -13,6 +13,8 @@
   }
 
   actor DevelopmentEventRepository: EventRepository {
+    nonisolated let capabilities = EventRepositoryCapabilities.complete
+
     private struct StoredEvent: Sendable {
       var summary: CommunityEventSummary
       var attendances: [EventAttendance]
