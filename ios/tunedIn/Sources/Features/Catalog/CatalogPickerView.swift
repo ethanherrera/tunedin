@@ -7,6 +7,7 @@ struct CatalogPickerConfiguration: Equatable, Sendable {
   let concertContextID: UUID?
   let currentSelectionName: String?
   let initialQuery: String
+  let showsGuidance: Bool
 
   init(
     kind: CatalogEntityKind,
@@ -14,7 +15,8 @@ struct CatalogPickerConfiguration: Equatable, Sendable {
     artistContext: [CatalogArtist] = [],
     concertContextID: UUID? = nil,
     currentSelectionName: String? = nil,
-    initialQuery: String = ""
+    initialQuery: String = "",
+    showsGuidance: Bool = true
   ) {
     self.kind = kind
     self.title = title ?? "Choose \(kind.singularTitle.lowercased())"
@@ -22,6 +24,7 @@ struct CatalogPickerConfiguration: Equatable, Sendable {
     self.concertContextID = concertContextID
     self.currentSelectionName = currentSelectionName
     self.initialQuery = initialQuery
+    self.showsGuidance = showsGuidance
   }
 }
 
@@ -136,15 +139,17 @@ struct CatalogPickerView: View {
         .font(.system(size: 32, weight: .bold, design: .serif))
         .foregroundStyle(TunedInDesign.primaryText)
 
-      if let current = configuration.currentSelectionName {
-        Text("Current: \(current)")
-          .font(.subheadline)
-          .foregroundStyle(TunedInDesign.mutedText)
-          .lineLimit(2)
-      } else {
-        Text(disambiguationHint)
-          .font(.subheadline)
-          .foregroundStyle(TunedInDesign.mutedText)
+      if configuration.showsGuidance {
+        if let current = configuration.currentSelectionName {
+          Text("Current: \(current)")
+            .font(.subheadline)
+            .foregroundStyle(TunedInDesign.mutedText)
+            .lineLimit(2)
+        } else {
+          Text(disambiguationHint)
+            .font(.subheadline)
+            .foregroundStyle(TunedInDesign.mutedText)
+        }
       }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -173,7 +178,9 @@ struct CatalogPickerView: View {
   private var phaseContent: some View {
     switch model.phase {
     case .idle:
-      if recentSearches.isEmpty {
+      if !configuration.showsGuidance {
+        Spacer()
+      } else if recentSearches.isEmpty {
         statusView(
           title: "Start with two characters",
           description: "Search artists, venues, tours, and songs in tunedIn.",
@@ -188,15 +195,24 @@ struct CatalogPickerView: View {
         )
       }
     case .loading:
-      catalogLoadingView
+      if configuration.showsGuidance {
+        catalogLoadingView
+      } else {
+        ProgressView()
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+      }
     case .results:
       resultsList
     case .empty:
-      statusWithCustomAction(
-        title: "No matching \(configuration.kind.singularTitle.lowercased())",
-        description: "Try a more specific search, or add a reusable entry to your tunedIn catalog.",
-        systemImage: "music.note"
-      )
+      if configuration.showsGuidance {
+        statusWithCustomAction(
+          title: "No matching \(configuration.kind.singularTitle.lowercased())",
+          description: "Try a more specific search, or add a reusable entry to your tunedIn catalog.",
+          systemImage: "music.note"
+        )
+      } else {
+        compactEmptyStatus
+      }
     case .offline:
       retryStatus(
         title: "You’re offline",
@@ -231,7 +247,25 @@ struct CatalogPickerView: View {
   }
 
   private var customAction: some View {
-    CatalogCustomEntryAction(action: showCustomEntry)
+    CatalogCustomEntryAction(title: customActionTitle, action: showCustomEntry)
+  }
+
+  private var compactEmptyStatus: some View {
+    VStack(spacing: 14) {
+      Text("No \(configuration.kind.singularTitle.lowercased()) found")
+        .font(.headline)
+        .foregroundStyle(TunedInDesign.mutedText)
+      customAction
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .padding(.horizontal, 40)
+  }
+
+  private var customActionTitle: String {
+    guard !configuration.showsGuidance else {
+      return CatalogCustomEntryAction.defaultTitle
+    }
+    return "Add “\(CatalogInput.normalizedText(model.query))”"
   }
 
   private func statusView(title: String, description: String, systemImage: String) -> some View {

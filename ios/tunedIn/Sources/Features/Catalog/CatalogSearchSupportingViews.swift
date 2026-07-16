@@ -145,20 +145,22 @@ struct CatalogResultsList: View {
       }
 
       Section {
-        CatalogCustomEntryAction(action: onAddCustom)
+        CatalogCustomEntryAction(title: customActionTitle, action: onAddCustom)
       }
       .listRowBackground(TunedInDesign.raisedSurface)
 
-      Section {
-        VStack(alignment: .leading, spacing: 4) {
-          Label("tunedIn catalog search", systemImage: "music.note")
-            .font(.caption.weight(.semibold))
-          Text("More results are saved to your tunedIn catalog when selected.")
-            .font(.caption2)
+      if configuration.showsGuidance {
+        Section {
+          VStack(alignment: .leading, spacing: 4) {
+            Label("tunedIn catalog search", systemImage: "music.note")
+              .font(.caption.weight(.semibold))
+            Text("More results are saved to your tunedIn catalog when selected.")
+              .font(.caption2)
+          }
+          .foregroundStyle(TunedInDesign.mutedText)
         }
-        .foregroundStyle(TunedInDesign.mutedText)
+        .listRowBackground(Color.clear)
       }
-      .listRowBackground(Color.clear)
     }
     .listStyle(.insetGrouped)
     .scrollContentBackground(.hidden)
@@ -168,28 +170,39 @@ struct CatalogResultsList: View {
   @ViewBuilder
   private func resultSection(title: String, results: [CatalogResult]) -> some View {
     if !results.isEmpty {
-      Section(title) {
-        ForEach(results) { result in
-          Button {
-            onSelect(result)
-          } label: {
-            CatalogResultRow(
-              result: result,
-              isResolving: model.resolvingResultID == result.id
-            )
-          }
-          .buttonStyle(.plain)
-          .disabled(model.resolvingResultID != nil)
-          .onAppear {
-            guard result.id == model.results.last?.id,
-                  model.hasMore,
-                  model.paginationErrorMessage == nil
-            else { return }
-            Task { await model.loadMore() }
-          }
-          .listRowBackground(TunedInDesign.cardBackground)
+      if configuration.showsGuidance {
+        Section(title) {
+          resultRows(results)
+        }
+      } else {
+        Section {
+          resultRows(results)
         }
       }
+    }
+  }
+
+  @ViewBuilder
+  private func resultRows(_ results: [CatalogResult]) -> some View {
+    ForEach(results) { result in
+      Button {
+        onSelect(result)
+      } label: {
+        CatalogResultRow(
+          result: result,
+          isResolving: model.resolvingResultID == result.id
+        )
+      }
+      .buttonStyle(.plain)
+      .disabled(model.resolvingResultID != nil)
+      .onAppear {
+        guard result.id == model.results.last?.id,
+              model.hasMore,
+              model.paginationErrorMessage == nil
+        else { return }
+        Task { await model.loadMore() }
+      }
+      .listRowBackground(TunedInDesign.cardBackground)
     }
   }
 
@@ -198,9 +211,16 @@ struct CatalogResultsList: View {
   }
 
   private var showsArtistContext: Bool {
-    !configuration.artistContext.isEmpty
+    configuration.showsGuidance
+      && !configuration.artistContext.isEmpty
       && configuration.kind == .song
       && isUsingArtistContext
+  }
+
+  private var customActionTitle: String {
+    configuration.showsGuidance
+      ? CatalogCustomEntryAction.defaultTitle
+      : "Add “\(CatalogInput.normalizedText(model.query))”"
   }
 
   private var musicBrainzResults: [CatalogResult] {
@@ -209,11 +229,14 @@ struct CatalogResultsList: View {
 }
 
 struct CatalogCustomEntryAction: View {
+  static let defaultTitle = "Can’t find it? Add to tunedIn catalog"
+
+  var title = Self.defaultTitle
   let action: () -> Void
 
   var body: some View {
     Button(action: action) {
-      Label("Can’t find it? Add to tunedIn catalog", systemImage: "plus.circle.fill")
+      Label(title, systemImage: "plus.circle.fill")
         .font(.headline)
         .foregroundStyle(TunedInDesign.accent)
         .frame(maxWidth: .infinity, alignment: .leading)

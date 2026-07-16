@@ -1,6 +1,6 @@
 # tunedIn
 
-tunedIn is an iOS-native private-beta concert journal for shared memories. The MVP is a SwiftUI app backed by Supabase. Its product plan remains reference-only at `/Users/ethan/Work/tunedIn/tunedIn MVP Design.md`.
+tunedIn is an iOS-native private-beta concert journal for shared memories. The MVP is a SwiftUI app backed by Supabase.
 
 ## Repository layout
 
