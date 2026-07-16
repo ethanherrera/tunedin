@@ -61,6 +61,11 @@ MusicBrainz Event import and artwork are not part of the first implementation. A
 Event may be added later as an optional accelerator, but it cannot be required
 because MusicBrainz event and setlist coverage is incomplete.
 
+The later community-event occurrence layer is specified in
+`docs/community-events-product-design.md`. It reuses these stable artist, place,
+area, and tour identities without adding events to `catalog_entity_kind` or making
+MusicBrainz Event coverage a dependency.
+
 ## Implemented repository impact
 
 The implementation replaces string identity across the complete write path:
