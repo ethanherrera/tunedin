@@ -315,20 +315,6 @@
 			path = Profile;
 			sourceTree = "<group>";
 		};
-		103D49F6DBCA17735ED319D2 /* Concert */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Concert;
-			sourceTree = "<group>";
-		};
-		3875ACE92FBCB5861EDA88DF /* Feed */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Feed;
-			sourceTree = "<group>";
-		};
 		4C97A9900A178845F43F836D /* Artwork */ = {
 			isa = PBXGroup;
 			children = (
@@ -487,7 +473,6 @@
 				E36381AB717EF8D3632825B5 /* Catalog */,
 				C27361AC325136506E55F3C4 /* Concert */,
 				D07F54FDF756FD6E6E6991A2 /* Event */,
-				3875ACE92FBCB5861EDA88DF /* Feed */,
 				9E5EE0D6C3BF851EFD4811DC /* Profile */,
 			);
 			path = Features;
@@ -540,7 +525,6 @@
 				B901A7C40A224ABA1721269A /* Auth */,
 				99D91DBB6A186173946351BD /* Cache */,
 				B15768FFE24C880F0A040151 /* Catalog */,
-				103D49F6DBCA17735ED319D2 /* Concert */,
 				9F10FBDA91B0EABF10802CE2 /* Event */,
 				5D1F6E5665D12F80CD77F452 /* Feedback */,
 				5CAACBD70E59A0640C01205A /* Generated */,
