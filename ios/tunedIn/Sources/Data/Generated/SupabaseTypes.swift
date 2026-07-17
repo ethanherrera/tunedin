@@ -12,8 +12,6 @@ public enum PublicSchema {
   public enum CatalogEntityOrigin: String, Codable, Hashable, Sendable {
     case musicbrainz = "musicbrainz"
     case tunedinCustom = "tunedin_custom"
-    case legacyImport = "legacy_import"
-    case legacyClient = "legacy_client"
   }
   public enum CatalogEntityStatus: String, Codable, Hashable, Sendable {
     case active = "active"
@@ -57,19 +55,10 @@ public enum PublicSchema {
     case merged = "merged"
     case tombstoned = "tombstoned"
   }
-  public enum ConcertPhotoStatus: String, Codable, Hashable, Sendable {
+  public enum PostMediaStatus: String, Codable, Hashable, Sendable {
     case pending = "pending"
     case ready = "ready"
     case deleting = "deleting"
-  }
-  public enum ConcertRecordModel: String, Codable, Hashable, Sendable {
-    case legacyShared = "legacy_shared"
-    case personalDiary = "personal_diary"
-  }
-  public enum ConcertVisibility: String, Codable, Hashable, Sendable {
-    case `private` = "private"
-    case collaborators = "collaborators"
-    case friends = "friends"
   }
   public enum ProductFeedbackCategory: String, Codable, Hashable, Sendable {
     case bug = "bug"
@@ -88,10 +77,10 @@ public enum PublicSchema {
     case markedGoing = "marked_going"
     case markedWent = "marked_went"
     case invitationAccepted = "invitation_accepted"
-    case diaryPublished = "diary_published"
-    case diaryMediaAdded = "diary_media_added"
-    case eventPosted = "event_posted"
-    case eventReplied = "event_replied"
+    case postPublished = "post_published"
+    case postMediaAdded = "post_media_added"
+    case eventCommented = "event_commented"
+    case eventCommentReplied = "event_comment_replied"
   }
   public struct CatalogAreasSelect: Codable, Hashable, Sendable {
     public let areaType: String?
@@ -456,72 +445,6 @@ public enum PublicSchema {
       case respondedAt = "responded_at"
       case senderId = "sender_id"
       case status = "status"
-      case updatedAt = "updated_at"
-    }
-  }
-  public struct CatalogEventPostsSelect: Codable, Hashable, Sendable {
-    public let audience: CatalogEventAudience
-    public let authorId: UUID
-    public let body: String
-    public let createdAt: String
-    public let deletedAt: String?
-    public let eventId: UUID
-    public let id: UUID
-    public let parentPostId: UUID?
-    public let updatedAt: String
-    public enum CodingKeys: String, CodingKey {
-      case audience = "audience"
-      case authorId = "author_id"
-      case body = "body"
-      case createdAt = "created_at"
-      case deletedAt = "deleted_at"
-      case eventId = "event_id"
-      case id = "id"
-      case parentPostId = "parent_post_id"
-      case updatedAt = "updated_at"
-    }
-  }
-  public struct CatalogEventPostsInsert: Codable, Hashable, Sendable {
-    public let audience: CatalogEventAudience
-    public let authorId: UUID
-    public let body: String
-    public let createdAt: String?
-    public let deletedAt: String?
-    public let eventId: UUID
-    public let id: UUID?
-    public let parentPostId: UUID?
-    public let updatedAt: String?
-    public enum CodingKeys: String, CodingKey {
-      case audience = "audience"
-      case authorId = "author_id"
-      case body = "body"
-      case createdAt = "created_at"
-      case deletedAt = "deleted_at"
-      case eventId = "event_id"
-      case id = "id"
-      case parentPostId = "parent_post_id"
-      case updatedAt = "updated_at"
-    }
-  }
-  public struct CatalogEventPostsUpdate: Codable, Hashable, Sendable {
-    public let audience: CatalogEventAudience?
-    public let authorId: UUID?
-    public let body: String?
-    public let createdAt: String?
-    public let deletedAt: String?
-    public let eventId: UUID?
-    public let id: UUID?
-    public let parentPostId: UUID?
-    public let updatedAt: String?
-    public enum CodingKeys: String, CodingKey {
-      case audience = "audience"
-      case authorId = "author_id"
-      case body = "body"
-      case createdAt = "created_at"
-      case deletedAt = "deleted_at"
-      case eventId = "event_id"
-      case id = "id"
-      case parentPostId = "parent_post_id"
       case updatedAt = "updated_at"
     }
   }
@@ -951,418 +874,298 @@ public enum PublicSchema {
       case seriesType = "series_type"
     }
   }
-  public struct CommentsSelect: Codable, Hashable, Sendable {
+  public struct EventCommentsSelect: Codable, Hashable, Sendable {
+    public let audience: CatalogEventAudience
     public let authorId: UUID
-    public let body: String?
-    public let concertId: UUID
+    public let body: String
     public let createdAt: String
     public let deletedAt: String?
+    public let eventId: UUID
     public let id: UUID
+    public let parentCommentId: UUID?
     public let updatedAt: String
     public enum CodingKeys: String, CodingKey {
+      case audience = "audience"
       case authorId = "author_id"
       case body = "body"
-      case concertId = "concert_id"
       case createdAt = "created_at"
       case deletedAt = "deleted_at"
+      case eventId = "event_id"
       case id = "id"
+      case parentCommentId = "parent_comment_id"
       case updatedAt = "updated_at"
     }
   }
-  public struct CommentsInsert: Codable, Hashable, Sendable {
+  public struct EventCommentsInsert: Codable, Hashable, Sendable {
+    public let audience: CatalogEventAudience?
     public let authorId: UUID
-    public let body: String?
-    public let concertId: UUID
+    public let body: String
     public let createdAt: String?
     public let deletedAt: String?
+    public let eventId: UUID
     public let id: UUID?
+    public let parentCommentId: UUID?
     public let updatedAt: String?
     public enum CodingKeys: String, CodingKey {
+      case audience = "audience"
       case authorId = "author_id"
       case body = "body"
-      case concertId = "concert_id"
       case createdAt = "created_at"
       case deletedAt = "deleted_at"
+      case eventId = "event_id"
       case id = "id"
+      case parentCommentId = "parent_comment_id"
       case updatedAt = "updated_at"
     }
   }
-  public struct CommentsUpdate: Codable, Hashable, Sendable {
+  public struct EventCommentsUpdate: Codable, Hashable, Sendable {
+    public let audience: CatalogEventAudience?
     public let authorId: UUID?
     public let body: String?
-    public let concertId: UUID?
+    public let createdAt: String?
+    public let deletedAt: String?
+    public let eventId: UUID?
+    public let id: UUID?
+    public let parentCommentId: UUID?
+    public let updatedAt: String?
+    public enum CodingKeys: String, CodingKey {
+      case audience = "audience"
+      case authorId = "author_id"
+      case body = "body"
+      case createdAt = "created_at"
+      case deletedAt = "deleted_at"
+      case eventId = "event_id"
+      case id = "id"
+      case parentCommentId = "parent_comment_id"
+      case updatedAt = "updated_at"
+    }
+  }
+  public struct EventPostsSelect: Codable, Hashable, Sendable {
+    public let attendanceId: UUID?
+    public let audience: CatalogEventAudience
+    public let authorId: UUID
+    public let createdAt: String
+    public let deletedAt: String?
+    public let eventId: UUID?
+    public let eventSnapshot: AnyJSON
+    public let id: UUID
+    public let note: String?
+    public let overallScorePoints: Int16?
+    public let performanceScorePoints: Int16?
+    public let publishedAt: String?
+    public let updatedAt: String
+    public enum CodingKeys: String, CodingKey {
+      case attendanceId = "attendance_id"
+      case audience = "audience"
+      case authorId = "author_id"
+      case createdAt = "created_at"
+      case deletedAt = "deleted_at"
+      case eventId = "event_id"
+      case eventSnapshot = "event_snapshot"
+      case id = "id"
+      case note = "note"
+      case overallScorePoints = "overall_score_points"
+      case performanceScorePoints = "performance_score_points"
+      case publishedAt = "published_at"
+      case updatedAt = "updated_at"
+    }
+  }
+  public struct EventPostsInsert: Codable, Hashable, Sendable {
+    public let attendanceId: UUID?
+    public let audience: CatalogEventAudience?
+    public let authorId: UUID
+    public let createdAt: String?
+    public let deletedAt: String?
+    public let eventId: UUID?
+    public let eventSnapshot: AnyJSON
+    public let id: UUID?
+    public let note: String?
+    public let overallScorePoints: Int16?
+    public let performanceScorePoints: Int16?
+    public let publishedAt: String?
+    public let updatedAt: String?
+    public enum CodingKeys: String, CodingKey {
+      case attendanceId = "attendance_id"
+      case audience = "audience"
+      case authorId = "author_id"
+      case createdAt = "created_at"
+      case deletedAt = "deleted_at"
+      case eventId = "event_id"
+      case eventSnapshot = "event_snapshot"
+      case id = "id"
+      case note = "note"
+      case overallScorePoints = "overall_score_points"
+      case performanceScorePoints = "performance_score_points"
+      case publishedAt = "published_at"
+      case updatedAt = "updated_at"
+    }
+  }
+  public struct EventPostsUpdate: Codable, Hashable, Sendable {
+    public let attendanceId: UUID?
+    public let audience: CatalogEventAudience?
+    public let authorId: UUID?
+    public let createdAt: String?
+    public let deletedAt: String?
+    public let eventId: UUID?
+    public let eventSnapshot: AnyJSON?
+    public let id: UUID?
+    public let note: String?
+    public let overallScorePoints: Int16?
+    public let performanceScorePoints: Int16?
+    public let publishedAt: String?
+    public let updatedAt: String?
+    public enum CodingKeys: String, CodingKey {
+      case attendanceId = "attendance_id"
+      case audience = "audience"
+      case authorId = "author_id"
+      case createdAt = "created_at"
+      case deletedAt = "deleted_at"
+      case eventId = "event_id"
+      case eventSnapshot = "event_snapshot"
+      case id = "id"
+      case note = "note"
+      case overallScorePoints = "overall_score_points"
+      case performanceScorePoints = "performance_score_points"
+      case publishedAt = "published_at"
+      case updatedAt = "updated_at"
+    }
+  }
+  public struct PostCommentsSelect: Codable, Hashable, Sendable {
+    public let authorId: UUID
+    public let body: String
+    public let createdAt: String
+    public let deletedAt: String?
+    public let id: UUID
+    public let postId: UUID
+    public let updatedAt: String
+    public enum CodingKeys: String, CodingKey {
+      case authorId = "author_id"
+      case body = "body"
+      case createdAt = "created_at"
+      case deletedAt = "deleted_at"
+      case id = "id"
+      case postId = "post_id"
+      case updatedAt = "updated_at"
+    }
+  }
+  public struct PostCommentsInsert: Codable, Hashable, Sendable {
+    public let authorId: UUID
+    public let body: String
     public let createdAt: String?
     public let deletedAt: String?
     public let id: UUID?
+    public let postId: UUID
     public let updatedAt: String?
     public enum CodingKeys: String, CodingKey {
       case authorId = "author_id"
       case body = "body"
-      case concertId = "concert_id"
       case createdAt = "created_at"
       case deletedAt = "deleted_at"
       case id = "id"
+      case postId = "post_id"
       case updatedAt = "updated_at"
     }
   }
-  public struct ConcertArtistsSelect: Codable, Hashable, Sendable {
-    public let artistName: String
-    public let catalogArtistId: UUID
-    public let concertId: UUID
-    public let createdAt: String
-    public let id: UUID
-    public let isPrimary: Bool
-    public let lineupPosition: Int16
-    public let updatedAt: String
-    public enum CodingKeys: String, CodingKey {
-      case artistName = "artist_name"
-      case catalogArtistId = "catalog_artist_id"
-      case concertId = "concert_id"
-      case createdAt = "created_at"
-      case id = "id"
-      case isPrimary = "is_primary"
-      case lineupPosition = "lineup_position"
-      case updatedAt = "updated_at"
-    }
-  }
-  public struct ConcertArtistsInsert: Codable, Hashable, Sendable {
-    public let artistName: String
-    public let catalogArtistId: UUID
-    public let concertId: UUID
+  public struct PostCommentsUpdate: Codable, Hashable, Sendable {
+    public let authorId: UUID?
+    public let body: String?
     public let createdAt: String?
+    public let deletedAt: String?
     public let id: UUID?
-    public let isPrimary: Bool?
-    public let lineupPosition: Int16
+    public let postId: UUID?
     public let updatedAt: String?
     public enum CodingKeys: String, CodingKey {
-      case artistName = "artist_name"
-      case catalogArtistId = "catalog_artist_id"
-      case concertId = "concert_id"
+      case authorId = "author_id"
+      case body = "body"
       case createdAt = "created_at"
+      case deletedAt = "deleted_at"
       case id = "id"
-      case isPrimary = "is_primary"
-      case lineupPosition = "lineup_position"
+      case postId = "post_id"
       case updatedAt = "updated_at"
     }
   }
-  public struct ConcertArtistsUpdate: Codable, Hashable, Sendable {
-    public let artistName: String?
-    public let catalogArtistId: UUID?
-    public let concertId: UUID?
-    public let createdAt: String?
-    public let id: UUID?
-    public let isPrimary: Bool?
-    public let lineupPosition: Int16?
-    public let updatedAt: String?
-    public enum CodingKeys: String, CodingKey {
-      case artistName = "artist_name"
-      case catalogArtistId = "catalog_artist_id"
-      case concertId = "concert_id"
-      case createdAt = "created_at"
-      case id = "id"
-      case isPrimary = "is_primary"
-      case lineupPosition = "lineup_position"
-      case updatedAt = "updated_at"
-    }
-  }
-  public struct ConcertPhotosSelect: Codable, Hashable, Sendable {
+  public struct PostMediaSelect: Codable, Hashable, Sendable {
     public let attachedAt: String?
     public let caption: String?
-    public let concertId: UUID
     public let createdAt: String
     public let deletedAt: String?
     public let deletionRequestedAt: String?
     public let expiresAt: String
     public let id: UUID
     public let objectPath: String
-    public let status: ConcertPhotoStatus
+    public let postId: UUID
+    public let status: PostMediaStatus
     public let uploaderId: UUID
     public let version: Int64
     public enum CodingKeys: String, CodingKey {
       case attachedAt = "attached_at"
       case caption = "caption"
-      case concertId = "concert_id"
       case createdAt = "created_at"
       case deletedAt = "deleted_at"
       case deletionRequestedAt = "deletion_requested_at"
       case expiresAt = "expires_at"
       case id = "id"
       case objectPath = "object_path"
+      case postId = "post_id"
       case status = "status"
       case uploaderId = "uploader_id"
       case version = "version"
     }
   }
-  public struct ConcertPhotosInsert: Codable, Hashable, Sendable {
+  public struct PostMediaInsert: Codable, Hashable, Sendable {
     public let attachedAt: String?
     public let caption: String?
-    public let concertId: UUID
     public let createdAt: String?
     public let deletedAt: String?
     public let deletionRequestedAt: String?
-    public let expiresAt: String?
-    public let id: UUID?
+    public let expiresAt: String
+    public let id: UUID
     public let objectPath: String
-    public let status: ConcertPhotoStatus?
+    public let postId: UUID
+    public let status: PostMediaStatus?
     public let uploaderId: UUID
     public let version: Int64?
     public enum CodingKeys: String, CodingKey {
       case attachedAt = "attached_at"
       case caption = "caption"
-      case concertId = "concert_id"
       case createdAt = "created_at"
       case deletedAt = "deleted_at"
       case deletionRequestedAt = "deletion_requested_at"
       case expiresAt = "expires_at"
       case id = "id"
       case objectPath = "object_path"
+      case postId = "post_id"
       case status = "status"
       case uploaderId = "uploader_id"
       case version = "version"
     }
   }
-  public struct ConcertPhotosUpdate: Codable, Hashable, Sendable {
+  public struct PostMediaUpdate: Codable, Hashable, Sendable {
     public let attachedAt: String?
     public let caption: String?
-    public let concertId: UUID?
     public let createdAt: String?
     public let deletedAt: String?
     public let deletionRequestedAt: String?
     public let expiresAt: String?
     public let id: UUID?
     public let objectPath: String?
-    public let status: ConcertPhotoStatus?
+    public let postId: UUID?
+    public let status: PostMediaStatus?
     public let uploaderId: UUID?
     public let version: Int64?
     public enum CodingKeys: String, CodingKey {
       case attachedAt = "attached_at"
       case caption = "caption"
-      case concertId = "concert_id"
       case createdAt = "created_at"
       case deletedAt = "deleted_at"
       case deletionRequestedAt = "deletion_requested_at"
       case expiresAt = "expires_at"
       case id = "id"
       case objectPath = "object_path"
+      case postId = "post_id"
       case status = "status"
       case uploaderId = "uploader_id"
       case version = "version"
-    }
-  }
-  public struct ConcertsSelect: Codable, Hashable, Sendable {
-    public let attendanceId: UUID?
-    public let catalogAreaId: UUID?
-    public let catalogEventId: UUID?
-    public let catalogPlaceId: UUID
-    public let catalogTourId: UUID?
-    public let city: String?
-    public let concertDate: String
-    public let createdAt: String
-    public let deletionRequestedAt: String?
-    public let deletionStatus: String
-    public let detachedEventReason: String?
-    public let diaryAudience: CatalogEventAudience?
-    public let id: UUID
-    public let lastActivityAt: String
-    public let ownerId: UUID
-    public let photoObjectPath: String?
-    public let photoVersion: Int64
-    public let publishedAt: String?
-    public let recordModel: ConcertRecordModel
-    public let startsAt: String?
-    public let tour: String?
-    public let updatedAt: String
-    public let venueName: String
-    public let venueTimeZone: String?
-    public let version: Int64
-    public let visibility: ConcertVisibility
-    public enum CodingKeys: String, CodingKey {
-      case attendanceId = "attendance_id"
-      case catalogAreaId = "catalog_area_id"
-      case catalogEventId = "catalog_event_id"
-      case catalogPlaceId = "catalog_place_id"
-      case catalogTourId = "catalog_tour_id"
-      case city = "city"
-      case concertDate = "concert_date"
-      case createdAt = "created_at"
-      case deletionRequestedAt = "deletion_requested_at"
-      case deletionStatus = "deletion_status"
-      case detachedEventReason = "detached_event_reason"
-      case diaryAudience = "diary_audience"
-      case id = "id"
-      case lastActivityAt = "last_activity_at"
-      case ownerId = "owner_id"
-      case photoObjectPath = "photo_object_path"
-      case photoVersion = "photo_version"
-      case publishedAt = "published_at"
-      case recordModel = "record_model"
-      case startsAt = "starts_at"
-      case tour = "tour"
-      case updatedAt = "updated_at"
-      case venueName = "venue_name"
-      case venueTimeZone = "venue_time_zone"
-      case version = "version"
-      case visibility = "visibility"
-    }
-  }
-  public struct ConcertsInsert: Codable, Hashable, Sendable {
-    public let attendanceId: UUID?
-    public let catalogAreaId: UUID?
-    public let catalogEventId: UUID?
-    public let catalogPlaceId: UUID
-    public let catalogTourId: UUID?
-    public let city: String?
-    public let concertDate: String
-    public let createdAt: String?
-    public let deletionRequestedAt: String?
-    public let deletionStatus: String?
-    public let detachedEventReason: String?
-    public let diaryAudience: CatalogEventAudience?
-    public let id: UUID?
-    public let lastActivityAt: String?
-    public let ownerId: UUID
-    public let photoObjectPath: String?
-    public let photoVersion: Int64?
-    public let publishedAt: String?
-    public let recordModel: ConcertRecordModel?
-    public let startsAt: String?
-    public let tour: String?
-    public let updatedAt: String?
-    public let venueName: String
-    public let venueTimeZone: String?
-    public let version: Int64?
-    public let visibility: ConcertVisibility?
-    public enum CodingKeys: String, CodingKey {
-      case attendanceId = "attendance_id"
-      case catalogAreaId = "catalog_area_id"
-      case catalogEventId = "catalog_event_id"
-      case catalogPlaceId = "catalog_place_id"
-      case catalogTourId = "catalog_tour_id"
-      case city = "city"
-      case concertDate = "concert_date"
-      case createdAt = "created_at"
-      case deletionRequestedAt = "deletion_requested_at"
-      case deletionStatus = "deletion_status"
-      case detachedEventReason = "detached_event_reason"
-      case diaryAudience = "diary_audience"
-      case id = "id"
-      case lastActivityAt = "last_activity_at"
-      case ownerId = "owner_id"
-      case photoObjectPath = "photo_object_path"
-      case photoVersion = "photo_version"
-      case publishedAt = "published_at"
-      case recordModel = "record_model"
-      case startsAt = "starts_at"
-      case tour = "tour"
-      case updatedAt = "updated_at"
-      case venueName = "venue_name"
-      case venueTimeZone = "venue_time_zone"
-      case version = "version"
-      case visibility = "visibility"
-    }
-  }
-  public struct ConcertsUpdate: Codable, Hashable, Sendable {
-    public let attendanceId: UUID?
-    public let catalogAreaId: UUID?
-    public let catalogEventId: UUID?
-    public let catalogPlaceId: UUID?
-    public let catalogTourId: UUID?
-    public let city: String?
-    public let concertDate: String?
-    public let createdAt: String?
-    public let deletionRequestedAt: String?
-    public let deletionStatus: String?
-    public let detachedEventReason: String?
-    public let diaryAudience: CatalogEventAudience?
-    public let id: UUID?
-    public let lastActivityAt: String?
-    public let ownerId: UUID?
-    public let photoObjectPath: String?
-    public let photoVersion: Int64?
-    public let publishedAt: String?
-    public let recordModel: ConcertRecordModel?
-    public let startsAt: String?
-    public let tour: String?
-    public let updatedAt: String?
-    public let venueName: String?
-    public let venueTimeZone: String?
-    public let version: Int64?
-    public let visibility: ConcertVisibility?
-    public enum CodingKeys: String, CodingKey {
-      case attendanceId = "attendance_id"
-      case catalogAreaId = "catalog_area_id"
-      case catalogEventId = "catalog_event_id"
-      case catalogPlaceId = "catalog_place_id"
-      case catalogTourId = "catalog_tour_id"
-      case city = "city"
-      case concertDate = "concert_date"
-      case createdAt = "created_at"
-      case deletionRequestedAt = "deletion_requested_at"
-      case deletionStatus = "deletion_status"
-      case detachedEventReason = "detached_event_reason"
-      case diaryAudience = "diary_audience"
-      case id = "id"
-      case lastActivityAt = "last_activity_at"
-      case ownerId = "owner_id"
-      case photoObjectPath = "photo_object_path"
-      case photoVersion = "photo_version"
-      case publishedAt = "published_at"
-      case recordModel = "record_model"
-      case startsAt = "starts_at"
-      case tour = "tour"
-      case updatedAt = "updated_at"
-      case venueName = "venue_name"
-      case venueTimeZone = "venue_time_zone"
-      case version = "version"
-      case visibility = "visibility"
-    }
-  }
-  public struct DiaryReviewsSelect: Codable, Hashable, Sendable {
-    public let concertId: UUID
-    public let createdAt: String
-    public let overallScorePoints: Int16?
-    public let performanceScorePoints: Int16?
-    public let reviewBody: String?
-    public let updatedAt: String
-    public enum CodingKeys: String, CodingKey {
-      case concertId = "concert_id"
-      case createdAt = "created_at"
-      case overallScorePoints = "overall_score_points"
-      case performanceScorePoints = "performance_score_points"
-      case reviewBody = "review_body"
-      case updatedAt = "updated_at"
-    }
-  }
-  public struct DiaryReviewsInsert: Codable, Hashable, Sendable {
-    public let concertId: UUID
-    public let createdAt: String?
-    public let overallScorePoints: Int16?
-    public let performanceScorePoints: Int16?
-    public let reviewBody: String?
-    public let updatedAt: String?
-    public enum CodingKeys: String, CodingKey {
-      case concertId = "concert_id"
-      case createdAt = "created_at"
-      case overallScorePoints = "overall_score_points"
-      case performanceScorePoints = "performance_score_points"
-      case reviewBody = "review_body"
-      case updatedAt = "updated_at"
-    }
-  }
-  public struct DiaryReviewsUpdate: Codable, Hashable, Sendable {
-    public let concertId: UUID?
-    public let createdAt: String?
-    public let overallScorePoints: Int16?
-    public let performanceScorePoints: Int16?
-    public let reviewBody: String?
-    public let updatedAt: String?
-    public enum CodingKeys: String, CodingKey {
-      case concertId = "concert_id"
-      case createdAt = "created_at"
-      case overallScorePoints = "overall_score_points"
-      case performanceScorePoints = "performance_score_points"
-      case reviewBody = "review_body"
-      case updatedAt = "updated_at"
     }
   }
   public struct ProductFeedbackSelect: Codable, Hashable, Sendable {

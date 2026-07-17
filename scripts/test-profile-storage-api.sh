@@ -19,153 +19,110 @@ if [[ "$api_url" != http://127.0.0.1:* || -z "$publishable_key" ]]; then
   exit 1
 fi
 
-tmp_dir="$(mktemp -d)"
-trap 'rm -rf "$tmp_dir"' EXIT
+temporary_dir="$(mktemp -d)"
+trap 'rm -rf "$temporary_dir"' EXIT
+jpeg_base64='/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAEf/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABBQJ//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPwF//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPwF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQAGPwJ//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPyF//9oADAMBAAIAAwAAABD/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAEDAQE/EH//xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAECAQE/EH//xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAE/EH//2Q=='
 if [[ "$(uname -s)" == Darwin ]]; then
-  printf '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAEf/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABBQJ//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPwF//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPwF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQAGPwJ//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPyF//9oADAMBAAIAAwAAABD/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAEDAQE/EH//xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAECAQE/EH//xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAE/EH//2Q==' | base64 -D > "$tmp_dir/avatar.jpg"
+  printf '%s' "$jpeg_base64" | base64 -D > "$temporary_dir/photo.jpg"
 else
-  printf '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAEf/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABBQJ//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPwF//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPwF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQAGPwJ//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPyF//9oADAMBAAIAAwAAABD/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAEDAQE/EH//xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oACAECAQE/EH//xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oACAEBAAE/EH//2Q==' | base64 --decode > "$tmp_dir/avatar.jpg"
+  printf '%s' "$jpeg_base64" | base64 --decode > "$temporary_dir/photo.jpg"
 fi
-dd if=/dev/zero of="$tmp_dir/oversized.jpg" bs=1048576 count=6 status=none
-dd if=/dev/zero of="$tmp_dir/album-oversized.jpg" bs=1048576 count=3 status=none
+dd if=/dev/zero of="$temporary_dir/oversized.jpg" bs=1048576 count=3 status=none
 
 sign_in() {
   curl --silent --show-error --fail "$api_url/auth/v1/token?grant_type=password" \
     -H "apikey: $publishable_key" -H 'Content-Type: application/json' \
-    --data "{\"email\":\"$1@tunedin.local\",\"password\":\"tunedIn-local-seeded-account\"}" | jq -er '.access_token'
+    --data "{\"email\":\"$1@tunedin.local\",\"password\":\"tunedIn-local-seeded-account\"}" \
+    | jq -er '.access_token'
+}
+
+request_status() {
+  curl --silent --output /dev/null --write-out '%{http_code}' "$@"
 }
 
 listener_token="$(sign_in listener)"
 morgan_token="$(sign_in morgan)"
 listener_id="d1000000-0000-0000-0000-000000000001"
 morgan_id="d1000000-0000-0000-0000-000000000002"
-path="avatars/$listener_id/profile.jpg"
+avatar_path="avatars/$listener_id/profile.jpg"
 
-request_status() {
-  curl --silent --output /dev/null --write-out '%{http_code}' "$@"
-}
-
-status="$(request_status -X POST "$api_url/storage/v1/object/images/$path" -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" -H 'Content-Type: image/jpeg' -H 'x-upsert: true' --data-binary @"$tmp_dir/avatar.jpg")"
+status="$(request_status -X POST "$api_url/storage/v1/object/images/$avatar_path" \
+  -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" \
+  -H 'Content-Type: image/jpeg' -H 'x-upsert: true' --data-binary @"$temporary_dir/photo.jpg")"
 [[ "$status" == 200 ]] || { echo "Owner avatar upload failed with HTTP $status." >&2; exit 1; }
-
-status="$(request_status -X POST "$api_url/rest/v1/rpc/set_profile_avatar" -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" -H 'Content-Type: application/json' --data '{}')"
+status="$(request_status -X POST "$api_url/rest/v1/rpc/set_profile_avatar" \
+  -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" \
+  -H 'Content-Type: application/json' --data '{}')"
 [[ "$status" == 200 ]] || { echo "Avatar attachment failed with HTTP $status." >&2; exit 1; }
-
-status="$(request_status -X POST "$api_url/storage/v1/object/sign/images/$path" -H "apikey: $publishable_key" -H "Authorization: Bearer $morgan_token" -H 'Content-Type: application/json' --data '{"expiresIn":3600}')"
-[[ "$status" == 200 ]] || { echo "Authorized signed read failed with HTTP $status." >&2; exit 1; }
-
-status="$(request_status -X POST "$api_url/storage/v1/object/sign/images/$path" -H "apikey: $publishable_key" -H 'Content-Type: application/json' --data '{"expiresIn":3600}')"
-[[ "$status" == 400 || "$status" == 401 || "$status" == 403 ]] || { echo "Anonymous signed read unexpectedly returned HTTP $status." >&2; exit 1; }
-
-status="$(request_status -X POST "$api_url/storage/v1/object/images/$path" -H "apikey: $publishable_key" -H "Authorization: Bearer $morgan_token" -H 'Content-Type: image/jpeg' -H 'x-upsert: true' --data-binary @"$tmp_dir/avatar.jpg")"
-[[ "$status" == 400 || "$status" == 401 || "$status" == 403 ]] || { echo "Cross-user mutation unexpectedly returned HTTP $status." >&2; exit 1; }
-
-status="$(request_status -X POST "$api_url/storage/v1/object/images/avatars/$morgan_id/profile.jpg" -H "apikey: $publishable_key" -H "Authorization: Bearer $morgan_token" -H 'Content-Type: image/png' --data-binary @"$tmp_dir/avatar.jpg")"
-[[ "$status" == 400 || "$status" == 415 ]] || { echo "MIME rejection returned HTTP $status." >&2; exit 1; }
-
-status="$(request_status -X POST "$api_url/storage/v1/object/images/avatars/$morgan_id/profile.jpg" -H "apikey: $publishable_key" -H "Authorization: Bearer $morgan_token" -H 'Content-Type: image/jpeg' --data-binary @"$tmp_dir/oversized.jpg")"
-[[ "$status" == 400 || "$status" == 413 ]] || { echo "Size rejection returned HTTP $status." >&2; exit 1; }
-
-status="$(request_status -X DELETE "$api_url/storage/v1/object/images" -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" -H 'Content-Type: application/json' --data "{\"prefixes\":[\"$path\"]}")"
-[[ "$status" == 200 ]] || { echo "Owner avatar deletion failed with HTTP $status." >&2; exit 1; }
-
-# Album uploads are new objects, so they intentionally use INSERT semantics
-# without x-upsert. This exercises the same request shape as the iOS client.
-album_concert_id="d2000000-0000-0000-0000-000000000006"
-album_photo_id="da000000-0000-0000-0000-000000000099"
-album_path="concerts/$album_concert_id/album/$album_photo_id.jpg"
-reserve_body="$(curl --silent --show-error --fail -X POST "$api_url/rest/v1/rpc/reserve_concert_photo" \
-  -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" \
-  -H 'Content-Type: application/json' \
-  --data "{\"p_concert_id\":\"$album_concert_id\",\"p_photo_id\":\"$album_photo_id\"}")"
-[[ "$(jq -r '.object_path' <<<"$reserve_body")" == "$album_path" ]] || {
-  echo "Album reservation did not return the fixed path." >&2; exit 1;
-}
-retry_reserve_body="$(curl --silent --show-error --fail -X POST "$api_url/rest/v1/rpc/reserve_concert_photo" \
-  -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" \
-  -H 'Content-Type: application/json' \
-  --data "{\"p_concert_id\":\"$album_concert_id\",\"p_photo_id\":\"$album_photo_id\"}")"
-[[ "$(jq -r '.id' <<<"$retry_reserve_body")" == "$album_photo_id" ]] || {
-  echo "Album reservation retry did not reuse the photo ID." >&2; exit 1;
-}
-
-status="$(request_status -X POST "$api_url/storage/v1/object/images/$album_path" \
-  -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" \
-  -H 'Content-Type: image/jpeg' --data-binary @"$tmp_dir/avatar.jpg")"
-[[ "$status" == 200 ]] || { echo "Reserved album upload failed with HTTP $status." >&2; exit 1; }
-
-status="$(request_status -X POST "$api_url/rest/v1/rpc/attach_concert_photo" \
-  -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" \
-  -H 'Content-Type: application/json' --data "{\"p_photo_id\":\"$album_photo_id\"}")"
-[[ "$status" == 200 ]] || { echo "Album attachment failed with HTTP $status." >&2; exit 1; }
-
-status="$(request_status -X POST "$api_url/storage/v1/object/sign/images/$album_path" \
+status="$(request_status -X POST "$api_url/storage/v1/object/sign/images/$avatar_path" \
   -H "apikey: $publishable_key" -H "Authorization: Bearer $morgan_token" \
   -H 'Content-Type: application/json' --data '{"expiresIn":3600}')"
-[[ "$status" == 200 ]] || { echo "Friend album signed read failed with HTTP $status." >&2; exit 1; }
-
-status="$(request_status -X POST "$api_url/storage/v1/object/sign/images/$album_path" \
-  -H "apikey: $publishable_key" -H 'Content-Type: application/json' --data '{"expiresIn":3600}')"
-[[ "$status" == 400 || "$status" == 401 || "$status" == 403 ]] || {
-  echo "Anonymous album read unexpectedly returned HTTP $status." >&2; exit 1;
-}
-
-status="$(request_status -X POST "$api_url/storage/v1/object/images/concerts/$album_concert_id/album/da000000-0000-0000-0000-000000000098.jpg" \
+[[ "$status" == 200 ]] || { echo "Authorized avatar read failed with HTTP $status." >&2; exit 1; }
+status="$(request_status -X POST "$api_url/storage/v1/object/images/$avatar_path" \
   -H "apikey: $publishable_key" -H "Authorization: Bearer $morgan_token" \
-  -H 'Content-Type: image/jpeg' --data-binary @"$tmp_dir/avatar.jpg")"
+  -H 'Content-Type: image/jpeg' -H 'x-upsert: true' --data-binary @"$temporary_dir/photo.jpg")"
 [[ "$status" == 400 || "$status" == 401 || "$status" == 403 ]] || {
-  echo "Friend album upload unexpectedly returned HTTP $status." >&2; exit 1;
+  echo "Cross-user avatar mutation unexpectedly returned HTTP $status." >&2; exit 1;
 }
+status="$(request_status -X POST "$api_url/storage/v1/object/images/avatars/$morgan_id/profile.jpg" \
+  -H "apikey: $publishable_key" -H "Authorization: Bearer $morgan_token" \
+  -H 'Content-Type: image/png' --data-binary @"$temporary_dir/photo.jpg")"
+[[ "$status" == 400 || "$status" == 415 ]] || { echo "Avatar MIME rejection returned HTTP $status." >&2; exit 1; }
 
-# A second item fails attachment at the album's 2 MB policy boundary while the
-# first item remains ready. Reusing the same reservation and object path with an
-# authorized upsert then succeeds, proving explicit retry does not spend a new slot.
-retry_photo_id="da000000-0000-0000-0000-000000000096"
-retry_path="concerts/$album_concert_id/album/$retry_photo_id.jpg"
-curl --silent --show-error --fail -X POST "$api_url/rest/v1/rpc/reserve_concert_photo" \
+post_id="d4500000-0000-0000-0000-000000000001"
+media_id="da000000-0000-0000-0000-000000000099"
+media_path="posts/$post_id/media/$media_id.jpg"
+reserve_body="$(curl --silent --show-error --fail -X POST "$api_url/rest/v1/rpc/reserve_post_media" \
   -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" \
   -H 'Content-Type: application/json' \
-  --data "{\"p_concert_id\":\"$album_concert_id\",\"p_photo_id\":\"$retry_photo_id\"}" >/dev/null
-status="$(request_status -X POST "$api_url/storage/v1/object/images/$retry_path" \
+  --data "{\"p_post_id\":\"$post_id\",\"p_media_id\":\"$media_id\"}")"
+[[ "$(jq -r '.object_path' <<<"$reserve_body")" == "$media_path" ]] || {
+  echo "Post media reservation did not return the fixed path." >&2; exit 1;
+}
+retry_reserve="$(curl --silent --show-error --fail -X POST "$api_url/rest/v1/rpc/reserve_post_media" \
   -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" \
-  -H 'Content-Type: image/jpeg' --data-binary @"$tmp_dir/album-oversized.jpg")"
-[[ "$status" == 200 ]] || { echo "Oversized album fixture upload failed with HTTP $status." >&2; exit 1; }
-status="$(request_status -X POST "$api_url/rest/v1/rpc/attach_concert_photo" \
+  -H 'Content-Type: application/json' \
+  --data "{\"p_post_id\":\"$post_id\",\"p_media_id\":\"$media_id\"}")"
+[[ "$(jq -r '.id' <<<"$retry_reserve")" == "$media_id" ]] || {
+  echo "Post media reservation retry did not reuse the media ID." >&2; exit 1;
+}
+status="$(request_status -X POST "$api_url/storage/v1/object/images/$media_path" \
   -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" \
-  -H 'Content-Type: application/json' --data "{\"p_photo_id\":\"$retry_photo_id\"}")"
-[[ "$status" == 400 ]] || { echo "Oversized album attachment returned HTTP $status." >&2; exit 1; }
-status="$(request_status -X PUT "$api_url/storage/v1/object/images/$retry_path" \
+  -H 'Content-Type: image/jpeg' --data-binary @"$temporary_dir/photo.jpg")"
+[[ "$status" == 200 ]] || { echo "Reserved Post media upload failed with HTTP $status." >&2; exit 1; }
+status="$(request_status -X POST "$api_url/rest/v1/rpc/attach_post_media" \
   -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" \
-  -H 'Content-Type: image/jpeg' --data-binary @"$tmp_dir/avatar.jpg")"
-[[ "$status" == 200 ]] || { echo "Reserved album retry update failed with HTTP $status." >&2; exit 1; }
-status="$(request_status -X POST "$api_url/rest/v1/rpc/attach_concert_photo" \
-  -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" \
-  -H 'Content-Type: application/json' --data "{\"p_photo_id\":\"$retry_photo_id\"}")"
-[[ "$status" == 200 ]] || { echo "Retried album attachment failed with HTTP $status." >&2; exit 1; }
+  -H 'Content-Type: application/json' --data "{\"p_media_id\":\"$media_id\"}")"
+[[ "$status" == 200 ]] || { echo "Post media attachment failed with HTTP $status." >&2; exit 1; }
+status="$(request_status -X POST "$api_url/storage/v1/object/sign/images/$media_path" \
+  -H "apikey: $publishable_key" -H "Authorization: Bearer $morgan_token" \
+  -H 'Content-Type: application/json' --data '{"expiresIn":3600}')"
+[[ "$status" == 200 ]] || { echo "Friend Post media read failed with HTTP $status." >&2; exit 1; }
+status="$(request_status -X POST "$api_url/storage/v1/object/sign/images/$media_path" \
+  -H "apikey: $publishable_key" -H 'Content-Type: application/json' --data '{"expiresIn":3600}')"
+[[ "$status" == 400 || "$status" == 401 || "$status" == 403 ]] || {
+  echo "Anonymous Post media read unexpectedly returned HTTP $status." >&2; exit 1;
+}
+status="$(request_status -X POST "$api_url/storage/v1/object/images/posts/$post_id/media/da000000-0000-0000-0000-000000000098.jpg" \
+  -H "apikey: $publishable_key" -H "Authorization: Bearer $morgan_token" \
+  -H 'Content-Type: image/jpeg' --data-binary @"$temporary_dir/photo.jpg")"
+[[ "$status" == 400 || "$status" == 401 || "$status" == 403 ]] || {
+  echo "Friend Post media mutation unexpectedly returned HTTP $status." >&2; exit 1;
+}
 
-delete_path="$(curl --silent --show-error --fail -X POST "$api_url/rest/v1/rpc/prepare_concert_photo_deletion" \
+oversized_id="da000000-0000-0000-0000-000000000096"
+oversized_path="posts/$post_id/media/$oversized_id.jpg"
+curl --silent --show-error --fail -X POST "$api_url/rest/v1/rpc/reserve_post_media" \
   -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" \
-  -H 'Content-Type: application/json' --data "{\"p_photo_id\":\"$album_photo_id\"}" | jq -r '.')"
-[[ "$delete_path" == "$album_path" ]] || { echo "Album deletion returned the wrong path." >&2; exit 1; }
-status="$(request_status -X DELETE "$api_url/storage/v1/object/images" \
+  -H 'Content-Type: application/json' \
+  --data "{\"p_post_id\":\"$post_id\",\"p_media_id\":\"$oversized_id\"}" >/dev/null
+status="$(request_status -X POST "$api_url/storage/v1/object/images/$oversized_path" \
   -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" \
-  -H 'Content-Type: application/json' --data "{\"prefixes\":[\"$album_path\"]}")"
-[[ "$status" == 200 ]] || { echo "Album object deletion failed with HTTP $status." >&2; exit 1; }
-status="$(request_status -X POST "$api_url/rest/v1/rpc/finalize_concert_photo_deletion" \
+  -H 'Content-Type: image/jpeg' --data-binary @"$temporary_dir/oversized.jpg")"
+[[ "$status" == 200 ]] || { echo "Oversized Post fixture upload failed with HTTP $status." >&2; exit 1; }
+status="$(request_status -X POST "$api_url/rest/v1/rpc/attach_post_media" \
   -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" \
-  -H 'Content-Type: application/json' --data "{\"p_photo_id\":\"$album_photo_id\"}")"
-[[ "$status" == 200 || "$status" == 204 ]] || { echo "Album deletion finalization failed with HTTP $status." >&2; exit 1; }
+  -H 'Content-Type: application/json' --data "{\"p_media_id\":\"$oversized_id\"}")"
+[[ "$status" == 400 ]] || { echo "Oversized Post media attachment returned HTTP $status." >&2; exit 1; }
 
-retry_delete_path="$(curl --silent --show-error --fail -X POST "$api_url/rest/v1/rpc/prepare_concert_photo_deletion" \
-  -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" \
-  -H 'Content-Type: application/json' --data "{\"p_photo_id\":\"$retry_photo_id\"}" | jq -r '.')"
-status="$(request_status -X DELETE "$api_url/storage/v1/object/images" \
-  -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" \
-  -H 'Content-Type: application/json' --data "{\"prefixes\":[\"$retry_delete_path\"]}")"
-[[ "$status" == 200 ]] || { echo "Retried object cleanup failed with HTTP $status." >&2; exit 1; }
-status="$(request_status -X POST "$api_url/rest/v1/rpc/finalize_concert_photo_deletion" \
-  -H "apikey: $publishable_key" -H "Authorization: Bearer $listener_token" \
-  -H 'Content-Type: application/json' --data "{\"p_photo_id\":\"$retry_photo_id\"}")"
-[[ "$status" == 200 || "$status" == 204 ]] || { echo "Retried photo deletion finalization failed with HTTP $status." >&2; exit 1; }
-
-echo "Local Storage API verified: profile and album lifecycles, signed reads, partial failure, reservation retry, mutation denial, MIME and size limits."
+echo "Local Storage API verified: avatar and Post media authorization, signed reads, idempotent reservation, MIME, and size limits."

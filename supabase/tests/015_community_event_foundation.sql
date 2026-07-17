@@ -47,34 +47,34 @@ select set_config('request.jwt.claim.sub', 'e2000000-0000-4000-8000-000000000001
 
 select set_config(
   'test.event_area_id',
-  (select catalog_id::text from public.create_custom_catalog_area('Event City', 'US', null, null)),
+  (select catalog_id::text from public.create_custom_catalog_area('Event City', 'US', null)),
   true
 );
 select set_config(
   'test.event_artist_id',
   (select catalog_id::text from public.create_custom_catalog_artist(
-    'Tap Headliner', 'Group', 'event fixture', current_setting('test.event_area_id')::uuid, null
+    'Tap Headliner', 'Group', 'event fixture', current_setting('test.event_area_id')::uuid
   )),
   true
 );
 select set_config(
   'test.event_target_artist_id',
   (select catalog_id::text from public.create_custom_catalog_artist(
-    'Canonical Headliner', 'Group', 'merge target', current_setting('test.event_area_id')::uuid, null
+    'Canonical Headliner', 'Group', 'merge target', current_setting('test.event_area_id')::uuid
   )),
   true
 );
 select set_config(
   'test.event_place_id',
   (select catalog_id::text from public.create_custom_catalog_place(
-    'Tap Event Hall', current_setting('test.event_area_id')::uuid, 'Venue', '1 Event Way', null
+    'Tap Event Hall', current_setting('test.event_area_id')::uuid, 'Venue', '1 Event Way'
   )),
   true
 );
 select set_config(
   'test.event_tour_id',
   (select catalog_id::text from public.create_custom_catalog_tour(
-    'Tap Event Tour', array[current_setting('test.event_artist_id')::uuid], null
+    'Tap Event Tour', array[current_setting('test.event_artist_id')::uuid]
   )),
   true
 );

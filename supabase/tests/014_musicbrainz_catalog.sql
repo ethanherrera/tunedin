@@ -34,7 +34,7 @@ select set_config('request.jwt.claim.role', 'authenticated', true);
 select set_config('request.jwt.claim.sub', 'e1000000-0000-4000-8000-000000000004', true);
 
 select throws_ok(
-  $$select public.create_custom_catalog_area('Incomplete City', 'US', null, null)$$,
+  $$select public.create_custom_catalog_area('Incomplete City', 'US', null)$$,
   '42501', null,
   'custom creation requires completed onboarding'
 );
@@ -43,34 +43,34 @@ select set_config('request.jwt.claim.sub', 'e1000000-0000-4000-8000-000000000001
 
 select set_config(
   'test.catalog_area_id',
-  (select catalog_id::text from public.create_custom_catalog_area('Tap City', 'US', null, null)),
+  (select catalog_id::text from public.create_custom_catalog_area('Tap City', 'US', null)),
   true
 );
 select set_config(
   'test.catalog_artist_id',
   (select catalog_id::text from public.create_custom_catalog_artist(
-    'Tap Artist', 'Group', 'database fixture', current_setting('test.catalog_area_id')::uuid, null
+    'Tap Artist', 'Group', 'database fixture', current_setting('test.catalog_area_id')::uuid
   )),
   true
 );
 select set_config(
   'test.catalog_place_id',
   (select catalog_id::text from public.create_custom_catalog_place(
-    'Tap Hall', current_setting('test.catalog_area_id')::uuid, 'Venue', '1 Test Way', null
+    'Tap Hall', current_setting('test.catalog_area_id')::uuid, 'Venue', '1 Test Way'
   )),
   true
 );
 select set_config(
   'test.catalog_song_id',
   (select catalog_id::text from public.create_custom_catalog_song(
-    'Tap Song', array[current_setting('test.catalog_artist_id')::uuid], null
+    'Tap Song', array[current_setting('test.catalog_artist_id')::uuid]
   )),
   true
 );
 select set_config(
   'test.catalog_tour_id',
   (select catalog_id::text from public.create_custom_catalog_tour(
-    'Tap Tour', array[current_setting('test.catalog_artist_id')::uuid], null
+    'Tap Tour', array[current_setting('test.catalog_artist_id')::uuid]
   )),
   true
 );
@@ -89,21 +89,21 @@ select is(
 );
 
 select is(
-  (select catalog_id from public.create_custom_catalog_area('  Tap   City ', 'us', null, null)),
+  (select catalog_id from public.create_custom_catalog_area('  Tap   City ', 'us', null)),
   current_setting('test.catalog_area_id')::uuid,
   'normalized custom creation reuses the creator-owned duplicate'
 );
 
 select is(
   (select metadata ->> 'areaCatalogId' from public.create_custom_catalog_artist(
-    'Tap Artist', 'Group', 'database fixture', current_setting('test.catalog_area_id')::uuid, null
+    'Tap Artist', 'Group', 'database fixture', current_setting('test.catalog_area_id')::uuid
   )),
   current_setting('test.catalog_area_id'),
   'custom artist metadata preserves its tunedIn area identity'
 );
 
 select is(
-  (select count(*) from public.search_catalog('artist', 'Tap Artist', null, 20, 0, null)),
+  (select count(*) from public.search_catalog('artist', 'Tap Artist', null, 20, 0)),
   1::bigint,
   'creator catalog search returns the durable custom artist'
 );
@@ -373,8 +373,7 @@ select throws_ok(
 select is(
   (select catalog_id from public.get_catalog_artist_search_context(
     'e1000000-0000-4000-8000-000000000001',
-    array[current_setting('test.catalog_artist_id')::uuid],
-    null
+    array[current_setting('test.catalog_artist_id')::uuid]
   )),
   current_setting('test.catalog_artist_id')::uuid,
   'service search context preserves validated artist input order'
@@ -396,8 +395,7 @@ select throws_ok(
 select throws_ok(
   $$select public.get_catalog_artist_search_context(
     'e1000000-0000-4000-8000-000000000001',
-    array[current_setting('test.catalog_artist_id')::uuid],
-    null
+    array[current_setting('test.catalog_artist_id')::uuid]
   )$$,
   '42501', null,
   'artist context expansion is service-role-only'

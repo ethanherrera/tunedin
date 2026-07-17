@@ -31,13 +31,13 @@ Deno.test("Supabase backend authenticates, requires onboarding, and strictly dec
   });
 
   const profile = await backend.authenticate(authorization);
-  const results = await backend.searchLocal(profile, "place", "Fillmore", [], null, 20, 0);
+  const results = await backend.searchLocal(profile, "place", "Fillmore", [], 20, 0);
   assert.equal(results.length, 1);
   assert.equal(results[0].metadata.areaCatalogId, "e3000000-0000-4000-8000-000000000003");
   assert.equal(results[0].metadata.areaName, "San Francisco");
   assert.equal(requests[0].headers.get("apikey"), "fixture-anon");
   assert.equal(requests[2].headers.get("authorization"), authorization);
-  assert.equal((await requests[2].clone().json()).p_concert_id, null);
+  assert.equal("p_concert_id" in await requests[2].clone().json(), false);
 });
 
 Deno.test("Supabase backend rejects an incomplete profile", async () => {
@@ -90,13 +90,12 @@ Deno.test("privileged RPCs use only the service-role authorization boundary", as
   assert.equal((await requests[0].clone().json()).p_kind, "artist");
 });
 
-Deno.test("artist search context uses the service role and forwards shared-concert context", async () => {
+Deno.test("artist search context uses the service role", async () => {
   const requests: Request[] = [];
   const artistIds = [
     "e1000000-0000-4000-8000-000000000001",
     "e1000000-0000-4000-8000-000000000002",
   ];
-  const concertId = "c1000000-0000-4000-8000-000000000001";
   const backend = new SupabaseCatalogBackend({
     supabaseUrl,
     anonymousKey: "fixture-anon",
@@ -121,7 +120,6 @@ Deno.test("artist search context uses the service role and forwards shared-conce
   const contexts = await backend.getArtistSearchContext(
     { id: profileId, authorization },
     artistIds,
-    concertId,
   );
 
   assert.deepEqual(contexts.map((context) => context.catalogId), artistIds);
@@ -130,7 +128,6 @@ Deno.test("artist search context uses the service role and forwards shared-conce
   assert.deepEqual(body, {
     p_profile_id: profileId,
     p_artist_ids: artistIds,
-    p_concert_id: concertId,
   });
 });
 

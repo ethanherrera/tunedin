@@ -55,7 +55,7 @@ select set_config('request.jwt.claim.sub', 'e3000000-0000-4000-8000-000000000001
 select set_config(
   'test.attendance_area_id',
   (select catalog_id::text from public.create_custom_catalog_area(
-    'Attendance City', 'US', null, null
+    'Attendance City', 'US', null
   )),
   true
 );
@@ -63,7 +63,7 @@ select set_config(
   'test.attendance_artist_id',
   (select catalog_id::text from public.create_custom_catalog_artist(
     'Attendance Headliner', 'Group', null,
-    current_setting('test.attendance_area_id')::uuid, null
+    current_setting('test.attendance_area_id')::uuid
   )),
   true
 );
@@ -71,7 +71,7 @@ select set_config(
   'test.attendance_place_id',
   (select catalog_id::text from public.create_custom_catalog_place(
     'Attendance Hall', current_setting('test.attendance_area_id')::uuid,
-    'Venue', null, null
+    'Venue', null
   )),
   true
 );
@@ -410,7 +410,7 @@ select is(
     current_setting('test.attendance_past_event_id')::uuid, 'went', 'private'
   )),
   'went',
-  'Went can persist without creating a diary'
+  'Went can persist without creating a Post'
 );
 select is(
   (select count(*) from public.list_my_catalog_event_plans(null, 50)),
@@ -422,7 +422,7 @@ select is(
     array[current_setting('test.attendance_past_event_id')::uuid]
   )),
   'went',
-  'past event summaries return Went independently of a diary'
+  'past event summaries return Went independently of a Post'
 );
 select is(
   (select status::text from public.set_catalog_event_attendance(
