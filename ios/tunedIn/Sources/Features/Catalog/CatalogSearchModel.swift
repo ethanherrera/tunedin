@@ -28,7 +28,6 @@ final class CatalogSearchModel {
   private let kind: CatalogEntityKind
   private let availableArtistContextIDs: [UUID]
   private var artistContextIDs: [UUID]
-  private let concertContextID: UUID?
   private let debounceDuration: Duration
   private var searchTask: Task<Void, Never>?
   private var generation = 0
@@ -39,14 +38,12 @@ final class CatalogSearchModel {
     repository: any MusicCatalogRepository,
     kind: CatalogEntityKind,
     artistContextIDs: [UUID] = [],
-    concertContextID: UUID? = nil,
     debounceDuration: Duration = .milliseconds(400)
   ) {
     self.repository = repository
     self.kind = kind
     availableArtistContextIDs = artistContextIDs
     self.artistContextIDs = artistContextIDs
-    self.concertContextID = concertContextID
     self.debounceDuration = debounceDuration
   }
 
@@ -124,8 +121,7 @@ final class CatalogSearchModel {
         kind: kind,
         query: normalized,
         offset: requestedOffset,
-        artistContextIDs: artistContextIDs,
-        concertContextID: concertContextID
+        artistContextIDs: artistContextIDs
       )
       guard requestedGeneration == generation,
             CatalogInput.normalizedText(query) == normalized,
@@ -189,8 +185,7 @@ final class CatalogSearchModel {
         kind: kind,
         query: query,
         offset: 0,
-        artistContextIDs: artistContextIDs,
-        concertContextID: concertContextID
+        artistContextIDs: artistContextIDs
       )
       guard requestedGeneration == generation,
             CatalogInput.normalizedText(self.query) == query,

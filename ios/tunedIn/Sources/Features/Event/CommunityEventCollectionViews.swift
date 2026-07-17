@@ -79,7 +79,9 @@ struct EventAttendanceDirectoryView: View {
     attendances.sorted { lhs, rhs in
       let lhsRank = lhs.profile.id == viewerID ? 0 : (lhs.profile.relationship == .friends ? 1 : 2)
       let rhsRank = rhs.profile.id == viewerID ? 0 : (rhs.profile.relationship == .friends ? 1 : 2)
-      if lhsRank != rhsRank { return lhsRank < rhsRank }
+      if lhsRank != rhsRank {
+        return lhsRank < rhsRank
+      }
       return lhs.profile.displayName.localizedCaseInsensitiveCompare(rhs.profile.displayName)
         == .orderedAscending
     }
@@ -185,17 +187,17 @@ struct EventPostGalleryView: View {
   let event: CommunityEventSummary
   let viewerID: UUID
   let repository: any EventRepository
-  let concertRepository: (any ConcertRepository)?
+  let postRepository: any PostRepository
   let onChanged: () -> Void
   let onDismiss: () -> Void
 
-  @State private var posts: [EventDiaryPreview] = []
-  @State private var cursor: EventDiaryCursor?
+  @State private var posts: [EventPostPreview] = []
+  @State private var cursor: EventPostCursor?
   @State private var hasMore = true
   @State private var isLoading = false
   @State private var didLoad = false
   @State private var errorMessage: String?
-  @State private var selectedPost: EventDiaryPreview?
+  @State private var selectedPost: EventPostPreview?
 
   private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
 
@@ -209,7 +211,7 @@ struct EventPostGalleryView: View {
             Text("Posts")
               .font(.largeTitle.weight(.bold))
               .foregroundStyle(TunedInDesign.primaryText)
-            Text("\(event.title) · \(event.diaryCount) visible")
+            Text("\(event.title) · \(event.postCount) visible")
               .font(.subheadline.weight(.semibold))
               .foregroundStyle(TunedInDesign.mutedText)
           }
@@ -221,13 +223,13 @@ struct EventPostGalleryView: View {
               .foregroundStyle(TunedInDesign.mutedText)
               .frame(maxWidth: .infinity, minHeight: 180, alignment: .center)
               .padding(.horizontal, 20)
-          } else if let concertRepository {
+          } else {
             LazyVGrid(columns: columns, spacing: 2) {
               ForEach(posts) { post in
                 EventPostGridTile(
                   post: post,
                   viewerID: viewerID,
-                  concertRepository: concertRepository,
+                  postRepository: postRepository,
                   onOpen: { selectedPost = post }
                 )
               }
@@ -248,16 +250,14 @@ struct EventPostGalleryView: View {
       EventCollectionBottomBar(title: "Posts", onDismiss: onDismiss)
     }
     .fullScreenCover(item: $selectedPost) { post in
-      if let concertRepository {
-        EventDiaryDetailView(
-          event: event,
-          diary: post,
-          viewerID: viewerID,
-          concertRepository: concertRepository,
-          onChanged: onChanged,
-          onDismiss: { selectedPost = nil }
-        )
-      }
+      EventPostDetailView(
+        event: event,
+        post: post,
+        viewerID: viewerID,
+        postRepository: postRepository,
+        onChanged: onChanged,
+        onDismiss: { selectedPost = nil }
+      )
     }
     .task {
       guard !didLoad else { return }
@@ -301,7 +301,7 @@ struct EventPostGalleryView: View {
     isLoading = true
     defer { isLoading = false }
     do {
-      let page = try await repository.eventDiaries(
+      let page = try await repository.eventPosts(
         eventID: event.id,
         viewerID: viewerID,
         cursor: cursor,

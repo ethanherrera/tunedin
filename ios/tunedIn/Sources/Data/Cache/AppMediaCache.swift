@@ -5,8 +5,7 @@ import UIKit
 struct AppMediaResource: Hashable, Sendable {
   enum Kind: String, Sendable {
     case avatar
-    case concertPhoto = "concert-photo"
-    case albumPhoto = "album-photo"
+    case postMedia = "post-media"
     case eventCover = "event-cover"
   }
 
@@ -18,12 +17,8 @@ struct AppMediaResource: Hashable, Sendable {
     Self(kind: .avatar, id: profileID, version: version)
   }
 
-  static func concertPhoto(concertID: UUID, version: Int64) -> Self {
-    Self(kind: .concertPhoto, id: concertID, version: version)
-  }
-
-  static func albumPhoto(photoID: UUID, version: Int64) -> Self {
-    Self(kind: .albumPhoto, id: photoID, version: version)
+  static func postMedia(mediaID: UUID, version: Int64) -> Self {
+    Self(kind: .postMedia, id: mediaID, version: version)
   }
 
   static func eventCover(eventID: UUID, version: Int64) -> Self {
@@ -53,8 +48,8 @@ struct URLSessionMediaDataLoader: AppMediaDataLoading {
 }
 
 actor AppMediaCache {
-  static let memoryCapacity = 32 * 1_024 * 1_024
-  static let diskCapacity = 128 * 1_024 * 1_024
+  static let memoryCapacity = 32 * 1024 * 1024
+  static let diskCapacity = 128 * 1024 * 1024
 
   nonisolated let signedURLs: SignedURLCache
 

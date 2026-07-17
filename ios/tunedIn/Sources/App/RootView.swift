@@ -2,8 +2,8 @@ import SwiftUI
 
 struct RootView: View {
   @Bindable var session: AppSession
-  let concertRepository: any ConcertRepository
-  let eventRepository: (any EventRepository)?
+  let postRepository: any PostRepository
+  let eventRepository: any EventRepository
   let socialRepository: any SocialRepository
 
   var body: some View {
@@ -31,7 +31,7 @@ struct RootView: View {
           session: session,
           user: user,
           profile: profile,
-          concertRepository: concertRepository,
+          postRepository: postRepository,
           eventRepository: eventRepository,
           socialRepository: socialRepository
         )

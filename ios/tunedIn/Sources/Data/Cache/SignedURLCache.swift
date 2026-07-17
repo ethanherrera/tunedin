@@ -3,8 +3,7 @@ import Foundation
 struct SignedURLCacheKey: Hashable, Sendable {
   enum Kind: String, Sendable {
     case avatar
-    case concertPhoto = "concert-photo"
-    case albumPhoto = "album-photo"
+    case postMedia = "post-media"
     case eventCover = "event-cover"
   }
 
@@ -16,12 +15,8 @@ struct SignedURLCacheKey: Hashable, Sendable {
     Self(kind: .avatar, id: profileID, version: version)
   }
 
-  static func concertPhoto(concertID: UUID, version: Int64) -> Self {
-    Self(kind: .concertPhoto, id: concertID, version: version)
-  }
-
-  static func albumPhoto(photoID: UUID, version: Int64) -> Self {
-    Self(kind: .albumPhoto, id: photoID, version: version)
+  static func postMedia(mediaID: UUID, version: Int64) -> Self {
+    Self(kind: .postMedia, id: mediaID, version: version)
   }
 
   static func eventCover(eventID: UUID, version: Int64) -> Self {

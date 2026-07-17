@@ -1,6 +1,6 @@
 import Foundation
 
-struct ListCatalogEventDiariesParameters: Encodable, Equatable, Sendable {
+struct ListCatalogEventPostsParameters: Encodable, Equatable, Sendable {
   let eventID: UUID
   let scope: String
   let cursor: [String: String]?
@@ -26,7 +26,7 @@ struct ListCatalogEventDiariesParameters: Encodable, Equatable, Sendable {
   }
 }
 
-struct UpsertCatalogEventDiaryParameters: Encodable, Equatable, Sendable {
+struct UpsertCatalogEventPostParameters: Encodable, Equatable, Sendable {
   let eventID: UUID
   let overallScore: Double?
   let performanceScore: Double?
@@ -34,7 +34,7 @@ struct UpsertCatalogEventDiaryParameters: Encodable, Equatable, Sendable {
   let audience: EventAudience
   let publish: Bool
 
-  init(eventID: UUID, input: EventDiaryInput, publish: Bool = true) {
+  init(eventID: UUID, input: EventPostInput, publish: Bool = true) {
     self.eventID = eventID
     overallScore = input.score
     performanceScore = input.performanceScore
@@ -53,13 +53,13 @@ struct UpsertCatalogEventDiaryParameters: Encodable, Equatable, Sendable {
   }
 }
 
-struct UpsertCatalogEventDiaryRPCRecord: Decodable, Equatable, Sendable {
-  let diaryID: UUID
+struct UpsertCatalogEventPostRPCRecord: Decodable, Equatable, Sendable {
+  let postID: UUID
   let eventID: UUID
   let publishedAt: String?
 
   enum CodingKeys: String, CodingKey {
-    case diaryID = "diary_id"
+    case postID = "post_id"
     case eventID = "event_id"
     case publishedAt = "published_at"
   }
@@ -109,20 +109,20 @@ struct CatalogEventProfileHistoryParameters: Encodable, Equatable, Sendable {
   }
 }
 
-struct CatalogEventDiarySummaryRPCRecord: Decodable, Equatable, Sendable {
+struct CatalogEventPostSummaryRPCRecord: Decodable, Equatable, Sendable {
   let eventID: UUID
-  let diaryCount: Int64
+  let postCount: Int64
   let averageScore: Double?
 
   enum CodingKeys: String, CodingKey {
     case eventID = "event_id"
-    case diaryCount = "diary_count"
+    case postCount = "post_count"
     case averageScore = "average_score"
   }
 }
 
-struct CatalogEventDiaryRPCRecord: Decodable, Equatable, Sendable {
-  let diaryID: UUID
+struct CatalogEventPostRPCRecord: Decodable, Equatable, Sendable {
+  let postID: UUID
   let authorID: UUID
   let authorUsername: String
   let authorDisplayName: String
@@ -137,11 +137,11 @@ struct CatalogEventDiaryRPCRecord: Decodable, Equatable, Sendable {
   let commentCount: Int64
   let audience: EventAudience
   let publishedAt: String
-  let nextCursor: CatalogEventDiaryCursorRPCRecord?
+  let nextCursor: CatalogEventPostCursorRPCRecord?
 
   enum CodingKeys: String, CodingKey {
     case audience
-    case diaryID = "diary_id"
+    case postID = "post_id"
     case authorID = "author_id"
     case authorUsername = "author_username"
     case authorDisplayName = "author_display_name"
@@ -159,24 +159,24 @@ struct CatalogEventDiaryRPCRecord: Decodable, Equatable, Sendable {
   }
 }
 
-struct CatalogEventDiaryCursorRPCRecord: Decodable, Equatable, Sendable {
+struct CatalogEventPostCursorRPCRecord: Decodable, Equatable, Sendable {
   let publishedAt: String
-  let diaryID: UUID
+  let postID: UUID
 
   enum CodingKeys: String, CodingKey {
     case publishedAt = "published_at"
-    case diaryID = "diary_id"
+    case postID = "post_id"
   }
 }
 
 struct CatalogEventProfileHistoryRPCRecord: Decodable, Equatable, Sendable {
   let historyKind: String
   let event: CatalogEventRPCRecord
-  let diary: CatalogEventDiaryRPCRecord?
+  let post: CatalogEventPostRPCRecord?
   let occurredAt: String
 
   enum CodingKeys: String, CodingKey {
-    case event, diary
+    case event, post
     case historyKind = "history_kind"
     case occurredAt = "occurred_at"
   }
@@ -196,13 +196,13 @@ struct CatalogEventProfileAttendanceRPCRecord: Decodable, Equatable, Sendable {
   }
 }
 
-extension EventDiaryPreview {
-  init(databaseRecord: CatalogEventDiaryRPCRecord) throws {
+extension EventPostPreview {
+  init(databaseRecord: CatalogEventPostRPCRecord) throws {
     guard let publishedAt = CommunityEventDateCoding.dateTime(from: databaseRecord.publishedAt) else {
       throw AppFailure.unexpected
     }
     self.init(
-      id: databaseRecord.diaryID,
+      id: databaseRecord.postID,
       author: SocialProfile(
         id: databaseRecord.authorID,
         username: databaseRecord.authorUsername,
@@ -223,21 +223,23 @@ extension EventDiaryPreview {
   }
 }
 
-extension EventDiaryCursor {
+extension EventPostCursor {
   var requestValue: [String: String] {
     [
       "published_at": CommunityEventDateCoding.dateTimeString(publishedAt),
-      "diary_id": diaryID.uuidString
+      "post_id": postID.uuidString
     ]
   }
 }
 
-extension CatalogEventDiaryRPCRecord {
-  func diaryCursor() throws -> EventDiaryCursor? {
+extension CatalogEventPostRPCRecord {
+  func postCursor() throws -> EventPostCursor? {
     guard let nextCursor else { return nil }
     guard let publishedAt = CommunityEventDateCoding.dateTime(from: nextCursor.publishedAt) else {
       throw AppFailure.unexpected
     }
-    return EventDiaryCursor(publishedAt: publishedAt, diaryID: nextCursor.diaryID)
+    return EventPostCursor(publishedAt: publishedAt, postID: nextCursor.postID)
   }
 }
+
+

@@ -4,7 +4,6 @@ struct CatalogPickerConfiguration: Equatable, Sendable {
   let kind: CatalogEntityKind
   let title: String
   let artistContext: [CatalogArtist]
-  let concertContextID: UUID?
   let currentSelectionName: String?
   let initialQuery: String
   let showsGuidance: Bool
@@ -13,7 +12,6 @@ struct CatalogPickerConfiguration: Equatable, Sendable {
     kind: CatalogEntityKind,
     title: String? = nil,
     artistContext: [CatalogArtist] = [],
-    concertContextID: UUID? = nil,
     currentSelectionName: String? = nil,
     initialQuery: String = "",
     showsGuidance: Bool = true
@@ -21,7 +19,6 @@ struct CatalogPickerConfiguration: Equatable, Sendable {
     self.kind = kind
     self.title = title ?? "Choose \(kind.singularTitle.lowercased())"
     self.artistContext = artistContext
-    self.concertContextID = concertContextID
     self.currentSelectionName = currentSelectionName
     self.initialQuery = initialQuery
     self.showsGuidance = showsGuidance
@@ -52,8 +49,7 @@ struct CatalogPickerView: View {
       initialValue: CatalogSearchModel(
         repository: repository,
         kind: configuration.kind,
-        artistContextIDs: configuration.artistContext.map(\.id),
-        concertContextID: configuration.concertContextID
+        artistContextIDs: configuration.artistContext.map(\.id)
       )
     )
     _recentSearches = State(
@@ -93,8 +89,7 @@ struct CatalogPickerView: View {
         repository: repository,
         kind: configuration.kind,
         suggestedName: CatalogInput.normalizedText(model.query),
-        artistContext: configuration.artistContext,
-        concertContextID: configuration.concertContextID
+        artistContext: configuration.artistContext
       ) { entity in
         onSelect(entity)
         isPresentingCustomEntry = false

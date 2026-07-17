@@ -20,15 +20,15 @@
     private struct StoredEvent: Sendable {
       var summary: CommunityEventSummary
       var attendances: [EventAttendance]
-      var posts: [EventPost]
-      var diaryPreviews: [EventDiaryPreview]
+      var comments: [EventComment]
+      var postPreviews: [EventPostPreview]
       var invitedProfileIDs: Set<UUID>
     }
 
     private var events: [UUID: StoredEvent]
     private var nextCreatedEventValue = 100
     private var nextPostValue = 100
-    private var preparedDiaryIDs: [UUID: UUID] = [:]
+    private var preparedPostIDs: [UUID: UUID] = [:]
     private let now: Date
 
     init(now: Date = .now) {
@@ -73,11 +73,13 @@
         }
         .map { refreshedSummary($0, viewerID: viewerID) }
         .sorted { lhs, rhs in
-          if lhs.catalogPlaceID == input.place.id, rhs.catalogPlaceID != input.place.id { return true }
+          if lhs.catalogPlaceID == input.place.id, rhs.catalogPlaceID != input.place.id {
+            return true
+          }
           return lhs.eventDate < rhs.eventDate
         }
         .prefix(5)
-        .map { $0 }
+        .map(\.self)
     }
 
     func eventDetail(id: UUID, viewerID: UUID) async throws -> CommunityEventDetail {
@@ -111,17 +113,17 @@
           kind: .markedGoing,
           actor: morgan,
           event: upcoming,
-          diary: nil,
-          occurredAt: now.addingTimeInterval(-3_600),
+          post: nil,
+          occurredAt: now.addingTimeInterval(-3600),
           message: "is going to " + upcoming.headlinerName
         ),
         EventActivity(
           id: Self.uuid(value: 2, prefix: "EA"),
-          kind: .diaryPublished,
+          kind: .postPublished,
           actor: ava,
           event: memory,
-          diary: events[DevelopmentEventFixture.mitskiMemoryID]?.diaryPreviews.first,
-          occurredAt: now.addingTimeInterval(-86_400),
+          post: events[DevelopmentEventFixture.mitskiMemoryID]?.postPreviews.first,
+          occurredAt: now.addingTimeInterval(-86400),
           message: "posted about " + memory.headlinerName
         )
       ]
@@ -137,11 +139,13 @@
         throw CommunityEventError.eventUnavailable
       }
       if status == .going,
-         stored.summary.lifecycle == .cancelled || stored.summary.phase(at: now) == .memories {
+         stored.summary.lifecycle == .cancelled || stored.summary.phase(at: now) == .memories
+      {
         throw CommunityEventError.invalidEvent("Going is available only before the concert.")
       }
       if let status, status != .going,
-         stored.summary.lifecycle == .cancelled || stored.summary.phase(at: now) != .memories {
+         stored.summary.lifecycle == .cancelled || stored.summary.phase(at: now) != .memories
+      {
         throw CommunityEventError.invalidEvent("Went can be confirmed only after the concert.")
       }
       stored.attendances.removeAll(where: { $0.profile.id == viewerID })
@@ -187,13 +191,13 @@
       return detail(from: stored, viewerID: viewerID)
     }
 
-    func addPost(
+    func addComment(
       eventID: UUID,
       authorID: UUID,
-      parentPostID: UUID?,
+      parentCommentID: UUID?,
       body: String,
       audience: EventAudience
-    ) async throws -> EventPost {
+    ) async throws -> EventComment {
       guard var stored = events[eventID], canView(stored, viewerID: authorID) else {
         throw CommunityEventError.eventUnavailable
       }
@@ -202,16 +206,16 @@
         throw CommunityEventError.invalidEvent("Comments must be between 1 and 500 characters.")
       }
       nextPostValue += 1
-      let post = EventPost(
+      let post = EventComment(
         id: Self.uuid(value: nextPostValue, prefix: "EC"),
-        parentPostID: parentPostID,
+        parentCommentID: parentCommentID,
         author: Self.profile(authorID),
         body: normalized,
         audience: audience,
         createdAt: now,
         isDeleted: false
       )
-      stored.posts.append(post)
+      stored.comments.append(post)
       events[eventID] = stored
       return post
     }
@@ -256,10 +260,10 @@
       throw CommunityEventError.invitationUnavailable
     }
 
-    func saveDiary(
+    func savePost(
       eventID: UUID,
       authorID: UUID,
-      input: EventDiaryInput
+      input: EventPostInput
     ) async throws -> CommunityEventDetail {
       guard var stored = events[eventID], canView(stored, viewerID: authorID) else {
         throw CommunityEventError.eventUnavailable
@@ -280,17 +284,17 @@
         throw CommunityEventError.invalidEvent("Performance scores must be between 0 and 10.")
       }
       let note = input.note.flatMap(CatalogInput.optionalNormalizedText)
-      if let note, note.count > 4_000 {
+      if let note, note.count > 4000 {
         throw CommunityEventError.invalidEvent("Post reviews can be up to 4,000 characters.")
       }
       guard input.score != nil || input.performanceScore != nil || note != nil || input.hasReadyPhoto else {
         throw CommunityEventError.invalidEvent("Add a score, review, or photo before sharing your post.")
       }
-      let existing = stored.diaryPreviews.first(where: { $0.author.id == authorID })
-      stored.diaryPreviews.removeAll(where: { $0.author.id == authorID })
-      stored.diaryPreviews.append(
-        EventDiaryPreview(
-          id: existing?.id ?? preparedDiaryIDs[eventID]
+      let existing = stored.postPreviews.first(where: { $0.author.id == authorID })
+      stored.postPreviews.removeAll(where: { $0.author.id == authorID })
+      stored.postPreviews.append(
+        EventPostPreview(
+          id: existing?.id ?? preparedPostIDs[eventID]
             ?? Self.uuid(value: nextCreatedEventValue + 1, prefix: "ED"),
           author: Self.profile(authorID),
           score: input.score,
@@ -309,7 +313,7 @@
       return detail(from: stored, viewerID: authorID)
     }
 
-    func preparePhotoDiary(
+    func preparePhotoPost(
       eventID: UUID,
       authorID: UUID,
       audience _: EventAudience
@@ -317,35 +321,39 @@
       guard let stored = events[eventID], canView(stored, viewerID: authorID) else {
         throw CommunityEventError.eventUnavailable
       }
-      if let existing = stored.diaryPreviews.first(where: { $0.author.id == authorID }) {
+      if let existing = stored.postPreviews.first(where: { $0.author.id == authorID }) {
         return existing.id
       }
-      if let prepared = preparedDiaryIDs[eventID] { return prepared }
+      if let prepared = preparedPostIDs[eventID] {
+        return prepared
+      }
       nextCreatedEventValue += 1
-      let diaryID = Self.uuid(value: nextCreatedEventValue, prefix: "ED")
-      preparedDiaryIDs[eventID] = diaryID
-      return diaryID
+      let postID = Self.uuid(value: nextCreatedEventValue, prefix: "ED")
+      preparedPostIDs[eventID] = postID
+      return postID
     }
 
     func profileHistory(profileID: UUID, viewerID: UUID) async throws -> CommunityProfileHistory {
       var going: [CommunityEventSummary] = []
       var went: [CommunityEventSummary] = []
-      var diaries: [EventProfileDiary] = []
+      var posts: [EventProfilePost] = []
       for stored in visibleEvents(viewerID: viewerID) {
         if let attendance = stored.attendances.first(where: { $0.profile.id == profileID }),
-           canRead(attendance: attendance, viewerID: viewerID) {
+           canRead(attendance: attendance, viewerID: viewerID)
+        {
           if attendance.status == .going {
             going.append(refreshedSummary(stored, viewerID: viewerID))
           } else {
             went.append(refreshedSummary(stored, viewerID: viewerID))
           }
         }
-        for diary in stored.diaryPreviews where diary.author.id == profileID
-          && canRead(diary: diary, viewerID: viewerID) {
-          diaries.append(
-            EventProfileDiary(
+        for post in stored.postPreviews where post.author.id == profileID
+          && canRead(post: post, viewerID: viewerID)
+        {
+          posts.append(
+            EventProfilePost(
               event: refreshedSummary(stored, viewerID: viewerID),
-              diary: diary
+              post: post
             )
           )
         }
@@ -353,7 +361,7 @@
       return CommunityProfileHistory(
         going: going.sorted(by: { $0.eventDate < $1.eventDate }),
         went: went.sorted(by: { $0.eventDate > $1.eventDate }),
-        diaries: diaries.sorted(by: { $0.diary.publishedAt > $1.diary.publishedAt })
+        posts: posts.sorted(by: { $0.post.publishedAt > $1.post.publishedAt })
       )
     }
 
@@ -411,15 +419,15 @@
         friendPreviews: [],
         publicGoingCount: 0,
         publicWentCount: 0,
-        diaryCount: 0,
-        averageDiaryScore: nil,
+        postCount: 0,
+        averagePostScore: nil,
         duplicateCandidateEventID: nil
       )
       let stored = StoredEvent(
         summary: summary,
         attendances: [],
-        posts: [],
-        diaryPreviews: [],
+        comments: [],
+        postPreviews: [],
         invitedProfileIDs: input.listing == .unlisted ? [creatorID] : []
       )
       events[id] = stored
@@ -472,7 +480,9 @@
 
     private func canView(_ stored: StoredEvent, viewerID: UUID) -> Bool {
       guard stored.summary.rowState == .active else { return false }
-      if stored.summary.listing == .listed { return true }
+      if stored.summary.listing == .listed {
+        return true
+      }
       return stored.attendances.contains(where: { $0.profile.id == viewerID })
         || stored.invitedProfileIDs.contains(viewerID)
     }
@@ -490,8 +500,8 @@
         attendances: stored.attendances.filter { attendance in
           canRead(attendance: attendance, viewerID: viewerID)
         },
-        posts: stored.posts.filter { $0.author.id == viewerID || $0.audience != .privateOnly },
-        diaryPreviews: stored.diaryPreviews.filter { canRead(diary: $0, viewerID: viewerID) }
+        comments: stored.comments.filter { $0.author.id == viewerID || $0.audience != .privateOnly },
+        postPreviews: stored.postPreviews.filter { canRead(post: $0, viewerID: viewerID) }
       )
     }
 
@@ -501,10 +511,10 @@
         || (attendance.audience == .friends && attendance.profile.relationship == .friends)
     }
 
-    private func canRead(diary: EventDiaryPreview, viewerID: UUID) -> Bool {
-      diary.author.id == viewerID
-        || diary.audience == .community
-        || (diary.audience == .friends && diary.author.relationship == .friends)
+    private func canRead(post: EventPostPreview, viewerID: UUID) -> Bool {
+      post.author.id == viewerID
+        || post.audience == .community
+        || (post.audience == .friends && post.author.relationship == .friends)
     }
 
     private func refreshedSummary(_ stored: StoredEvent, viewerID: UUID) -> CommunityEventSummary {
@@ -512,8 +522,8 @@
       let friends = stored.attendances.filter {
         $0.profile.relationship == .friends && $0.profile.id != viewerID && $0.audience != .privateOnly
       }
-      let visibleDiaries = stored.diaryPreviews.filter { canRead(diary: $0, viewerID: viewerID) }
-      let visibleScores = visibleDiaries.compactMap(\.score)
+      let visiblePosts = stored.postPreviews.filter { canRead(post: $0, viewerID: viewerID) }
+      let visibleScores = visiblePosts.compactMap(\.score)
       return CommunityEventSummary(
         id: stored.summary.id,
         artists: stored.summary.artists,
@@ -537,8 +547,8 @@
         friendPreviews: friends.map { EventFriendPreview(profile: $0.profile, status: $0.status) },
         publicGoingCount: stored.attendances.filter { $0.status == .going && $0.audience == .community }.count,
         publicWentCount: stored.attendances.filter { $0.status == .went && $0.audience == .community }.count,
-        diaryCount: visibleDiaries.count,
-        averageDiaryScore: visibleScores.isEmpty
+        postCount: visiblePosts.count,
+        averagePostScore: visibleScores.isEmpty
           ? nil
           : visibleScores.reduce(0, +) / Double(visibleScores.count),
         duplicateCandidateEventID: stored.summary.duplicateCandidateEventID
@@ -663,8 +673,8 @@
         friendPreviews: [],
         publicGoingCount: 0,
         publicWentCount: 0,
-        diaryCount: 0,
-        averageDiaryScore: nil,
+        postCount: 0,
+        averagePostScore: nil,
         duplicateCandidateEventID: DevelopmentEventFixture.mitskiGreekID
       )
 
@@ -693,7 +703,7 @@
           updatedAt: past.addingTimeInterval(TimeInterval(index * 60))
         )
       }
-      let packedDiaryNotes = [
+      let packedPostNotes = [
         "The crowd knew every word, even before the first chorus landed.",
         "I keep replaying the lights during the final song.",
         "The set started quietly and just kept getting bigger.",
@@ -703,8 +713,8 @@
         "The encore was worth losing my voice for.",
         "Still thinking about that transition into the closer."
       ]
-      let memoryDiaries = [
-        EventDiaryPreview(
+      let memoryPosts = [
+        EventPostPreview(
           id: uuid(value: 1, prefix: "ED"),
           author: ava,
           score: 9.5,
@@ -714,9 +724,9 @@
           videoCount: 1,
           commentCount: 4,
           audience: .community,
-          publishedAt: past.addingTimeInterval(10 * 3_600)
+          publishedAt: past.addingTimeInterval(10 * 3600)
         ),
-        EventDiaryPreview(
+        EventPostPreview(
           id: uuid(value: 2, prefix: "ED"),
           author: morgan,
           score: 9.0,
@@ -726,22 +736,22 @@
           videoCount: 0,
           commentCount: 2,
           audience: .friends,
-          publishedAt: past.addingTimeInterval(12 * 3_600)
+          publishedAt: past.addingTimeInterval(12 * 3600)
         )
       ] + packedFriends.filter { $0.id != DevelopmentSocialFixture.morganID }
         .enumerated()
         .map { index, friend in
-          EventDiaryPreview(
+          EventPostPreview(
             id: uuid(value: index + 3, prefix: "ED"),
             author: friend,
             score: 8.0 + Double(index % 5) * 0.5,
             performanceScore: 8.5 + Double(index % 4) * 0.5,
-            note: packedDiaryNotes[index],
+            note: packedPostNotes[index],
             photoCount: index % 3 + 1,
             videoCount: index.isMultiple(of: 4) ? 1 : 0,
             commentCount: index + 1,
             audience: index.isMultiple(of: 2) ? .friends : .community,
-            publishedAt: past.addingTimeInterval(TimeInterval((index + 13) * 3_600))
+            publishedAt: past.addingTimeInterval(TimeInterval((index + 13) * 3600))
           )
         }
       let packedPostBodies = [
@@ -756,37 +766,37 @@
         "Already building the pre-show playlist."
       ]
       let upcomingPosts = packedFriends.enumerated().map { index, friend in
-        EventPost(
+        EventComment(
           id: uuid(value: index + 1, prefix: "EC"),
-          parentPostID: nil,
+          parentCommentID: nil,
           author: friend,
           body: packedPostBodies[index],
           audience: index.isMultiple(of: 2) ? .friends : .community,
-          createdAt: now.addingTimeInterval(TimeInterval(-((index + 2) * 1_800))),
+          createdAt: now.addingTimeInterval(TimeInterval(-((index + 2) * 1800))),
           isDeleted: false
         )
       } + [
-        EventPost(
+        EventComment(
           id: uuid(value: 20, prefix: "EC"),
-          parentPostID: uuid(value: 2, prefix: "EC"),
+          parentCommentID: uuid(value: 2, prefix: "EC"),
           author: morgan,
           body: "Yes, let's make a group chat for the meetup.",
           audience: .friends,
-          createdAt: now.addingTimeInterval(-1_200),
+          createdAt: now.addingTimeInterval(-1200),
           isDeleted: false
         ),
-        EventPost(
+        EventComment(
           id: uuid(value: 21, prefix: "EC"),
-          parentPostID: uuid(value: 4, prefix: "EC"),
+          parentCommentID: uuid(value: 4, prefix: "EC"),
           author: profile(DevelopmentSocialFixture.miaID),
           body: "I would lose it if that happens.",
           audience: .friends,
           createdAt: now.addingTimeInterval(-900),
           isDeleted: false
         ),
-        EventPost(
+        EventComment(
           id: uuid(value: 22, prefix: "EC"),
-          parentPostID: uuid(value: 8, prefix: "EC"),
+          parentCommentID: uuid(value: 8, prefix: "EC"),
           author: profile(DevelopmentSocialFixture.zoeID),
           body: "The venue email says doors at 6:30, music at 7:30.",
           audience: .community,
@@ -799,50 +809,50 @@
         upcoming.id: StoredEvent(
           summary: upcoming,
           attendances: upcomingAttendance,
-          posts: upcomingPosts,
-          diaryPreviews: [],
+          comments: upcomingPosts,
+          postPreviews: [],
           invitedProfileIDs: []
         ),
         unlisted.id: StoredEvent(
           summary: unlisted,
           attendances: unlistedAttendance,
-          posts: [],
-          diaryPreviews: [],
+          comments: [],
+          postPreviews: [],
           invitedProfileIDs: [DevelopmentSocialFixture.currentUserID]
         ),
         cancelled.id: StoredEvent(
           summary: cancelled,
           attendances: [],
-          posts: [],
-          diaryPreviews: [],
+          comments: [],
+          postPreviews: [],
           invitedProfileIDs: []
         ),
         memory.id: StoredEvent(
           summary: memory,
           attendances: memoryAttendance,
-          posts: [],
-          diaryPreviews: memoryDiaries,
+          comments: [],
+          postPreviews: memoryPosts,
           invitedProfileIDs: []
         ),
         emptyUpcoming.id: StoredEvent(
           summary: emptyUpcoming,
           attendances: [],
-          posts: [],
-          diaryPreviews: [],
+          comments: [],
+          postPreviews: [],
           invitedProfileIDs: []
         ),
         emptyMemory.id: StoredEvent(
           summary: emptyMemory,
           attendances: [],
-          posts: [],
-          diaryPreviews: [],
+          comments: [],
+          postPreviews: [],
           invitedProfileIDs: []
         ),
         duplicate.id: StoredEvent(
           summary: duplicate,
           attendances: [],
-          posts: [],
-          diaryPreviews: [],
+          comments: [],
+          postPreviews: [],
           invitedProfileIDs: []
         )
       ]
@@ -881,7 +891,7 @@
         eventDate: eventDate,
         startsAt: eventDate,
         timeZoneIdentifier: "America/Los_Angeles",
-        memoryUnlockAt: eventDate.addingTimeInterval(4 * 3_600),
+        memoryUnlockAt: eventDate.addingTimeInterval(4 * 3600),
         lifecycle: lifecycle,
         listing: listing,
         integrity: .communityAdded,
@@ -892,8 +902,8 @@
         friendPreviews: [],
         publicGoingCount: 0,
         publicWentCount: 0,
-        diaryCount: 0,
-        averageDiaryScore: nil,
+        postCount: 0,
+        averagePostScore: nil,
         duplicateCandidateEventID: duplicateCandidateEventID
       )
     }
@@ -913,7 +923,7 @@
 
     private static func memoryUnlockAt(for input: CommunityEventCreationInput) -> Date {
       if let startsAt = input.startsAt {
-        return startsAt.addingTimeInterval(4 * 3_600)
+        return startsAt.addingTimeInterval(4 * 3600)
       }
       var calendar = Calendar(identifier: .gregorian)
       calendar.timeZone = TimeZone(identifier: input.timeZoneIdentifier) ?? .gmt

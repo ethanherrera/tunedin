@@ -24,10 +24,10 @@ enum TelemetrySanitizer {
     .profileSetupCompleted: [.durationMilliseconds],
     .friendRequestSent: [.durationMilliseconds],
     .friendRequestAccepted: [.durationMilliseconds],
-    .collaboratorAdded: [.durationMilliseconds],
-    .concertCreated: [.durationMilliseconds],
-    .concertUpdated: [.durationMilliseconds, .changeKind],
-    .commentCreated: [.durationMilliseconds],
+    .eventCreated: [.durationMilliseconds],
+    .eventUpdated: [.durationMilliseconds],
+    .eventCommentCreated: [.durationMilliseconds],
+    .postCommentCreated: [.durationMilliseconds],
     .photoUploadCompleted: [
       .durationMilliseconds,
       .attemptedCount,
@@ -37,7 +37,6 @@ enum TelemetrySanitizer {
       .outcome,
       .failureCategory
     ],
-    .ownershipTransferred: [.durationMilliseconds],
     .feedbackSubmitted: [.durationMilliseconds, .category, .outcome, .failureCategory],
     .screenLoadCompleted: [.screen, .durationMilliseconds, .outcome, .failureCategory, .retryable],
     .coreOperationCompleted: [

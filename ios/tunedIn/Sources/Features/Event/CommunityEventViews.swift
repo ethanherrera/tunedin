@@ -19,12 +19,11 @@ enum CommunityProfileCollection: CaseIterable, Hashable {
   }
 }
 
-struct CommunityProfileHistorySection<ArchiveContent: View>: View {
+struct CommunityProfileHistorySection: View {
   let history: CommunityProfileHistory
   let eventRepository: any EventRepository
-  let concertRepository: any ConcertRepository
+  let postRepository: any PostRepository
   let onOpenEvent: (CommunityEventSummary, UUID?) -> Void
-  let archiveContent: ArchiveContent
 
   @State private var selectedCollection = CommunityProfileCollection.posts
   @State private var expandedConcertCollection: ProfileConcertCollection?
@@ -34,15 +33,13 @@ struct CommunityProfileHistorySection<ArchiveContent: View>: View {
   init(
     history: CommunityProfileHistory,
     eventRepository: any EventRepository,
-    concertRepository: any ConcertRepository,
-    onOpenEvent: @escaping (CommunityEventSummary, UUID?) -> Void,
-    @ViewBuilder archiveContent: () -> ArchiveContent
+    postRepository: any PostRepository,
+    onOpenEvent: @escaping (CommunityEventSummary, UUID?) -> Void
   ) {
     self.history = history
     self.eventRepository = eventRepository
-    self.concertRepository = concertRepository
+    self.postRepository = postRepository
     self.onOpenEvent = onOpenEvent
-    self.archiveContent = archiveContent()
   }
 
   var body: some View {
@@ -78,18 +75,18 @@ struct CommunityProfileHistorySection<ArchiveContent: View>: View {
 
       switch selectedCollection {
       case .posts:
-        if history.diaries.isEmpty {
+        if history.posts.isEmpty {
           emptyState("No posts yet.")
         } else {
           LazyVGrid(
             columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3),
             spacing: 2
           ) {
-            ForEach(history.diaries) { entry in
-              Button { onOpenEvent(entry.event, entry.diary.id) } label: {
-                ProfileDiaryGridTile(
+            ForEach(history.posts) { entry in
+              Button { onOpenEvent(entry.event, entry.post.id) } label: {
+                ProfilePostGridTile(
                   entry: entry,
-                  concertRepository: concertRepository
+                  postRepository: postRepository
                 )
               }
               .buttonStyle(TunedInPosterButtonStyle())
@@ -98,7 +95,7 @@ struct CommunityProfileHistorySection<ArchiveContent: View>: View {
                   + CommunityEventDateText.compactDate(entry.event.eventDate)
               )
               .accessibilityValue(
-                entry.diary.score.map {
+                entry.post.score.map {
                   "Score \($0.formatted(.number.precision(.fractionLength(1)))), "
                     + CommunityEventScoreBand(score: $0).accessibilityDescription
                 } ?? "Not scored"
@@ -121,7 +118,6 @@ struct CommunityProfileHistorySection<ArchiveContent: View>: View {
             collection: .past,
             emptyMessage: "No past concerts shared."
           )
-          archiveContent
         }
       }
     }
@@ -210,8 +206,13 @@ private enum ProfileConcertCollection: String, Identifiable {
   case upcoming
   case past
 
-  var id: String { rawValue }
-  var title: String { self == .upcoming ? "Upcoming concerts" : "Past concerts" }
+  var id: String {
+    rawValue
+  }
+
+  var title: String {
+    self == .upcoming ? "Upcoming concerts" : "Past concerts"
+  }
 }
 
 private struct ProfileConcertDirectoryView: View {
@@ -257,17 +258,17 @@ private struct ProfileConcertDirectoryView: View {
   }
 }
 
-private struct ProfileDiaryGridTile: View {
-  let entry: EventProfileDiary
-  let concertRepository: any ConcertRepository
+private struct ProfilePostGridTile: View {
+  let entry: EventProfilePost
+  let postRepository: any PostRepository
 
   var body: some View {
     GeometryReader { proxy in
       ZStack(alignment: .bottomLeading) {
-        DiaryMediaPreview(
-          diaryID: entry.diary.id,
-          reportedPhotoCount: entry.diary.photoCount,
-          concertRepository: concertRepository,
+        PostMediaPreview(
+          postID: entry.post.id,
+          reportedPhotoCount: entry.post.photoCount,
+          postRepository: postRepository,
           height: proxy.size.width,
           maximumVisiblePhotos: 1
         )
@@ -279,7 +280,7 @@ private struct ProfileDiaryGridTile: View {
         )
 
         VStack(alignment: .leading, spacing: 2) {
-          if let score = entry.diary.score {
+          if let score = entry.post.score {
             CommunityEventScoreBadge(score: score, size: .compact)
           }
           Text(entry.event.title)
@@ -303,7 +304,7 @@ private struct ProfileDiaryGridTile: View {
 struct CommunityActivityFeedView: View {
   let viewerID: UUID
   let repository: any EventRepository
-  let concertRepository: any ConcertRepository
+  let postRepository: any PostRepository
   let onOpenActivity: (EventActivity) -> Void
 
   @State private var activities: [EventActivity] = []
@@ -341,7 +342,7 @@ struct CommunityActivityFeedView: View {
                 CommunityActivityCard(
                   activity: activity,
                   eventRepository: repository,
-                  concertRepository: concertRepository,
+                  postRepository: postRepository,
                   onOpenActivity: { onOpenActivity(activity) }
                 )
               }
@@ -609,7 +610,9 @@ private struct PlansCalendarOverview: View {
                 ForEach(1 ... month.dayCount, id: \.self) { day in
                   let dayEvents = month.eventsByDay[day] ?? []
                   Button {
-                    if let event = dayEvents.first { onOpenEvent(event) }
+                    if let event = dayEvents.first {
+                      onOpenEvent(event)
+                    }
                   } label: {
                     VStack(spacing: 2) {
                       Text("\(day)")
@@ -681,7 +684,9 @@ private struct PlansCalendarMonth: Identifiable {
   let monthStart: Date
   let events: [CommunityEventSummary]
 
-  var id: Date { monthStart }
+  var id: Date {
+    monthStart
+  }
 
   var title: String {
     monthStart.formatted(.dateTime.month(.wide).year())

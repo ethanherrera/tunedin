@@ -13,9 +13,9 @@ struct FriendsListView: View {
   let currentUserID: UUID
   let currentUsername: String
   let socialRepository: any SocialRepository
-  let concertRepository: any ConcertRepository
-  let eventRepository: (any EventRepository)?
-  let onOpenCommunityEvent: ((CommunityEventSummary, UUID?) -> Void)?
+  let postRepository: any PostRepository
+  let eventRepository: any EventRepository
+  let onOpenCommunityEvent: (CommunityEventSummary, UUID?) -> Void
 
   @State private var model: PeopleHubModel
   @State private var query = ""
@@ -24,23 +24,23 @@ struct FriendsListView: View {
   @Namespace private var sectionSelectionNamespace
   @Environment(\.dismiss) private var dismiss
   @Environment(\.telemetry) private var telemetry
-  @EnvironmentObject private var floatingControls: ConcertFloatingControls
+  @EnvironmentObject private var floatingControls: AppFloatingControls
 
   init(
     profileUsername: String? = nil,
     currentUserID: UUID,
     currentUsername: String,
     socialRepository: any SocialRepository,
-    concertRepository: any ConcertRepository,
-    eventRepository: (any EventRepository)? = nil,
-    onOpenCommunityEvent: ((CommunityEventSummary, UUID?) -> Void)? = nil
+    postRepository: any PostRepository,
+    eventRepository: any EventRepository,
+    onOpenCommunityEvent: @escaping (CommunityEventSummary, UUID?) -> Void
   ) {
     let requestedProfileUsername = profileUsername ?? currentUsername
     self.profileUsername = requestedProfileUsername
     self.currentUserID = currentUserID
     self.currentUsername = currentUsername
     self.socialRepository = socialRepository
-    self.concertRepository = concertRepository
+    self.postRepository = postRepository
     self.eventRepository = eventRepository
     self.onOpenCommunityEvent = onOpenCommunityEvent
     _model = State(
@@ -104,7 +104,8 @@ struct FriendsListView: View {
             friendsSkeleton
           } else if let errorMessage = model.errorMessage,
                     model.friends.isEmpty,
-                    model.incomingRequests.isEmpty {
+                    model.incomingRequests.isEmpty
+          {
             ContentUnavailableView {
               Label("Couldn’t refresh friends", systemImage: "exclamationmark.triangle")
             } description: {
@@ -224,7 +225,7 @@ struct FriendsListView: View {
         currentUserID: currentUserID,
         currentUsername: currentUsername,
         socialRepository: socialRepository,
-        concertRepository: concertRepository,
+        postRepository: postRepository,
         eventRepository: eventRepository,
         onOpenCommunityEvent: onOpenCommunityEvent
       )
@@ -247,7 +248,7 @@ struct FriendsListView: View {
 
 struct FriendRequestsView: View {
   let socialRepository: any SocialRepository
-  let concertRepository: any ConcertRepository
+  let postRepository: any PostRepository
   let currentUsername: String
 
   @State private var model: PeopleHubModel
@@ -255,11 +256,11 @@ struct FriendRequestsView: View {
 
   init(
     socialRepository: any SocialRepository,
-    concertRepository: any ConcertRepository,
+    postRepository: any PostRepository,
     currentUsername: String
   ) {
     self.socialRepository = socialRepository
-    self.concertRepository = concertRepository
+    self.postRepository = postRepository
     self.currentUsername = currentUsername
     _model = State(
       initialValue: PeopleHubModel(
@@ -465,8 +466,8 @@ final class PeopleHubModel {
 
 private extension Duration {
   var socialTelemetryMilliseconds: Int {
-    let components = self.components
-    return Int(components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000)
+    let components = components
+    return Int(components.seconds * 1000 + components.attoseconds / 1_000_000_000_000_000)
   }
 }
 

@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import tunedIn
 
-struct SupabaseEventDiaryContractTests {
+struct SupabaseEventPostContractTests {
   @Test
   func phaseFourCapabilitiesAddPersonalMemories() {
     let capabilities = EventRepositoryCapabilities.phase4Memories
@@ -12,17 +12,17 @@ struct SupabaseEventDiaryContractTests {
     #expect(capabilities.contains(.attendance))
     #expect(capabilities.contains(.conversation))
     #expect(capabilities.contains(.invitations))
-    #expect(capabilities.contains(.diaries))
+    #expect(capabilities.contains(.posts))
   }
 
   @Test
-  func diaryAndProfileParametersUseExactRPCContractKeys() throws {
+  func postAndProfileParametersUseExactRPCContractKeys() throws {
     let eventID = UUID(uuidString: "10000000-0000-0000-0000-000000000001")!
     let profileID = UUID(uuidString: "20000000-0000-0000-0000-000000000001")!
-    let diaries = try encodedObject(ListCatalogEventDiariesParameters(eventID: eventID))
-    let save = try encodedObject(UpsertCatalogEventDiaryParameters(
+    let posts = try encodedObject(ListCatalogEventPostsParameters(eventID: eventID))
+    let save = try encodedObject(UpsertCatalogEventPostParameters(
       eventID: eventID,
-      input: EventDiaryInput(
+      input: EventPostInput(
         score: 9.5,
         performanceScore: 9,
         note: "  What a closer.  ",
@@ -34,9 +34,9 @@ struct SupabaseEventDiaryContractTests {
       profileID: profileID,
       state: .going
     ))
-    let draft = try encodedObject(UpsertCatalogEventDiaryParameters(
+    let draft = try encodedObject(UpsertCatalogEventPostParameters(
       eventID: eventID,
-      input: EventDiaryInput(
+      input: EventPostInput(
         score: nil,
         performanceScore: nil,
         note: nil,
@@ -45,10 +45,10 @@ struct SupabaseEventDiaryContractTests {
       publish: false
     ))
 
-    #expect(Set(diaries.keys) == ["p_event_id", "p_scope", "p_limit"])
-    #expect(diaries["p_event_id"] as? String == eventID.uuidString)
-    #expect(diaries["p_scope"] as? String == "all")
-    #expect(diaries["p_limit"] as? Int == 30)
+    #expect(Set(posts.keys) == ["p_event_id", "p_scope", "p_limit"])
+    #expect(posts["p_event_id"] as? String == eventID.uuidString)
+    #expect(posts["p_scope"] as? String == "all")
+    #expect(posts["p_limit"] as? Int == 30)
     #expect(Set(save.keys) == [
       "p_event_id", "p_overall_score", "p_performance_score", "p_review_body", "p_audience", "p_publish"
     ])
@@ -65,58 +65,58 @@ struct SupabaseEventDiaryContractTests {
   }
 
   @Test
-  func diaryRecordPreservesScoresContentCountsAndAudience() throws {
-    let record = try JSONDecoder().decode(CatalogEventDiaryRPCRecord.self, from: Data(diaryJSON.utf8))
-    let diary = try EventDiaryPreview(databaseRecord: record)
+  func postRecordPreservesScoresContentCountsAndAudience() throws {
+    let record = try JSONDecoder().decode(CatalogEventPostRPCRecord.self, from: Data(postJSON.utf8))
+    let post = try EventPostPreview(databaseRecord: record)
 
-    #expect(diary.id == UUID(uuidString: "30000000-0000-0000-0000-000000000001"))
-    #expect(diary.author.relationship == .friends)
-    #expect(diary.score == 9.5)
-    #expect(diary.performanceScore == 9)
-    #expect(diary.note == "What a closer.")
-    #expect(diary.photoCount == 4)
-    #expect(diary.videoCount == 1)
-    #expect(diary.commentCount == 3)
-    #expect(diary.audience == .friends)
-    #expect(record.nextCursor?.diaryID == diary.id)
+    #expect(post.id == UUID(uuidString: "30000000-0000-0000-0000-000000000001"))
+    #expect(post.author.relationship == .friends)
+    #expect(post.score == 9.5)
+    #expect(post.performanceScore == 9)
+    #expect(post.note == "What a closer.")
+    #expect(post.photoCount == 4)
+    #expect(post.videoCount == 1)
+    #expect(post.commentCount == 3)
+    #expect(post.audience == .friends)
+    #expect(record.nextCursor?.postID == post.id)
   }
 
   @Test
-  func profileHistoryAndSummaryRecordsMapWentAndDiarySections() throws {
+  func profileHistoryAndSummaryRecordsMapWentAndPostSections() throws {
     let historyData = Data(
       """
       {
-        "history_kind":"diary",
+        "history_kind":"post",
         "event":\(eventJSON),
-        "diary":\(diaryJSON),
+        "post":\(postJSON),
         "occurred_at":"2026-07-16T20:00:00Z"
       }
       """.utf8
     )
     let history = try JSONDecoder().decode(CatalogEventProfileHistoryRPCRecord.self, from: historyData)
     let summaryRecord = try JSONDecoder().decode(
-      CatalogEventDiarySummaryRPCRecord.self,
+      CatalogEventPostSummaryRPCRecord.self,
       from: Data(
-        #"{"event_id":"50000000-0000-0000-0000-000000000001","diary_count":2,"average_score":9.25}"#.utf8
+        #"{"event_id":"50000000-0000-0000-0000-000000000001","post_count":2,"average_score":9.25}"#.utf8
       )
     )
-    let event = try CommunityEventSummary(databaseRecord: history.event, diaryRecord: summaryRecord)
+    let event = try CommunityEventSummary(databaseRecord: history.event, postRecord: summaryRecord)
 
-    #expect(history.historyKind == "diary")
-    #expect(history.diary?.overallScore == 9.5)
+    #expect(history.historyKind == "post")
+    #expect(history.post?.overallScore == 9.5)
     #expect(history.occurredAt == "2026-07-16T20:00:00Z")
     #expect(summaryRecord.averageScore == 9.25)
-    #expect(event.diaryCount == 2)
-    #expect(event.averageDiaryScore == 9.25)
+    #expect(event.postCount == 2)
+    #expect(event.averagePostScore == 9.25)
   }
 
   @Test
-  func activityAndProfileAttendanceCarryDiaryAndGoingDestinations() throws {
+  func activityAndProfileAttendanceCarryPostAndGoingDestinations() throws {
     let activityData = Data(
       """
       {
         "activity_id":"90000000-0000-0000-0000-000000000001",
-        "action":"diary_published",
+        "action":"post_published",
         "actor_id":"20000000-0000-0000-0000-000000000001",
         "actor_username":"morgan",
         "actor_display_name":"Morgan",
@@ -124,7 +124,7 @@ struct SupabaseEventDiaryContractTests {
         "actor_avatar_object_path":null,
         "actor_avatar_version":2,
         "subject_id":"30000000-0000-0000-0000-000000000001",
-        "diary":\(diaryJSON),
+        "post":\(postJSON),
         "event":\(eventJSON),
         "occurred_at":"2026-07-16T20:00:00Z"
       }
@@ -149,16 +149,16 @@ struct SupabaseEventDiaryContractTests {
     let event = try CommunityEventSummary(databaseRecord: activityRecord.event)
     let activity = try EventActivity(databaseRecord: activityRecord, event: event)
 
-    #expect(activity.diary?.id == activityRecord.subjectID)
-    #expect(activity.diary?.photoCount == 4)
+    #expect(activity.post?.id == activityRecord.subjectID)
+    #expect(activity.post?.photoCount == 4)
     #expect(attendance.status == .going)
     #expect(attendance.event.eventID == event.id)
   }
 
-  private var diaryJSON: String {
+  private var postJSON: String {
     #"""
     {
-      "diary_id":"30000000-0000-0000-0000-000000000001",
+      "post_id":"30000000-0000-0000-0000-000000000001",
       "author_id":"20000000-0000-0000-0000-000000000001",
       "author_username":"morgan",
       "author_display_name":"Morgan",
@@ -175,7 +175,7 @@ struct SupabaseEventDiaryContractTests {
       "published_at":"2026-07-16T20:00:00Z",
       "next_cursor":{
         "published_at":"2026-07-16T20:00:00Z",
-        "diary_id":"30000000-0000-0000-0000-000000000001"
+        "post_id":"30000000-0000-0000-0000-000000000001"
       }
     }
     """#
@@ -214,3 +214,5 @@ struct SupabaseEventDiaryContractTests {
     return try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
   }
 }
+
+

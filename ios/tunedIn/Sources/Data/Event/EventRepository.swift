@@ -9,7 +9,7 @@ struct EventRepositoryCapabilities: OptionSet, Equatable, Sendable {
   static let attendance = Self(rawValue: 1 << 3)
   static let conversation = Self(rawValue: 1 << 4)
   static let invitations = Self(rawValue: 1 << 5)
-  static let diaries = Self(rawValue: 1 << 6)
+  static let posts = Self(rawValue: 1 << 6)
 
   static let phase1Discovery: Self = [.discovery]
   static let phase2Attendance: Self = [.discovery, .plans, .attendance]
@@ -17,10 +17,10 @@ struct EventRepositoryCapabilities: OptionSet, Equatable, Sendable {
     .discovery, .plans, .activityFeed, .attendance, .conversation, .invitations
   ]
   static let phase4Memories: Self = [
-    .discovery, .plans, .activityFeed, .attendance, .conversation, .invitations, .diaries
+    .discovery, .plans, .activityFeed, .attendance, .conversation, .invitations, .posts
   ]
   static let complete: Self = [
-    .discovery, .plans, .activityFeed, .attendance, .conversation, .invitations, .diaries
+    .discovery, .plans, .activityFeed, .attendance, .conversation, .invitations, .posts
   ]
 }
 
@@ -39,12 +39,12 @@ protocol EventRepository: Sendable {
     cursor: EventAttendanceCursor?,
     limit: Int
   ) async throws -> EventAttendancePage
-  func eventDiaries(
+  func eventPosts(
     eventID: UUID,
     viewerID: UUID,
-    cursor: EventDiaryCursor?,
+    cursor: EventPostCursor?,
     limit: Int
-  ) async throws -> EventDiaryPage
+  ) async throws -> EventPostPage
   func plans(viewerID: UUID) async throws -> [CommunityEventSummary]
   func activityFeed(viewerID: UUID) async throws -> [EventActivity]
   func setAttendance(
@@ -58,13 +58,13 @@ protocol EventRepository: Sendable {
     viewerID: UUID,
     audience: EventAudience
   ) async throws -> CommunityEventDetail
-  func addPost(
+  func addComment(
     eventID: UUID,
     authorID: UUID,
-    parentPostID: UUID?,
+    parentCommentID: UUID?,
     body: String,
     audience: EventAudience
-  ) async throws -> EventPost
+  ) async throws -> EventComment
   func inviteCandidates(eventID: UUID, viewerID: UUID) async throws -> [EventInviteCandidate]
   func sendInvitations(eventID: UUID, senderID: UUID, recipientIDs: [UUID]) async throws
   func pendingInvitations(viewerID: UUID) async throws -> [EventInvitation]
@@ -74,12 +74,12 @@ protocol EventRepository: Sendable {
     response: EventInvitationResponse,
     audience: EventAudience
   ) async throws
-  func saveDiary(
+  func savePost(
     eventID: UUID,
     authorID: UUID,
-    input: EventDiaryInput
+    input: EventPostInput
   ) async throws -> CommunityEventDetail
-  func preparePhotoDiary(
+  func preparePhotoPost(
     eventID: UUID,
     authorID: UUID,
     audience: EventAudience
@@ -116,7 +116,9 @@ extension EventRepository {
   ) async throws -> EventAttendancePage {
     let detail = try await eventDetail(id: eventID, viewerID: viewerID)
     let sorted = detail.attendances.sorted { lhs, rhs in
-      if lhs.updatedAt != rhs.updatedAt { return lhs.updatedAt > rhs.updatedAt }
+      if lhs.updatedAt != rhs.updatedAt {
+        return lhs.updatedAt > rhs.updatedAt
+      }
       return lhs.profile.id.uuidString < rhs.profile.id.uuidString
     }
     let start = cursor.flatMap { cursor in
@@ -131,27 +133,29 @@ extension EventRepository {
     return EventAttendancePage(items: items, nextCursor: nextCursor)
   }
 
-  func eventDiaries(
+  func eventPosts(
     eventID: UUID,
     viewerID: UUID,
-    cursor: EventDiaryCursor?,
+    cursor: EventPostCursor?,
     limit: Int
-  ) async throws -> EventDiaryPage {
+  ) async throws -> EventPostPage {
     let detail = try await eventDetail(id: eventID, viewerID: viewerID)
-    let sorted = detail.diaryPreviews.sorted { lhs, rhs in
-      if lhs.publishedAt != rhs.publishedAt { return lhs.publishedAt > rhs.publishedAt }
+    let sorted = detail.postPreviews.sorted { lhs, rhs in
+      if lhs.publishedAt != rhs.publishedAt {
+        return lhs.publishedAt > rhs.publishedAt
+      }
       return lhs.id.uuidString < rhs.id.uuidString
     }
     let start = cursor.flatMap { cursor in
-      sorted.firstIndex(where: { $0.id == cursor.diaryID }).map { $0 + 1 }
+      sorted.firstIndex(where: { $0.id == cursor.postID }).map { $0 + 1 }
     } ?? 0
     let pageSize = max(1, min(limit, 50))
     let items = Array(sorted.dropFirst(start).prefix(pageSize))
     let hasMore = start + items.count < sorted.count
     let nextCursor = hasMore ? items.last.map {
-      EventDiaryCursor(publishedAt: $0.publishedAt, diaryID: $0.id)
+      EventPostCursor(publishedAt: $0.publishedAt, postID: $0.id)
     } : nil
-    return EventDiaryPage(items: items, nextCursor: nextCursor)
+    return EventPostPage(items: items, nextCursor: nextCursor)
   }
 
   func activityFeed(viewerID _: UUID) async throws -> [EventActivity] {
@@ -175,13 +179,13 @@ extension EventRepository {
     throw CommunityEventError.featureUnavailable("Cancelled performance confirmation")
   }
 
-  func addPost(
+  func addComment(
     eventID _: UUID,
     authorID _: UUID,
-    parentPostID _: UUID?,
+    parentCommentID _: UUID?,
     body _: String,
     audience _: EventAudience
-  ) async throws -> EventPost {
+  ) async throws -> EventComment {
     throw CommunityEventError.featureUnavailable("Concert discussion")
   }
 
@@ -206,15 +210,15 @@ extension EventRepository {
     throw CommunityEventError.featureUnavailable("Invitations")
   }
 
-  func saveDiary(
+  func savePost(
     eventID _: UUID,
     authorID _: UUID,
-    input _: EventDiaryInput
+    input _: EventPostInput
   ) async throws -> CommunityEventDetail {
     throw CommunityEventError.featureUnavailable("Concert posts")
   }
 
-  func preparePhotoDiary(
+  func preparePhotoPost(
     eventID _: UUID,
     authorID _: UUID,
     audience _: EventAudience

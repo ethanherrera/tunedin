@@ -58,23 +58,23 @@ struct SupabaseEventRepository: EventRepository {
           params: ListCatalogEventAttendeesParameters(eventID: id)
         )
         .execute()
+      let comments: PostgrestResponse<[CatalogEventCommentRPCRecord]> = try await client
+        .rpc(
+          "list_event_comments",
+          params: ListCatalogEventCommentsParameters(eventID: id)
+        )
+        .execute()
       let posts: PostgrestResponse<[CatalogEventPostRPCRecord]> = try await client
         .rpc(
           "list_catalog_event_posts",
           params: ListCatalogEventPostsParameters(eventID: id)
         )
         .execute()
-      let diaries: PostgrestResponse<[CatalogEventDiaryRPCRecord]> = try await client
-        .rpc(
-          "list_catalog_event_diaries",
-          params: ListCatalogEventDiariesParameters(eventID: id)
-        )
-        .execute()
-      return CommunityEventDetail(
+      return try CommunityEventDetail(
         summary: summary,
-        attendances: try attendees.value.map(EventAttendance.init(databaseRecord:)),
-        posts: try posts.value.map(EventPost.init(databaseRecord:)),
-        diaryPreviews: try diaries.value.map(EventDiaryPreview.init(databaseRecord:))
+        attendances: attendees.value.map(EventAttendance.init(databaseRecord:)),
+        comments: comments.value.map(EventComment.init(databaseRecord:)),
+        postPreviews: posts.value.map(EventPostPreview.init(databaseRecord:))
       )
     }
   }
@@ -101,25 +101,25 @@ struct SupabaseEventRepository: EventRepository {
       let nextCursor = response.value.count > pageSize
         ? try pageRecords.last?.attendanceCursor()
         : nil
-      return EventAttendancePage(
-        items: try pageRecords.map(EventAttendance.init(databaseRecord:)),
+      return try EventAttendancePage(
+        items: pageRecords.map(EventAttendance.init(databaseRecord:)),
         nextCursor: nextCursor
       )
     }
   }
 
-  func eventDiaries(
+  func eventPosts(
     eventID: UUID,
     viewerID _: UUID,
-    cursor: EventDiaryCursor?,
+    cursor: EventPostCursor?,
     limit: Int
-  ) async throws -> EventDiaryPage {
+  ) async throws -> EventPostPage {
     try await withAppFailure {
       let pageSize = max(1, min(limit, 49))
-      let response: PostgrestResponse<[CatalogEventDiaryRPCRecord]> = try await client
+      let response: PostgrestResponse<[CatalogEventPostRPCRecord]> = try await client
         .rpc(
-          "list_catalog_event_diaries",
-          params: ListCatalogEventDiariesParameters(
+          "list_catalog_event_posts",
+          params: ListCatalogEventPostsParameters(
             eventID: eventID,
             cursor: cursor?.requestValue,
             limit: pageSize + 1
@@ -128,10 +128,10 @@ struct SupabaseEventRepository: EventRepository {
         .execute()
       let pageRecords = Array(response.value.prefix(pageSize))
       let nextCursor = response.value.count > pageSize
-        ? try pageRecords.last?.diaryCursor()
+        ? try pageRecords.last?.postCursor()
         : nil
-      return EventDiaryPage(
-        items: try pageRecords.map(EventDiaryPreview.init(databaseRecord:)),
+      return try EventPostPage(
+        items: pageRecords.map(EventPostPreview.init(databaseRecord:)),
         nextCursor: nextCursor
       )
     }
@@ -199,36 +199,36 @@ struct SupabaseEventRepository: EventRepository {
     }
   }
 
-  func addPost(
+  func addComment(
     eventID: UUID,
     authorID _: UUID,
-    parentPostID: UUID?,
+    parentCommentID: UUID?,
     body: String,
     audience: EventAudience
-  ) async throws -> EventPost {
+  ) async throws -> EventComment {
     try await withAppFailure {
-      let created: PostgrestResponse<CreateCatalogEventPostRPCRecord> = try await client
+      let created: PostgrestResponse<CreateCatalogEventCommentRPCRecord> = try await client
         .rpc(
-          "create_catalog_event_post",
-          params: CreateCatalogEventPostParameters(
+          "create_event_comment",
+          params: CreateCatalogEventCommentParameters(
             eventID: eventID,
-            parentPostID: parentPostID,
+            parentCommentID: parentCommentID,
             body: body,
             audience: audience
           )
         )
         .single()
         .execute()
-      let response: PostgrestResponse<[CatalogEventPostRPCRecord]> = try await client
+      let response: PostgrestResponse<[CatalogEventCommentRPCRecord]> = try await client
         .rpc(
-          "list_catalog_event_posts",
-          params: ListCatalogEventPostsParameters(eventID: eventID)
+          "list_event_comments",
+          params: ListCatalogEventCommentsParameters(eventID: eventID)
         )
         .execute()
-      guard let record = response.value.first(where: { $0.id == created.value.postID }) else {
+      guard let record = response.value.first(where: { $0.id == created.value.commentID }) else {
         throw AppFailure.unexpected
       }
-      return try EventPost(databaseRecord: record)
+      return try EventComment(databaseRecord: record)
     }
   }
 
@@ -291,38 +291,38 @@ struct SupabaseEventRepository: EventRepository {
     }
   }
 
-  func saveDiary(
+  func savePost(
     eventID: UUID,
     authorID: UUID,
-    input: EventDiaryInput
+    input: EventPostInput
   ) async throws -> CommunityEventDetail {
     try await withAppFailure {
       _ = try await client
         .rpc(
-          "upsert_catalog_event_diary",
-          params: UpsertCatalogEventDiaryParameters(eventID: eventID, input: input)
+          "upsert_catalog_event_post",
+          params: UpsertCatalogEventPostParameters(eventID: eventID, input: input)
         )
         .execute()
       return try await eventDetail(id: eventID, viewerID: authorID)
     }
   }
 
-  func preparePhotoDiary(
+  func preparePhotoPost(
     eventID: UUID,
     authorID _: UUID,
     audience: EventAudience
   ) async throws -> UUID {
     try await withAppFailure {
-      let input = EventDiaryInput(
+      let input = EventPostInput(
         score: nil,
         performanceScore: nil,
         note: nil,
         audience: audience
       )
-      let response: PostgrestResponse<UpsertCatalogEventDiaryRPCRecord> = try await client
+      let response: PostgrestResponse<UpsertCatalogEventPostRPCRecord> = try await client
         .rpc(
-          "upsert_catalog_event_diary",
-          params: UpsertCatalogEventDiaryParameters(
+          "upsert_catalog_event_post",
+          params: UpsertCatalogEventPostParameters(
             eventID: eventID,
             input: input,
             publish: false
@@ -330,7 +330,7 @@ struct SupabaseEventRepository: EventRepository {
         )
         .single()
         .execute()
-      return response.value.diaryID
+      return response.value.postID
     }
   }
 
@@ -359,25 +359,25 @@ struct SupabaseEventRepository: EventRepository {
         return event
       }
       var went: [CommunityEventSummary] = []
-      var diaries: [EventProfileDiary] = []
+      var posts: [EventProfilePost] = []
       for record in history.value {
         guard let event = eventsByID[record.event.eventID] else { throw AppFailure.unexpected }
         switch record.historyKind {
         case "went":
           went.append(event)
-        case "diary":
-          guard let diaryRecord = record.diary else { throw AppFailure.unexpected }
-          diaries.append(
-            EventProfileDiary(
+        case "post":
+          guard let postRecord = record.post else { throw AppFailure.unexpected }
+          try posts.append(
+            EventProfilePost(
               event: event,
-              diary: try EventDiaryPreview(databaseRecord: diaryRecord)
+              post: EventPostPreview(databaseRecord: postRecord)
             )
           )
         default:
           throw AppFailure.unexpected
         }
       }
-      return CommunityProfileHistory(going: going, went: went, diaries: diaries)
+      return CommunityProfileHistory(going: going, went: went, posts: posts)
     }
   }
 
@@ -467,20 +467,20 @@ struct SupabaseEventRepository: EventRepository {
         params: CatalogEventSocialSummariesParameters(eventIDs: Array(uniqueRecords.keys))
       )
       .execute()
-    async let diaryResponse: PostgrestResponse<[CatalogEventDiarySummaryRPCRecord]> = client
+    async let postResponse: PostgrestResponse<[CatalogEventPostSummaryRPCRecord]> = client
       .rpc(
-        "get_catalog_event_diary_summaries",
+        "get_catalog_event_post_summaries",
         params: CatalogEventSocialSummariesParameters(eventIDs: Array(uniqueRecords.keys))
       )
       .execute()
-    let (social, diary) = try await (socialResponse, diaryResponse)
+    let (social, post) = try await (socialResponse, postResponse)
     let socialByEventID = Dictionary(uniqueKeysWithValues: social.value.map { ($0.eventID, $0) })
-    let diaryByEventID = Dictionary(uniqueKeysWithValues: diary.value.map { ($0.eventID, $0) })
+    let postByEventID = Dictionary(uniqueKeysWithValues: post.value.map { ($0.eventID, $0) })
     return try records.map {
       try CommunityEventSummary(
         databaseRecord: $0,
         socialRecord: socialByEventID[$0.eventID],
-        diaryRecord: diaryByEventID[$0.eventID]
+        postRecord: postByEventID[$0.eventID]
       )
     }
   }
@@ -491,7 +491,7 @@ struct SupabaseEventRepository: EventRepository {
     let uniqueRecords = records.reduce(into: [UUID: CatalogEventRPCRecord]()) { result, record in
       result[record.eventID] = record
     }
-    return Dictionary(uniqueKeysWithValues: try await summaries(from: Array(uniqueRecords.values)).map {
+    return try await Dictionary(uniqueKeysWithValues: summaries(from: Array(uniqueRecords.values)).map {
       ($0.id, $0)
     })
   }
@@ -572,7 +572,7 @@ struct ListCatalogEventAttendeesParameters: Encodable, Equatable, Sendable {
   }
 }
 
-struct ListCatalogEventPostsParameters: Encodable, Equatable, Sendable {
+struct ListCatalogEventCommentsParameters: Encodable, Equatable, Sendable {
   let eventID: UUID
   let scope: String
   let cursor: [String: String]?
@@ -598,15 +598,15 @@ struct ListCatalogEventPostsParameters: Encodable, Equatable, Sendable {
   }
 }
 
-struct CreateCatalogEventPostParameters: Encodable, Equatable, Sendable {
+struct CreateCatalogEventCommentParameters: Encodable, Equatable, Sendable {
   let eventID: UUID
-  let parentPostID: UUID?
+  let parentCommentID: UUID?
   let body: String
   let audience: EventAudience
 
   enum CodingKeys: String, CodingKey {
     case eventID = "p_event_id"
-    case parentPostID = "p_parent_post_id"
+    case parentCommentID = "p_parent_comment_id"
     case body = "p_body"
     case audience = "p_audience"
   }
@@ -900,9 +900,9 @@ struct CatalogEventAttendanceCursorRPCRecord: Decodable, Equatable, Sendable {
   }
 }
 
-struct CatalogEventPostRPCRecord: Decodable, Equatable, Sendable {
+struct CatalogEventCommentRPCRecord: Decodable, Equatable, Sendable {
   let id: UUID
-  let parentPostID: UUID?
+  let parentCommentID: UUID?
   let authorID: UUID
   let authorUsername: String
   let authorDisplayName: String
@@ -916,7 +916,7 @@ struct CatalogEventPostRPCRecord: Decodable, Equatable, Sendable {
 
   enum CodingKeys: String, CodingKey {
     case id, body, audience
-    case parentPostID = "parent_post_id"
+    case parentCommentID = "parent_comment_id"
     case authorID = "author_id"
     case authorUsername = "author_username"
     case authorDisplayName = "author_display_name"
@@ -928,11 +928,11 @@ struct CatalogEventPostRPCRecord: Decodable, Equatable, Sendable {
   }
 }
 
-struct CreateCatalogEventPostRPCRecord: Decodable, Equatable, Sendable {
-  let postID: UUID
+struct CreateCatalogEventCommentRPCRecord: Decodable, Equatable, Sendable {
+  let commentID: UUID
 
   enum CodingKeys: String, CodingKey {
-    case postID = "post_id"
+    case commentID = "comment_id"
   }
 }
 
@@ -992,12 +992,12 @@ struct CatalogEventActivityRPCRecord: Decodable, Equatable, Sendable {
   let actorAvatarObjectPath: String?
   let actorAvatarVersion: Int64
   let subjectID: UUID?
-  let diary: CatalogEventDiaryRPCRecord?
+  let post: CatalogEventPostRPCRecord?
   let event: CatalogEventRPCRecord
   let occurredAt: String
 
   enum CodingKeys: String, CodingKey {
-    case action, diary, event
+    case action, post, event
     case activityID = "activity_id"
     case actorID = "actor_id"
     case actorUsername = "actor_username"
@@ -1014,7 +1014,7 @@ extension CommunityEventSummary {
   init(
     databaseRecord: CatalogEventRPCRecord,
     socialRecord: CatalogEventSocialSummaryRPCRecord? = nil,
-    diaryRecord: CatalogEventDiarySummaryRPCRecord? = nil
+    postRecord: CatalogEventPostSummaryRPCRecord? = nil
   ) throws {
     guard
       let eventDate = CommunityEventDateCoding.date(from: databaseRecord.eventDate),
@@ -1059,8 +1059,8 @@ extension CommunityEventSummary {
       friendPreviews: socialRecord?.friendPreviews.map(EventFriendPreview.init(databaseRecord:)) ?? [],
       publicGoingCount: socialRecord?.communityGoingCount ?? 0,
       publicWentCount: socialRecord?.communityWentCount ?? 0,
-      diaryCount: Int(diaryRecord?.diaryCount ?? 0),
-      averageDiaryScore: diaryRecord?.averageScore,
+      postCount: Int(postRecord?.postCount ?? 0),
+      averagePostScore: postRecord?.averageScore,
       duplicateCandidateEventID: nil
     )
   }
@@ -1122,14 +1122,14 @@ private extension CatalogEventAttendeeRPCRecord {
   }
 }
 
-extension EventPost {
-  init(databaseRecord: CatalogEventPostRPCRecord) throws {
+extension EventComment {
+  init(databaseRecord: CatalogEventCommentRPCRecord) throws {
     guard let createdAt = CommunityEventDateCoding.dateTime(from: databaseRecord.createdAt) else {
       throw AppFailure.unexpected
     }
     self.init(
       id: databaseRecord.id,
-      parentPostID: databaseRecord.parentPostID,
+      parentCommentID: databaseRecord.parentCommentID,
       author: SocialProfile(
         id: databaseRecord.authorID,
         username: databaseRecord.authorUsername,
@@ -1197,12 +1197,12 @@ extension EventActivity {
       avatarObjectPath: databaseRecord.actorAvatarObjectPath,
       avatarVersion: databaseRecord.actorAvatarVersion
     )
-    self.init(
+    try self.init(
       id: databaseRecord.activityID,
       kind: databaseRecord.action,
       actor: actor,
       event: event,
-      diary: try databaseRecord.diary.map(EventDiaryPreview.init(databaseRecord:)),
+      post: databaseRecord.post.map(EventPostPreview.init(databaseRecord:)),
       occurredAt: occurredAt,
       message: databaseRecord.action.message(eventName: event.headlinerName)
     )
@@ -1222,13 +1222,13 @@ private extension EventActivityKind {
       "went to \(eventName)"
     case .invitationAccepted:
       "accepted an invite to \(eventName)"
-    case .diaryPublished:
+    case .postPublished:
       "posted about \(eventName)"
-    case .diaryMediaAdded:
+    case .postMediaAdded:
       "added photos to a post about \(eventName)"
-    case .eventPosted:
+    case .eventCommented:
       "commented on \(eventName)"
-    case .eventReplied:
+    case .eventCommentReplied:
       "replied on \(eventName)"
     }
   }

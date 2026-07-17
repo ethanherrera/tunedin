@@ -1,19 +1,19 @@
 import SwiftUI
 
 struct EventPostGridTile: View {
-  let post: EventDiaryPreview
+  let post: EventPostPreview
   let viewerID: UUID
-  let concertRepository: any ConcertRepository
+  let postRepository: any PostRepository
   let onOpen: () -> Void
 
   var body: some View {
     GeometryReader { proxy in
       ZStack(alignment: .bottomLeading) {
         Button(action: onOpen) {
-          DiaryMediaPreview(
-            diaryID: post.id,
+          PostMediaPreview(
+            postID: post.id,
             reportedPhotoCount: post.photoCount,
-            concertRepository: concertRepository,
+            postRepository: postRepository,
             height: proxy.size.width,
             maximumVisiblePhotos: 1
           )

@@ -4,8 +4,8 @@ import Supabase
 @MainActor
 final class AppContainer {
   let appSession: AppSession
-  let concertRepository: any ConcertRepository
-  let eventRepository: (any EventRepository)?
+  let postRepository: any PostRepository
+  let eventRepository: any EventRepository
   let musicCatalogRepository: any MusicCatalogRepository
   let socialRepository: any SocialRepository
   let profileRepository: any ProfileRepository
@@ -14,13 +14,13 @@ final class AppContainer {
 
   private init(
     appSession: AppSession,
-    concertRepository: any ConcertRepository,
-    eventRepository: (any EventRepository)?,
+    postRepository: any PostRepository,
+    eventRepository: any EventRepository,
     musicCatalogRepository: any MusicCatalogRepository,
     socialRepository: any SocialRepository
   ) {
     self.appSession = appSession
-    self.concertRepository = concertRepository
+    self.postRepository = postRepository
     self.eventRepository = eventRepository
     self.musicCatalogRepository = musicCatalogRepository
     self.socialRepository = socialRepository
@@ -60,16 +60,11 @@ final class AppContainer {
       allowsLocalSeededSignIn: configuration.usesLocalSimulatorAuthStorage,
       telemetry: telemetry
     )
-    concertRepository = CachingConcertRepository(
-      remote: SupabaseConcertRepository(
-        client: client,
-        signedURLs: mediaCache.signedURLs
-      ),
-      cache: dataCache
+    postRepository = SupabasePostRepository(
+      client: client,
+      signedURLs: mediaCache.signedURLs
     )
-    eventRepository = configuration.usesLocalSimulatorAuthStorage
-      ? SupabaseEventRepository(client: client, signedURLs: mediaCache.signedURLs)
-      : nil
+    eventRepository = SupabaseEventRepository(client: client, signedURLs: mediaCache.signedURLs)
     musicCatalogRepository = SupabaseMusicCatalogRepository(client: client)
     socialRepository = CachingSocialRepository(
       remote: SupabaseSocialRepository(client: client),
@@ -130,8 +125,8 @@ final class AppContainer {
                   release: configuration.release
                 )
               ),
-              concertRepository: DevelopmentConcertRepository(catalogRepository: catalogRepository),
-              eventRepository: scenario == .communityEvents ? DevelopmentEventRepository() : nil,
+              postRepository: DevelopmentPostRepository(),
+              eventRepository: DevelopmentEventRepository(),
               musicCatalogRepository: catalogRepository,
               socialRepository: DevelopmentSocialRepository()
             )

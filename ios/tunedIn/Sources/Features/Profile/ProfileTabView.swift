@@ -14,33 +14,32 @@ struct MainTabView: View {
 
   private struct CommunityEventRoute: Identifiable {
     let event: CommunityEventSummary
-    let diaryID: UUID?
+    let postID: UUID?
 
-    var id: UUID { event.id }
+    var id: UUID {
+      event.id
+    }
   }
 
   let session: AppSession
   let user: AuthenticatedUser
   let profile: Profile
-  let concertRepository: any ConcertRepository
-  let eventRepository: (any EventRepository)?
+  let postRepository: any PostRepository
+  let eventRepository: any EventRepository
   let socialRepository: any SocialRepository
 
-  @State private var isPresentingConcertCreation = false
   @State private var isPresentingEventDiscovery = false
   @State private var isPresentingCommunityEventCreation = false
   @State private var pendingCommunityEvent: CommunityEventRoute?
   @State private var presentedCommunityEvent: CommunityEventRoute?
   @State private var pendingSearchedProfile: SocialProfile?
   @State private var presentedSearchedProfile: SocialProfile?
-  @State private var archiveRefreshToken = 0
   @State private var selectedTab: Tab = .feed
   @State private var feedNavigationID = UUID()
   @State private var plansNavigationID = UUID()
   @State private var profileNavigationID = UUID()
-  @State private var isPresentingConcertEditMenu = false
   @State private var selectionFeedbackTrigger = 0
-  @StateObject private var concertFloatingControls = ConcertFloatingControls()
+  @StateObject private var floatingControls = AppFloatingControls()
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.musicCatalogRepository) private var musicCatalogRepository
@@ -50,7 +49,7 @@ struct MainTabView: View {
   var body: some View {
     selectedContent
       .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .environmentObject(concertFloatingControls)
+      .environmentObject(floatingControls)
       .safeAreaInset(edge: .bottom, spacing: 0) {
         TunedInPersistentControlRegion {
           bottomControls
@@ -60,70 +59,59 @@ struct MainTabView: View {
         }
       }
       .tunedInEdgeSwipeBack(
-        isEnabled: concertFloatingControls.navigationContext != .none
-          && !concertFloatingControls.isInteractionLocked
+        isEnabled: floatingControls.navigationContext != .none
+          && !floatingControls.isInteractionLocked
       ) {
-        concertFloatingControls.back(or: { activateTab(.profile) })
+        floatingControls.back(or: { activateTab(.profile) })
       }
-      .fullScreenCover(
-        isPresented: $isPresentingConcertCreation,
-        onDismiss: { archiveRefreshToken += 1 },
-        content: { ConcertCreationView(concertRepository: concertRepository) }
-      )
       .fullScreenCover(
         isPresented: $isPresentingEventDiscovery,
         onDismiss: presentPendingDiscoveryDestination
       ) {
-        if let eventRepository {
-          EventDiscoveryView(
-            viewerID: profile.id,
-            eventRepository: eventRepository,
-            musicCatalogRepository: musicCatalogRepository,
-            socialRepository: socialRepository,
-            currentUsername: profile.username ?? "",
-            onOpenEvent: { event in
-              pendingCommunityEvent = CommunityEventRoute(event: event, diaryID: nil)
-              isPresentingEventDiscovery = false
-            },
-            onOpenProfile: { searchedProfile in
-              pendingSearchedProfile = searchedProfile
-              isPresentingEventDiscovery = false
-            },
-            onDismiss: { isPresentingEventDiscovery = false }
-          )
-        }
+        EventDiscoveryView(
+          viewerID: profile.id,
+          eventRepository: eventRepository,
+          musicCatalogRepository: musicCatalogRepository,
+          socialRepository: socialRepository,
+          currentUsername: profile.username ?? "",
+          onOpenEvent: { event in
+            pendingCommunityEvent = CommunityEventRoute(event: event, postID: nil)
+            isPresentingEventDiscovery = false
+          },
+          onOpenProfile: { searchedProfile in
+            pendingSearchedProfile = searchedProfile
+            isPresentingEventDiscovery = false
+          },
+          onDismiss: { isPresentingEventDiscovery = false }
+        )
       }
       .fullScreenCover(
         isPresented: $isPresentingCommunityEventCreation,
         onDismiss: presentPendingDiscoveryDestination
       ) {
-        if let eventRepository {
-          CommunityEventCreationView(
-            creatorID: profile.id,
-            eventRepository: eventRepository,
-            musicCatalogRepository: musicCatalogRepository,
-            onCreated: { event in
-              pendingCommunityEvent = CommunityEventRoute(event: event, diaryID: nil)
-              isPresentingCommunityEventCreation = false
-            },
-            onDismiss: { isPresentingCommunityEventCreation = false }
-          )
-        }
+        CommunityEventCreationView(
+          creatorID: profile.id,
+          eventRepository: eventRepository,
+          musicCatalogRepository: musicCatalogRepository,
+          onCreated: { event in
+            pendingCommunityEvent = CommunityEventRoute(event: event, postID: nil)
+            isPresentingCommunityEventCreation = false
+          },
+          onDismiss: { isPresentingCommunityEventCreation = false }
+        )
       }
       .fullScreenCover(
         item: $presentedCommunityEvent,
         onDismiss: presentPendingProfileDestination
       ) { route in
-        if let eventRepository {
-          CommunityEventDetailView(
-            eventID: route.event.id,
-            viewerID: profile.id,
-            repository: eventRepository,
-            concertRepository: concertRepository,
-            initialDiaryID: route.diaryID,
-            onDismiss: { presentedCommunityEvent = nil }
-          )
-        }
+        CommunityEventDetailView(
+          eventID: route.event.id,
+          viewerID: profile.id,
+          repository: eventRepository,
+          postRepository: postRepository,
+          initialPostID: route.postID,
+          onDismiss: { presentedCommunityEvent = nil }
+        )
       }
       .fullScreenCover(
         item: $presentedSearchedProfile,
@@ -135,22 +123,17 @@ struct MainTabView: View {
             currentUserID: profile.id,
             currentUsername: profile.username ?? "",
             socialRepository: socialRepository,
-            concertRepository: concertRepository,
+            postRepository: postRepository,
             eventRepository: eventRepository,
-            onOpenCommunityEvent: { event, diaryID in
-              pendingCommunityEvent = CommunityEventRoute(event: event, diaryID: diaryID)
+            onOpenCommunityEvent: { event, postID in
+              pendingCommunityEvent = CommunityEventRoute(event: event, postID: postID)
               presentedSearchedProfile = nil
             },
             onDismiss: { presentedSearchedProfile = nil }
           )
         }
-        .environmentObject(concertFloatingControls)
+        .environmentObject(floatingControls)
         .tunedInKeyboardManaged()
-      }
-      .onChange(of: concertFloatingControls.isShowingEditMenu) { _, isShowingEditMenu in
-        if !isShowingEditMenu {
-          isPresentingConcertEditMenu = false
-        }
       }
       .tint(TunedInDesign.accent)
       .environment(
@@ -166,24 +149,16 @@ struct MainTabView: View {
   }
 
   private var supportsEventActivity: Bool {
-    eventRepository?.capabilities.contains(.activityFeed) == true
+    eventRepository.capabilities.contains(.activityFeed)
   }
 
   private var supportsPlans: Bool {
-    eventRepository?.capabilities.contains(.plans) == true
+    eventRepository.capabilities.contains(.plans)
   }
 
   private var bottomControls: some View {
     ZStack(alignment: .bottom) {
-      switch concertFloatingControls.navigationContext {
-      case .concert:
-        ConcertContextBottomBar(
-          controls: concertFloatingControls,
-          isPresentingEditMenu: $isPresentingConcertEditMenu,
-          glassNamespace: bottomGlassNamespace,
-          fallbackToProfile: { activateTab(.profile) }
-        )
-        .transition(TunedInMotion.controlSceneTransition(reduceMotion: reduceMotion))
+      switch floatingControls.navigationContext {
       case let .backOnly(title):
         subscreenBottomBar(title: title)
           .transition(TunedInMotion.controlSceneTransition(reduceMotion: reduceMotion))
@@ -193,10 +168,8 @@ struct MainTabView: View {
             systemImage: "magnifyingglass",
             accessibilityLabel: "Search"
           ) {
-            guard eventRepository != nil else { return }
             isPresentingEventDiscovery = true
           }
-          .disabled(eventRepository == nil)
         } center: {
           TunedInGlassBottomBar {
             HStack(spacing: 2) {
@@ -207,14 +180,10 @@ struct MainTabView: View {
         } trailing: {
           TunedInGlassIconButton(
             systemImage: "plus",
-            accessibilityLabel: eventRepository == nil ? "Log concert" : "Add concert",
+            accessibilityLabel: "Add concert",
             style: .accent
           ) {
-            if eventRepository == nil {
-              isPresentingConcertCreation = true
-            } else {
-              isPresentingCommunityEventCreation = true
-            }
+            isPresentingCommunityEventCreation = true
           }
         }
         .transition(TunedInMotion.controlSceneTransition(reduceMotion: reduceMotion))
@@ -223,7 +192,7 @@ struct MainTabView: View {
     .frame(maxWidth: .infinity, alignment: .center)
     .animation(
       TunedInMotion.navigation(reduceMotion: reduceMotion),
-      value: concertFloatingControls.navigationContext
+      value: floatingControls.navigationContext
     )
   }
 
@@ -253,7 +222,7 @@ struct MainTabView: View {
 
   private func openSocialProfile(_ requestedProfile: SocialProfile) {
     Task { @MainActor in
-      let resolvedProfile = (try? await socialRepository.profile(
+      let resolvedProfile = await (try? socialRepository.profile(
         username: requestedProfile.username
       )) ?? requestedProfile
       routeToSocialProfile(resolvedProfile)
@@ -284,38 +253,25 @@ struct MainTabView: View {
   private var selectedContent: some View {
     switch selectedTab {
     case .feed:
-      Group {
-        if let eventRepository, supportsEventActivity {
-          CommunityActivityFeedView(
-            viewerID: profile.id,
-            repository: eventRepository,
-            concertRepository: concertRepository,
-            onOpenActivity: { activity in
-              presentedCommunityEvent = CommunityEventRoute(
-                event: activity.event,
-                diaryID: activity.diary?.id
-              )
-            }
+      CommunityActivityFeedView(
+        viewerID: profile.id,
+        repository: eventRepository,
+        postRepository: postRepository,
+        onOpenActivity: { activity in
+          presentedCommunityEvent = CommunityEventRoute(
+            event: activity.event,
+            postID: activity.post?.id
           )
-        } else {
-          NavigationStack {
-            FriendsActivityFeedView(
-              viewerID: profile.id,
-              viewerUsername: profile.username ?? "",
-              concertRepository: concertRepository,
-              socialRepository: socialRepository
-            )
-          }
         }
-      }
+      )
       .id(feedNavigationID)
     case .plans:
-      if let eventRepository, supportsPlans {
+      if supportsPlans {
         CommunityPlansView(
           viewerID: profile.id,
           repository: eventRepository,
           onOpenEvent: {
-            presentedCommunityEvent = CommunityEventRoute(event: $0, diaryID: nil)
+            presentedCommunityEvent = CommunityEventRoute(event: $0, postID: nil)
           }
         )
         .id(plansNavigationID)
@@ -327,12 +283,11 @@ struct MainTabView: View {
         session: session,
         user: user,
         profile: profile,
-        concertRepository: concertRepository,
+        postRepository: postRepository,
         eventRepository: eventRepository,
         socialRepository: socialRepository,
-        archiveRefreshToken: archiveRefreshToken,
-        onOpenCommunityEvent: { event, diaryID in
-          presentedCommunityEvent = CommunityEventRoute(event: event, diaryID: diaryID)
+        onOpenCommunityEvent: { event, postID in
+          presentedCommunityEvent = CommunityEventRoute(event: event, postID: postID)
         }
       )
       .id(profileNavigationID)
@@ -363,7 +318,7 @@ struct MainTabView: View {
     if selectedTab != tab {
       selectionFeedbackTrigger += 1
     }
-    concertFloatingControls.reset()
+    floatingControls.reset()
 
     switch tab {
     case .feed:
@@ -383,7 +338,7 @@ struct MainTabView: View {
         systemImage: "chevron.backward",
         accessibilityLabel: "Back to \(title.lowercased())"
       ) {
-        concertFloatingControls.back(or: { activateTab(.profile) })
+        floatingControls.back(or: { activateTab(.profile) })
       }
     } center: {
       TunedInGlassBottomBar {
@@ -427,70 +382,30 @@ struct MainTabView: View {
   }
 }
 
-enum BottomNavigationContext: Equatable {
+enum AppNavigationContext: Equatable {
   case none
   case backOnly(String)
-  case concert
 }
 
 @MainActor
-final class ConcertFloatingControls: ObservableObject {
-  @Published private(set) var navigationContext: BottomNavigationContext = .none
-  @Published private(set) var isShowingEditMenu = false
-  @Published private(set) var canDelete = false
-  @Published private(set) var selectedPage: ConcertDetailPage = .concert
+final class AppFloatingControls: ObservableObject {
+  @Published private(set) var navigationContext: AppNavigationContext = .none
   @Published private(set) var isInteractionLocked = false
-  @Published private(set) var albumPickerLimit: Int?
-  @Published var pendingPhotoSelections: [PhotosPickerItem] = []
 
   private var backAction: (() -> Void)?
-  private var selectPageAction: ((ConcertDetailPage) -> Void)?
-  private var editAction: (() -> Void)?
-  private var deleteAction: (() -> Void)?
   private var backControlOwner: UUID?
-
-  func configure(
-    selectedPage: ConcertDetailPage,
-    back: @escaping () -> Void,
-    selectPage: @escaping (ConcertDetailPage) -> Void,
-    edit: (() -> Void)?,
-    delete: (() -> Void)?
-  ) {
-    self.selectedPage = selectedPage
-    backAction = back
-    selectPageAction = selectPage
-    editAction = edit
-    deleteAction = delete
-    backControlOwner = nil
-    canDelete = delete != nil
-    isShowingEditMenu = edit != nil
-    navigationContext = .concert
-  }
 
   func configureBackOnly(title: String, owner: UUID, back: @escaping () -> Void) {
     backAction = back
-    selectPageAction = nil
-    editAction = nil
-    deleteAction = nil
     backControlOwner = owner
-    canDelete = false
-    isShowingEditMenu = false
     navigationContext = .backOnly(title)
   }
 
   func reset() {
     backAction = nil
-    selectPageAction = nil
-    editAction = nil
-    deleteAction = nil
     backControlOwner = nil
-    canDelete = false
-    isShowingEditMenu = false
     navigationContext = .none
-    selectedPage = .concert
     isInteractionLocked = false
-    albumPickerLimit = nil
-    pendingPhotoSelections = []
   }
 
   func resetBackOnly(owner: UUID) {
@@ -507,173 +422,8 @@ final class ConcertFloatingControls: ObservableObject {
     backAction()
   }
 
-  func select(page: ConcertDetailPage) {
-    guard !isInteractionLocked else { return }
-    selectedPage = page
-    selectPageAction?(page)
-  }
-
-  func edit() {
-    guard !isInteractionLocked else { return }
-    editAction?()
-  }
-
-  func delete() {
-    guard !isInteractionLocked else { return }
-    deleteAction?()
-  }
-
   func setInteractionLocked(_ locked: Bool) {
     isInteractionLocked = locked
-  }
-
-  func setAlbumPolicy(_ policy: ConcertAlbumPolicy) {
-    albumPickerLimit = policy.pickerBatchLimit
-  }
-}
-
-private struct ConcertContextBottomBar: View {
-  @ObservedObject var controls: ConcertFloatingControls
-  @Binding var isPresentingEditMenu: Bool
-  let glassNamespace: Namespace.ID
-  let fallbackToProfile: () -> Void
-  @Namespace private var selectionNamespace
-  @State private var selectionFeedbackTrigger = 0
-  @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-  var body: some View {
-    TunedInGlassTraversalLayout(glassNamespace: glassNamespace) {
-      TunedInGlassIconButton(
-        systemImage: "chevron.backward",
-        accessibilityLabel: "Back to previous screen"
-      ) {
-        controls.back(or: fallbackToProfile)
-      }
-      .disabled(controls.isInteractionLocked)
-    } center: {
-      TunedInGlassBottomBar {
-        HStack(spacing: 2) {
-          ForEach(ConcertDetailPage.allCases, id: \.self) { page in
-            Button {
-              if controls.selectedPage != page {
-                selectionFeedbackTrigger += 1
-              }
-              controls.select(page: page)
-            } label: {
-              Group {
-                if dynamicTypeSize.isAccessibilitySize {
-                  Image(systemName: page.icon)
-                    .font(.body.weight(.bold))
-                    .accessibilityHidden(true)
-                } else {
-                  VStack(spacing: 2) {
-                    Image(systemName: page.icon)
-                      .font(.caption.weight(.bold))
-                    Text(page.title)
-                      .font(.caption2.weight(.bold))
-                      .lineLimit(1)
-                      .minimumScaleFactor(0.75)
-                  }
-                }
-              }
-              .foregroundStyle(
-                controls.selectedPage == page
-                  ? TunedInDesign.selectedControlForeground
-                  : TunedInDesign.primaryText
-              )
-              .frame(minWidth: 0, maxWidth: .infinity)
-              .frame(height: 48)
-              .background {
-                if controls.selectedPage == page {
-                  TunedInSelectionLens()
-                    .matchedGeometryEffect(id: "concert-context-selection", in: selectionNamespace)
-                }
-              }
-              .contentShape(.interaction, Capsule())
-            }
-            .buttonStyle(.plain)
-            .contentShape(.interaction, Capsule())
-            .disabled(controls.isInteractionLocked)
-            .accessibilityLabel("Show \(page.title.lowercased())")
-            .accessibilityAddTraits(controls.selectedPage == page ? .isSelected : [])
-          }
-        }
-      }
-      .frame(maxWidth: 252)
-      .animation(
-        TunedInMotion.selection(reduceMotion: reduceMotion),
-        value: controls.selectedPage
-      )
-    } trailing: {
-      if controls.isShowingEditMenu {
-        if controls.selectedPage == .photos {
-          PhotosPicker(
-            selection: $controls.pendingPhotoSelections,
-            maxSelectionCount: controls.albumPickerLimit ?? 1,
-            matching: .images
-          ) {
-            TunedInFloatingActionLabel(systemImage: "plus")
-          }
-          .buttonStyle(.plain)
-          .disabled(controls.isInteractionLocked || controls.albumPickerLimit == nil)
-          .accessibilityLabel("Add photos")
-          .accessibilityHint(
-            controls.albumPickerLimit == nil ? "Album policy is loading" : "Select photos for this album"
-          )
-        } else {
-          TunedInFloatingAction(
-            systemImage: "ellipsis",
-            accessibilityLabel: "Edit concert menu",
-            accessibilityHint: "Shows concert edit actions"
-          ) {
-            isPresentingEditMenu = true
-          }
-          .disabled(controls.isInteractionLocked)
-          .popover(
-            isPresented: $isPresentingEditMenu,
-            attachmentAnchor: .point(.top),
-            arrowEdge: .bottom
-          ) {
-            TunedInGlassPopover {
-              VStack(spacing: 4) {
-                Button {
-                  isPresentingEditMenu = false
-                  controls.edit()
-                } label: {
-                  Label("Edit concert", systemImage: "pencil")
-                    .foregroundStyle(TunedInDesign.primaryText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                }
-                .buttonStyle(.plain)
-
-                if controls.canDelete {
-                  Divider().overlay(.white.opacity(0.15))
-                  Button(role: .destructive) {
-                    isPresentingEditMenu = false
-                    controls.delete()
-                  } label: {
-                    Label("Delete concert", systemImage: "trash")
-                      .foregroundStyle(.red)
-                      .frame(maxWidth: .infinity, alignment: .leading)
-                      .padding(.horizontal, 14)
-                      .padding(.vertical, 12)
-                  }
-                  .buttonStyle(.plain)
-                }
-              }
-              .frame(width: 210)
-              .padding(8)
-            }
-            .presentationCompactAdaptation(.popover)
-            .presentationBackground(.clear)
-          }
-        }
-      }
-    }
-    .tunedInSelectionFeedback(trigger: selectionFeedbackTrigger)
   }
 }
 
@@ -681,38 +431,13 @@ struct ProfileTabView: View {
   let session: AppSession
   let user: AuthenticatedUser
   let profile: Profile
-  let concertRepository: any ConcertRepository
-  let eventRepository: (any EventRepository)?
+  let postRepository: any PostRepository
+  let eventRepository: any EventRepository
   let socialRepository: any SocialRepository
-  let archiveRefreshToken: Int
   let onOpenCommunityEvent: (CommunityEventSummary, UUID?) -> Void
+
   @State private var friendCount = 0
   @State private var communityHistory = CommunityProfileHistory.empty
-  @State private var archiveModel: ConcertArchiveModel
-  @State private var isShowingLegacyArchive = false
-
-  init(
-    session: AppSession,
-    user: AuthenticatedUser,
-    profile: Profile,
-    concertRepository: any ConcertRepository,
-    eventRepository: (any EventRepository)?,
-    socialRepository: any SocialRepository,
-    archiveRefreshToken: Int,
-    onOpenCommunityEvent: @escaping (CommunityEventSummary, UUID?) -> Void
-  ) {
-    self.session = session
-    self.user = user
-    self.profile = profile
-    self.concertRepository = concertRepository
-    self.eventRepository = eventRepository
-    self.socialRepository = socialRepository
-    self.archiveRefreshToken = archiveRefreshToken
-    self.onOpenCommunityEvent = onOpenCommunityEvent
-    _archiveModel = State(
-      initialValue: ConcertArchiveModel(profileID: profile.id, concertRepository: concertRepository)
-    )
-  }
 
   var body: some View {
     NavigationStack {
@@ -724,37 +449,12 @@ struct ProfileTabView: View {
           VStack(alignment: .leading, spacing: 20) {
             profileHeader
             friendCountLink
-            if let eventRepository, eventRepository.capabilities.contains(.diaries) {
-              CommunityProfileHistorySection(
-                history: communityHistory,
-                eventRepository: eventRepository,
-                concertRepository: concertRepository,
-                onOpenEvent: onOpenCommunityEvent
-              ) {
-                LegacyConcertArchiveDisclosure(
-                  profileID: profile.id,
-                  viewerID: profile.id,
-                  viewerUsername: profile.username ?? "",
-                  isOwner: true,
-                  concertRepository: concertRepository,
-                  socialRepository: socialRepository,
-                  model: archiveModel,
-                  refreshToken: archiveRefreshToken,
-                  isExpanded: $isShowingLegacyArchive
-                )
-              }
-            } else {
-              ConcertArchiveView(
-                profileID: profile.id,
-                viewerID: profile.id,
-                viewerUsername: profile.username ?? "",
-                isOwner: true,
-                concertRepository: concertRepository,
-                socialRepository: socialRepository,
-                model: archiveModel,
-                refreshToken: archiveRefreshToken
-              )
-            }
+            CommunityProfileHistorySection(
+              history: communityHistory,
+              eventRepository: eventRepository,
+              postRepository: postRepository,
+              onOpenEvent: onOpenCommunityEvent
+            )
           }
           .padding(.horizontal, 20)
           .padding(.top, 12)
@@ -804,7 +504,7 @@ struct ProfileTabView: View {
         currentUserID: profile.id,
         currentUsername: profile.username ?? "",
         socialRepository: socialRepository,
-        concertRepository: concertRepository,
+        postRepository: postRepository,
         eventRepository: eventRepository,
         onOpenCommunityEvent: onOpenCommunityEvent
       )
@@ -824,18 +524,11 @@ struct ProfileTabView: View {
   private func refreshServerContent() async {
     await loadFriendCount(policy: .refresh)
     await loadCommunityHistory()
-    if eventRepository?.capabilities.contains(.diaries) != true || isShowingLegacyArchive {
-      await archiveModel.reload(policy: .refresh)
-    }
     try? await session.refreshProfile()
   }
 
   private func loadCommunityHistory() async {
-    guard let eventRepository, eventRepository.capabilities.contains(.diaries) else {
-      communityHistory = .empty
-      return
-    }
-    communityHistory = (try? await eventRepository.profileHistory(
+    communityHistory = await (try? eventRepository.profileHistory(
       profileID: profile.id,
       viewerID: profile.id
     )) ?? .empty
@@ -894,52 +587,13 @@ struct ProfileFriendsLink<Destination: View>: View {
   }
 }
 
-struct LegacyConcertArchiveDisclosure: View {
-  let profileID: UUID
-  let viewerID: UUID
-  let viewerUsername: String
-  let isOwner: Bool
-  let concertRepository: any ConcertRepository
-  let socialRepository: any SocialRepository
-  let model: ConcertArchiveModel
-  let refreshToken: Int
-  @Binding var isExpanded: Bool
-
-  var body: some View {
-    DisclosureGroup(isExpanded: $isExpanded) {
-      ConcertArchiveView(
-        profileID: profileID,
-        viewerID: viewerID,
-        viewerUsername: viewerUsername,
-        isOwner: isOwner,
-        concertRepository: concertRepository,
-        socialRepository: socialRepository,
-        model: model,
-        refreshToken: refreshToken
-      )
-      .padding(.top, 16)
-    } label: {
-      VStack(alignment: .leading, spacing: 3) {
-        Label("Older concert logs", systemImage: "archivebox")
-          .font(.subheadline.weight(.semibold))
-          .foregroundStyle(TunedInDesign.primaryText)
-        Text("Shared logs from the earlier tunedIn experience")
-          .font(.caption)
-          .foregroundStyle(TunedInDesign.mutedText)
-      }
-      .padding(.vertical, 8)
-    }
-    .tint(TunedInDesign.mutedText)
-  }
-}
-
 struct SettingsView: View {
   let session: AppSession
   let user: AuthenticatedUser
   let profile: Profile
 
   @Environment(\.dismiss) private var dismiss
-  @EnvironmentObject private var floatingControls: ConcertFloatingControls
+  @EnvironmentObject private var floatingControls: AppFloatingControls
   @State private var floatingControlOwner = UUID()
   @State private var selectedPhoto: PhotosPickerItem?
   @State private var isChangingPhoto = false
@@ -995,7 +649,11 @@ struct SettingsView: View {
     }
     .alert("Feedback sent", isPresented: Binding(
       get: { feedbackConfirmation != nil },
-      set: { if !$0 { feedbackConfirmation = nil } }
+      set: {
+        if !$0 {
+          feedbackConfirmation = nil
+        }
+      }
     )) {
       Button("Done", role: .cancel) {}
     } message: {

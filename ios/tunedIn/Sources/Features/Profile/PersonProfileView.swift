@@ -5,44 +5,39 @@ struct PersonProfileView: View {
   let currentUserID: UUID
   let currentUsername: String
   let socialRepository: any SocialRepository
-  let concertRepository: any ConcertRepository
-  let eventRepository: (any EventRepository)?
-  let onOpenCommunityEvent: ((CommunityEventSummary, UUID?) -> Void)?
+  let postRepository: any PostRepository
+  let eventRepository: any EventRepository
+  let onOpenCommunityEvent: (CommunityEventSummary, UUID?) -> Void
   let onDismiss: (() -> Void)?
 
   @Environment(\.dismiss) private var dismiss
-  @EnvironmentObject private var floatingControls: ConcertFloatingControls
+  @EnvironmentObject private var floatingControls: AppFloatingControls
   @State private var floatingControlOwner = UUID()
   @State private var profile: SocialProfile
   @State private var friendCount = 0
   @State private var isPerformingAction = false
   @State private var errorMessage: String?
   @State private var isShowingRemoveConfirmation = false
-  @State private var archiveModel: ConcertArchiveModel
   @State private var communityHistory = CommunityProfileHistory.empty
-  @State private var isShowingLegacyArchive = false
 
   init(
     profile: SocialProfile,
     currentUserID: UUID,
     currentUsername: String,
     socialRepository: any SocialRepository,
-    concertRepository: any ConcertRepository,
-    eventRepository: (any EventRepository)? = nil,
-    onOpenCommunityEvent: ((CommunityEventSummary, UUID?) -> Void)? = nil,
+    postRepository: any PostRepository,
+    eventRepository: any EventRepository,
+    onOpenCommunityEvent: @escaping (CommunityEventSummary, UUID?) -> Void,
     onDismiss: (() -> Void)? = nil
   ) {
     self.currentUserID = currentUserID
     self.currentUsername = currentUsername
     self.socialRepository = socialRepository
-    self.concertRepository = concertRepository
+    self.postRepository = postRepository
     self.eventRepository = eventRepository
     self.onOpenCommunityEvent = onOpenCommunityEvent
     self.onDismiss = onDismiss
     _profile = State(initialValue: profile)
-    _archiveModel = State(
-      initialValue: ConcertArchiveModel(profileID: profile.id, concertRepository: concertRepository)
-    )
   }
 
   var body: some View {
@@ -74,45 +69,17 @@ struct PersonProfileView: View {
             }
           }
 
-          if let eventRepository,
-             eventRepository.capabilities.contains(.diaries),
-             let onOpenCommunityEvent {
+          if isCurrentUser || profile.relationship.canViewFriendContent {
             CommunityProfileHistorySection(
               history: communityHistory,
               eventRepository: eventRepository,
-              concertRepository: concertRepository,
+              postRepository: postRepository,
               onOpenEvent: onOpenCommunityEvent
-            ) {
-              if isCurrentUser || profile.relationship.canViewFriendContent {
-                LegacyConcertArchiveDisclosure(
-                  profileID: profile.id,
-                  viewerID: currentUserID,
-                  viewerUsername: currentUsername,
-                  isOwner: isCurrentUser,
-                  concertRepository: concertRepository,
-                  socialRepository: socialRepository,
-                  model: archiveModel,
-                  refreshToken: 0,
-                  isExpanded: $isShowingLegacyArchive
-                )
-              }
-            }
+            )
           }
 
           if isCurrentUser || profile.relationship.canViewFriendContent {
             friendCountLink
-            if eventRepository?.capabilities.contains(.diaries) != true {
-              ConcertArchiveView(
-                profileID: profile.id,
-                viewerID: currentUserID,
-                viewerUsername: currentUsername,
-                isOwner: isCurrentUser,
-                concertRepository: concertRepository,
-                socialRepository: socialRepository,
-                model: archiveModel,
-                refreshToken: 0
-              )
-            }
           } else {
             privacyBoundary
           }
@@ -278,7 +245,7 @@ struct PersonProfileView: View {
         currentUserID: currentUserID,
         currentUsername: currentUsername,
         socialRepository: socialRepository,
-        concertRepository: concertRepository,
+        postRepository: postRepository,
         eventRepository: eventRepository,
         onOpenCommunityEvent: onOpenCommunityEvent
       )
@@ -440,13 +407,10 @@ struct PersonProfileView: View {
   private func refreshServerContent() async {
     await loadSocialContent(policy: .refresh)
     await loadCommunityHistory()
-    if isCurrentUser || profile.relationship.canViewFriendContent {
-      await archiveModel.reload(policy: .refresh)
-    }
   }
 
   private func loadCommunityHistory() async {
-    guard let eventRepository, eventRepository.capabilities.contains(.diaries) else {
+    guard isCurrentUser || profile.relationship.canViewFriendContent else {
       communityHistory = .empty
       return
     }

@@ -6,8 +6,7 @@ protocol MusicCatalogRepository: Sendable {
     kind: CatalogEntityKind,
     query: String,
     offset: Int,
-    artistContextIDs: [UUID],
-    concertContextID: UUID?
+    artistContextIDs: [UUID]
   ) async throws -> CatalogSearchPage
 
   func resolve(_ candidate: CatalogResult) async throws -> CatalogEntity
@@ -50,8 +49,7 @@ private struct UnavailableMusicCatalogRepository: MusicCatalogRepository {
     kind _: CatalogEntityKind,
     query _: String,
     offset _: Int,
-    artistContextIDs _: [UUID],
-    concertContextID _: UUID?
+    artistContextIDs _: [UUID]
   ) async throws -> CatalogSearchPage {
     throw error
   }

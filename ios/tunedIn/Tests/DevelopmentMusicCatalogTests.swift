@@ -38,7 +38,7 @@ import Testing
 
       for (kind, query, expectedKeys) in cases {
         let page = try await repository.search(
-          kind: kind, query: query, offset: 0, artistContextIDs: [], concertContextID: nil
+          kind: kind, query: query, offset: 0, artistContextIDs: []
         )
         let result = try #require(page.results.first)
         #expect(Set(result.metadata.keys) == expectedKeys)

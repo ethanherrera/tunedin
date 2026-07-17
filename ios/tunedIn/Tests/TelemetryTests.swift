@@ -14,17 +14,17 @@ struct TelemetryTests {
     )
 
     client.capture(
-      .concertUpdated,
+      .eventUpdated,
       properties: [
-        .changeKind: .string(TelemetryChangeKind.setlist.rawValue),
+        .durationMilliseconds: .integer(120),
         .category: .string("must-be-dropped"),
         .destination: .string("https://private.example.com")
       ]
     )
 
     let record = client.recentRecords.last
-    #expect(record?.name == TelemetryEvent.concertUpdated.rawValue)
-    #expect(record?.properties[.changeKind] == .string("setlist"))
+    #expect(record?.name == TelemetryEvent.eventUpdated.rawValue)
+    #expect(record?.properties[.durationMilliseconds] == .integer(120))
     #expect(record?.properties[.category] == nil)
     #expect(record?.properties[.destination] == nil)
   }
@@ -41,7 +41,7 @@ struct TelemetryTests {
     #expect(client.isCollectionEnabled)
     client.setCollectionEnabled(false)
     let countAfterConsentRecord = client.recentRecords.count
-    client.capture(.concertCreated)
+    client.capture(.eventCreated)
 
     #expect(!client.isCollectionEnabled)
     #expect(client.recentRecords.count == countAfterConsentRecord)
@@ -96,7 +96,7 @@ struct TelemetryTests {
     )
 
     for _ in 0 ..< 120 {
-      client.capture(.concertCreated)
+      client.capture(.eventCreated)
     }
 
     #expect(client.recentRecords.count == 100)

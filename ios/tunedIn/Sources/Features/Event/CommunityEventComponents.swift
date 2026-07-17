@@ -83,7 +83,7 @@ struct CommunityEventRow: View {
 struct CommunityActivityCard: View {
   let activity: EventActivity
   let eventRepository: any EventRepository
-  let concertRepository: any ConcertRepository
+  let postRepository: any PostRepository
   let onOpenActivity: () -> Void
 
   var body: some View {
@@ -126,13 +126,13 @@ struct CommunityActivityCard: View {
 
   @ViewBuilder
   private var activityContent: some View {
-    if let diary = activity.diary {
+    if let post = activity.post {
       VStack(alignment: .leading, spacing: 0) {
-        if diary.photoCount > 0 {
-          DiaryMediaPreview(
-            diaryID: diary.id,
-            reportedPhotoCount: diary.photoCount,
-            concertRepository: concertRepository,
+        if post.photoCount > 0 {
+          PostMediaPreview(
+            postID: post.id,
+            reportedPhotoCount: post.photoCount,
+            postRepository: postRepository,
             height: 280
           )
         }
@@ -148,22 +148,22 @@ struct CommunityActivityCard: View {
                 .foregroundStyle(TunedInDesign.mutedText)
             }
             Spacer()
-            if let score = diary.score {
+            if let score = post.score {
               CommunityEventScoreBadge(score: score, size: .large)
             }
           }
 
-          if let note = diary.note {
+          if let note = post.note {
             Text(note)
               .font(.subheadline)
               .foregroundStyle(TunedInDesign.primaryText)
               .lineLimit(3)
           }
 
-          DiaryEngagementLine(diary: diary)
+          PostEngagementLine(post: post)
         }
         .padding(.horizontal, 18)
-        .padding(.top, diary.photoCount > 0 ? 12 : 2)
+        .padding(.top, post.photoCount > 0 ? 12 : 2)
       }
     } else {
       if activity.event.cover != nil {
@@ -331,12 +331,12 @@ private struct EventDatePill: View {
   }
 }
 
-struct EventDiaryPreviewCard: View {
-  let diary: EventDiaryPreview
+struct EventPostPreviewCard: View {
+  let post: EventPostPreview
   let showsAuthor: Bool
 
-  init(diary: EventDiaryPreview, showsAuthor: Bool = true) {
-    self.diary = diary
+  init(post: EventPostPreview, showsAuthor: Bool = true) {
+    self.post = post
     self.showsAuthor = showsAuthor
   }
 
@@ -344,14 +344,14 @@ struct EventDiaryPreviewCard: View {
     VStack(alignment: .leading, spacing: 12) {
       if showsAuthor {
         HStack(spacing: 10) {
-          SocialProfileButton(profile: diary.author) {
+          SocialProfileButton(profile: post.author) {
             HStack(spacing: 10) {
-              ProfileAvatarView(profile: diary.author, size: 42)
+              ProfileAvatarView(profile: post.author, size: 42)
               VStack(alignment: .leading, spacing: 2) {
-                Text(diary.author.displayName)
+                Text(post.author.displayName)
                   .font(.subheadline.weight(.bold))
                   .foregroundStyle(TunedInDesign.primaryText)
-                Text("@\(diary.author.username)")
+                Text("@\(post.author.username)")
                   .font(.caption)
                   .foregroundStyle(TunedInDesign.mutedText)
               }
@@ -360,20 +360,20 @@ struct EventDiaryPreviewCard: View {
           Spacer()
           score
         }
-      } else if diary.score != nil {
+      } else if post.score != nil {
         HStack {
           Spacer()
           score
         }
       }
-      if let note = diary.note {
+      if let note = post.note {
         Text(note)
           .font(.body)
           .foregroundStyle(TunedInDesign.primaryText)
           .lineLimit(4)
       }
       HStack(spacing: 14) {
-        if let performanceScore = diary.performanceScore {
+        if let performanceScore = post.performanceScore {
           Label(
             performanceScore.formatted(.number.precision(.fractionLength(1))),
             systemImage: "music.mic"
@@ -384,16 +384,16 @@ struct EventDiaryPreviewCard: View {
               + CommunityEventScoreBand(score: performanceScore).accessibilityDescription
           )
         }
-        if diary.photoCount > 0 {
-          Label("\(diary.photoCount)", systemImage: "photo")
+        if post.photoCount > 0 {
+          Label("\(post.photoCount)", systemImage: "photo")
         }
-        if diary.videoCount > 0 {
-          Label("\(diary.videoCount)", systemImage: "video")
+        if post.videoCount > 0 {
+          Label("\(post.videoCount)", systemImage: "video")
         }
-        if diary.commentCount > 0 {
-          Label("\(diary.commentCount)", systemImage: "bubble.left")
+        if post.commentCount > 0 {
+          Label("\(post.commentCount)", systemImage: "bubble.left")
         }
-        Label(diary.audience.title, systemImage: diary.audience.icon)
+        Label(post.audience.title, systemImage: post.audience.icon)
       }
       .font(.caption.weight(.semibold))
       .foregroundStyle(TunedInDesign.mutedText)
@@ -408,18 +408,18 @@ struct EventDiaryPreviewCard: View {
 
   @ViewBuilder
   private var score: some View {
-    if let score = diary.score {
+    if let score = post.score {
       CommunityEventScoreBadge(score: score)
     }
   }
 }
 
-struct DiaryEngagementLine: View {
-  let diary: EventDiaryPreview
+struct PostEngagementLine: View {
+  let post: EventPostPreview
 
   var body: some View {
     HStack(spacing: 14) {
-      if let performanceScore = diary.performanceScore {
+      if let performanceScore = post.performanceScore {
         Label(
           performanceScore.formatted(.number.precision(.fractionLength(1))),
           systemImage: "music.mic"
@@ -430,31 +430,31 @@ struct DiaryEngagementLine: View {
             + CommunityEventScoreBand(score: performanceScore).accessibilityDescription
         )
       }
-      if diary.photoCount > 0 {
-        Label("\(diary.photoCount)", systemImage: "photo")
+      if post.photoCount > 0 {
+        Label("\(post.photoCount)", systemImage: "photo")
       }
-      if diary.videoCount > 0 {
-        Label("\(diary.videoCount)", systemImage: "video")
+      if post.videoCount > 0 {
+        Label("\(post.videoCount)", systemImage: "video")
       }
-      if diary.commentCount > 0 {
-        Label("\(diary.commentCount)", systemImage: "bubble.left")
+      if post.commentCount > 0 {
+        Label("\(post.commentCount)", systemImage: "bubble.left")
       }
       Spacer(minLength: 0)
-      Image(systemName: diary.audience.icon)
+      Image(systemName: post.audience.icon)
     }
     .font(.caption.weight(.semibold))
     .foregroundStyle(TunedInDesign.mutedText)
   }
 }
 
-struct DiaryMediaPreview: View {
-  let diaryID: UUID
+struct PostMediaPreview: View {
+  let postID: UUID
   let reportedPhotoCount: Int
-  let concertRepository: any ConcertRepository
+  let postRepository: any PostRepository
   let height: CGFloat
   var maximumVisiblePhotos = 3
 
-  @State private var photos: [ConcertAlbumPhoto] = []
+  @State private var photos: [PostMedia] = []
   @State private var didFail = false
 
   var body: some View {
@@ -469,7 +469,7 @@ struct DiaryMediaPreview: View {
 
           HStack(spacing: spacing) {
             ForEach(photos) { photo in
-              DiaryPhotoImage(photo: photo, concertRepository: concertRepository)
+              PostMediaImage(photo: photo, postRepository: postRepository)
                 .frame(width: width, height: proxy.size.height)
             }
           }
@@ -479,13 +479,12 @@ struct DiaryMediaPreview: View {
     .frame(maxWidth: .infinity)
     .frame(height: height)
     .clipped()
-    .task(id: "\(diaryID)-\(reportedPhotoCount)-\(maximumVisiblePhotos)") {
+    .task(id: "\(postID)-\(reportedPhotoCount)-\(maximumVisiblePhotos)") {
       guard reportedPhotoCount > 0 else { return }
       do {
-        photos = Array(try await concertRepository.albumPhotos(
-          concertID: diaryID,
-          cursor: nil,
-          policy: .refresh
+        photos = try await Array(postRepository.media(
+          postID: postID,
+          cursor: nil
         ).prefix(maximumVisiblePhotos))
         didFail = photos.isEmpty
       } catch {
@@ -495,9 +494,9 @@ struct DiaryMediaPreview: View {
   }
 }
 
-struct DiaryPhotoImage: View {
-  let photo: ConcertAlbumPhoto
-  let concertRepository: any ConcertRepository
+struct PostMediaImage: View {
+  let photo: PostMedia
+  let postRepository: any PostRepository
 
   @State private var url: URL?
   @State private var failed = false
@@ -507,7 +506,7 @@ struct DiaryPhotoImage: View {
       if let url {
         CachedRemoteImage(
           url: url,
-          resource: .albumPhoto(photoID: photo.id, version: photo.version)
+          resource: .postMedia(mediaID: photo.id, version: photo.version)
         ) { phase in
           switch phase {
           case let .success(image):
@@ -528,8 +527,8 @@ struct DiaryPhotoImage: View {
     .clipped()
     .task(id: "\(photo.id)-\(photo.version)") {
       do {
-        url = try await concertRepository.albumPhotoURL(
-          photoID: photo.id,
+        url = try await postRepository.mediaURL(
+          mediaID: photo.id,
           objectPath: photo.objectPath,
           version: photo.version
         )
@@ -558,45 +557,45 @@ struct EventScrollTopMask: View {
   }
 }
 
-struct EventPostRow: View {
-  let post: EventPost
+struct EventCommentRow: View {
+  let comment: EventComment
   var onReply: (() -> Void)?
 
-  init(post: EventPost, onReply: (() -> Void)? = nil) {
-    self.post = post
+  init(comment: EventComment, onReply: (() -> Void)? = nil) {
+    self.comment = comment
     self.onReply = onReply
   }
 
   var body: some View {
     HStack(alignment: .top, spacing: 10) {
-      if post.parentPostID != nil {
+      if comment.parentCommentID != nil {
         Image(systemName: "arrowshape.turn.up.left")
           .font(.caption)
           .foregroundStyle(TunedInDesign.mutedText)
           .frame(width: 16, height: 38)
       }
-      SocialProfileButton(profile: post.author) {
-        ProfileAvatarView(profile: post.author, size: 38)
+      SocialProfileButton(profile: comment.author) {
+        ProfileAvatarView(profile: comment.author, size: 38)
       }
       VStack(alignment: .leading, spacing: 4) {
         HStack {
-          SocialProfileButton(profile: post.author) {
-            Text(post.author.displayName)
+          SocialProfileButton(profile: comment.author) {
+            Text(comment.author.displayName)
               .font(.subheadline.weight(.bold))
               .foregroundStyle(TunedInDesign.primaryText)
           }
-          Image(systemName: post.audience.icon)
+          Image(systemName: comment.audience.icon)
             .font(.caption2)
             .foregroundStyle(TunedInDesign.mutedText)
           Spacer()
-          Text(post.createdAt, style: .relative)
+          Text(comment.createdAt, style: .relative)
             .font(.caption2)
             .foregroundStyle(TunedInDesign.mutedText)
         }
-        Text(post.body)
+        Text(comment.body)
           .font(.subheadline)
-          .foregroundStyle(post.isDeleted ? TunedInDesign.mutedText : TunedInDesign.primaryText)
-          .italic(post.isDeleted)
+          .foregroundStyle(comment.isDeleted ? TunedInDesign.mutedText : TunedInDesign.primaryText)
+          .italic(comment.isDeleted)
         if let onReply {
           Button("Reply", action: onReply)
             .font(.caption.weight(.semibold))
@@ -605,7 +604,7 @@ struct EventPostRow: View {
         }
       }
     }
-    .padding(.leading, post.parentPostID == nil ? 0 : 22)
+    .padding(.leading, comment.parentCommentID == nil ? 0 : 22)
     .padding(.vertical, 8)
   }
 }
@@ -806,5 +805,7 @@ extension EventAudience {
 }
 
 extension CatalogEntityKind: Identifiable {
-  var id: String { rawValue }
+  var id: String {
+    rawValue
+  }
 }

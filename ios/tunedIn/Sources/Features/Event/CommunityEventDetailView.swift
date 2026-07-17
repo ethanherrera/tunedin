@@ -8,23 +8,23 @@ struct CommunityEventDetailView: View {
   let eventID: UUID
   let viewerID: UUID
   let repository: any EventRepository
-  let concertRepository: (any ConcertRepository)?
-  let initialDiaryID: UUID?
+  let postRepository: any PostRepository
+  let initialPostID: UUID?
   let onDismiss: () -> Void
 
   init(
     eventID: UUID,
     viewerID: UUID,
     repository: any EventRepository,
-    concertRepository: (any ConcertRepository)?,
-    initialDiaryID: UUID? = nil,
+    postRepository: any PostRepository,
+    initialPostID: UUID? = nil,
     onDismiss: @escaping () -> Void
   ) {
     self.eventID = eventID
     self.viewerID = viewerID
     self.repository = repository
-    self.concertRepository = concertRepository
-    self.initialDiaryID = initialDiaryID
+    self.postRepository = postRepository
+    self.initialPostID = initialPostID
     self.onDismiss = onDismiss
   }
 
@@ -65,13 +65,13 @@ struct CommunityEventDetailView: View {
               }
             )
 
-            if repository.capabilities.contains(.diaries), detail.summary.phase() == .memories {
+            if repository.capabilities.contains(.posts), detail.summary.phase() == .memories {
               EventMemoriesPage(
                 detail: detail,
                 viewerID: viewerID,
                 repository: repository,
-                concertRepository: concertRepository,
-                initialDiaryID: initialDiaryID,
+                postRepository: postRepository,
+                initialPostID: initialPostID,
                 onSaved: { Task { await load() } }
               )
             }
@@ -90,16 +90,16 @@ struct CommunityEventDetailView: View {
               repository: repository,
               allowsConversation: repository.capabilities.contains(.conversation),
               onReport: { isPresentingReport = true },
-              onPostAdded: { Task { await load() } }
+              onCommentAdded: { Task { await load() } }
             )
 
-            if repository.capabilities.contains(.diaries), detail.summary.phase() != .memories {
+            if repository.capabilities.contains(.posts), detail.summary.phase() != .memories {
               EventMemoriesPage(
                 detail: detail,
                 viewerID: viewerID,
                 repository: repository,
-                concertRepository: concertRepository,
-                initialDiaryID: initialDiaryID,
+                postRepository: postRepository,
+                initialPostID: initialPostID,
                 onSaved: { Task { await load() } }
               )
             }
@@ -179,8 +179,6 @@ struct CommunityEventDetailView: View {
         ) {
           isPresentingInvites = true
         }
-      } else {
-        EmptyView()
       }
     }
   }
@@ -381,8 +379,12 @@ private struct CommunityEventHero: View {
 
   private var coverCredit: String? {
     guard let cover = detail.summary.cover else { return nil }
-    if let attribution = cover.attribution { return attribution }
-    if let providerName = cover.providerName { return "Image: \(providerName)" }
+    if let attribution = cover.attribution {
+      return attribution
+    }
+    if let providerName = cover.providerName {
+      return "Image: \(providerName)"
+    }
     return cover.source == .community ? "Community photo" : nil
   }
 
@@ -485,11 +487,11 @@ private struct EventOverviewPage: View {
   let repository: any EventRepository
   let allowsConversation: Bool
   let onReport: () -> Void
-  let onPostAdded: () -> Void
+  let onCommentAdded: () -> Void
 
   @State private var comment = ""
   @State private var audience = EventAudience.friends
-  @State private var replyTo: EventPost?
+  @State private var replyTo: EventComment?
   @State private var isPosting = false
   @State private var errorMessage: String?
   @State private var isShowingDetails = false
@@ -561,7 +563,7 @@ private struct EventOverviewPage: View {
             Text(errorMessage).font(.caption).foregroundStyle(TunedInDesign.accent)
           }
 
-          if detail.posts.isEmpty {
+          if detail.comments.isEmpty {
             Text(detail.summary.phase() == .memories
               ? "No one posted before the show."
               : "Be the first to say what you’re excited for.")
@@ -569,11 +571,13 @@ private struct EventOverviewPage: View {
               .foregroundStyle(TunedInDesign.mutedText)
               .padding(.vertical, 12)
           } else {
-            ForEach(detail.posts.sorted(by: { $0.createdAt < $1.createdAt })) { post in
-              EventPostRow(
-                post: post,
-                onReply: detail.summary.phase() != .memories && post.parentPostID == nil && !post.isDeleted
-                  ? { replyTo = post }
+            ForEach(detail.comments.sorted(by: { $0.createdAt < $1.createdAt })) { eventComment in
+              EventCommentRow(
+                comment: eventComment,
+                onReply: detail.summary.phase() != .memories
+                  && eventComment.parentCommentID == nil
+                  && !eventComment.isDeleted
+                  ? { replyTo = eventComment }
                   : nil
               )
             }
@@ -615,7 +619,7 @@ private struct EventOverviewPage: View {
     }
     .task {
       if let remembered = EventAudience(rawValue: UserDefaults.standard.string(
-        forKey: "community-event-post-audience.\(viewerID.uuidString)"
+        forKey: "community-event-comment-audience.\(viewerID.uuidString)"
       ) ?? "") {
         audience = remembered
       }
@@ -627,10 +631,10 @@ private struct EventOverviewPage: View {
     isPosting = true
     defer { isPosting = false }
     do {
-      _ = try await repository.addPost(
+      _ = try await repository.addComment(
         eventID: detail.id,
         authorID: viewerID,
-        parentPostID: replyTo?.id,
+        parentCommentID: replyTo?.id,
         body: comment,
         audience: audience
       )
@@ -638,7 +642,7 @@ private struct EventOverviewPage: View {
       comment = ""
       replyTo = nil
       errorMessage = nil
-      onPostAdded()
+      onCommentAdded()
     } catch {
       errorMessage = error.localizedDescription
     }
@@ -647,7 +651,7 @@ private struct EventOverviewPage: View {
   private func rememberPostAudience(_ audience: EventAudience) {
     UserDefaults.standard.set(
       audience.rawValue,
-      forKey: "community-event-post-audience.\(viewerID.uuidString)"
+      forKey: "community-event-comment-audience.\(viewerID.uuidString)"
     )
   }
 }
@@ -706,7 +710,9 @@ private struct EventPeoplePage: View {
     detail.attendances.sorted { lhs, rhs in
       let lhsRank = lhs.profile.id == viewerID ? 0 : (lhs.profile.relationship == .friends ? 1 : 2)
       let rhsRank = rhs.profile.id == viewerID ? 0 : (rhs.profile.relationship == .friends ? 1 : 2)
-      if lhsRank != rhsRank { return lhsRank < rhsRank }
+      if lhsRank != rhsRank {
+        return lhsRank < rhsRank
+      }
       return lhs.profile.displayName < rhs.profile.displayName
     }
   }
@@ -716,14 +722,14 @@ private struct EventMemoriesPage: View {
   let detail: CommunityEventDetail
   let viewerID: UUID
   let repository: any EventRepository
-  let concertRepository: (any ConcertRepository)?
-  let initialDiaryID: UUID?
+  let postRepository: any PostRepository
+  let initialPostID: UUID?
   let onSaved: () -> Void
 
-  @State private var isPresentingDiary = false
+  @State private var isPresentingPost = false
   @State private var isPresentingAllPosts = false
-  @State private var selectedDiary: EventDiaryPreview?
-  @State private var didOpenInitialDiary = false
+  @State private var selectedPost: EventPostPreview?
+  @State private var didOpenInitialPost = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
@@ -747,12 +753,12 @@ private struct EventMemoriesPage: View {
             Text("Posts")
               .font(.title2.weight(.bold))
               .foregroundStyle(TunedInDesign.primaryText)
-            if let score = detail.summary.averageDiaryScore {
+            if let score = detail.summary.averagePostScore {
               HStack(spacing: 6) {
                 CommunityEventScoreBadge(score: score, size: .compact)
                 Text(
-                  "average from \(detail.summary.diaryCount) visible "
-                    + (detail.summary.diaryCount == 1 ? "post" : "posts")
+                  "average from \(detail.summary.postCount) visible "
+                    + (detail.summary.postCount == 1 ? "post" : "posts")
                 )
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(TunedInDesign.mutedText)
@@ -760,9 +766,9 @@ private struct EventMemoriesPage: View {
             }
           }
           Spacer()
-          if detail.summary.canCreateDiary() {
-            Button(myDiary == nil ? "Create post" : "Edit post") {
-              isPresentingDiary = true
+          if detail.summary.canCreatePost() {
+            Button(myPost == nil ? "Create post" : "Edit post") {
+              isPresentingPost = true
             }
             .font(.subheadline.weight(.bold))
             .buttonStyle(.borderedProminent)
@@ -771,37 +777,31 @@ private struct EventMemoriesPage: View {
           }
         }
 
-        if detail.diaryPreviews.isEmpty {
+        if detail.postPreviews.isEmpty {
           Text("No posts yet. Going or Went still works without posting.")
             .font(.subheadline)
             .foregroundStyle(TunedInDesign.mutedText)
             .padding(.vertical, 12)
         } else {
-          if let concertRepository {
-            LazyVGrid(
-              columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3),
-              spacing: 2
-            ) {
-              ForEach(previewDiaries) { diary in
-                EventPostGridTile(
-                  post: diary,
-                  viewerID: viewerID,
-                  concertRepository: concertRepository,
-                  onOpen: { selectedDiary = diary }
-                )
-              }
-            }
-            .padding(.horizontal, -20)
-          } else {
-            ForEach(previewDiaries) { diary in
-              EventDiaryPreviewCard(diary: diary)
+          LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3),
+            spacing: 2
+          ) {
+            ForEach(previewPosts) { post in
+              EventPostGridTile(
+                post: post,
+                viewerID: viewerID,
+                postRepository: postRepository,
+                onOpen: { selectedPost = post }
+              )
             }
           }
+          .padding(.horizontal, -20)
 
           if shouldShowAllPosts {
             Button { isPresentingAllPosts = true } label: {
               HStack {
-                Text("View all \(detail.summary.diaryCount) posts")
+                Text("View all \(detail.summary.postCount) posts")
                 Spacer()
                 Image(systemName: "chevron.right")
               }
@@ -815,49 +815,47 @@ private struct EventMemoriesPage: View {
         }
       }
     }
-    .fullScreenCover(isPresented: $isPresentingDiary) {
-      EventDiaryComposerView(
+    .fullScreenCover(isPresented: $isPresentingPost) {
+      EventPostComposerView(
         event: detail.summary,
         viewerID: viewerID,
         repository: repository,
-        concertRepository: concertRepository,
-        existing: detail.diaryPreviews.first(where: { $0.author.id == viewerID }),
+        postRepository: postRepository,
+        existing: detail.postPreviews.first(where: { $0.author.id == viewerID }),
         onSaved: {
-          isPresentingDiary = false
+          isPresentingPost = false
           onSaved()
         },
-        onDismiss: { isPresentingDiary = false }
+        onDismiss: { isPresentingPost = false }
       )
     }
-    .fullScreenCover(item: $selectedDiary) { diary in
-      if let concertRepository {
-        EventDiaryDetailView(
-          event: detail.summary,
-          diary: diary,
-          viewerID: viewerID,
-          concertRepository: concertRepository,
-          onChanged: onSaved,
-          onDismiss: { selectedDiary = nil }
-        )
-      }
+    .fullScreenCover(item: $selectedPost) { post in
+      EventPostDetailView(
+        event: detail.summary,
+        post: post,
+        viewerID: viewerID,
+        postRepository: postRepository,
+        onChanged: onSaved,
+        onDismiss: { selectedPost = nil }
+      )
     }
     .fullScreenCover(isPresented: $isPresentingAllPosts) {
       EventPostGalleryView(
         event: detail.summary,
         viewerID: viewerID,
         repository: repository,
-        concertRepository: concertRepository,
+        postRepository: postRepository,
         onChanged: onSaved,
         onDismiss: { isPresentingAllPosts = false }
       )
     }
-    .task(id: initialDiaryID) {
-      guard !didOpenInitialDiary,
-            let initialDiaryID,
-            let diary = detail.diaryPreviews.first(where: { $0.id == initialDiaryID })
+    .task(id: initialPostID) {
+      guard !didOpenInitialPost,
+            let initialPostID,
+            let post = detail.postPreviews.first(where: { $0.id == initialPostID })
       else { return }
-      didOpenInitialDiary = true
-      selectedDiary = diary
+      didOpenInitialPost = true
+      selectedPost = post
     }
   }
 
@@ -866,34 +864,36 @@ private struct EventMemoriesPage: View {
       || (detail.summary.lifecycle == .cancelled && Date.now >= detail.summary.memoryUnlockAt)
   }
 
-  private var sortedDiaries: [EventDiaryPreview] {
-    detail.diaryPreviews.sorted { lhs, rhs in
+  private var sortedPosts: [EventPostPreview] {
+    detail.postPreviews.sorted { lhs, rhs in
       let lhsRank = lhs.author.id == viewerID ? 0 : (lhs.author.relationship == .friends ? 1 : 2)
       let rhsRank = rhs.author.id == viewerID ? 0 : (rhs.author.relationship == .friends ? 1 : 2)
-      if lhsRank != rhsRank { return lhsRank < rhsRank }
+      if lhsRank != rhsRank {
+        return lhsRank < rhsRank
+      }
       return lhs.publishedAt > rhs.publishedAt
     }
   }
 
-  private var myDiary: EventDiaryPreview? {
-    sortedDiaries.first(where: { $0.author.id == viewerID })
+  private var myPost: EventPostPreview? {
+    sortedPosts.first(where: { $0.author.id == viewerID })
   }
 
-  private var previewDiaries: [EventDiaryPreview] {
-    Array(sortedDiaries.prefix(6))
+  private var previewPosts: [EventPostPreview] {
+    Array(sortedPosts.prefix(6))
   }
 
   private var shouldShowAllPosts: Bool {
-    detail.summary.diaryCount > previewDiaries.count
+    detail.summary.postCount > previewPosts.count
   }
 }
 
-private struct EventDiaryComposerView: View {
+private struct EventPostComposerView: View {
   let event: CommunityEventSummary
   let viewerID: UUID
   let repository: any EventRepository
-  let concertRepository: (any ConcertRepository)?
-  let existing: EventDiaryPreview?
+  let postRepository: any PostRepository
+  let existing: EventPostPreview?
   let onSaved: () -> Void
   let onDismiss: () -> Void
 
@@ -911,15 +911,15 @@ private struct EventDiaryComposerView: View {
     event: CommunityEventSummary,
     viewerID: UUID,
     repository: any EventRepository,
-    concertRepository: (any ConcertRepository)?,
-    existing: EventDiaryPreview?,
+    postRepository: any PostRepository,
+    existing: EventPostPreview?,
     onSaved: @escaping () -> Void,
     onDismiss: @escaping () -> Void
   ) {
     self.event = event
     self.viewerID = viewerID
     self.repository = repository
-    self.concertRepository = concertRepository
+    self.postRepository = postRepository
     self.existing = existing
     self.onSaved = onSaved
     self.onDismiss = onDismiss
@@ -942,10 +942,10 @@ private struct EventDiaryComposerView: View {
 
       ScrollView {
         VStack(alignment: .leading, spacing: 26) {
-          EventDiaryComposerHeader(
+          EventPostComposerHeader(
             event: event,
             existing: existing,
-            concertRepository: concertRepository,
+            postRepository: postRepository,
             photoSelection: $photoSelection,
             isSaving: isSaving
           )
@@ -956,7 +956,7 @@ private struct EventDiaryComposerView: View {
               .foregroundStyle(TunedInDesign.primaryText)
               .padding(.bottom, 10)
 
-            DiaryScoreRow(
+            PostScoreRow(
               title: "Overall",
               systemImage: "star.fill",
               isIncluded: $includesScore,
@@ -965,7 +965,7 @@ private struct EventDiaryComposerView: View {
 
             Divider()
 
-            DiaryScoreRow(
+            PostScoreRow(
               title: "Performance",
               systemImage: "music.mic",
               isIncluded: $includesPerformanceScore,
@@ -996,34 +996,28 @@ private struct EventDiaryComposerView: View {
             }
             Text("\(note.count)/4000")
               .font(.caption.monospacedDigit())
-              .foregroundStyle(note.count > 4_000 ? TunedInDesign.accent : TunedInDesign.mutedText)
+              .foregroundStyle(note.count > 4000 ? TunedInDesign.accent : TunedInDesign.mutedText)
               .frame(maxWidth: .infinity, alignment: .trailing)
           }
 
           VStack(alignment: .leading, spacing: 16) {
             if (existing?.photoCount ?? 0) == 0 {
-              if concertRepository != nil {
-                PhotosPicker(
-                  selection: $photoSelection,
-                  maxSelectionCount: 10,
-                  matching: .images
-                ) {
-                  Label(
-                    photoPickerTitle,
-                    systemImage: "photo.badge.plus"
-                  )
-                  .font(.subheadline.weight(.bold))
-                  .foregroundStyle(TunedInDesign.actionForeground)
-                  .padding(.horizontal, 16)
-                  .frame(height: 44)
-                  .background(TunedInDesign.accent, in: Capsule())
-                }
-                .disabled(isSaving)
-              } else {
-                Text("Photo uploads are unavailable in this preview.")
-                  .font(.caption)
-                  .foregroundStyle(TunedInDesign.mutedText)
+              PhotosPicker(
+                selection: $photoSelection,
+                maxSelectionCount: 10,
+                matching: .images
+              ) {
+                Label(
+                  photoPickerTitle,
+                  systemImage: "photo.badge.plus"
+                )
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(TunedInDesign.actionForeground)
+                .padding(.horizontal, 16)
+                .frame(height: 44)
+                .background(TunedInDesign.accent, in: Capsule())
               }
+              .disabled(isSaving)
             }
 
             Divider()
@@ -1066,15 +1060,15 @@ private struct EventDiaryComposerView: View {
     }
     .safeAreaInset(edge: .bottom, spacing: 0) {
       TunedInPersistentControlRegion {
-        EventDiaryActionBar(
+        EventPostActionBar(
           isSaving: isSaving,
-          canSave: canSaveDiary,
+          canSave: canSavePost,
           onDismiss: onDismiss,
           onSave: { Task { await save() } }
         )
-          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
-          .padding(.top, 8)
-          .padding(.bottom, TunedInDesign.bottomControlInset)
+        .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+        .padding(.top, 8)
+        .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
     .tunedInKeyboardManaged()
@@ -1087,14 +1081,10 @@ private struct EventDiaryComposerView: View {
     do {
       var hasReadyPhoto = (existing?.photoCount ?? 0) > 0
       if !photoSelection.isEmpty {
-        guard let concertRepository else {
-          throw CommunityEventError.invalidEvent("Photo uploads are unavailable right now.")
-        }
-        let diaryID: UUID
-        if let existingID = existing?.id {
-          diaryID = existingID
+        let postID: UUID = if let existingID = existing?.id {
+          existingID
         } else {
-          diaryID = try await repository.preparePhotoDiary(
+          try await repository.preparePhotoPost(
             eventID: event.id,
             authorID: viewerID,
             audience: audience
@@ -1105,12 +1095,12 @@ private struct EventDiaryComposerView: View {
           guard let source = try await item.loadTransferable(type: Data.self) else {
             throw AppFailure.unexpected
           }
-          let data = try await ConcertAlbumImageProcessor.process(source)
-          let reservation = try await concertRepository.reserveAlbumPhoto(
-            concertID: diaryID,
-            photoID: UUID()
+          let data = try await PostImageProcessor.process(source)
+          let reservation = try await postRepository.reserveMedia(
+            postID: postID,
+            mediaID: UUID()
           )
-          _ = try await concertRepository.uploadReservedAlbumPhoto(
+          _ = try await postRepository.uploadReservedMedia(
             data,
             reservation: reservation
           )
@@ -1118,10 +1108,10 @@ private struct EventDiaryComposerView: View {
         }
         hasReadyPhoto = hasReadyPhoto || uploadedCount > 0
       }
-      _ = try await repository.saveDiary(
+      _ = try await repository.savePost(
         eventID: event.id,
         authorID: viewerID,
-        input: EventDiaryInput(
+        input: EventPostInput(
           score: includesScore ? score : nil,
           performanceScore: includesPerformanceScore ? performanceScore : nil,
           note: note,
@@ -1137,7 +1127,7 @@ private struct EventDiaryComposerView: View {
     }
   }
 
-  private var hasDiaryContent: Bool {
+  private var hasPostContent: Bool {
     includesScore
       || includesPerformanceScore
       || CatalogInput.optionalNormalizedText(note) != nil
@@ -1145,12 +1135,12 @@ private struct EventDiaryComposerView: View {
       || (existing?.photoCount ?? 0) > 0
   }
 
-  private var canSaveDiary: Bool {
-    !isSaving && note.count <= 4_000 && hasDiaryContent
+  private var canSavePost: Bool {
+    !isSaving && note.count <= 4000 && hasPostContent
   }
 }
 
-private struct EventDiaryActionBar: View {
+private struct EventPostActionBar: View {
   let isSaving: Bool
   let canSave: Bool
   let onDismiss: () -> Void
@@ -1181,10 +1171,10 @@ private struct EventDiaryActionBar: View {
   }
 }
 
-private struct EventDiaryComposerHeader: View {
+private struct EventPostComposerHeader: View {
   let event: CommunityEventSummary
-  let existing: EventDiaryPreview?
-  let concertRepository: (any ConcertRepository)?
+  let existing: EventPostPreview?
+  let postRepository: any PostRepository
   @Binding var photoSelection: [PhotosPickerItem]
   let isSaving: Bool
 
@@ -1204,12 +1194,12 @@ private struct EventDiaryComposerHeader: View {
           .foregroundStyle(TunedInDesign.mutedText)
       }
 
-      if let existing, let concertRepository, existing.photoCount > 0 {
+      if let existing, existing.photoCount > 0 {
         ZStack(alignment: .topTrailing) {
-          DiaryMediaPreview(
-            diaryID: existing.id,
+          PostMediaPreview(
+            postID: existing.id,
             reportedPhotoCount: existing.photoCount,
-            concertRepository: concertRepository,
+            postRepository: postRepository,
             height: 170,
             maximumVisiblePhotos: 2
           )
@@ -1238,7 +1228,7 @@ private struct EventDiaryComposerHeader: View {
   }
 }
 
-private struct DiaryScoreRow: View {
+private struct PostScoreRow: View {
   let title: String
   let systemImage: String
   @Binding var isIncluded: Bool
@@ -1504,8 +1494,12 @@ private struct EventInviteView: View {
   }
 
   private func candidateStatus(_ candidate: EventInviteCandidate) -> String {
-    if let attendanceStatus = candidate.attendanceStatus { return attendanceStatus.title }
-    if candidate.isAlreadyInvited { return "Invited" }
+    if let attendanceStatus = candidate.attendanceStatus {
+      return attendanceStatus.title
+    }
+    if candidate.isAlreadyInvited {
+      return "Invited"
+    }
     return "@\(candidate.profile.username)"
   }
 }

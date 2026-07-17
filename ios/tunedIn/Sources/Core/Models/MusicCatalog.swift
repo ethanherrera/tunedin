@@ -384,37 +384,12 @@ struct CustomCatalogArtistInput: Equatable, Sendable {
   let disambiguation: String?
   let areaID: UUID?
   let areaName: String?
-  let concertContextID: UUID?
-
-  init(
-    name: String,
-    artistType: String?,
-    disambiguation: String?,
-    areaID: UUID?,
-    areaName: String?,
-    concertContextID: UUID? = nil
-  ) {
-    self.name = name
-    self.artistType = artistType
-    self.disambiguation = disambiguation
-    self.areaID = areaID
-    self.areaName = areaName
-    self.concertContextID = concertContextID
-  }
 }
 
 struct CustomCatalogAreaInput: Equatable, Sendable {
   let name: String
   let countryCode: String?
   let parentAreaID: UUID?
-  let concertContextID: UUID?
-
-  init(name: String, countryCode: String?, parentAreaID: UUID?, concertContextID: UUID? = nil) {
-    self.name = name
-    self.countryCode = countryCode
-    self.parentAreaID = parentAreaID
-    self.concertContextID = concertContextID
-  }
 }
 
 struct CustomCatalogPlaceInput: Equatable, Sendable {
@@ -423,61 +398,18 @@ struct CustomCatalogPlaceInput: Equatable, Sendable {
   let address: String?
   let areaID: UUID
   let areaName: String
-  let concertContextID: UUID?
-
-  init(
-    name: String,
-    placeType: String?,
-    address: String?,
-    areaID: UUID,
-    areaName: String,
-    concertContextID: UUID? = nil
-  ) {
-    self.name = name
-    self.placeType = placeType
-    self.address = address
-    self.areaID = areaID
-    self.areaName = areaName
-    self.concertContextID = concertContextID
-  }
 }
 
 struct CustomCatalogSongInput: Equatable, Sendable {
   let title: String
   let artistIDs: [UUID]
   let artistNames: [String]
-  let concertContextID: UUID?
-
-  init(
-    title: String,
-    artistIDs: [UUID],
-    artistNames: [String],
-    concertContextID: UUID? = nil
-  ) {
-    self.title = title
-    self.artistIDs = artistIDs
-    self.artistNames = artistNames
-    self.concertContextID = concertContextID
-  }
 }
 
 struct CustomCatalogTourInput: Equatable, Sendable {
   let name: String
   let artistIDs: [UUID]
   let artistNames: [String]
-  let concertContextID: UUID?
-
-  init(
-    name: String,
-    artistIDs: [UUID],
-    artistNames: [String],
-    concertContextID: UUID? = nil
-  ) {
-    self.name = name
-    self.artistIDs = artistIDs
-    self.artistNames = artistNames
-    self.concertContextID = concertContextID
-  }
 }
 
 enum MusicCatalogError: Error, Equatable, LocalizedError, Sendable {

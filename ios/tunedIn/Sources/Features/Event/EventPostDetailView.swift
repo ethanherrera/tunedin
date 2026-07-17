@@ -1,16 +1,16 @@
 import PhotosUI
 import SwiftUI
 
-struct EventDiaryDetailView: View {
+struct EventPostDetailView: View {
   let event: CommunityEventSummary
-  let diary: EventDiaryPreview
+  let post: EventPostPreview
   let viewerID: UUID
-  let concertRepository: any ConcertRepository
+  let postRepository: any PostRepository
   let onChanged: () -> Void
   let onDismiss: () -> Void
 
-  @State private var photos: [ConcertAlbumPhoto] = []
-  @State private var comments: [ConcertComment] = []
+  @State private var photos: [PostMedia] = []
+  @State private var comments: [PostComment] = []
   @State private var photoSelection: [PhotosPickerItem] = []
   @State private var commentDraft = ""
   @State private var isLoading = true
@@ -24,10 +24,10 @@ struct EventDiaryDetailView: View {
 
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
-          diaryAuthorHeader
-          diaryMediaSection
-          diaryReview
-          diaryCommentSection
+          postAuthorHeader
+          postMediaSection
+          postReview
+          postCommentSection
 
           if let errorMessage {
             Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
@@ -38,7 +38,7 @@ struct EventDiaryDetailView: View {
         .padding(20)
         .padding(.bottom, 96)
       }
-      .refreshable { await load(policy: .refresh) }
+      .refreshable { await load() }
 
       EventScrollTopMask()
         .frame(maxHeight: .infinity, alignment: .top)
@@ -51,7 +51,7 @@ struct EventDiaryDetailView: View {
           .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
-    .task { await load(policy: .automatic) }
+    .task { await load() }
     .onChange(of: photoSelection) { _, items in
       guard !items.isEmpty else { return }
       photoSelection = []
@@ -59,19 +59,19 @@ struct EventDiaryDetailView: View {
     }
   }
 
-  private var diaryAuthorHeader: some View {
+  private var postAuthorHeader: some View {
     HStack(spacing: 12) {
-      SocialProfileButton(profile: diary.author) {
-        ProfileAvatarView(profile: diary.author, size: 44)
+      SocialProfileButton(profile: post.author) {
+        ProfileAvatarView(profile: post.author, size: 44)
       }
       VStack(alignment: .leading, spacing: 3) {
         HStack(spacing: 5) {
-          SocialProfileButton(profile: diary.author) {
-            Text(diary.author.displayName)
+          SocialProfileButton(profile: post.author) {
+            Text(post.author.displayName)
               .fontWeight(.bold)
               .foregroundStyle(TunedInDesign.primaryText)
           }
-          Image(systemName: diary.audience.icon)
+          Image(systemName: post.audience.icon)
             .font(.caption2)
         }
         .font(.subheadline)
@@ -85,21 +85,21 @@ struct EventDiaryDetailView: View {
           .foregroundStyle(TunedInDesign.mutedText)
       }
       Spacer()
-      if let score = diary.score {
+      if let score = post.score {
         CommunityEventScoreBadge(score: score, size: .large)
       }
     }
   }
 
   @ViewBuilder
-  private var diaryMediaSection: some View {
+  private var postMediaSection: some View {
     let uploadTitle = isUploading ? "Adding…" : "Add"
-    if isLoading, diary.photoCount > 0, photos.isEmpty {
+    if isLoading, post.photoCount > 0, photos.isEmpty {
       TunedInSkeletonBlock(cornerRadius: 20)
         .aspectRatio(0.8, contentMode: .fit)
     } else if !photos.isEmpty {
       VStack(alignment: .trailing, spacing: 8) {
-        if diary.author.id == viewerID {
+        if post.author.id == viewerID {
           PhotosPicker(
             selection: $photoSelection,
             maxSelectionCount: 10,
@@ -112,7 +112,7 @@ struct EventDiaryDetailView: View {
         }
         TabView {
           ForEach(photos) { photo in
-            DiaryPhotoImage(photo: photo, concertRepository: concertRepository)
+            PostMediaImage(photo: photo, postRepository: postRepository)
               .frame(maxWidth: .infinity, maxHeight: .infinity)
           }
         }
@@ -120,7 +120,7 @@ struct EventDiaryDetailView: View {
         .frame(height: 468)
         .padding(.horizontal, -20)
       }
-    } else if diary.author.id == viewerID {
+    } else if post.author.id == viewerID {
       PhotosPicker(
         selection: $photoSelection,
         maxSelectionCount: 10,
@@ -135,19 +135,19 @@ struct EventDiaryDetailView: View {
     }
   }
 
-  private var diaryReview: some View {
+  private var postReview: some View {
     VStack(alignment: .leading, spacing: 12) {
-      if let note = diary.note {
+      if let note = post.note {
         Text(note)
           .font(.body)
           .foregroundStyle(TunedInDesign.primaryText)
       }
 
-      DiaryEngagementLine(diary: diary)
+      PostEngagementLine(post: post)
     }
   }
 
-  private var diaryCommentSection: some View {
+  private var postCommentSection: some View {
     VStack(alignment: .leading, spacing: 12) {
       Text("Comments")
         .font(.headline)
@@ -178,7 +178,7 @@ struct EventDiaryDetailView: View {
           .foregroundStyle(TunedInDesign.mutedText)
       } else {
         ForEach(comments) { comment in
-          EventDiaryCommentRow(comment: comment)
+          EventPostCommentRow(comment: comment)
           Divider().overlay(TunedInDesign.cardBorder)
         }
       }
@@ -186,19 +186,17 @@ struct EventDiaryDetailView: View {
   }
 
   @MainActor
-  private func load(policy: CacheReadPolicy) async {
+  private func load() async {
     isLoading = photos.isEmpty && comments.isEmpty
     defer { isLoading = false }
     do {
-      async let loadedPhotos = concertRepository.albumPhotos(
-        concertID: diary.id,
-        cursor: nil,
-        policy: policy
+      async let loadedPhotos = postRepository.media(
+        postID: post.id,
+        cursor: nil
       )
-      async let loadedComments = concertRepository.comments(
-        concertID: diary.id,
-        cursor: nil,
-        policy: policy
+      async let loadedComments = postRepository.comments(
+        postID: post.id,
+        cursor: nil
       )
       (photos, comments) = try await (loadedPhotos, loadedComments)
       errorMessage = nil
@@ -209,7 +207,7 @@ struct EventDiaryDetailView: View {
 
   @MainActor
   private func upload(_ items: [PhotosPickerItem]) async {
-    guard diary.author.id == viewerID, !isUploading else { return }
+    guard post.author.id == viewerID, !isUploading else { return }
     isUploading = true
     defer { isUploading = false }
     var failures = 0
@@ -218,13 +216,13 @@ struct EventDiaryDetailView: View {
         guard let source = try await item.loadTransferable(type: Data.self) else {
           throw AppFailure.unexpected
         }
-        let data = try await ConcertAlbumImageProcessor.process(source)
-        let photoID = UUID()
-        let reservation = try await concertRepository.reserveAlbumPhoto(
-          concertID: diary.id,
-          photoID: photoID
+        let data = try await PostImageProcessor.process(source)
+        let mediaID = UUID()
+        let reservation = try await postRepository.reserveMedia(
+          postID: post.id,
+          mediaID: mediaID
         )
-        let photo = try await concertRepository.uploadReservedAlbumPhoto(
+        let photo = try await postRepository.uploadReservedMedia(
           data,
           reservation: reservation
         )
@@ -244,7 +242,7 @@ struct EventDiaryDetailView: View {
     isPosting = true
     defer { isPosting = false }
     do {
-      let comment = try await concertRepository.createComment(concertID: diary.id, body: body)
+      let comment = try await postRepository.createComment(postID: post.id, body: body)
       comments.insert(comment, at: 0)
       commentDraft = ""
       errorMessage = nil
@@ -255,8 +253,8 @@ struct EventDiaryDetailView: View {
   }
 }
 
-private struct EventDiaryCommentRow: View {
-  let comment: ConcertComment
+private struct EventPostCommentRow: View {
+  let comment: PostComment
 
   var body: some View {
     HStack(alignment: .top, spacing: 10) {
@@ -280,3 +278,6 @@ private struct EventDiaryCommentRow: View {
     .padding(.vertical, 8)
   }
 }
+
+
+

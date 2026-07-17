@@ -1,7 +1,7 @@
 import ImageIO
 import UIKit
 
-enum ConcertAlbumImageProcessor {
+enum PostImageProcessor {
   enum ProcessingError: LocalizedError {
     case invalidImage
     case cannotMeetSizeLimit
@@ -14,7 +14,11 @@ enum ConcertAlbumImageProcessor {
     }
   }
 
-  static func process(_ sourceData: Data, maximumEdge: CGFloat = 2048, maximumBytes: Int = 2_097_152) async throws -> Data {
+  static func process(
+    _ sourceData: Data,
+    maximumEdge: CGFloat = 2048,
+    maximumBytes: Int = 2_097_152
+  ) async throws -> Data {
     try await Task.detached(priority: .userInitiated) {
       guard let source = CGImageSourceCreateWithData(sourceData as CFData, nil) else {
         throw ProcessingError.invalidImage
@@ -38,7 +42,10 @@ enum ConcertAlbumImageProcessor {
         UIImage(cgImage: image).draw(in: CGRect(origin: .zero, size: size))
       }
       for quality in stride(from: 0.9, through: 0.35, by: -0.05) {
-        if let data = normalized.jpegData(compressionQuality: quality), !data.isEmpty, data.count <= maximumBytes {
+        if let data = normalized.jpegData(compressionQuality: quality),
+           !data.isEmpty,
+           data.count <= maximumBytes
+        {
           return data
         }
       }

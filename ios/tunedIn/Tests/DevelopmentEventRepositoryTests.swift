@@ -7,7 +7,7 @@
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
 
     @Test
-    func fixturesCoverDiscoveryAndMemoryStatesWithoutConflatingAttendanceAndDiary() async throws {
+    func fixturesCoverDiscoveryAndMemoryStatesWithoutConflatingAttendanceAndPost() async throws {
       let repository = DevelopmentEventRepository(now: now)
       let viewerID = DevelopmentSocialFixture.currentUserID
 
@@ -18,13 +18,13 @@
       #expect(events.contains(where: { $0.phase(at: now) == .cancelled }))
       let memory = try #require(events.first(where: { $0.id == DevelopmentEventFixture.mitskiMemoryID }))
       #expect(memory.currentUserAttendance == .went)
-      #expect(memory.diaryCount == 10)
-      #expect(memory.averageDiaryScore == 8.9)
+      #expect(memory.postCount == 10)
+      #expect(memory.averagePostScore == 8.9)
 
       let detail = try await repository.eventDetail(id: memory.id, viewerID: viewerID)
       #expect(detail.attendances.contains(where: { $0.profile.id == viewerID && $0.status == .went }))
-      #expect(!detail.diaryPreviews.contains(where: { $0.author.id == viewerID }))
-      #expect(detail.summary.canCreateDiary(at: now))
+      #expect(!detail.postPreviews.contains(where: { $0.author.id == viewerID }))
+      #expect(detail.summary.canCreatePost(at: now))
     }
 
     @Test
@@ -69,11 +69,11 @@
       #expect(packedUpcoming.attendances.count == 10)
       #expect(packedUpcoming.posts.count == 12)
       #expect(packedMemory.attendances.count == 11)
-      #expect(packedMemory.diaryPreviews.count == 10)
+      #expect(packedMemory.postPreviews.count == 10)
       #expect(emptyUpcoming.attendances.isEmpty)
       #expect(emptyUpcoming.posts.isEmpty)
       #expect(emptyMemory.attendances.isEmpty)
-      #expect(emptyMemory.diaryPreviews.isEmpty)
+      #expect(emptyMemory.postPreviews.isEmpty)
     }
 
     @Test
@@ -81,13 +81,13 @@
       let repository = DevelopmentEventRepository(now: now)
       let viewerID = DevelopmentSocialFixture.currentUserID
 
-      let firstPosts = try await repository.eventDiaries(
+      let firstPosts = try await repository.eventPosts(
         eventID: DevelopmentEventFixture.mitskiMemoryID,
         viewerID: viewerID,
         cursor: nil,
         limit: 4
       )
-      let secondPosts = try await repository.eventDiaries(
+      let secondPosts = try await repository.eventPosts(
         eventID: DevelopmentEventFixture.mitskiMemoryID,
         viewerID: viewerID,
         cursor: firstPosts.nextCursor,
@@ -116,7 +116,7 @@
     }
 
     @Test
-    func attendanceMutationDoesNotCreateADiary() async throws {
+    func attendanceMutationDoesNotCreateAPost() async throws {
       let repository = DevelopmentEventRepository(now: now)
       let viewerID = DevelopmentSocialFixture.currentUserID
       let eventID = DevelopmentEventFixture.mitskiGreekID
@@ -129,18 +129,18 @@
       )
 
       #expect(detail.summary.currentUserAttendance == .going)
-      #expect(detail.diaryPreviews.isEmpty)
+      #expect(detail.postPreviews.isEmpty)
     }
 
     @Test
-    func wentAttendanceCanCreateAPersonalDiaryWithItsOwnAudience() async throws {
+    func wentAttendanceCanCreateAPersonalPostWithItsOwnAudience() async throws {
       let repository = DevelopmentEventRepository(now: now)
       let viewerID = DevelopmentSocialFixture.currentUserID
 
-      let detail = try await repository.saveDiary(
+      let detail = try await repository.savePost(
         eventID: DevelopmentEventFixture.mitskiMemoryID,
         authorID: viewerID,
-        input: EventDiaryInput(
+        input: EventPostInput(
           score: 9.5,
           performanceScore: 9.0,
           note: "A night I want to remember.",
@@ -148,10 +148,10 @@
         )
       )
 
-      let diary = try #require(detail.diaryPreviews.first(where: { $0.author.id == viewerID }))
-      #expect(diary.score == 9.5)
-      #expect(diary.performanceScore == 9.0)
-      #expect(diary.audience == .privateOnly)
+      let post = try #require(detail.postPreviews.first(where: { $0.author.id == viewerID }))
+      #expect(post.score == 9.5)
+      #expect(post.performanceScore == 9.0)
+      #expect(post.audience == .privateOnly)
       #expect(detail.summary.currentUserAttendance == .went)
     }
 
@@ -217,7 +217,7 @@
         Issue.record("Expected resolved catalog fixtures")
         return
       }
-      let startsAt = now.addingTimeInterval(60 * 86_400)
+      let startsAt = now.addingTimeInterval(60 * 86400)
       let detail = try await repository.createEvent(
         CommunityEventCreationInput(
           artists: [artist],
@@ -233,22 +233,22 @@
 
       #expect(detail.summary.currentUserAttendance == nil)
       #expect(detail.attendances.isEmpty)
-      #expect(detail.summary.memoryUnlockAt == startsAt.addingTimeInterval(4 * 3_600))
+      #expect(detail.summary.memoryUnlockAt == startsAt.addingTimeInterval(4 * 3600))
     }
 
     @Test
-    func aReadyPhotoCanBeTheOnlyDiaryContent() async throws {
+    func aReadyPhotoCanBeTheOnlyPostContent() async throws {
       let repository = DevelopmentEventRepository(now: now)
       let viewerID = DevelopmentSocialFixture.currentUserID
-      let diaryID = try await repository.preparePhotoDiary(
+      let postID = try await repository.preparePhotoPost(
         eventID: DevelopmentEventFixture.mitskiMemoryID,
         authorID: viewerID,
         audience: .friends
       )
-      let detail = try await repository.saveDiary(
+      let detail = try await repository.savePost(
         eventID: DevelopmentEventFixture.mitskiMemoryID,
         authorID: viewerID,
-        input: EventDiaryInput(
+        input: EventPostInput(
           score: nil,
           performanceScore: nil,
           note: nil,
@@ -257,10 +257,10 @@
         )
       )
 
-      let diary = try #require(detail.diaryPreviews.first(where: { $0.id == diaryID }))
-      #expect(diary.photoCount == 1)
-      #expect(diary.score == nil)
-      #expect(diary.note == nil)
+      let post = try #require(detail.postPreviews.first(where: { $0.id == postID }))
+      #expect(post.photoCount == 1)
+      #expect(post.score == nil)
+      #expect(post.note == nil)
     }
   }
 #endif

@@ -4,7 +4,7 @@ import Testing
 
 struct SupabaseEventRepositoryContractTests {
   @Test
-  func phaseThreeCapabilitiesAddTheSocialLoopWithoutDiaries() {
+  func phaseThreeCapabilitiesAddTheSocialLoopWithoutPosts() {
     let capabilities = EventRepositoryCapabilities.phase3Social
 
     #expect(capabilities.contains(.discovery))
@@ -13,7 +13,7 @@ struct SupabaseEventRepositoryContractTests {
     #expect(capabilities.contains(.activityFeed))
     #expect(capabilities.contains(.conversation))
     #expect(capabilities.contains(.invitations))
-    #expect(!capabilities.contains(.diaries))
+    #expect(!capabilities.contains(.posts))
   }
 
   @Test
@@ -26,12 +26,12 @@ struct SupabaseEventRepositoryContractTests {
     #expect(repository.capabilities.contains(.attendance))
     #expect(!repository.capabilities.contains(.conversation))
     #expect(!repository.capabilities.contains(.invitations))
-    #expect(!repository.capabilities.contains(.diaries))
+    #expect(!repository.capabilities.contains(.posts))
   }
 
   @Test
   func searchAndDetailParametersUseExactRPCContractKeys() throws {
-    let eventID = UUID(uuidString: "10000000-0000-0000-0000-000000000001")!
+    let eventID = try #require(UUID(uuidString: "10000000-0000-0000-0000-000000000001"))
     let search = try encodedObject(
       SearchCatalogEventsParameters(query: "Mitski", filters: ["phase": "upcoming"], limit: 25)
     )
@@ -47,8 +47,8 @@ struct SupabaseEventRepositoryContractTests {
 
   @Test
   func attendanceAndPlansParametersUseExactRPCContractKeys() throws {
-    let eventID = UUID(uuidString: "10000000-0000-0000-0000-000000000001")!
-    let otherEventID = UUID(uuidString: "10000000-0000-0000-0000-000000000002")!
+    let eventID = try #require(UUID(uuidString: "10000000-0000-0000-0000-000000000001"))
+    let otherEventID = try #require(UUID(uuidString: "10000000-0000-0000-0000-000000000002"))
     let summaries = try encodedObject(
       CatalogEventSocialSummariesParameters(eventIDs: [eventID, otherEventID])
     )
@@ -81,14 +81,14 @@ struct SupabaseEventRepositoryContractTests {
 struct SupabaseEventSocialContractTests {
   @Test
   func conversationAndInvitationParametersUseExactRPCContractKeys() throws {
-    let eventID = UUID(uuidString: "10000000-0000-0000-0000-000000000001")!
-    let postID = UUID(uuidString: "20000000-0000-0000-0000-000000000001")!
-    let friendID = UUID(uuidString: "30000000-0000-0000-0000-000000000001")!
-    let invitationID = UUID(uuidString: "40000000-0000-0000-0000-000000000001")!
-    let posts = try encodedObject(ListCatalogEventPostsParameters(eventID: eventID))
-    let create = try encodedObject(CreateCatalogEventPostParameters(
+    let eventID = try #require(UUID(uuidString: "10000000-0000-0000-0000-000000000001"))
+    let commentID = try #require(UUID(uuidString: "20000000-0000-0000-0000-000000000001"))
+    let friendID = try #require(UUID(uuidString: "30000000-0000-0000-0000-000000000001"))
+    let invitationID = try #require(UUID(uuidString: "40000000-0000-0000-0000-000000000001"))
+    let posts = try encodedObject(ListCatalogEventCommentsParameters(eventID: eventID))
+    let create = try encodedObject(CreateCatalogEventCommentParameters(
       eventID: eventID,
-      parentPostID: postID,
+      parentCommentID: commentID,
       body: "Can’t wait",
       audience: .friends
     ))
@@ -104,8 +104,8 @@ struct SupabaseEventSocialContractTests {
 
     #expect(Set(posts.keys) == ["p_event_id", "p_scope", "p_limit"])
     #expect(posts["p_scope"] as? String == "all")
-    #expect(Set(create.keys) == ["p_event_id", "p_parent_post_id", "p_body", "p_audience"])
-    #expect(create["p_parent_post_id"] as? String == postID.uuidString)
+    #expect(Set(create.keys) == ["p_event_id", "p_parent_comment_id", "p_body", "p_audience"])
+    #expect(create["p_parent_comment_id"] as? String == commentID.uuidString)
     #expect(create["p_audience"] as? String == "friends")
     #expect(Set(send.keys) == ["p_event_id", "p_recipient_ids"])
     #expect(send["p_recipient_ids"] as? [String] == [friendID.uuidString])
@@ -119,7 +119,7 @@ struct SupabaseEventSocialContractTests {
       #"""
       {
         "id":"50000000-0000-0000-0000-000000000001",
-        "parent_post_id":"50000000-0000-0000-0000-000000000000",
+        "parent_comment_id":"50000000-0000-0000-0000-000000000000",
         "author_id":"60000000-0000-0000-0000-000000000001",
         "author_username":"morgan",
         "author_display_name":"Morgan",
@@ -133,10 +133,10 @@ struct SupabaseEventSocialContractTests {
       }
       """#.utf8
     )
-    let record = try JSONDecoder().decode(CatalogEventPostRPCRecord.self, from: data)
-    let post = try EventPost(databaseRecord: record)
+    let record = try JSONDecoder().decode(CatalogEventCommentRPCRecord.self, from: data)
+    let post = try EventComment(databaseRecord: record)
 
-    #expect(post.parentPostID == UUID(uuidString: "50000000-0000-0000-0000-000000000000"))
+    #expect(post.parentCommentID == UUID(uuidString: "50000000-0000-0000-0000-000000000000"))
     #expect(post.author.relationship == .friends)
     #expect(post.isDeleted)
   }
@@ -210,9 +210,9 @@ struct SupabaseEventSocialContractTests {
 extension SupabaseEventRepositoryContractTests {
   @Test
   func creationParametersUseCatalogIDsAndVenueLocalDate() throws {
-    let artistID = UUID(uuidString: "20000000-0000-0000-0000-000000000001")!
-    let placeID = UUID(uuidString: "30000000-0000-0000-0000-000000000001")!
-    let areaID = UUID(uuidString: "40000000-0000-0000-0000-000000000001")!
+    let artistID = try #require(UUID(uuidString: "20000000-0000-0000-0000-000000000001"))
+    let placeID = try #require(UUID(uuidString: "30000000-0000-0000-0000-000000000001"))
+    let areaID = try #require(UUID(uuidString: "40000000-0000-0000-0000-000000000001"))
     let instant = try #require(CommunityEventDateCoding.dateTime(from: "2026-07-17T02:30:00Z"))
     let input = CommunityEventCreationInput(
       artists: [artist(id: artistID, name: "Mitski")],
@@ -247,7 +247,7 @@ extension SupabaseEventRepositoryContractTests {
 
   @Test
   func cancellationConfirmationAndReportsUseBoundedRPCInputs() throws {
-    let eventID = UUID(uuidString: "10000000-0000-0000-0000-000000000001")!
+    let eventID = try #require(UUID(uuidString: "10000000-0000-0000-0000-000000000001"))
     let confirmation = try encodedObject(ConfirmCancelledPerformanceParameters(
       eventID: eventID,
       audience: .privateOnly
@@ -322,8 +322,8 @@ extension SupabaseEventRepositoryContractTests {
     #expect(summary.currentUserAttendance == nil)
     #expect(summary.friendPreviews.isEmpty)
     #expect(summary.publicGoingCount == 0)
-    #expect(summary.diaryCount == 0)
-    #expect(summary.averageDiaryScore == nil)
+    #expect(summary.postCount == 0)
+    #expect(summary.averagePostScore == nil)
   }
 
   @Test

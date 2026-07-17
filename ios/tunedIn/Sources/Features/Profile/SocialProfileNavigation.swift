@@ -13,15 +13,8 @@ struct OpenSocialProfileAction {
   }
 }
 
-private struct OpenSocialProfileKey: EnvironmentKey {
-  static let defaultValue = OpenSocialProfileAction()
-}
-
 extension EnvironmentValues {
-  var openSocialProfile: OpenSocialProfileAction {
-    get { self[OpenSocialProfileKey.self] }
-    set { self[OpenSocialProfileKey.self] = newValue }
-  }
+  @Entry var openSocialProfile: OpenSocialProfileAction = .init()
 }
 
 struct SocialProfileButton<Label: View>: View {
@@ -29,11 +22,6 @@ struct SocialProfileButton<Label: View>: View {
   @ViewBuilder let label: Label
 
   @Environment(\.openSocialProfile) private var openSocialProfile
-
-  init(profile: SocialProfile, @ViewBuilder label: () -> Label) {
-    self.profile = profile
-    self.label = label()
-  }
 
   var body: some View {
     Button {
@@ -47,7 +35,7 @@ struct SocialProfileButton<Label: View>: View {
   }
 }
 
-extension ConcertComment {
+extension PostComment {
   var socialProfile: SocialProfile {
     SocialProfile(
       id: authorID,

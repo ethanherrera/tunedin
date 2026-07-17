@@ -85,14 +85,18 @@ struct CommunityEventArtist: Codable, Equatable, Identifiable, Sendable {
   let position: Int
   let isHeadliner: Bool
 
-  var id: UUID { catalogArtistID }
+  var id: UUID {
+    catalogArtistID
+  }
 }
 
 struct EventFriendPreview: Codable, Equatable, Identifiable, Sendable {
   let profile: SocialProfile
   let status: EventAttendanceStatus
 
-  var id: UUID { profile.id }
+  var id: UUID {
+    profile.id
+  }
 }
 
 struct CommunityEventSummary: Codable, Equatable, Identifiable, Sendable {
@@ -118,8 +122,8 @@ struct CommunityEventSummary: Codable, Equatable, Identifiable, Sendable {
   let friendPreviews: [EventFriendPreview]
   let publicGoingCount: Int
   let publicWentCount: Int
-  let diaryCount: Int
-  let averageDiaryScore: Double?
+  let postCount: Int
+  let averagePostScore: Double?
   let duplicateCandidateEventID: UUID?
 
   var title: String {
@@ -133,17 +137,17 @@ struct CommunityEventSummary: Codable, Equatable, Identifiable, Sendable {
   func phase(at date: Date = .now) -> CommunityEventPhase {
     switch lifecycle {
     case .cancelled:
-      return .cancelled
+      .cancelled
     case .postponed:
-      return .postponed
+      .postponed
     case .completed:
-      return .memories
+      .memories
     case .scheduled:
-      return date >= memoryUnlockAt ? .memories : .upcoming
+      date >= memoryUnlockAt ? .memories : .upcoming
     }
   }
 
-  func canCreateDiary(at date: Date = .now) -> Bool {
+  func canCreatePost(at date: Date = .now) -> Bool {
     let memoriesAreAvailable = phase(at: date) == .memories
       || (lifecycle == .cancelled && date >= memoryUnlockAt)
     return memoriesAreAvailable && currentUserAttendance == .went
@@ -173,8 +177,8 @@ struct CommunityEventSummary: Codable, Equatable, Identifiable, Sendable {
       friendPreviews: friendPreviews,
       publicGoingCount: publicGoingCount,
       publicWentCount: publicWentCount,
-      diaryCount: diaryCount,
-      averageDiaryScore: averageDiaryScore,
+      postCount: postCount,
+      averagePostScore: averagePostScore,
       duplicateCandidateEventID: duplicateCandidateEventID
     )
   }
@@ -186,7 +190,9 @@ struct EventAttendance: Codable, Equatable, Identifiable, Sendable {
   let audience: EventAudience
   let updatedAt: Date
 
-  var id: UUID { profile.id }
+  var id: UUID {
+    profile.id
+  }
 }
 
 struct EventAttendanceCursor: Equatable, Sendable {
@@ -199,9 +205,9 @@ struct EventAttendancePage: Equatable, Sendable {
   let nextCursor: EventAttendanceCursor?
 }
 
-struct EventPost: Codable, Equatable, Identifiable, Sendable {
+struct EventComment: Codable, Equatable, Identifiable, Sendable {
   let id: UUID
-  let parentPostID: UUID?
+  let parentCommentID: UUID?
   let author: SocialProfile
   let body: String
   let audience: EventAudience
@@ -209,7 +215,7 @@ struct EventPost: Codable, Equatable, Identifiable, Sendable {
   let isDeleted: Bool
 }
 
-struct EventDiaryPreview: Codable, Equatable, Identifiable, Sendable {
+struct EventPostPreview: Codable, Equatable, Identifiable, Sendable {
   let id: UUID
   let author: SocialProfile
   let score: Double?
@@ -222,38 +228,42 @@ struct EventDiaryPreview: Codable, Equatable, Identifiable, Sendable {
   let publishedAt: Date
 }
 
-struct EventDiaryCursor: Equatable, Sendable {
+struct EventPostCursor: Equatable, Sendable {
   let publishedAt: Date
-  let diaryID: UUID
+  let postID: UUID
 }
 
-struct EventDiaryPage: Equatable, Sendable {
-  let items: [EventDiaryPreview]
-  let nextCursor: EventDiaryCursor?
+struct EventPostPage: Equatable, Sendable {
+  let items: [EventPostPreview]
+  let nextCursor: EventPostCursor?
 }
 
-struct EventProfileDiary: Equatable, Identifiable, Sendable {
+struct EventProfilePost: Equatable, Identifiable, Sendable {
   let event: CommunityEventSummary
-  let diary: EventDiaryPreview
+  let post: EventPostPreview
 
-  var id: UUID { diary.id }
+  var id: UUID {
+    post.id
+  }
 }
 
 struct CommunityProfileHistory: Equatable, Sendable {
   let going: [CommunityEventSummary]
   let went: [CommunityEventSummary]
-  let diaries: [EventProfileDiary]
+  let posts: [EventProfilePost]
 
-  static let empty = Self(going: [], went: [], diaries: [])
+  static let empty = Self(going: [], went: [], posts: [])
 }
 
 struct CommunityEventDetail: Codable, Equatable, Identifiable, Sendable {
   let summary: CommunityEventSummary
   let attendances: [EventAttendance]
-  let posts: [EventPost]
-  let diaryPreviews: [EventDiaryPreview]
+  let comments: [EventComment]
+  let postPreviews: [EventPostPreview]
 
-  var id: UUID { summary.id }
+  var id: UUID {
+    summary.id
+  }
 }
 
 enum EventActivityKind: String, Codable, Equatable, Sendable {
@@ -262,10 +272,10 @@ enum EventActivityKind: String, Codable, Equatable, Sendable {
   case markedGoing = "marked_going"
   case markedWent = "marked_went"
   case invitationAccepted = "invitation_accepted"
-  case diaryPublished = "diary_published"
-  case diaryMediaAdded = "diary_media_added"
-  case eventPosted = "event_posted"
-  case eventReplied = "event_replied"
+  case postPublished = "post_published"
+  case postMediaAdded = "post_media_added"
+  case eventCommented = "event_commented"
+  case eventCommentReplied = "event_comment_replied"
 }
 
 struct EventActivity: Codable, Equatable, Identifiable, Sendable {
@@ -273,7 +283,7 @@ struct EventActivity: Codable, Equatable, Identifiable, Sendable {
   let kind: EventActivityKind
   let actor: SocialProfile
   let event: CommunityEventSummary
-  let diary: EventDiaryPreview?
+  let post: EventPostPreview?
   let occurredAt: Date
   let message: String
 }
@@ -283,7 +293,9 @@ struct EventInviteCandidate: Codable, Equatable, Identifiable, Sendable {
   let attendanceStatus: EventAttendanceStatus?
   let isAlreadyInvited: Bool
 
-  var id: UUID { profile.id }
+  var id: UUID {
+    profile.id
+  }
 }
 
 enum EventInvitationResponse: String, Codable, Equatable, Sendable {
@@ -307,13 +319,24 @@ struct CommunityEventCreationInput: Equatable, Sendable {
   let timeZoneIdentifier: String
   let listing: CommunityEventListing
 
-  var artistCatalogIDs: [UUID] { artists.map(\.id) }
-  var placeCatalogID: UUID { place.id }
-  var areaCatalogID: UUID? { place.areaID }
-  var tourCatalogID: UUID? { tour?.id }
+  var artistCatalogIDs: [UUID] {
+    artists.map(\.id)
+  }
+
+  var placeCatalogID: UUID {
+    place.id
+  }
+
+  var areaCatalogID: UUID? {
+    place.areaID
+  }
+
+  var tourCatalogID: UUID? {
+    tour?.id
+  }
 }
 
-struct EventDiaryInput: Equatable, Sendable {
+struct EventPostInput: Equatable, Sendable {
   let score: Double?
   let performanceScore: Double?
   let note: String?
