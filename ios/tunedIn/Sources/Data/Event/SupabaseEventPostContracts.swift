@@ -30,7 +30,7 @@ struct UpsertCatalogEventPostParameters: Encodable, Equatable, Sendable {
   let eventID: UUID
   let overallScore: Double?
   let performanceScore: Double?
-  let reviewBody: String?
+  let note: String?
   let audience: EventAudience
   let publish: Bool
 
@@ -38,7 +38,7 @@ struct UpsertCatalogEventPostParameters: Encodable, Equatable, Sendable {
     self.eventID = eventID
     overallScore = input.score
     performanceScore = input.performanceScore
-    reviewBody = CatalogInput.optionalNormalizedText(input.note ?? "")
+    note = CatalogInput.optionalNormalizedText(input.note ?? "")
     audience = input.audience
     self.publish = publish
   }
@@ -47,7 +47,7 @@ struct UpsertCatalogEventPostParameters: Encodable, Equatable, Sendable {
     case eventID = "p_event_id"
     case overallScore = "p_overall_score"
     case performanceScore = "p_performance_score"
-    case reviewBody = "p_review_body"
+    case note = "p_note"
     case audience = "p_audience"
     case publish = "p_publish"
   }
@@ -131,7 +131,7 @@ struct CatalogEventPostRPCRecord: Decodable, Equatable, Sendable {
   let authorAvatarVersion: Int64
   let overallScore: Double?
   let performanceScore: Double?
-  let reviewBody: String?
+  let note: String?
   let photoCount: Int64
   let videoCount: Int64
   let commentCount: Int64
@@ -150,7 +150,7 @@ struct CatalogEventPostRPCRecord: Decodable, Equatable, Sendable {
     case authorAvatarVersion = "author_avatar_version"
     case overallScore = "overall_score"
     case performanceScore = "performance_score"
-    case reviewBody = "review_body"
+    case note
     case photoCount = "photo_count"
     case videoCount = "video_count"
     case commentCount = "comment_count"
@@ -213,7 +213,7 @@ extension EventPostPreview {
       ),
       score: databaseRecord.overallScore,
       performanceScore: databaseRecord.performanceScore,
-      note: databaseRecord.reviewBody,
+      note: databaseRecord.note,
       photoCount: Int(databaseRecord.photoCount),
       videoCount: Int(databaseRecord.videoCount),
       commentCount: Int(databaseRecord.commentCount),
@@ -241,5 +241,3 @@ extension CatalogEventPostRPCRecord {
     return EventPostCursor(publishedAt: publishedAt, postID: nextCursor.postID)
   }
 }
-
-

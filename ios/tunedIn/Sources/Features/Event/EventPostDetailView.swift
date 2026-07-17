@@ -278,6 +278,3 @@ private struct EventPostCommentRow: View {
     .padding(.vertical, 8)
   }
 }
-
-
-

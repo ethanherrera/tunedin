@@ -50,11 +50,11 @@ struct SupabaseEventPostContractTests {
     #expect(posts["p_scope"] as? String == "all")
     #expect(posts["p_limit"] as? Int == 30)
     #expect(Set(save.keys) == [
-      "p_event_id", "p_overall_score", "p_performance_score", "p_review_body", "p_audience", "p_publish"
+      "p_event_id", "p_overall_score", "p_performance_score", "p_note", "p_audience", "p_publish"
     ])
     #expect(save["p_overall_score"] as? Double == 9.5)
     #expect(save["p_performance_score"] as? Double == 9)
-    #expect(save["p_review_body"] as? String == "What a closer.")
+    #expect(save["p_note"] as? String == "What a closer.")
     #expect(save["p_audience"] as? String == "friends")
     #expect(save["p_publish"] as? Bool == true)
     #expect(Set(profile.keys) == ["p_profile_id", "p_limit"])
@@ -167,7 +167,7 @@ struct SupabaseEventPostContractTests {
       "author_avatar_version":2,
       "overall_score":9.5,
       "performance_score":9.0,
-      "review_body":"What a closer.",
+      "note":"What a closer.",
       "photo_count":4,
       "video_count":1,
       "comment_count":3,
@@ -214,5 +214,3 @@ struct SupabaseEventPostContractTests {
     return try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
   }
 }
-
-

@@ -66,7 +66,7 @@ struct SupabaseEventRepository: EventRepository {
         .execute()
       let posts: PostgrestResponse<[CatalogEventPostRPCRecord]> = try await client
         .rpc(
-          "list_catalog_event_posts",
+          "list_event_posts",
           params: ListCatalogEventPostsParameters(eventID: id)
         )
         .execute()
@@ -118,7 +118,7 @@ struct SupabaseEventRepository: EventRepository {
       let pageSize = max(1, min(limit, 49))
       let response: PostgrestResponse<[CatalogEventPostRPCRecord]> = try await client
         .rpc(
-          "list_catalog_event_posts",
+          "list_event_posts",
           params: ListCatalogEventPostsParameters(
             eventID: eventID,
             cursor: cursor?.requestValue,
@@ -299,7 +299,7 @@ struct SupabaseEventRepository: EventRepository {
     try await withAppFailure {
       _ = try await client
         .rpc(
-          "upsert_catalog_event_post",
+          "upsert_event_post",
           params: UpsertCatalogEventPostParameters(eventID: eventID, input: input)
         )
         .execute()
@@ -321,7 +321,7 @@ struct SupabaseEventRepository: EventRepository {
       )
       let response: PostgrestResponse<UpsertCatalogEventPostRPCRecord> = try await client
         .rpc(
-          "upsert_catalog_event_post",
+          "upsert_event_post",
           params: UpsertCatalogEventPostParameters(
             eventID: eventID,
             input: input,
@@ -469,7 +469,7 @@ struct SupabaseEventRepository: EventRepository {
       .execute()
     async let postResponse: PostgrestResponse<[CatalogEventPostSummaryRPCRecord]> = client
       .rpc(
-        "get_catalog_event_post_summaries",
+        "get_event_post_summaries",
         params: CatalogEventSocialSummariesParameters(eventIDs: Array(uniqueRecords.keys))
       )
       .execute()

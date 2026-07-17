@@ -36,8 +36,6 @@ enum CatalogSource: String, Codable, Equatable, Sendable {
 enum CatalogOrigin: String, Codable, Equatable, Sendable {
   case musicBrainz = "musicbrainz"
   case tunedInCustom = "tunedin_custom"
-  case legacyImport = "legacy_import"
-  case legacyClient = "legacy_client"
 }
 
 /// The gateway intentionally returns entity-specific metadata as a JSON object.

@@ -67,11 +67,12 @@
       )
 
       #expect(packedUpcoming.attendances.count == 10)
-      #expect(packedUpcoming.posts.count == 12)
+      #expect(packedUpcoming.comments.count == 12)
+      #expect(packedUpcoming.postPreviews.isEmpty)
       #expect(packedMemory.attendances.count == 11)
       #expect(packedMemory.postPreviews.count == 10)
       #expect(emptyUpcoming.attendances.isEmpty)
-      #expect(emptyUpcoming.posts.isEmpty)
+      #expect(emptyUpcoming.postPreviews.isEmpty)
       #expect(emptyMemory.attendances.isEmpty)
       #expect(emptyMemory.postPreviews.isEmpty)
     }
