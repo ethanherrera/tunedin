@@ -30,33 +30,22 @@ sign_in() {
     | jq -er '.access_token'
 }
 
-temporary_dir="$(mktemp -d)"
-trap 'rm -rf "$temporary_dir"' EXIT
+readonly media_dir="$root_dir/supabase/seeds/media"
+readonly afterglow="$media_dir/afterglow-stage.jpg"
+readonly midnight="$media_dir/midnight-theatre.jpg"
+readonly neon_orchard="$media_dir/neon-orchard-stage.jpg"
+readonly blue_hour_club="$media_dir/blue-hour-club-stage.jpg"
+readonly juniper_static="$media_dir/juniper-static-stage.jpg"
+readonly velvet_transit="$media_dir/velvet-transit-stage.jpg"
 
-prepare_jpeg() {
-  local source="$1"
-  local destination="$2"
-  if command -v sips >/dev/null 2>&1; then
-    sips -s format jpeg -s formatOptions 84 -Z 1400 "$source" --out "$destination" >/dev/null
-  elif command -v convert >/dev/null 2>&1; then
-    convert "$source" -resize '1400x1400>' -quality 84 "$destination"
-  else
-    cp "$source" "$destination"
-  fi
-}
-
-afterglow="$temporary_dir/afterglow.jpg"
-midnight="$temporary_dir/midnight.jpg"
-neon_orchard="$temporary_dir/neon-orchard.jpg"
-blue_hour_club="$temporary_dir/blue-hour-club.jpg"
-juniper_static="$temporary_dir/juniper-static.jpg"
-velvet_transit="$temporary_dir/velvet-transit.jpg"
-prepare_jpeg "$root_dir/ios/tunedIn/Resources/Artwork/afterglow-stage.png" "$afterglow"
-prepare_jpeg "$root_dir/ios/tunedIn/Resources/Artwork/midnight-theatre.png" "$midnight"
-prepare_jpeg "$root_dir/ios/tunedIn/Resources/Artwork/neon-orchard-stage.png" "$neon_orchard"
-prepare_jpeg "$root_dir/ios/tunedIn/Resources/Artwork/blue-hour-club-stage.png" "$blue_hour_club"
-prepare_jpeg "$root_dir/ios/tunedIn/Resources/Artwork/juniper-static-stage.png" "$juniper_static"
-prepare_jpeg "$root_dir/ios/tunedIn/Resources/Artwork/velvet-transit-stage.png" "$velvet_transit"
+for fixture in \
+  "$afterglow" "$midnight" "$neon_orchard" \
+  "$blue_hour_club" "$juniper_static" "$velvet_transit"; do
+  [[ -f "$fixture" ]] || {
+    echo "Missing committed Local media fixture: ${fixture#"$root_dir/"}" >&2
+    exit 1
+  }
+done
 
 seed_media() {
   local token="$1"
