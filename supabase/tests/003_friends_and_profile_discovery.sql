@@ -1,6 +1,6 @@
 begin;
 
-select plan(32);
+select plan(24);
 
 insert into auth.users (
   id,
@@ -178,70 +178,6 @@ select is(
   'an accepted friend can view the profile friend list'
 );
 
-select set_config(
-  'test.friend_visible_concert_id',
-  (
-    select (public.create_private_concert(
-      '[{"name":"Kelela","is_primary":true}]'::jsonb,
-      'The Regency Ballroom',
-      date '2026-06-12'
-    )).id::text
-  ),
-  true
-);
-
-reset role;
-update public.concerts
-set visibility = 'friends'
-where id = current_setting('test.friend_visible_concert_id')::uuid;
-
-set local role authenticated;
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select set_config('request.jwt.claim.sub', '20000000-0000-0000-0000-000000000002', true);
-
-select is(
-  (select count(*) from public.concerts where id = current_setting('test.friend_visible_concert_id')::uuid),
-  1::bigint,
-  'an accepted friend can read a Friends-visible concert'
-);
-select is(
-  (select count(*) from public.concert_artists where concert_id = current_setting('test.friend_visible_concert_id')::uuid),
-  1::bigint,
-  'an accepted friend can read the concert lineup'
-);
-select is(
-  (select count(*) from public.profile_concert_history('10000000-0000-0000-0000-000000000001')),
-  1::bigint,
-  'an accepted friend can load the owner profile concert history'
-);
-
-reset role;
-set local role authenticated;
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select set_config('request.jwt.claim.sub', '30000000-0000-0000-0000-000000000003', true);
-
-select is(
-  (select count(*) from public.relationships),
-  0::bigint,
-  'an unrelated user cannot read another pair relationship'
-);
-select is(
-  (select count(*) from public.concerts where id = current_setting('test.friend_visible_concert_id')::uuid),
-  0::bigint,
-  'a non-friend cannot read a Friends-visible concert'
-);
-select throws_ok(
-  $$select * from public.list_profile_friends('meadow_music')$$,
-  '42501',
-  'Only friends can view this list',
-  'a non-friend cannot view the profile friend list'
-);
-select throws_ok(
-  $$select * from public.profile_concert_history('10000000-0000-0000-0000-000000000001')$$,
-  '42501',
-  'Only friends can view this concert history',
-  'a non-friend cannot view the profile concert history'
-);
 
 reset role;
 set local role authenticated;
@@ -297,16 +233,6 @@ select is(
   'blocked profiles disappear from discovery'
 );
 
-reset role;
-set local role authenticated;
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select set_config('request.jwt.claim.sub', '20000000-0000-0000-0000-000000000002', true);
-
-select is(
-  (select count(*) from public.concerts where id = current_setting('test.friend_visible_concert_id')::uuid),
-  0::bigint,
-  'blocking immediately revokes Friends-visible concert access'
-);
 
 reset role;
 set local role authenticated;

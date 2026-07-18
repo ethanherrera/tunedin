@@ -33,7 +33,6 @@ struct CatalogCustomEntryView: View {
   let kind: CatalogEntityKind
   let suggestedName: String
   let artistContext: [CatalogArtist]
-  let concertContextID: UUID?
   let onCreated: (CatalogEntity) -> Void
 
   @Environment(\.dismiss) private var dismiss
@@ -56,14 +55,12 @@ struct CatalogCustomEntryView: View {
     kind: CatalogEntityKind,
     suggestedName: String,
     artistContext: [CatalogArtist],
-    concertContextID: UUID?,
     onCreated: @escaping (CatalogEntity) -> Void
   ) {
     self.repository = repository
     self.kind = kind
     self.suggestedName = suggestedName
     self.artistContext = artistContext
-    self.concertContextID = concertContextID
     self.onCreated = onCreated
     _name = State(initialValue: suggestedName)
     _selectedArtists = State(
@@ -103,7 +100,6 @@ struct CatalogCustomEntryView: View {
         configuration: CatalogPickerConfiguration(
           kind: .area,
           title: purpose.title,
-          concertContextID: concertContextID,
           currentSelectionName: currentAreaName(for: purpose)
         )
       ) { entity in
@@ -120,8 +116,7 @@ struct CatalogCustomEntryView: View {
         repository: repository,
         configuration: CatalogPickerConfiguration(
           kind: .artist,
-          title: "Choose an artist",
-          concertContextID: concertContextID
+          title: "Choose an artist"
         )
       ) { entity in
         guard case let .artist(artist) = entity else { return }
@@ -428,8 +423,7 @@ struct CatalogCustomEntryView: View {
                 artistType: CatalogInput.optionalNormalizedText(artistType),
                 disambiguation: CatalogInput.optionalNormalizedText(disambiguation),
                 areaID: selectedArea?.id,
-                areaName: selectedArea?.displayName,
-                concertContextID: concertContextID
+                areaName: selectedArea?.displayName
               )
             )
           )
@@ -439,8 +433,7 @@ struct CatalogCustomEntryView: View {
               CustomCatalogAreaInput(
                 name: name,
                 countryCode: CatalogInput.optionalNormalizedText(countryCode),
-                parentAreaID: selectedParentArea?.id,
-                concertContextID: concertContextID
+                parentAreaID: selectedParentArea?.id
               )
             )
           )
@@ -453,8 +446,7 @@ struct CatalogCustomEntryView: View {
                 placeType: CatalogInput.optionalNormalizedText(placeType),
                 address: CatalogInput.optionalNormalizedText(address),
                 areaID: selectedArea.id,
-                areaName: selectedArea.displayName,
-                concertContextID: concertContextID
+                areaName: selectedArea.displayName
               )
             )
           )
@@ -464,8 +456,7 @@ struct CatalogCustomEntryView: View {
               CustomCatalogSongInput(
                 title: name,
                 artistIDs: selectedArtists.map(\.id),
-                artistNames: selectedArtists.map(\.displayName),
-                concertContextID: concertContextID
+                artistNames: selectedArtists.map(\.displayName)
               )
             )
           )
@@ -475,8 +466,7 @@ struct CatalogCustomEntryView: View {
               CustomCatalogTourInput(
                 name: name,
                 artistIDs: selectedArtists.map(\.id),
-                artistNames: selectedArtists.map(\.displayName),
-                concertContextID: concertContextID
+                artistNames: selectedArtists.map(\.displayName)
               )
             )
           )

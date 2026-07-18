@@ -7,6 +7,14 @@
     static let avaID = UUID(uuidString: "D0000000-0000-0000-0000-000000000003")!
     static let julesID = UUID(uuidString: "D0000000-0000-0000-0000-000000000004")!
     static let noaID = UUID(uuidString: "D0000000-0000-0000-0000-000000000005")!
+    static let remiID = UUID(uuidString: "D0000000-0000-0000-0000-000000000006")!
+    static let kaiID = UUID(uuidString: "D0000000-0000-0000-0000-000000000007")!
+    static let rowanID = UUID(uuidString: "D0000000-0000-0000-0000-000000000008")!
+    static let miaID = UUID(uuidString: "D0000000-0000-0000-0000-000000000009")!
+    static let leoID = UUID(uuidString: "D0000000-0000-0000-0000-000000000010")!
+    static let niaID = UUID(uuidString: "D0000000-0000-0000-0000-000000000011")!
+    static let owenID = UUID(uuidString: "D0000000-0000-0000-0000-000000000012")!
+    static let zoeID = UUID(uuidString: "D0000000-0000-0000-0000-000000000013")!
 
     static let profiles = [
       SocialProfile(
@@ -32,6 +40,54 @@
         username: "noa_nights",
         displayName: "Noa Nights",
         relationship: .none
+      ),
+      SocialProfile(
+        id: remiID,
+        username: "remi_cole",
+        displayName: "Remi Cole",
+        relationship: .friends
+      ),
+      SocialProfile(
+        id: kaiID,
+        username: "kai_mercer",
+        displayName: "Kai Mercer",
+        relationship: .friends
+      ),
+      SocialProfile(
+        id: rowanID,
+        username: "rowan_ellis",
+        displayName: "Rowan Ellis",
+        relationship: .friends
+      ),
+      SocialProfile(
+        id: miaID,
+        username: "mia_torres",
+        displayName: "Mia Torres",
+        relationship: .friends
+      ),
+      SocialProfile(
+        id: leoID,
+        username: "leo_hart",
+        displayName: "Leo Hart",
+        relationship: .friends
+      ),
+      SocialProfile(
+        id: niaID,
+        username: "nia_brooks",
+        displayName: "Nia Brooks",
+        relationship: .friends
+      ),
+      SocialProfile(
+        id: owenID,
+        username: "owen_cruz",
+        displayName: "Owen Cruz",
+        relationship: .friends
+      ),
+      SocialProfile(
+        id: zoeID,
+        username: "zoe_kim",
+        displayName: "Zoe Kim",
+        relationship: .friends
       )
     ]
 

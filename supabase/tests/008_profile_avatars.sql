@@ -50,14 +50,14 @@ update storage.objects set metadata = '{"mimetype":"image/jpeg","size":1000}'
 where bucket_id = 'images' and name like 'avatars/81%';
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '82000000-0000-0000-0000-000000000002', true);
-select is((select count(*) from storage.objects where bucket_id = 'images'), 1::bigint, 'authenticated visible profile can select avatar');
+select is((select count(*) from storage.objects where bucket_id = 'images' and name like 'avatars/81%'), 1::bigint, 'authenticated visible profile can select avatar');
 
 reset role;
 insert into public.relationships (user_low_id, user_high_id, status, initiator_id, blocker_id, responded_at)
 values ('81000000-0000-0000-0000-000000000001', '82000000-0000-0000-0000-000000000002', 'blocked',
   '82000000-0000-0000-0000-000000000002', '82000000-0000-0000-0000-000000000002', now());
 set local role authenticated;
-select is((select count(*) from storage.objects where bucket_id = 'images'), 0::bigint, 'blocked viewer cannot select avatar');
+select is((select count(*) from storage.objects where bucket_id = 'images' and name like 'avatars/81%'), 0::bigint, 'blocked viewer cannot select avatar');
 
 reset role;
 delete from public.relationships;

@@ -21,8 +21,8 @@ struct TelemetrySettingsSection: View {
       Text(
         "Shares app reliability and journey outcomes without names, email, concert details, comments, captions, or photos."
       )
-        .font(.footnote)
-        .foregroundStyle(TunedInDesign.mutedText)
+      .font(.footnote)
+      .foregroundStyle(TunedInDesign.mutedText)
 
       #if DEBUG
         NavigationLink("Telemetry inspector") {
@@ -43,8 +43,8 @@ struct TelemetrySettingsSection: View {
         Section("Synthetic checks") {
           Button("Record product event") {
             telemetry.capture(
-              .concertUpdated,
-              properties: [.changeKind: .string(TelemetryChangeKind.setlist.rawValue)]
+              .eventUpdated,
+              properties: [.durationMilliseconds: .integer(180)]
             )
           }
           Button("Record handled failure") {

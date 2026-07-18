@@ -1,6 +1,8 @@
 # tunedIn
 
-tunedIn is an iOS-native private-beta concert journal for shared memories. The MVP is a SwiftUI app backed by Supabase.
+tunedIn is an iOS-native social concert app for finding community-created events,
+seeing which friends are going, making plans, and sharing personal concert Posts.
+The MVP is a SwiftUI app backed by Supabase.
 
 ## Repository layout
 

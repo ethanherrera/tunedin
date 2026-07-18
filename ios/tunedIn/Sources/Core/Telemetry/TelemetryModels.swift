@@ -6,12 +6,11 @@ enum TelemetryEvent: String, CaseIterable, Sendable {
   case profileSetupCompleted = "profile_setup_completed"
   case friendRequestSent = "friend_request_sent"
   case friendRequestAccepted = "friend_request_accepted"
-  case collaboratorAdded = "collaborator_added"
-  case concertCreated = "concert_created"
-  case concertUpdated = "concert_updated"
-  case commentCreated = "comment_created"
+  case eventCreated = "event_created"
+  case eventUpdated = "event_updated"
+  case eventCommentCreated = "event_comment_created"
+  case postCommentCreated = "post_comment_created"
   case photoUploadCompleted = "photo_upload_completed"
-  case ownershipTransferred = "ownership_transferred"
   case feedbackSubmitted = "feedback_submitted"
   case screenLoadCompleted = "screen_load_completed"
   case coreOperationCompleted = "core_operation_completed"
@@ -34,7 +33,6 @@ enum TelemetryProperty: String, CaseIterable, Sendable {
   case failureCategory = "failure_category"
   case retryable
   case statusClass = "status_class"
-  case changeKind = "change_kind"
   case attemptedCount = "attempted_count"
   case succeededCount = "succeeded_count"
   case partialSuccess = "partial_success"
@@ -72,8 +70,8 @@ enum TelemetryLogLevel: String, Sendable {
 
 enum TelemetryLogMessage: String, CaseIterable, Sendable {
   case profileLoadFailed = "profile_load_failed"
-  case concertLoadFailed = "concert_load_failed"
-  case albumLoadFailed = "album_load_failed"
+  case eventLoadFailed = "event_load_failed"
+  case postLoadFailed = "post_load_failed"
   case mutationFailed = "mutation_failed"
   case feedbackSubmissionFailed = "feedback_submission_failed"
   case nativeAuthenticationFailed = "native_authentication_failed"
@@ -82,32 +80,22 @@ enum TelemetryLogMessage: String, CaseIterable, Sendable {
 enum TelemetryOperation: String, CaseIterable, Sendable {
   case authenticate
   case loadProfile = "load_profile"
-  case createConcert = "create_concert"
-  case updateConcert = "update_concert"
+  case createEvent = "create_event"
+  case updateEvent = "update_event"
   case sendFriendRequest = "send_friend_request"
   case acceptFriendRequest = "accept_friend_request"
-  case addCollaborator = "add_collaborator"
-  case createComment = "create_comment"
-  case uploadPhotos = "upload_photos"
-  case transferOwnership = "transfer_ownership"
+  case createEventComment = "create_event_comment"
+  case createPostComment = "create_post_comment"
+  case uploadPostMedia = "upload_post_media"
   case submitFeedback = "submit_feedback"
 }
 
 enum TelemetryScreen: String, CaseIterable, Sendable {
   case feed
-  case concertDetail = "concert_detail"
-  case archive
-  case album
+  case eventDetail = "event_detail"
+  case postDetail = "post_detail"
   case friends
   case profile
-}
-
-enum TelemetryChangeKind: String, CaseIterable, Sendable {
-  case details
-  case setlist
-  case sharing
-  case membership
-  case mainPhoto = "main_photo"
 }
 
 enum TelemetryFeedbackCategory: String, CaseIterable, Identifiable, Sendable {

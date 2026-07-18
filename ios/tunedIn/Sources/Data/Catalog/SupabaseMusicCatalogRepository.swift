@@ -12,8 +12,7 @@ struct SupabaseMusicCatalogRepository: MusicCatalogRepository {
     kind: CatalogEntityKind,
     query: String,
     offset: Int,
-    artistContextIDs: [UUID],
-    concertContextID: UUID?
+    artistContextIDs: [UUID]
   ) async throws -> CatalogSearchPage {
     let normalized = CatalogInput.normalizedText(query)
     guard normalized.count >= 2, offset >= 0 else {
@@ -24,8 +23,7 @@ struct SupabaseMusicCatalogRepository: MusicCatalogRepository {
       entity: kind,
       query: normalized,
       offset: offset == 0 ? nil : offset,
-      artistContextIDs: artistContextIDs.isEmpty ? nil : artistContextIDs,
-      concertContextID: concertContextID
+      artistContextIDs: artistContextIDs.isEmpty ? nil : artistContextIDs
     )
     let response: CatalogGatewaySearchResponse = try await invoke(request)
     guard
@@ -200,26 +198,10 @@ struct CatalogGatewaySearchRequest: Encodable, Equatable, Sendable {
   let query: String
   let offset: Int?
   let artistContextIDs: [UUID]?
-  let concertContextID: UUID?
-
-  init(
-    entity: CatalogEntityKind,
-    query: String,
-    offset: Int?,
-    artistContextIDs: [UUID]?,
-    concertContextID: UUID? = nil
-  ) {
-    self.entity = entity
-    self.query = query
-    self.offset = offset
-    self.artistContextIDs = artistContextIDs
-    self.concertContextID = concertContextID
-  }
 
   enum CodingKeys: String, CodingKey {
     case operation, entity, query, offset
     case artistContextIDs = "artistContextIds"
-    case concertContextID = "concertContextId"
   }
 }
 
@@ -318,14 +300,12 @@ struct CustomArtistParameters: Encodable, Sendable {
   let artistType: String?
   let disambiguation: String?
   let areaID: UUID?
-  let concertContextID: UUID?
 
   init(input: CustomCatalogArtistInput) {
     name = CatalogInput.normalizedText(input.name)
     artistType = input.artistType
     disambiguation = input.disambiguation.flatMap(CatalogInput.optionalNormalizedText)
     areaID = input.areaID
-    concertContextID = input.concertContextID
   }
 
   enum CodingKeys: String, CodingKey {
@@ -333,7 +313,6 @@ struct CustomArtistParameters: Encodable, Sendable {
     case artistType = "p_artist_type"
     case disambiguation = "p_disambiguation"
     case areaID = "p_area_id"
-    case concertContextID = "p_concert_id"
   }
 }
 
@@ -341,20 +320,17 @@ struct CustomAreaParameters: Encodable, Sendable {
   let name: String
   let countryCode: String?
   let parentAreaID: UUID?
-  let concertContextID: UUID?
 
   init(input: CustomCatalogAreaInput) {
     name = CatalogInput.normalizedText(input.name)
     countryCode = input.countryCode.flatMap(CatalogInput.optionalNormalizedText)
     parentAreaID = input.parentAreaID
-    concertContextID = input.concertContextID
   }
 
   enum CodingKeys: String, CodingKey {
     case name = "p_name"
     case countryCode = "p_country_code"
     case parentAreaID = "p_parent_area_id"
-    case concertContextID = "p_concert_id"
   }
 }
 
@@ -363,14 +339,12 @@ struct CustomPlaceParameters: Encodable, Sendable {
   let placeType: String?
   let address: String?
   let areaID: UUID
-  let concertContextID: UUID?
 
   init(input: CustomCatalogPlaceInput) {
     name = CatalogInput.normalizedText(input.name)
     placeType = input.placeType
     address = input.address.flatMap(CatalogInput.optionalNormalizedText)
     areaID = input.areaID
-    concertContextID = input.concertContextID
   }
 
   enum CodingKeys: String, CodingKey {
@@ -378,42 +352,35 @@ struct CustomPlaceParameters: Encodable, Sendable {
     case placeType = "p_place_type"
     case address = "p_address"
     case areaID = "p_area_id"
-    case concertContextID = "p_concert_id"
   }
 }
 
 struct CustomSongParameters: Encodable, Sendable {
   let title: String
   let artistIDs: [UUID]
-  let concertContextID: UUID?
 
   init(input: CustomCatalogSongInput) {
     title = CatalogInput.normalizedText(input.title)
     artistIDs = input.artistIDs
-    concertContextID = input.concertContextID
   }
 
   enum CodingKeys: String, CodingKey {
     case title = "p_title"
     case artistIDs = "p_artist_ids"
-    case concertContextID = "p_concert_id"
   }
 }
 
 struct CustomTourParameters: Encodable, Sendable {
   let name: String
   let artistIDs: [UUID]
-  let concertContextID: UUID?
 
   init(input: CustomCatalogTourInput) {
     name = CatalogInput.normalizedText(input.name)
     artistIDs = input.artistIDs
-    concertContextID = input.concertContextID
   }
 
   enum CodingKeys: String, CodingKey {
     case name = "p_name"
     case artistIDs = "p_artist_ids"
-    case concertContextID = "p_concert_id"
   }
 }

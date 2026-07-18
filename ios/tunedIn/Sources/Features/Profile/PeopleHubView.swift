@@ -13,7 +13,9 @@ struct FriendsListView: View {
   let currentUserID: UUID
   let currentUsername: String
   let socialRepository: any SocialRepository
-  let concertRepository: any ConcertRepository
+  let postRepository: any PostRepository
+  let eventRepository: any EventRepository
+  let onOpenCommunityEvent: (CommunityEventSummary, UUID?) -> Void
 
   @State private var model: PeopleHubModel
   @State private var query = ""
@@ -22,21 +24,25 @@ struct FriendsListView: View {
   @Namespace private var sectionSelectionNamespace
   @Environment(\.dismiss) private var dismiss
   @Environment(\.telemetry) private var telemetry
-  @EnvironmentObject private var floatingControls: ConcertFloatingControls
+  @EnvironmentObject private var floatingControls: AppFloatingControls
 
   init(
     profileUsername: String? = nil,
     currentUserID: UUID,
     currentUsername: String,
     socialRepository: any SocialRepository,
-    concertRepository: any ConcertRepository
+    postRepository: any PostRepository,
+    eventRepository: any EventRepository,
+    onOpenCommunityEvent: @escaping (CommunityEventSummary, UUID?) -> Void
   ) {
     let requestedProfileUsername = profileUsername ?? currentUsername
     self.profileUsername = requestedProfileUsername
     self.currentUserID = currentUserID
     self.currentUsername = currentUsername
     self.socialRepository = socialRepository
-    self.concertRepository = concertRepository
+    self.postRepository = postRepository
+    self.eventRepository = eventRepository
+    self.onOpenCommunityEvent = onOpenCommunityEvent
     _model = State(
       initialValue: PeopleHubModel(
         repository: socialRepository,
@@ -98,7 +104,8 @@ struct FriendsListView: View {
             friendsSkeleton
           } else if let errorMessage = model.errorMessage,
                     model.friends.isEmpty,
-                    model.incomingRequests.isEmpty {
+                    model.incomingRequests.isEmpty
+          {
             ContentUnavailableView {
               Label("Couldn’t refresh friends", systemImage: "exclamationmark.triangle")
             } description: {
@@ -218,7 +225,9 @@ struct FriendsListView: View {
         currentUserID: currentUserID,
         currentUsername: currentUsername,
         socialRepository: socialRepository,
-        concertRepository: concertRepository
+        postRepository: postRepository,
+        eventRepository: eventRepository,
+        onOpenCommunityEvent: onOpenCommunityEvent
       )
     } label: {
       PersonRow(profile: profile)
@@ -237,192 +246,9 @@ struct FriendsListView: View {
   }
 }
 
-struct FriendSearchView: View {
-  enum Presentation: Equatable {
-    case page
-    case drawer
-  }
-
-  let currentUserID: UUID
-  let currentUsername: String
-  let socialRepository: any SocialRepository
-  let concertRepository: any ConcertRepository
-  let presentation: Presentation
-  let onSelectProfile: ((SocialProfile) -> Void)?
-
-  @State private var model: PeopleHubModel
-  @State private var floatingControlOwner = UUID()
-  @Environment(\.dismiss) private var dismiss
-  @Environment(\.telemetry) private var telemetry
-  @EnvironmentObject private var floatingControls: ConcertFloatingControls
-
-  init(
-    currentUserID: UUID,
-    currentUsername: String,
-    socialRepository: any SocialRepository,
-    concertRepository: any ConcertRepository,
-    presentation: Presentation = .page,
-    onSelectProfile: ((SocialProfile) -> Void)? = nil
-  ) {
-    self.currentUserID = currentUserID
-    self.currentUsername = currentUsername
-    self.socialRepository = socialRepository
-    self.concertRepository = concertRepository
-    self.presentation = presentation
-    self.onSelectProfile = onSelectProfile
-    _model = State(
-      initialValue: PeopleHubModel(
-        repository: socialRepository,
-        currentUsername: currentUsername
-      )
-    )
-  }
-
-  var body: some View {
-    @Bindable var model = model
-
-    ZStack {
-      TunedInDesign.pageBackground
-        .ignoresSafeArea()
-      searchContent
-    }
-    .navigationTitle(presentation == .page ? "Search" : "Search people")
-    .navigationBarTitleDisplayMode(.inline)
-    .navigationBarBackButtonHidden()
-    .safeAreaInset(edge: .bottom, spacing: 0) {
-      TunedInPersistentControlRegion {
-        if presentation == .drawer {
-          TunedInGlassTraversalLayout {
-            TunedInGlassIconButton(
-              systemImage: "xmark",
-              accessibilityLabel: "Close people search"
-            ) {
-              dismiss()
-            }
-          } center: {
-            TunedInGlassBottomBar {
-              Text("Search people")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(TunedInDesign.primaryText)
-                .frame(minWidth: 132, minHeight: 44)
-                .padding(.horizontal, 10)
-            }
-          } trailing: {
-            EmptyView()
-          }
-          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
-          .padding(.top, 6)
-          .padding(.bottom, TunedInDesign.bottomControlInset)
-        }
-      }
-    }
-    .task { model.telemetry = telemetry }
-    .task(id: model.query) {
-      do {
-        try await Task.sleep(for: .milliseconds(220))
-      } catch {
-        return
-      }
-      await model.search()
-    }
-    .onAppear {
-      guard presentation == .page else { return }
-      floatingControls.configureBackOnly(title: "Search", owner: floatingControlOwner) {
-        floatingControls.reset()
-        dismiss()
-      }
-    }
-    .onDisappear {
-      guard presentation == .page else { return }
-      floatingControls.resetBackOnly(owner: floatingControlOwner)
-    }
-  }
-
-  private var searchContent: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 12) {
-        TunedInGlassSearchField(
-          text: $model.query,
-          prompt: "Search @username"
-        )
-
-        if model.query.isEmpty {
-          searchHint
-        } else if model.isSearching {
-          HStack(spacing: 10) {
-            ProgressView()
-            Text("Searching people…")
-              .font(.subheadline)
-              .foregroundStyle(TunedInDesign.mutedText)
-          }
-          .padding(.vertical, 18)
-        } else if let errorMessage = model.errorMessage, model.searchResults.isEmpty {
-          ContentUnavailableView {
-            Label("Couldn’t refresh search", systemImage: "exclamationmark.triangle")
-          } description: {
-            Text(errorMessage)
-          }
-        } else if model.searchResults.isEmpty {
-          ContentUnavailableView(
-            "No results",
-            systemImage: "person.crop.circle.badge.questionmark",
-            description: Text("Try another @username.")
-          )
-        } else {
-          LazyVStack(spacing: 0) {
-            ForEach(model.searchResults) { profile in
-              if let onSelectProfile {
-                Button {
-                  onSelectProfile(profile)
-                } label: {
-                  FriendSearchResultRow(profile: profile)
-                }
-                .buttonStyle(.plain)
-              } else {
-                NavigationLink {
-                  PersonProfileView(
-                    profile: profile,
-                    currentUserID: currentUserID,
-                    currentUsername: currentUsername,
-                    socialRepository: socialRepository,
-                    concertRepository: concertRepository
-                  )
-                } label: {
-                  FriendSearchResultRow(profile: profile)
-                }
-                .buttonStyle(.plain)
-              }
-
-              if profile.id != model.searchResults.last?.id {
-                Divider()
-                  .overlay(TunedInDesign.cardBorder.opacity(0.7))
-                  .padding(.leading, 64)
-              }
-            }
-          }
-          .padding(.top, 6)
-        }
-      }
-      .padding(.horizontal, 20)
-      .padding(.top, 12)
-      .padding(.bottom, 32)
-    }
-    .refreshable {
-      await model.refreshSearch()
-    }
-  }
-
-  private var searchHint: some View {
-    Text("Search by @username.")
-      .font(.subheadline)
-      .foregroundStyle(TunedInDesign.mutedText)
-      .padding(.horizontal, 4)
-  }
-}
-
 struct FriendRequestsView: View {
   let socialRepository: any SocialRepository
-  let concertRepository: any ConcertRepository
+  let postRepository: any PostRepository
   let currentUsername: String
 
   @State private var model: PeopleHubModel
@@ -430,11 +256,11 @@ struct FriendRequestsView: View {
 
   init(
     socialRepository: any SocialRepository,
-    concertRepository: any ConcertRepository,
+    postRepository: any PostRepository,
     currentUsername: String
   ) {
     self.socialRepository = socialRepository
-    self.concertRepository = concertRepository
+    self.postRepository = postRepository
     self.currentUsername = currentUsername
     _model = State(
       initialValue: PeopleHubModel(
@@ -640,8 +466,8 @@ final class PeopleHubModel {
 
 private extension Duration {
   var socialTelemetryMilliseconds: Int {
-    let components = self.components
-    return Int(components.seconds * 1_000 + components.attoseconds / 1_000_000_000_000_000)
+    let components = components
+    return Int(components.seconds * 1000 + components.attoseconds / 1_000_000_000_000_000)
   }
 }
 
@@ -703,14 +529,14 @@ struct PersonRow: View {
   }
 }
 
-private struct FriendSearchResultRow: View {
+struct PeopleSearchResultRow: View {
   let profile: SocialProfile
 
   var body: some View {
     HStack(spacing: 12) {
       ProfileAvatarView(profile: profile, size: 52)
       VStack(alignment: .leading, spacing: 2) {
-        Text(profile.username)
+        Text("@\(profile.username)")
           .font(.headline)
           .foregroundStyle(TunedInDesign.primaryText)
         Text(profile.displayName)
@@ -732,16 +558,18 @@ private struct FriendRequestCard: View {
 
   var body: some View {
     TunedInGlassSection {
-      HStack(spacing: 12) {
-        ProfileAvatarView(profile: profile, size: 46)
-        VStack(alignment: .leading, spacing: 2) {
-          Text(profile.displayName)
-            .font(.headline)
-            .foregroundStyle(TunedInDesign.primaryText)
-          Text("@\(profile.username) wants in on your concert life.")
-            .font(.caption)
-            .foregroundStyle(TunedInDesign.mutedText)
-            .lineLimit(2)
+      SocialProfileButton(profile: profile) {
+        HStack(spacing: 12) {
+          ProfileAvatarView(profile: profile, size: 46)
+          VStack(alignment: .leading, spacing: 2) {
+            Text(profile.displayName)
+              .font(.headline)
+              .foregroundStyle(TunedInDesign.primaryText)
+            Text("@\(profile.username) wants in on your concert life.")
+              .font(.caption)
+              .foregroundStyle(TunedInDesign.mutedText)
+              .lineLimit(2)
+          }
         }
       }
 

@@ -34,8 +34,7 @@ import Foundation
       kind: CatalogEntityKind,
       query: String,
       offset: Int,
-      artistContextIDs: [UUID],
-      concertContextID _: UUID?
+      artistContextIDs: [UUID]
     ) async throws -> CatalogSearchPage {
       let normalized = CatalogInput.normalizedText(query).lowercased()
       guard normalized.count >= 2 else {
@@ -472,7 +471,7 @@ import Foundation
     static func musicBrainzCandidates(kind: CatalogEntityKind) -> [CatalogResult] {
       guard kind == .artist else { return [] }
       return makeFixtures().candidateResolutions.values.map { entity in
-        var result = result(for: entity)
+        let result = result(for: entity)
         return CatalogResult(
           source: .musicBrainz, origin: .musicBrainz, kind: result.kind, catalogID: nil,
           musicBrainzID: result.musicBrainzID, displayName: result.displayName,

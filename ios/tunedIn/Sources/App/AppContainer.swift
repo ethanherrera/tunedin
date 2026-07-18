@@ -4,7 +4,8 @@ import Supabase
 @MainActor
 final class AppContainer {
   let appSession: AppSession
-  let concertRepository: any ConcertRepository
+  let postRepository: any PostRepository
+  let eventRepository: any EventRepository
   let musicCatalogRepository: any MusicCatalogRepository
   let socialRepository: any SocialRepository
   let profileRepository: any ProfileRepository
@@ -13,12 +14,14 @@ final class AppContainer {
 
   private init(
     appSession: AppSession,
-    concertRepository: any ConcertRepository,
+    postRepository: any PostRepository,
+    eventRepository: any EventRepository,
     musicCatalogRepository: any MusicCatalogRepository,
     socialRepository: any SocialRepository
   ) {
     self.appSession = appSession
-    self.concertRepository = concertRepository
+    self.postRepository = postRepository
+    self.eventRepository = eventRepository
     self.musicCatalogRepository = musicCatalogRepository
     self.socialRepository = socialRepository
     telemetry = appSession.telemetry
@@ -57,13 +60,11 @@ final class AppContainer {
       allowsLocalSeededSignIn: configuration.usesLocalSimulatorAuthStorage,
       telemetry: telemetry
     )
-    concertRepository = CachingConcertRepository(
-      remote: SupabaseConcertRepository(
-        client: client,
-        signedURLs: mediaCache.signedURLs
-      ),
-      cache: dataCache
+    postRepository = SupabasePostRepository(
+      client: client,
+      signedURLs: mediaCache.signedURLs
     )
+    eventRepository = SupabaseEventRepository(client: client, signedURLs: mediaCache.signedURLs)
     musicCatalogRepository = SupabaseMusicCatalogRepository(client: client)
     socialRepository = CachingSocialRepository(
       remote: SupabaseSocialRepository(client: client),
@@ -124,7 +125,8 @@ final class AppContainer {
                   release: configuration.release
                 )
               ),
-              concertRepository: DevelopmentConcertRepository(catalogRepository: catalogRepository),
+              postRepository: DevelopmentPostRepository(),
+              eventRepository: DevelopmentEventRepository(),
               musicCatalogRepository: catalogRepository,
               socialRepository: DevelopmentSocialRepository()
             )

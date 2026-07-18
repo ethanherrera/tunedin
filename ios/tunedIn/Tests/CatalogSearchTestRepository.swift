@@ -54,8 +54,7 @@ actor CatalogSearchTestRepository: MusicCatalogRepository {
     kind: CatalogEntityKind,
     query: String,
     offset: Int,
-    artistContextIDs: [UUID],
-    concertContextID _: UUID?
+    artistContextIDs: [UUID]
   ) async throws -> CatalogSearchPage {
     searchOffsets.append(offset)
     searchArtistContexts.append(artistContextIDs)

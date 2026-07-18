@@ -6,6 +6,7 @@
     case signedOut = "signed-out"
     case onboarding
     case profile
+    case communityEvents = "community-events"
     case profileError = "profile-error"
 
     private static let argumentName = "-TUNEDIN_DEVELOPMENT_SCENARIO"
@@ -48,7 +49,7 @@
           telemetry: telemetry ?? Self.makeTelemetry()
         )
 
-      case .profile:
+      case .profile, .communityEvents:
         return AppSession(
           authenticationRepository: DevelopmentAuthenticationRepository(user: fixture.user),
           profileRepository: DevelopmentProfileRepository(result: .profile(fixture.completedProfile)),

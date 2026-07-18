@@ -1,8 +1,8 @@
 import SwiftUI
 
 enum TunedInAppearance: String, CaseIterable, Identifiable {
-  static let storageKey = "tunedIn.appearance"
-  static let defaultAppearance: TunedInAppearance = .dark
+  static let storageKey = "tunedIn.appearance.v2"
+  static let defaultAppearance: TunedInAppearance = .light
 
   case system
   case light

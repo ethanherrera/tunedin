@@ -71,8 +71,9 @@ struct MusicCatalogContractTests {
     ])
   }
 
-  @Test(arguments: [CatalogOrigin.tunedInCustom, .legacyImport, .legacyClient])
-  func decodesEveryLocalOrigin(origin: CatalogOrigin) throws {
+  @Test
+  func decodesTheSupportedLocalOrigin() throws {
+    let origin = CatalogOrigin.tunedInCustom
     let json = #"""
     {
       "source":"tunedin",

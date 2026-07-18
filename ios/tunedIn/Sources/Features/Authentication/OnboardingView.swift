@@ -24,7 +24,7 @@ struct OnboardingView: View {
               .tracking(1.1)
               .foregroundStyle(TunedInDesign.accent)
               .textCase(.uppercase)
-            Text("Make your concert diary yours.")
+            Text("Track concerts and share posts your way.")
               .font(.system(size: 34, weight: .bold, design: .rounded))
               .foregroundStyle(TunedInDesign.primaryText)
             Text("Choose how friends will find you. You can update these details later.")

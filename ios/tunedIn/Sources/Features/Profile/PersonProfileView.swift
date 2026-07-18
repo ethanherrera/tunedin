@@ -5,36 +5,39 @@ struct PersonProfileView: View {
   let currentUserID: UUID
   let currentUsername: String
   let socialRepository: any SocialRepository
-  let concertRepository: any ConcertRepository
+  let postRepository: any PostRepository
+  let eventRepository: any EventRepository
+  let onOpenCommunityEvent: (CommunityEventSummary, UUID?) -> Void
   let onDismiss: (() -> Void)?
 
   @Environment(\.dismiss) private var dismiss
-  @EnvironmentObject private var floatingControls: ConcertFloatingControls
+  @EnvironmentObject private var floatingControls: AppFloatingControls
   @State private var floatingControlOwner = UUID()
   @State private var profile: SocialProfile
   @State private var friendCount = 0
   @State private var isPerformingAction = false
   @State private var errorMessage: String?
   @State private var isShowingRemoveConfirmation = false
-  @State private var archiveModel: ConcertArchiveModel
+  @State private var communityHistory = CommunityProfileHistory.empty
 
   init(
     profile: SocialProfile,
     currentUserID: UUID,
     currentUsername: String,
     socialRepository: any SocialRepository,
-    concertRepository: any ConcertRepository,
+    postRepository: any PostRepository,
+    eventRepository: any EventRepository,
+    onOpenCommunityEvent: @escaping (CommunityEventSummary, UUID?) -> Void,
     onDismiss: (() -> Void)? = nil
   ) {
     self.currentUserID = currentUserID
     self.currentUsername = currentUsername
     self.socialRepository = socialRepository
-    self.concertRepository = concertRepository
+    self.postRepository = postRepository
+    self.eventRepository = eventRepository
+    self.onOpenCommunityEvent = onOpenCommunityEvent
     self.onDismiss = onDismiss
     _profile = State(initialValue: profile)
-    _archiveModel = State(
-      initialValue: ConcertArchiveModel(profileID: profile.id, concertRepository: concertRepository)
-    )
   }
 
   var body: some View {
@@ -67,17 +70,16 @@ struct PersonProfileView: View {
           }
 
           if isCurrentUser || profile.relationship.canViewFriendContent {
-            friendCountLink
-            ConcertArchiveView(
-              profileID: profile.id,
-              viewerID: currentUserID,
-              viewerUsername: currentUsername,
-              isOwner: isCurrentUser,
-              concertRepository: concertRepository,
-              socialRepository: socialRepository,
-              model: archiveModel,
-              refreshToken: 0
+            CommunityProfileHistorySection(
+              history: communityHistory,
+              eventRepository: eventRepository,
+              postRepository: postRepository,
+              onOpenEvent: onOpenCommunityEvent
             )
+          }
+
+          if isCurrentUser || profile.relationship.canViewFriendContent {
+            friendCountLink
           } else {
             privacyBoundary
           }
@@ -106,6 +108,7 @@ struct PersonProfileView: View {
     }
     .task {
       await loadSocialContent(policy: .automatic)
+      await loadCommunityHistory()
     }
     .onAppear {
       guard onDismiss == nil else { return }
@@ -242,7 +245,9 @@ struct PersonProfileView: View {
         currentUserID: currentUserID,
         currentUsername: currentUsername,
         socialRepository: socialRepository,
-        concertRepository: concertRepository
+        postRepository: postRepository,
+        eventRepository: eventRepository,
+        onOpenCommunityEvent: onOpenCommunityEvent
       )
     }
   }
@@ -285,7 +290,7 @@ struct PersonProfileView: View {
   private var relationshipDescription: String {
     switch profile.relationship {
     case .none:
-      "Add them when you’re ready. Nothing from either diary is shared yet."
+      "Add them when you’re ready. Friends-only posts stay private until then."
     case .outgoing:
       "You can take it back any time before they respond."
     case .incoming:
@@ -401,8 +406,21 @@ struct PersonProfileView: View {
 
   private func refreshServerContent() async {
     await loadSocialContent(policy: .refresh)
-    if isCurrentUser || profile.relationship.canViewFriendContent {
-      await archiveModel.reload(policy: .refresh)
+    await loadCommunityHistory()
+  }
+
+  private func loadCommunityHistory() async {
+    guard isCurrentUser || profile.relationship.canViewFriendContent else {
+      communityHistory = .empty
+      return
+    }
+    do {
+      communityHistory = try await eventRepository.profileHistory(
+        profileID: profile.id,
+        viewerID: currentUserID
+      )
+    } catch {
+      communityHistory = .empty
     }
   }
 }

@@ -69,7 +69,6 @@ export class MusicCatalogService {
         ? this.#backend.getArtistSearchContext(
           profile,
           request.artistContextIds,
-          request.concertContextId,
         )
         : Promise.resolve([]),
       this.#loadLocalMatches(profile, request),
@@ -132,7 +131,6 @@ export class MusicCatalogService {
         request.entity,
         request.query,
         request.artistContextIds,
-        request.concertContextId,
         LOCAL_SEARCH_BATCH_SIZE,
         matches.length,
       );

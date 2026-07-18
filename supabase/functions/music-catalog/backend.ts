@@ -128,7 +128,6 @@ export class SupabaseCatalogBackend implements CatalogBackend {
     kind: CatalogKind,
     query: string,
     artistContextIds: string[],
-    concertContextId: string | null,
     limit: number,
     offset: number,
   ): Promise<CatalogResult[]> {
@@ -140,7 +139,6 @@ export class SupabaseCatalogBackend implements CatalogBackend {
         p_artist_ids: artistContextIds.length === 0 ? null : artistContextIds,
         p_limit: limit,
         p_offset: offset,
-        p_concert_id: concertContextId,
       },
       profile.authorization,
       this.#anonymousKey,
@@ -154,7 +152,6 @@ export class SupabaseCatalogBackend implements CatalogBackend {
   async getArtistSearchContext(
     profile: AuthenticatedProfile,
     artistContextIds: string[],
-    concertContextId: string | null,
   ): Promise<ArtistSearchContext[]> {
     if (artistContextIds.length === 0) return [];
     const payload = await this.#serviceRpc(
@@ -162,7 +159,6 @@ export class SupabaseCatalogBackend implements CatalogBackend {
       {
         p_profile_id: profile.id,
         p_artist_ids: artistContextIds,
-        p_concert_id: concertContextId,
       },
     );
     if (!Array.isArray(payload) || payload.length !== artistContextIds.length) {

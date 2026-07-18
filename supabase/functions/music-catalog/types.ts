@@ -4,8 +4,6 @@ export type CatalogKind = (typeof CATALOG_KINDS)[number];
 export const CATALOG_ORIGINS = [
   "musicbrainz",
   "tunedin_custom",
-  "legacy_import",
-  "legacy_client",
 ] as const;
 export type CatalogOrigin = (typeof CATALOG_ORIGINS)[number];
 
@@ -19,7 +17,6 @@ export interface SearchRequest {
   query: string;
   offset: number;
   artistContextIds: string[];
-  concertContextId: string | null;
 }
 
 export interface ResolveRequest {
@@ -121,14 +118,12 @@ export interface CatalogBackend {
     kind: CatalogKind,
     query: string,
     artistContextIds: string[],
-    concertContextId: string | null,
     limit: number,
     offset: number,
   ): Promise<CatalogResult[]>;
   getArtistSearchContext(
     profile: AuthenticatedProfile,
     artistContextIds: string[],
-    concertContextId: string | null,
   ): Promise<ArtistSearchContext[]>;
   consumeSearchQuota(profileId: string): Promise<void>;
   getCache(cacheKey: string): Promise<JsonValue>;

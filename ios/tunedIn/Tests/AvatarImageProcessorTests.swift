@@ -25,14 +25,14 @@ struct AvatarImageProcessorTests {
   }
 
   @Test
-  func concertPhotoUsesFourByThreeOutput() async throws {
+  func eventCoverUsesLandscapeOutput() async throws {
     let image = UIGraphicsImageRenderer(size: CGSize(width: 900, height: 1600)).image { context in
-      UIColor.systemPurple.setFill()
+      UIColor.systemTeal.setFill()
       context.cgContext.fill(CGRect(x: 0, y: 0, width: 900, height: 1600))
     }
-    let result = try await AvatarImageProcessor.processConcertPhoto(#require(image.pngData()))
+    let result = try await AvatarImageProcessor.processEventCover(#require(image.pngData()))
     let decoded = try #require(UIImage(data: result))
-    #expect(decoded.size == CGSize(width: 1200, height: 1600))
+    #expect(decoded.size == CGSize(width: 1600, height: 1000))
     #expect(result.count <= 3_145_728)
   }
 }

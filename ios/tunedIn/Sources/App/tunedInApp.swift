@@ -15,7 +15,8 @@ struct TunedInApp: App {
     WindowGroup {
       RootView(
         session: container.appSession,
-        concertRepository: container.concertRepository,
+        postRepository: container.postRepository,
+        eventRepository: container.eventRepository,
         socialRepository: container.socialRepository
       )
       .environment(\.profileRepository, container.profileRepository)

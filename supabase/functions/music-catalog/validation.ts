@@ -47,7 +47,6 @@ export function parseCatalogRequest(value: unknown): CatalogRequest {
       "query",
       "offset",
       "artistContextIds",
-      "concertContextId",
     ]);
     const entity = parseKind(value.entity);
     const query = normalizeSearchQuery(value.query);
@@ -55,10 +54,6 @@ export function parseCatalogRequest(value: unknown): CatalogRequest {
     const artistContextIds = value.artistContextIds === undefined
       ? []
       : parseArtistContextIds(value.artistContextIds);
-    const concertContextId = value.concertContextId === undefined || value.concertContextId === null
-      ? null
-      : parseUuid(value.concertContextId, "Concert context ID");
-
     if (artistContextIds.length > 0 && entity !== "song" && entity !== "tour") {
       throw invalidRequest(
         "Artist context is supported only for song and tour searches.",
@@ -71,7 +66,6 @@ export function parseCatalogRequest(value: unknown): CatalogRequest {
       query,
       offset,
       artistContextIds,
-      concertContextId,
     };
   }
 

@@ -16,34 +16,24 @@ Deno.test("search request normalizes input and applies fixed defaults", () => {
       query: "Radiohead",
       offset: 0,
       artistContextIds: [],
-      concertContextId: null,
     },
   );
 });
 
-Deno.test("search accepts only a UUID concert context", () => {
-  const concertContextId = "d2000000-0000-0000-0000-000000000001";
-  const request = parseCatalogRequest({
-    operation: "search",
-    entity: "song",
-    query: "Creep",
-    concertContextId,
-  });
-  assert.equal(request.operation, "search");
-  if (request.operation !== "search") {
-    throw new Error("Expected search request");
-  }
-  assert.equal(request.concertContextId, concertContextId);
+Deno.test("search rejects removed concert context fields", () => {
   assertCatalogError(
     () =>
       parseCatalogRequest({
         operation: "search",
         entity: "song",
         query: "Creep",
-        concertContextId: "not-a-uuid",
+        concertContextId: "d2000000-0000-0000-0000-000000000001",
       }),
     "invalid_request",
   );
+});
+
+Deno.test("resolve rejects non-MusicBrainz UUIDs", () => {
   assertCatalogError(
     () =>
       parseCatalogRequest({

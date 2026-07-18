@@ -143,10 +143,9 @@ Deno.test("upstream outages remain typed errors when no saved result exists", as
   );
 });
 
-Deno.test("song context is validated with concert context and forwarded to MusicBrainz", async () => {
+Deno.test("song artist context is validated and forwarded to MusicBrainz", async () => {
   const backend = new FakeBackend();
   const artistId = "e1000000-0000-4000-8000-000000000001";
-  const concertId = "c1000000-0000-4000-8000-000000000001";
   backend.artistContexts = [{
     catalogId: artistId,
     musicBrainzId: "a74b1b7f-71a5-4011-9441-d0b5e4122711",
@@ -160,20 +159,17 @@ Deno.test("song context is validated with concert context and forwarded to Music
     query: "Creep",
     offset: 0,
     artistContextIds: [artistId],
-    concertContextId: concertId,
   };
 
   await service.search(request, profile.authorization);
 
-  assert.deepEqual(backend.contextRequests, [{ artistIds: [artistId], concertId }]);
-  assert.deepEqual(backend.localConcertContextIds, [concertId]);
+  assert.deepEqual(backend.contextRequests, [[artistId]]);
   assert.deepEqual(upstream.artistContexts, [backend.artistContexts]);
 });
 
 Deno.test("tour context ranks only saved rows and leaves remote Series search global", async () => {
   const backend = new FakeBackend();
   const artistId = "e1000000-0000-4000-8000-000000000001";
-  const concertId = "c1000000-0000-4000-8000-000000000001";
   const upstream = new FakeUpstream([]);
   const service = new MusicCatalogService({ backend, upstream });
 
@@ -183,7 +179,6 @@ Deno.test("tour context ranks only saved rows and leaves remote Series search gl
     query: "In Rainbows",
     offset: 0,
     artistContextIds: [artistId],
-    concertContextId: concertId,
   }, profile.authorization);
 
   assert.deepEqual(backend.contextRequests, []);
@@ -299,10 +294,9 @@ class FakeBackend implements CatalogBackend {
   readonly upsertInputs: UpsertMusicBrainzInput[] = [];
   readonly cache = new Map<string, JsonValue>();
   artistContexts: ArtistSearchContext[] = [];
-  readonly contextRequests: Array<{ artistIds: string[]; concertId: string | null }> = [];
+  readonly contextRequests: string[][] = [];
   readonly localSearchOffsets: number[] = [];
   readonly localArtistContextIds: string[][] = [];
-  readonly localConcertContextIds: Array<string | null> = [];
   quotaCalls = 0;
   reserveCalls = 0;
   claimCalls = 0;
@@ -318,22 +312,19 @@ class FakeBackend implements CatalogBackend {
     _kind: CatalogKind,
     _query: string,
     artistContextIds: string[],
-    concertContextId: string | null,
     limit: number,
     offset: number,
   ): Promise<CatalogResult[]> {
     this.localSearchOffsets.push(offset);
     this.localArtistContextIds.push(artistContextIds);
-    this.localConcertContextIds.push(concertContextId);
     return Promise.resolve(this.localResults.slice(offset, offset + limit));
   }
 
   getArtistSearchContext(
     _profile: AuthenticatedProfile,
     artistContextIds: string[],
-    concertContextId: string | null,
   ): Promise<ArtistSearchContext[]> {
-    this.contextRequests.push({ artistIds: artistContextIds, concertId: concertContextId });
+    this.contextRequests.push(artistContextIds);
     return Promise.resolve(this.artistContexts);
   }
 
@@ -427,7 +418,6 @@ function searchRequest(offset: number): SearchRequest {
     query: "Fixture Artist",
     offset,
     artistContextIds: [],
-    concertContextId: null,
   };
 }
 
