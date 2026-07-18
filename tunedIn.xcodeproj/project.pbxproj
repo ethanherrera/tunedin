@@ -471,7 +471,6 @@
 			children = (
 				A2351DD08E0C34441D94767F /* Authentication */,
 				E36381AB717EF8D3632825B5 /* Catalog */,
-				C27361AC325136506E55F3C4 /* Concert */,
 				D07F54FDF756FD6E6E6991A2 /* Event */,
 				9E5EE0D6C3BF851EFD4811DC /* Profile */,
 			);
@@ -510,13 +509,6 @@
 				D967C5B386F95DD48B19CAE9 /* SupabaseAuthenticationRepository.swift */,
 			);
 			path = Auth;
-			sourceTree = "<group>";
-		};
-		C27361AC325136506E55F3C4 /* Concert */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Concert;
 			sourceTree = "<group>";
 		};
 		CBC713D6194BF6058D877CDF /* Data */ = {
