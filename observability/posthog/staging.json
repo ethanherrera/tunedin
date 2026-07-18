@@ -51,10 +51,10 @@
       "profile_setup_completed": ["duration_ms"],
       "friend_request_sent": ["duration_ms"],
       "friend_request_accepted": ["duration_ms"],
-      "collaborator_added": ["duration_ms"],
-      "concert_created": ["duration_ms"],
-      "concert_updated": ["duration_ms", "change_kind"],
-      "comment_created": ["duration_ms"],
+      "event_created": ["duration_ms"],
+      "event_updated": ["duration_ms"],
+      "event_comment_created": ["duration_ms"],
+      "post_comment_created": ["duration_ms"],
       "photo_upload_completed": [
         "duration_ms",
         "attempted_count",
@@ -64,7 +64,6 @@
         "outcome",
         "failure_category"
       ],
-      "ownership_transferred": ["duration_ms"],
       "feedback_submitted": ["duration_ms", "category", "outcome", "failure_category"],
       "screen_load_completed": ["screen", "duration_ms", "outcome", "failure_category", "retryable"],
       "core_operation_completed": [
@@ -78,8 +77,8 @@
     },
     "log_messages": [
       "profile_load_failed",
-      "concert_load_failed",
-      "album_load_failed",
+      "event_load_failed",
+      "post_load_failed",
       "mutation_failed",
       "feedback_submission_failed",
       "native_authentication_failed"
@@ -87,17 +86,16 @@
     "operations": [
       "authenticate",
       "load_profile",
-      "create_concert",
-      "update_concert",
+      "create_event",
+      "update_event",
       "send_friend_request",
       "accept_friend_request",
-      "add_collaborator",
-      "create_comment",
-      "upload_photos",
-      "transfer_ownership",
+      "create_event_comment",
+      "create_post_comment",
+      "upload_post_media",
       "submit_feedback"
     ],
-    "screens": ["feed", "concert_detail", "archive", "album", "friends", "profile"]
+    "screens": ["feed", "event_detail", "post_detail", "friends", "profile"]
   },
   "managed_dashboard": {
     "name": "tunedIn Staging · MVP health",
@@ -107,7 +105,7 @@
     "insights": [
       {
         "name": "Activation journey",
-        "description": "Authentication through profile setup and first saved concert over 30 days.",
+        "description": "Authentication through profile setup and first created event over 30 days.",
         "query": {
           "kind": "InsightVizNode",
           "source": {
@@ -115,7 +113,7 @@
             "series": [
               {"kind": "EventsNode", "event": "authentication_completed", "name": "Authentication completed"},
               {"kind": "EventsNode", "event": "profile_setup_completed", "name": "Profile setup completed"},
-              {"kind": "EventsNode", "event": "concert_created", "name": "Concert created"}
+              {"kind": "EventsNode", "event": "event_created", "name": "Event created"}
             ],
             "dateRange": {"date_from": "-30d"},
             "funnelsFilter": {"funnelOrderType": "ordered", "funnelVizType": "steps"}
@@ -123,16 +121,16 @@
         }
       },
       {
-        "name": "Core collaboration outcomes",
-        "description": "Successful social and concert collaboration outcomes over 30 days.",
+        "name": "Core community outcomes",
+        "description": "Successful social, event-comment, post-comment, and media outcomes over 30 days.",
         "query": {
           "kind": "InsightVizNode",
           "source": {
             "kind": "TrendsQuery",
             "series": [
               {"kind": "EventsNode", "event": "friend_request_accepted", "name": "Friend request accepted", "math": "total"},
-              {"kind": "EventsNode", "event": "collaborator_added", "name": "Collaborator added", "math": "total"},
-              {"kind": "EventsNode", "event": "comment_created", "name": "Comment created", "math": "total"},
+              {"kind": "EventsNode", "event": "event_comment_created", "name": "Event comment created", "math": "total"},
+              {"kind": "EventsNode", "event": "post_comment_created", "name": "Post comment created", "math": "total"},
               {"kind": "EventsNode", "event": "photo_upload_completed", "name": "Photo upload completed", "math": "total"}
             ],
             "dateRange": {"date_from": "-30d"},
