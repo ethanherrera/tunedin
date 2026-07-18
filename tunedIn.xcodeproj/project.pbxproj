@@ -110,6 +110,7 @@
 		CB98F595C0734EAD5FA186D6 /* TunedInGlassTextButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A0CF08802032B7656318CB4 /* TunedInGlassTextButton.swift */; };
 		CCFCCF485CA0E2F88BCEE843 /* EventDiscoveryViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E94630E24AB8EF31087BAE /* EventDiscoveryViews.swift */; };
 		D6331F38545589E8EC42E675 /* ProfileInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1237B11A854A5A058C98A39C /* ProfileInputTests.swift */; };
+		DD8738BB283AF360A983B528 /* NativeAuthNonce.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF4117DB5649BBA49EE0AA5 /* NativeAuthNonce.swift */; };
 		DE9D4024F47CD0B1936B8812 /* PersonProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74193CBB4CFA490AEC77ACC8 /* PersonProfileView.swift */; };
 		E1573781CAEBFC08A7559B41 /* SupabaseEventRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 959C398255028D16B13D4864 /* SupabaseEventRepositoryTests.swift */; };
 		E32DC85B878DFC16114463AD /* TunedInGlassSearchFieldFocusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F681222916D48C5DFDF2BF0 /* TunedInGlassSearchFieldFocusTests.swift */; };
@@ -239,6 +240,7 @@
 		9A61F3A9F8448FD6AAF002FA /* AppFailure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFailure.swift; sourceTree = "<group>"; };
 		9C0DDFE97BC599D751B4B028 /* TelemetrySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetrySettingsView.swift; sourceTree = "<group>"; };
 		9DC82061C2F01AA6CEB2F6BC /* SocialRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialRepository.swift; sourceTree = "<group>"; };
+		9DF4117DB5649BBA49EE0AA5 /* NativeAuthNonce.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAuthNonce.swift; sourceTree = "<group>"; };
 		A61A8D23CF454736E46B989C /* CatalogSearchTestRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogSearchTestRepository.swift; sourceTree = "<group>"; };
 		A61C959A671F03F7B6E62136 /* SupabaseEventPostContracts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseEventPostContracts.swift; sourceTree = "<group>"; };
 		A68C4BF2544ABC5F8B9AA816 /* tunedIn.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = tunedIn.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -506,6 +508,7 @@
 				DAB98AA3DDEE979A1C52AA7E /* GoogleAuthenticationClient.swift */,
 				7154E731D6C3141004BB4208 /* LocalSeededAccount.swift */,
 				32C1D6763D82D3E1FE54AAB8 /* LocalSimulatorAuthStorage.swift */,
+				9DF4117DB5649BBA49EE0AA5 /* NativeAuthNonce.swift */,
 				D967C5B386F95DD48B19CAE9 /* SupabaseAuthenticationRepository.swift */,
 			);
 			path = Auth;
@@ -786,6 +789,7 @@
 				F7FDC6308F271BC12826390A /* LocalSimulatorAuthStorage.swift in Sources */,
 				69F1F1BC49DF4485D2DCFDA2 /* MusicCatalog.swift in Sources */,
 				E39F8D45BE40B4934641D52C /* MusicCatalogRepository.swift in Sources */,
+				DD8738BB283AF360A983B528 /* NativeAuthNonce.swift in Sources */,
 				E3BAF02B2C8ECCF11FD56841 /* NativeSocialSignInView.swift in Sources */,
 				31D622AFEF6EE9C7391285DE /* OnboardingView.swift in Sources */,
 				C019CCF65BDF8AD9A3C4C558 /* PeopleHubView.swift in Sources */,

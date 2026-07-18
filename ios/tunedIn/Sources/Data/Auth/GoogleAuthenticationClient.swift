@@ -16,9 +16,14 @@ protocol GoogleAuthenticationClient: AnyObject {
 @MainActor
 final class LiveGoogleAuthenticationClient: GoogleAuthenticationClient {
   private let sdk: any GoogleSignInSDK
+  private let nonceGenerator: () throws -> String
 
-  init(sdk: any GoogleSignInSDK = LiveGoogleSignInSDK()) {
+  init(
+    sdk: any GoogleSignInSDK = LiveGoogleSignInSDK(),
+    nonceGenerator: @escaping () throws -> String = { try NativeAuthNonce.random() }
+  ) {
     self.sdk = sdk
+    self.nonceGenerator = nonceGenerator
   }
 
   func credentials(
@@ -41,7 +46,16 @@ final class LiveGoogleAuthenticationClient: GoogleAuthenticationClient {
       sdk.signOut()
     }
 
-    return try await sdk.signInInteractively()
+    let rawNonce = try nonceGenerator()
+    let credentials = try await sdk.signInInteractively(
+      hashedNonce: NativeAuthNonce.hashed(rawNonce)
+    )
+    return NativeAuthCredentials(
+      provider: .google,
+      idToken: credentials.idToken,
+      accessToken: credentials.accessToken,
+      nonce: rawNonce
+    )
   }
 
   func signOut() {
@@ -67,7 +81,7 @@ protocol GoogleSignInSDK: AnyObject {
 
   func configure(with configuration: NativeSocialAuthConfiguration)
   func restorePreviousSignIn() async throws -> NativeAuthCredentials
-  func signInInteractively() async throws -> NativeAuthCredentials
+  func signInInteractively(hashedNonce: String) async throws -> NativeAuthCredentials
   func signOut()
 }
 
@@ -95,7 +109,7 @@ final class LiveGoogleSignInSDK: GoogleSignInSDK {
     return try Self.credentials(for: user)
   }
 
-  func signInInteractively() async throws -> NativeAuthCredentials {
+  func signInInteractively(hashedNonce: String) async throws -> NativeAuthCredentials {
     guard let presentingViewController = Self.presentingViewController() else {
       throw NativeSocialSignInError.missingPresentationContext
     }
@@ -103,7 +117,8 @@ final class LiveGoogleSignInSDK: GoogleSignInSDK {
     let result = try await google.signIn(
       withPresenting: presentingViewController,
       hint: nil,
-      additionalScopes: nil
+      additionalScopes: nil,
+      nonce: hashedNonce
     )
     return try Self.credentials(for: result.user)
   }
