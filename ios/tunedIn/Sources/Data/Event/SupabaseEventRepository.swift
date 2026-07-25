@@ -271,6 +271,21 @@ struct SupabaseEventRepository: EventRepository {
     }
   }
 
+  func pendingInvitation(eventID: UUID, viewerID _: UUID) async throws -> EventInvitation? {
+    try await withAppFailure {
+      let response: PostgrestResponse<[CatalogEventInvitationRPCRecord]> = try await client
+        .rpc(
+          "get_pending_catalog_event_invitation",
+          params: CatalogEventIDParameters(eventID: eventID)
+        )
+        .execute()
+      guard let record = response.value.first else { return nil }
+      let summary = try await summaries(from: [record.event]).first
+      guard let summary else { throw AppFailure.unexpected }
+      return try EventInvitation(databaseRecord: record, event: summary)
+    }
+  }
+
   func respondToInvitation(
     invitationID: UUID,
     viewerID _: UUID,
@@ -773,6 +788,7 @@ struct CatalogEventRPCRecord: Decodable, Equatable, Sendable {
   let catalogPlaceID: UUID
   let catalogAreaID: UUID?
   let catalogTourID: UUID?
+  let tourName: String?
   let venueName: String
   let areaName: String
   let eventDate: String
@@ -791,6 +807,7 @@ struct CatalogEventRPCRecord: Decodable, Equatable, Sendable {
     case catalogPlaceID = "catalog_place_id"
     case catalogAreaID = "catalog_area_id"
     case catalogTourID = "catalog_tour_id"
+    case tourName = "tour_name"
     case venueName = "venue_name"
     case areaName = "area_name"
     case eventDate = "event_date"
@@ -1043,6 +1060,7 @@ extension CommunityEventSummary {
       catalogPlaceID: databaseRecord.catalogPlaceID,
       catalogAreaID: databaseRecord.catalogAreaID,
       catalogTourID: databaseRecord.catalogTourID,
+      tourName: databaseRecord.tourName,
       venueName: databaseRecord.venueName,
       areaName: databaseRecord.areaName,
       eventDate: eventDate,

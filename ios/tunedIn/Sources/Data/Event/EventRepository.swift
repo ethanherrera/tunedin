@@ -68,6 +68,7 @@ protocol EventRepository: Sendable {
   func inviteCandidates(eventID: UUID, viewerID: UUID) async throws -> [EventInviteCandidate]
   func sendInvitations(eventID: UUID, senderID: UUID, recipientIDs: [UUID]) async throws
   func pendingInvitations(viewerID: UUID) async throws -> [EventInvitation]
+  func pendingInvitation(eventID: UUID, viewerID: UUID) async throws -> EventInvitation?
   func respondToInvitation(
     invitationID: UUID,
     viewerID: UUID,
@@ -198,6 +199,10 @@ extension EventRepository {
   }
 
   func pendingInvitations(viewerID _: UUID) async throws -> [EventInvitation] {
+    throw CommunityEventError.featureUnavailable("Invitations")
+  }
+
+  func pendingInvitation(eventID _: UUID, viewerID _: UUID) async throws -> EventInvitation? {
     throw CommunityEventError.featureUnavailable("Invitations")
   }
 

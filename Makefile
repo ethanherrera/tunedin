@@ -157,7 +157,7 @@ check-supabase-types: ## Fail when generated Swift DTOs differ from the local sc
 	@./scripts/check-supabase-types.sh
 
 backend-test: ## Run pgTAP tests against a disposable local Supabase stack.
-	@supabase test db
+	@supabase test db --local
 
 functions-test: ## Format-check, lint, type-check, and test Edge Functions with committed fixtures.
 	@cd supabase/functions && deno task test

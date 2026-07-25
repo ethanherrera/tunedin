@@ -28,12 +28,8 @@ struct EventAttendanceDirectoryView: View {
               .foregroundStyle(TunedInDesign.mutedText)
           }
 
-          if !friendAttendances.isEmpty {
-            attendanceSection(title: "Friends", attendances: friendAttendances)
-          }
-
-          if !communityAttendances.isEmpty {
-            attendanceSection(title: "Community", attendances: communityAttendances)
+          if !sortedAttendances.isEmpty {
+            attendanceList
           }
 
           if attendances.isEmpty, !isLoading, errorMessage == nil {
@@ -63,18 +59,6 @@ struct EventAttendanceDirectoryView: View {
     }
   }
 
-  private var friendAttendances: [EventAttendance] {
-    sortedAttendances.filter {
-      $0.profile.id == viewerID || $0.profile.relationship == .friends
-    }
-  }
-
-  private var communityAttendances: [EventAttendance] {
-    sortedAttendances.filter {
-      $0.profile.id != viewerID && $0.profile.relationship != .friends
-    }
-  }
-
   private var sortedAttendances: [EventAttendance] {
     attendances.sorted { lhs, rhs in
       let lhsRank = lhs.profile.id == viewerID ? 0 : (lhs.profile.relationship == .friends ? 1 : 2)
@@ -87,22 +71,9 @@ struct EventAttendanceDirectoryView: View {
     }
   }
 
-  private func attendanceSection(
-    title: String,
-    attendances: [EventAttendance]
-  ) -> some View {
+  private var attendanceList: some View {
     VStack(alignment: .leading, spacing: 4) {
-      HStack(spacing: 7) {
-        Text(title)
-          .font(.headline)
-          .foregroundStyle(TunedInDesign.primaryText)
-        Text("\(attendances.count)")
-          .font(.caption2.weight(.bold))
-          .foregroundStyle(TunedInDesign.mutedText)
-      }
-      .padding(.bottom, 5)
-
-      ForEach(attendances) { attendance in
+      ForEach(sortedAttendances) { attendance in
         SocialProfileButton(profile: attendance.profile) {
           HStack(spacing: 12) {
             ProfileAvatarView(profile: attendance.profile, size: 48)
@@ -123,7 +94,7 @@ struct EventAttendanceDirectoryView: View {
           .contentShape(Rectangle())
         }
 
-        if attendance.id != attendances.last?.id {
+        if attendance.id != sortedAttendances.last?.id {
           Divider().overlay(TunedInDesign.cardBorder)
             .padding(.leading, 60)
         }
@@ -208,7 +179,7 @@ struct EventPostGalleryView: View {
       ScrollView {
         VStack(alignment: .leading, spacing: 16) {
           VStack(alignment: .leading, spacing: 5) {
-            Text("Posts")
+            Text("Memories")
               .font(.largeTitle.weight(.bold))
               .foregroundStyle(TunedInDesign.primaryText)
             Text("\(event.title) · \(event.postCount) visible")
@@ -218,7 +189,7 @@ struct EventPostGalleryView: View {
           .padding(.horizontal, 20)
 
           if posts.isEmpty, !isLoading, errorMessage == nil {
-            Text("No posts yet.")
+            Text("No memories yet.")
               .font(.subheadline)
               .foregroundStyle(TunedInDesign.mutedText)
               .frame(maxWidth: .infinity, minHeight: 180, alignment: .center)
