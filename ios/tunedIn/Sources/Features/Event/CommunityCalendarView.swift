@@ -166,18 +166,20 @@ struct CommunityCalendarView: View {
 
   private var friendPicker: some View {
     NavigationStack {
-      List {
-        Button("All friends") { selectedFriend = nil; selectedFriendEvents = []; isPickingFriend = false }
-        ForEach(friends) { friend in
-          Button {
-            selectedFriend = friend
-            isPickingFriend = false
-            Task { await loadSelectedFriend(friend) }
-          } label: {
-            HStack { ProfileAvatarView(profile: friend, size: 34); Text(friend.displayName) }
-          }
+      CalendarFriendPicker(
+        friends: friends,
+        selectedFriend: selectedFriend,
+        onSelectAll: {
+          selectedFriend = nil
+          selectedFriendEvents = []
+          isPickingFriend = false
+        },
+        onSelectFriend: { friend in
+          selectedFriend = friend
+          isPickingFriend = false
+          Task { await loadSelectedFriend(friend) }
         }
-      }
+      )
       .navigationTitle("Friends")
       .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { isPickingFriend = false } } }
     }
@@ -220,6 +222,123 @@ private struct CalendarEntry: Identifiable {
   let state: CommunityCalendarView.PersonalState
   let friends: [EventFriendPreview]
   var id: UUID { event.id }
+}
+
+private struct CalendarFriendPicker: View {
+  let friends: [SocialProfile]
+  let selectedFriend: SocialProfile?
+  let onSelectAll: () -> Void
+  let onSelectFriend: (SocialProfile) -> Void
+
+  @State private var query = ""
+
+  var body: some View {
+    ZStack {
+      TunedInDesign.pageBackground.ignoresSafeArea()
+
+      ScrollView {
+        VStack(alignment: .leading, spacing: 16) {
+          TunedInGlassSearchField(text: $query, prompt: "Search friends")
+
+          LazyVStack(spacing: 10) {
+            Button(action: onSelectAll) {
+              CalendarAllFriendsRow(isSelected: selectedFriend == nil)
+            }
+            .buttonStyle(.plain)
+
+            if filteredFriends.isEmpty {
+              ContentUnavailableView(
+                "No matching friends",
+                systemImage: "magnifyingglass",
+                description: Text("Try a different name or @username.")
+              )
+              .frame(maxWidth: .infinity)
+              .padding(.top, 44)
+            } else {
+              ForEach(filteredFriends) { friend in
+                Button { onSelectFriend(friend) } label: {
+                  CalendarFriendPickerRow(
+                    profile: friend,
+                    isSelected: selectedFriend?.id == friend.id
+                  )
+                }
+                .buttonStyle(.plain)
+              }
+            }
+          }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+        .padding(.bottom, 32)
+      }
+    }
+  }
+
+  private var filteredFriends: [SocialProfile] {
+    let normalizedQuery = ProfileInput.normalizedSearchQuery(query)
+    guard !normalizedQuery.isEmpty else { return friends }
+
+    return friends.filter { profile in
+      profile.displayName.localizedCaseInsensitiveContains(normalizedQuery)
+        || profile.username.localizedCaseInsensitiveContains(normalizedQuery)
+    }
+  }
+}
+
+private struct CalendarAllFriendsRow: View {
+  let isSelected: Bool
+
+  var body: some View {
+    HStack(spacing: 13) {
+      Image(systemName: "person.2.fill")
+        .font(.title3.weight(.semibold))
+        .foregroundStyle(TunedInDesign.actionForeground)
+        .frame(width: 48, height: 48)
+        .background(TunedInDesign.accent, in: Circle())
+      VStack(alignment: .leading, spacing: 3) {
+        Text("All friends")
+          .font(.headline)
+          .foregroundStyle(TunedInDesign.primaryText)
+        Text("See everyone’s concert activity")
+          .font(.subheadline)
+          .foregroundStyle(TunedInDesign.mutedText)
+      }
+      Spacer(minLength: 0)
+      if isSelected { Image(systemName: "checkmark.circle.fill").foregroundStyle(TunedInDesign.accent) }
+    }
+    .padding(13)
+    .background(
+      TunedInDesign.cardBackground,
+      in: RoundedRectangle(cornerRadius: TunedInDesign.mediumCornerRadius, style: .continuous)
+    )
+  }
+}
+
+private struct CalendarFriendPickerRow: View {
+  let profile: SocialProfile
+  let isSelected: Bool
+
+  var body: some View {
+    HStack(spacing: 13) {
+      ProfileAvatarView(profile: profile, size: 48)
+      VStack(alignment: .leading, spacing: 3) {
+        Text(profile.displayName)
+          .font(.headline)
+          .foregroundStyle(TunedInDesign.primaryText)
+        Text("@\(profile.username)")
+          .font(.subheadline)
+          .foregroundStyle(TunedInDesign.mutedText)
+      }
+      Spacer(minLength: 0)
+      if isSelected { Image(systemName: "checkmark.circle.fill").foregroundStyle(TunedInDesign.accent) }
+    }
+    .padding(13)
+    .background(
+      TunedInDesign.cardBackground,
+      in: RoundedRectangle(cornerRadius: TunedInDesign.mediumCornerRadius, style: .continuous)
+    )
+    .accessibilityElement(children: .combine)
+  }
 }
 
 private struct AgendaRow: View {
