@@ -16,6 +16,7 @@ This repository contains the native tunedIn MVP: a SwiftUI iOS client and its Su
 
 - Before starting implementation work and again immediately before creating or updating a pull request, fetch `origin` and rebase the focused feature branch onto the latest `origin/main`.
 - Resolve every rebase or merge conflict locally before continuing, rerun the required verification after conflict resolution, and never create or update a pull request while conflicts remain.
+- Do not commit screenshots or other visual-validation artifacts to a pull request by default. Put them in the pull-request summary only; commit them only when Ethan explicitly requests that exception.
 
 ## iPhone navigation
 
