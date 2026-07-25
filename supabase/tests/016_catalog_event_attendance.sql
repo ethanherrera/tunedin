@@ -1,6 +1,6 @@
 begin;
 
-select plan(49);
+select plan(51);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -245,6 +245,11 @@ select ok(
   'a visible friend plan appears in event friend previews'
 );
 select is(
+  (select count(*) from public.list_catalog_friend_calendar(null, 100)),
+  1::bigint,
+  'friends calendar de-duplicates events and excludes non-friends'
+);
+select is(
   (select community_going_count from public.get_catalog_event_social_summaries(
     array[current_setting('test.attendance_future_event_id')::uuid]
   )),
@@ -347,6 +352,11 @@ select is(
   )),
   2::bigint,
   'friends-audience rows disappear immediately after friendship removal'
+);
+select is(
+  (select count(*) from public.list_catalog_friend_calendar(null, 100)),
+  0::bigint,
+  'friends calendar removes events immediately when a friendship ends'
 );
 select lives_ok(
   $$select public.block_profile('e3000000-0000-4000-8000-000000000003')$$,

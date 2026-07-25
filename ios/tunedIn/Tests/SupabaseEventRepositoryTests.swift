@@ -219,7 +219,7 @@ extension SupabaseEventRepositoryContractTests {
       place: place(id: placeID, areaID: areaID),
       tour: nil,
       eventDate: instant,
-      startsAt: nil,
+      startsAt: instant,
       timeZoneIdentifier: "America/New_York",
       listing: .listed
     )
@@ -229,17 +229,18 @@ extension SupabaseEventRepositoryContractTests {
     let artists = try #require(object["p_artists"] as? [[String: Any]])
 
     #expect(Set(object.keys) == [
-      "p_artists", "p_catalog_place_id", "p_event_date", "p_time_zone_identifier", "p_listing"
+      "p_artists", "p_catalog_place_id", "p_event_date", "p_starts_at", "p_time_zone_identifier", "p_listing"
     ])
     #expect(object["p_catalog_place_id"] as? String == placeID.uuidString)
     #expect(object["p_event_date"] as? String == "2026-07-16")
+    #expect(object["p_starts_at"] as? String == "2026-07-17T02:30:00.000Z")
     #expect(object["p_time_zone_identifier"] as? String == "America/New_York")
     #expect(object["p_listing"] as? String == "listed")
     #expect(artists.count == 1)
     #expect(artists.first?["catalog_artist_id"] as? String == artistID.uuidString)
     #expect(artists.first?["is_primary"] as? Bool == true)
     #expect(Set(duplicateLookup.keys) == [
-      "p_artists", "p_catalog_place_id", "p_event_date", "p_time_zone_identifier",
+      "p_artists", "p_catalog_place_id", "p_event_date", "p_starts_at", "p_time_zone_identifier",
       "p_listing", "p_limit"
     ])
     #expect(duplicateLookup["p_limit"] as? Int == 5)

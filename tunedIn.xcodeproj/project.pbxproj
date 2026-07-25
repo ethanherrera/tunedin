@@ -90,6 +90,7 @@
 		9B82FB9B7F094931B9622D52 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52FC5FA5CC195C96AC2F7E11 /* AppContainer.swift */; };
 		9C11EF2F74441C11ACC3B3C2 /* AppCacheDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = E129D134607112FF14A7D0C4 /* AppCacheDiagnostics.swift */; };
 		9EF2B758E88A5DDFF15F0B12 /* AppSessionSignOutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD9A69947EB0D7D466B95A6D /* AppSessionSignOutTests.swift */; };
+		9F468C1B3734FA97AEBC3C6E /* CommunityCalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E3D3B93536C5F67BE1193BE /* CommunityCalendarView.swift */; };
 		A0FABC2243475604D5271905 /* CommunityEventComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 273E2C7F3756C14CC427238F /* CommunityEventComponents.swift */; };
 		A111EE6F1E729528DDD55F8D /* ProfileAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B583B6D8C84821B5F36ABC1A /* ProfileAvatarView.swift */; };
 		A555A5875A5637540E1BC35E /* SupabaseProfileRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = C659A65B20724EDB509145AB /* SupabaseProfileRepository.swift */; };
@@ -187,6 +188,7 @@
 		4A0CF08802032B7656318CB4 /* TunedInGlassTextButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunedInGlassTextButton.swift; sourceTree = "<group>"; };
 		4A5DDFF994E4A5513CAD3917 /* midnight-theatre.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "midnight-theatre.png"; sourceTree = "<group>"; };
 		4B166E29D4B9DBD8DCFFC12B /* SwiftDataSnapshotStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftDataSnapshotStore.swift; sourceTree = "<group>"; };
+		4E3D3B93536C5F67BE1193BE /* CommunityCalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunityCalendarView.swift; sourceTree = "<group>"; };
 		4F9B1A4D54544CD7AA15C942 /* TunedInKeyboardPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunedInKeyboardPresentationTests.swift; sourceTree = "<group>"; };
 		515418BE8BFEA8F6CABA8B36 /* SocialProfileNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialProfileNavigation.swift; sourceTree = "<group>"; };
 		51C9239ADDF5ED1FD84086B4 /* CatalogSearchSupportingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogSearchSupportingViews.swift; sourceTree = "<group>"; };
@@ -532,6 +534,7 @@
 		D07F54FDF756FD6E6E6991A2 /* Event */ = {
 			isa = PBXGroup;
 			children = (
+				4E3D3B93536C5F67BE1193BE /* CommunityCalendarView.swift */,
 				0FA0BC9202512EA7CB6A04E8 /* CommunityEventCollectionComponents.swift */,
 				1133A4D6583C447BE9EC5207 /* CommunityEventCollectionViews.swift */,
 				273E2C7F3756C14CC427238F /* CommunityEventComponents.swift */,
@@ -764,6 +767,7 @@
 				E7F86EE55C2237559230EF1B /* CatalogPickerView.swift in Sources */,
 				7C5E39EEC50F78A16D6351E4 /* CatalogSearchModel.swift in Sources */,
 				730F9C3AB310567FFB881E7E /* CatalogSearchSupportingViews.swift in Sources */,
+				9F468C1B3734FA97AEBC3C6E /* CommunityCalendarView.swift in Sources */,
 				3B37A2350A0ED4EF671BB97C /* CommunityEvent.swift in Sources */,
 				5A1D71F78FF0CED82865578E /* CommunityEventCollectionComponents.swift in Sources */,
 				4C50EE5B4D5E5B704D7D1991 /* CommunityEventCollectionViews.swift in Sources */,

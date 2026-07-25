@@ -113,6 +113,23 @@
         .sorted(by: Self.eventSort)
     }
 
+    func friendCalendar(viewerID: UUID) async throws -> [FriendCalendarEvent] {
+      visibleEvents(viewerID: viewerID).compactMap { stored in
+        let summary = refreshedSummary(stored, viewerID: viewerID)
+        let friends = stored.attendances.compactMap { attendance -> EventFriendPreview? in
+          guard attendance.profile.id != viewerID,
+                attendance.profile.relationship == .friends,
+                attendance.status == .going || attendance.status == .went,
+                canRead(attendance: attendance, viewerID: viewerID)
+          else { return nil }
+          return EventFriendPreview(profile: attendance.profile, status: attendance.status)
+        }
+        guard !friends.isEmpty else { return nil }
+        return FriendCalendarEvent(event: summary, friends: friends)
+      }
+      .sorted { $0.event.eventDate < $1.event.eventDate }
+    }
+
     func activityFeed(viewerID: UUID) async throws -> [EventActivity] {
       guard viewerID == DevelopmentSocialFixture.currentUserID else { return [] }
       let morgan = Self.profile(DevelopmentSocialFixture.morganID)
@@ -958,14 +975,7 @@
     }
 
     private static func memoryUnlockAt(for input: CommunityEventCreationInput) -> Date {
-      if let startsAt = input.startsAt {
-        return startsAt.addingTimeInterval(4 * 3600)
-      }
-      var calendar = Calendar(identifier: .gregorian)
-      calendar.timeZone = TimeZone(identifier: input.timeZoneIdentifier) ?? .gmt
-      let startOfDay = calendar.startOfDay(for: input.eventDate)
-      let nextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? startOfDay
-      return calendar.date(bySettingHour: 3, minute: 0, second: 0, of: nextDay) ?? nextDay
+      input.startsAt.addingTimeInterval(4 * 3600)
     }
 
     private static func uuid(value: Int, prefix: String) -> UUID {
