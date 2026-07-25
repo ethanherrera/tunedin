@@ -106,6 +106,7 @@ struct CommunityEventSummary: Codable, Equatable, Identifiable, Sendable {
   let catalogPlaceID: UUID?
   let catalogAreaID: UUID?
   let catalogTourID: UUID?
+  let tourName: String?
   let venueName: String
   let areaName: String
   let eventDate: Date
@@ -127,11 +128,16 @@ struct CommunityEventSummary: Codable, Equatable, Identifiable, Sendable {
   let duplicateCandidateEventID: UUID?
 
   var title: String {
-    artists.sorted(by: { $0.position < $1.position }).map(\.displayName).joined(separator: ", ")
+    if let tourName = tourName?.trimmingCharacters(in: .whitespacesAndNewlines), !tourName.isEmpty {
+      return tourName
+    }
+    return headlinerName
   }
 
   var headlinerName: String {
-    artists.first(where: \.isHeadliner)?.displayName ?? title
+    artists.first(where: \.isHeadliner)?.displayName
+      ?? artists.min(by: { $0.position < $1.position })?.displayName
+      ?? "Concert"
   }
 
   func phase(at date: Date = .now) -> CommunityEventPhase {
@@ -161,6 +167,7 @@ struct CommunityEventSummary: Codable, Equatable, Identifiable, Sendable {
       catalogPlaceID: catalogPlaceID,
       catalogAreaID: catalogAreaID,
       catalogTourID: catalogTourID,
+      tourName: tourName,
       venueName: venueName,
       areaName: areaName,
       eventDate: eventDate,

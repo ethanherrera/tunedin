@@ -1,9 +1,11 @@
 import PhotosUI
 import SwiftUI
+import UIKit
 
 // This cohesive event journey keeps its phase-specific private views together.
 // swiftlint:disable file_length
 
+// swiftlint:disable:next type_body_length
 struct CommunityEventDetailView: View {
   let eventID: UUID
   let viewerID: UUID
@@ -29,15 +31,32 @@ struct CommunityEventDetailView: View {
   }
 
   @State private var detail: CommunityEventDetail?
+  @State private var invitation: EventInvitation?
   @State private var isLoading = true
   @State private var errorMessage: String?
   @State private var isPresentingInvites = false
   @State private var isPresentingReport = false
   @State private var isPresentingAttendanceDirectory = false
+  @State private var isPresentingConversation = false
+  @State private var isPresentingMore = false
+  @State private var isPresentingAttendanceOptions = false
+  @State private var isConfirmingNotGoing = false
+  @State private var isCompactControls = false
+  @State private var initialScrollOffset: CGFloat?
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   var body: some View {
     ZStack {
       TunedInDesign.pageBackground.ignoresSafeArea()
+
+      if let detail, detail.summary.cover != nil {
+        CommunityEventCoverImage(event: detail.summary, repository: repository)
+          .scaleEffect(1.16)
+          .blur(radius: 30)
+          .opacity(0.13)
+          .ignoresSafeArea()
+          .allowsHitTesting(false)
+      }
 
       if isLoading, detail == nil {
         VStack(spacing: 14) {
@@ -50,65 +69,19 @@ struct CommunityEventDetailView: View {
         EventFailureView(message: errorMessage) { Task { await load() } }
           .padding(20)
       } else if let detail {
-        ScrollView {
-          VStack(alignment: .leading, spacing: 18) {
-            CommunityEventHero(
-              detail: detail,
-              repository: repository,
-              allowsAttendance: repository.capabilities.contains(.attendance),
-              onViewAllAttendance: { isPresentingAttendanceDirectory = true },
-              onSetAttendance: { status, audience in
-                Task { await setAttendance(status, audience: audience) }
-              },
-              onConfirmCancelledPerformance: { audience in
-                Task { await confirmCancelledPerformance(audience: audience) }
-              }
-            )
+        eventScroll(for: detail)
+      }
 
-            if repository.capabilities.contains(.posts), detail.summary.phase() == .memories {
-              EventMemoriesPage(
-                detail: detail,
-                viewerID: viewerID,
-                repository: repository,
-                postRepository: postRepository,
-                initialPostID: initialPostID,
-                onSaved: { Task { await load() } }
-              )
-            }
-
-            if repository.capabilities.contains(.attendance) {
-              EventPeoplePage(
-                detail: detail,
-                viewerID: viewerID,
-                onViewAll: { isPresentingAttendanceDirectory = true }
-              )
-            }
-
-            EventOverviewPage(
-              detail: detail,
-              viewerID: viewerID,
-              repository: repository,
-              allowsConversation: repository.capabilities.contains(.conversation),
-              onReport: { isPresentingReport = true },
-              onCommentAdded: { Task { await load() } }
-            )
-
-            if repository.capabilities.contains(.posts), detail.summary.phase() != .memories {
-              EventMemoriesPage(
-                detail: detail,
-                viewerID: viewerID,
-                repository: repository,
-                postRepository: postRepository,
-                initialPostID: initialPostID,
-                onSaved: { Task { await load() } }
-              )
-            }
-          }
-          .padding(.horizontal, 20)
-          .padding(.top, 18)
-          .padding(.bottom, 24)
-        }
-        .refreshable { await load() }
+      if isCompactControls, let detail {
+        Text(detail.summary.title)
+          .font(.subheadline.weight(.bold))
+          .foregroundStyle(TunedInDesign.primaryText)
+          .lineLimit(1)
+          .padding(.horizontal, 78)
+          .padding(.top, 8)
+          .transition(TunedInMotion.compactIdentityTransition(reduceMotion: reduceMotion))
+          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+          .allowsHitTesting(false)
       }
 
       EventScrollTopMask()
@@ -153,6 +126,134 @@ struct CommunityEventDetailView: View {
         )
       }
     }
+    .fullScreenCover(isPresented: $isPresentingConversation) {
+      if let detail {
+        EventConversationView(
+              detail: detail,
+              viewerID: viewerID,
+              repository: repository,
+              onChanged: { Task { await load() } },
+              onDismiss: { isPresentingConversation = false }
+            )
+      }
+    }
+    .confirmationDialog("Concert options", isPresented: $isPresentingMore, titleVisibility: .visible) {
+      if canInvite {
+        Button("Invite friends", systemImage: "person.badge.plus") { isPresentingInvites = true }
+      }
+      if invitation != nil {
+        Button("Decline invite", systemImage: "xmark", role: .destructive) {
+          Task { await respondToInvitation(.declined) }
+        }
+      }
+      if shouldOfferNotGoing {
+        Button("Change to not going", systemImage: "xmark.circle", role: .destructive) {
+          isConfirmingNotGoing = true
+        }
+      }
+      Button("Suggest a correction", systemImage: "exclamationmark.bubble") {
+        isPresentingReport = true
+      }
+    }
+    .confirmationDialog("Change to not going?", isPresented: $isConfirmingNotGoing) {
+      Button("Change to not going", role: .destructive) {
+        Task { await setAttendance(nil, audience: detail?.summary.currentUserAudience ?? .friends) }
+      }
+    } message: {
+      Text("This removes your Going plan. You can add it again later.")
+    }
+    .confirmationDialog("Attendance", isPresented: $isPresentingAttendanceOptions) {
+      attendanceOptions
+    }
+  }
+
+  private func eventScroll(for detail: CommunityEventDetail) -> some View {
+    ScrollView {
+      eventContent(for: detail)
+    }
+    .simultaneousGesture(
+      DragGesture(minimumDistance: 12)
+        .onChanged { gesture in
+          guard gesture.translation.height < -92, !isCompactControls else { return }
+          withAnimation(TunedInMotion.selection(reduceMotion: reduceMotion)) {
+            isCompactControls = true
+          }
+        }
+    )
+    .refreshable { await load() }
+  }
+
+  // swiftlint:disable:next function_body_length
+  private func eventContent(for detail: CommunityEventDetail) -> some View {
+    VStack(alignment: .leading, spacing: 18) {
+      CommunityEventHero(
+        detail: detail,
+        repository: repository,
+        invitation: invitation,
+        isCompact: isCompactControls,
+        onOpenConversation: { isPresentingConversation = true },
+        onAttendance: { performAttendanceAction() },
+        onAcceptInvitation: { Task { await respondToInvitation(.accepted) } },
+        onMore: { isPresentingMore = true },
+        onViewAllAttendance: { isPresentingAttendanceDirectory = true }
+      )
+      .background {
+        EventScrollOffsetObserver { scrollOffset in
+          updateCompactControls(for: scrollOffset)
+        }
+        .frame(width: 0, height: 0)
+      }
+
+      if repository.capabilities.contains(.posts), memoriesAreAvailable(detail.summary) {
+        EventMemoriesPage(
+          detail: detail,
+          viewerID: viewerID,
+          repository: repository,
+          postRepository: postRepository,
+          initialPostID: initialPostID,
+          onSaved: { Task { await load() } }
+        )
+      }
+
+      if repository.capabilities.contains(.attendance) {
+        EventPeoplePage(
+          detail: detail,
+          viewerID: viewerID,
+          onViewAll: { isPresentingAttendanceDirectory = true }
+        )
+      }
+
+      EventLineupPage(event: detail.summary)
+
+      if detail.summary.phase() == .postponed {
+        EventLifecycleNotice(
+          title: "Postponed",
+          message: "The date above is the last confirmed date. Your plans, invitations, and chat "
+            + "stay available while we wait for an update."
+        )
+      } else if detail.summary.phase() == .cancelled {
+        EventLifecycleNotice(
+          title: "Cancelled",
+          message: "Invites and attendance are paused. Chat remains open until memories unlock."
+        )
+      }
+    }
+    .padding(.horizontal, 20)
+    .padding(.top, 18)
+    .padding(.bottom, 24)
+  }
+
+  private func updateCompactControls(for scrollOffset: CGFloat) {
+    guard let initialScrollOffset else {
+      self.initialScrollOffset = scrollOffset
+      return
+    }
+
+    let compact = scrollOffset > initialScrollOffset + 92
+    guard compact != isCompactControls else { return }
+    withAnimation(TunedInMotion.selection(reduceMotion: reduceMotion)) {
+      isCompactControls = compact
+    }
   }
 
   private var eventBottomBar: some View {
@@ -164,22 +265,32 @@ struct CommunityEventDetailView: View {
       )
     } center: {
       TunedInGlassBottomBar {
-        Text(detail?.summary.title ?? "Concert")
-          .font(.subheadline.weight(.semibold))
-          .foregroundStyle(TunedInDesign.primaryText)
-          .lineLimit(1)
-          .frame(minWidth: 132, minHeight: 48)
-          .padding(.horizontal, 16)
-      }
-    } trailing: {
-      if canInvite {
-        TunedInGlassIconButton(
-          systemImage: "paperplane",
-          accessibilityLabel: "Invite friends"
-        ) {
-          isPresentingInvites = true
+        if isCompactControls {
+          HStack(spacing: 2) {
+            compactAction("Chat", image: "bubble.left.and.bubble.right") {
+              isPresentingConversation = true
+            }
+            compactAction(attendanceButtonTitle, image: attendanceButtonImage) {
+              performAttendanceAction()
+            }
+            compactAction("More", image: "ellipsis") {
+              isPresentingMore = true
+            }
+          }
+          .frame(minWidth: 178, minHeight: 48)
+          .transition(TunedInMotion.controlSceneTransition(reduceMotion: reduceMotion))
+        } else {
+          Text(detail?.summary.title ?? "Concert")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(TunedInDesign.primaryText)
+            .lineLimit(1)
+            .frame(minWidth: 132, minHeight: 48)
+            .padding(.horizontal, 16)
+            .transition(TunedInMotion.controlSceneTransition(reduceMotion: reduceMotion))
         }
       }
+    } trailing: {
+      EmptyView()
     }
   }
 
@@ -189,12 +300,53 @@ struct CommunityEventDetailView: View {
     return phase == .upcoming || phase == .postponed
   }
 
+  private var shouldOfferNotGoing: Bool {
+    guard let detail else { return false }
+    return detail.summary.phase() != .memories
+      && detail.summary.lifecycle != .cancelled
+      && detail.summary.currentUserAttendance == .going
+  }
+
+  private func memoriesAreAvailable(_ event: CommunityEventSummary) -> Bool {
+    event.phase() == .memories || (event.lifecycle == .cancelled && Date.now >= event.memoryUnlockAt)
+  }
+
+  private var attendanceButtonTitle: String {
+    guard let detail else { return "Going" }
+    if invitation != nil { return "Accept" }
+    if detail.summary.phase() == .memories {
+      return detail.summary.currentUserAttendance == .went ? "Went" : "Attend"
+    }
+    return detail.summary.currentUserAttendance == .going ? "Going" : "I’m going"
+  }
+
+  private var attendanceButtonImage: String {
+    invitation != nil ? "checkmark" : (detail?.summary.currentUserAttendance == nil ? "plus" : "checkmark")
+  }
+
+  private func compactAction(_ title: String, image: String, action: @escaping () -> Void) -> some View {
+    Button(action: action) {
+      Label(title, systemImage: image)
+        .labelStyle(.iconOnly)
+        .font(.caption.weight(.bold))
+        .foregroundStyle(TunedInDesign.primaryText)
+        .frame(width: 42, height: 42)
+        .contentShape(Circle())
+        .accessibilityLabel(title)
+    }
+    .buttonStyle(.plain)
+  }
+
   @MainActor
   private func load() async {
     isLoading = detail == nil
     defer { isLoading = false }
     do {
-      detail = try await repository.eventDetail(id: eventID, viewerID: viewerID)
+      let loadedDetail = try await repository.eventDetail(id: eventID, viewerID: viewerID)
+      detail = loadedDetail
+      invitation = repository.capabilities.contains(.invitations)
+        ? try? await repository.pendingInvitation(eventID: eventID, viewerID: viewerID)
+        : nil
       errorMessage = nil
     } catch {
       errorMessage = error.localizedDescription
@@ -229,38 +381,184 @@ struct CommunityEventDetailView: View {
       errorMessage = error.localizedDescription
     }
   }
+
+  private func performAttendanceAction() {
+    guard let detail else { return }
+    if invitation != nil {
+      Task { await respondToInvitation(.accepted) }
+    } else if detail.summary.phase() == .cancelled {
+      guard Date.now >= detail.summary.memoryUnlockAt else { return }
+      Task { await confirmCancelledPerformance(audience: detail.summary.currentUserAudience ?? .friends) }
+    } else if detail.summary.phase() == .memories || detail.summary.currentUserAttendance == .going {
+      isPresentingAttendanceOptions = true
+    } else {
+      Task { await setAttendance(.going, audience: .friends) }
+    }
+  }
+
+  @MainActor
+  private func respondToInvitation(_ response: EventInvitationResponse) async {
+    guard let invitation else { return }
+    do {
+      try await repository.respondToInvitation(
+        invitationID: invitation.id,
+        viewerID: viewerID,
+        response: response,
+        audience: .friends
+      )
+      await load()
+    } catch {
+      errorMessage = error.localizedDescription
+    }
+  }
+
+  @ViewBuilder
+  private var attendanceOptions: some View {
+    if let detail {
+      if detail.summary.phase() == .memories {
+        Button("I went", systemImage: "checkmark.circle") {
+          Task { await setAttendance(.went, audience: detail.summary.currentUserAudience ?? .friends) }
+        }
+        Button("I didn’t go", systemImage: "xmark.circle") {
+          Task { await setAttendance(.didNotGo, audience: detail.summary.currentUserAudience ?? .friends) }
+        }
+        if detail.summary.currentUserAttendance != nil {
+          Button("Remove from my history", role: .destructive) {
+            Task { await setAttendance(nil, audience: detail.summary.currentUserAudience ?? .friends) }
+          }
+        }
+      } else {
+        ForEach(EventAudience.allCases, id: \.self) { audience in
+          Button("Going · \(audience.title)") {
+            Task { await setAttendance(.going, audience: audience) }
+          }
+        }
+      }
+    }
+  }
+}
+
+private struct EventScrollOffsetObserver: UIViewRepresentable {
+  let onChange: (CGFloat) -> Void
+
+  func makeUIView(context: Context) -> EventScrollOffsetObserverView {
+    let view = EventScrollOffsetObserverView()
+    view.onChange = onChange
+    return view
+  }
+
+  func updateUIView(_ uiView: EventScrollOffsetObserverView, context: Context) {
+    uiView.onChange = onChange
+    uiView.beginObservingScrollOffsetIfNeeded()
+  }
+}
+
+private final class EventScrollOffsetObserverView: UIView {
+  var onChange: ((CGFloat) -> Void)?
+
+  private var observation: NSKeyValueObservation?
+
+  override func didMoveToWindow() {
+    super.didMoveToWindow()
+    DispatchQueue.main.async { [weak self] in
+      self?.beginObservingScrollOffsetIfNeeded()
+    }
+  }
+
+  func beginObservingScrollOffsetIfNeeded() {
+    guard observation == nil, let scrollView = nearestScrollView() else { return }
+
+    observation = scrollView.observe(\.contentOffset, options: [.initial, .new]) { [weak self] scrollView, _ in
+      let offset = scrollView.contentOffset.y
+      DispatchQueue.main.async {
+        self?.onChange?(offset)
+      }
+    }
+  }
+
+  private func nearestScrollView() -> UIScrollView? {
+    sequence(first: superview, next: { $0?.superview })
+      .compactMap { $0 as? UIScrollView }
+      .first
+  }
+}
+
+private struct EventLineupPage: View {
+  let event: CommunityEventSummary
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      Text("Lineup")
+        .font(.headline)
+        .foregroundStyle(TunedInDesign.primaryText)
+      ForEach(event.artists.sorted(by: { $0.position < $1.position })) { artist in
+        HStack(spacing: 10) {
+          Image(systemName: artist.isHeadliner ? "star.fill" : "music.mic")
+            .foregroundStyle(artist.isHeadliner ? TunedInDesign.accent : TunedInDesign.mutedText)
+            .frame(width: 18)
+          Text(artist.displayName)
+            .font(.body.weight(artist.isHeadliner ? .semibold : .regular))
+            .foregroundStyle(TunedInDesign.primaryText)
+          if artist.isHeadliner {
+            Text("Headliner")
+              .font(.caption.weight(.bold))
+              .foregroundStyle(TunedInDesign.mutedText)
+          }
+        }
+      }
+      Divider().overlay(TunedInDesign.cardBorder)
+    }
+  }
+}
+
+private struct EventLifecycleNotice: View {
+  let title: String
+  let message: String
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 4) {
+      Text(title)
+        .font(.subheadline.weight(.bold))
+        .foregroundStyle(TunedInDesign.primaryText)
+      Text(message)
+        .font(.caption)
+        .foregroundStyle(TunedInDesign.mutedText)
+    }
+    .padding(14)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+  }
 }
 
 private struct CommunityEventHero: View {
   let detail: CommunityEventDetail
   let repository: any EventRepository
-  let allowsAttendance: Bool
+  let invitation: EventInvitation?
+  let isCompact: Bool
+  let onOpenConversation: () -> Void
+  let onAttendance: () -> Void
+  let onAcceptInvitation: () -> Void
+  let onMore: () -> Void
   let onViewAllAttendance: () -> Void
-  let onSetAttendance: (EventAttendanceStatus?, EventAudience) -> Void
-  let onConfirmCancelledPerformance: (EventAudience) -> Void
-
-  @State private var audience = EventAudience.friends
 
   var body: some View {
     VStack(alignment: .leading, spacing: 14) {
-      if detail.summary.cover != nil {
-        CommunityEventCoverImage(event: detail.summary, repository: repository)
-          .frame(maxWidth: .infinity)
-          .frame(height: 220)
-          .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-          .overlay(alignment: .bottomTrailing) {
-            if let credit = coverCredit {
-              Text(credit)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 6)
-                .background(.black.opacity(0.58), in: Capsule())
-                .padding(10)
-            }
+      CommunityEventCoverImage(event: detail.summary, repository: repository)
+        .frame(maxWidth: .infinity)
+        .frame(height: 220)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(alignment: .bottomTrailing) {
+          if let credit = coverCredit {
+            Text(credit)
+              .font(.caption2.weight(.semibold))
+              .foregroundStyle(.white)
+              .lineLimit(1)
+              .padding(.horizontal, 9)
+              .padding(.vertical, 6)
+              .background(.black.opacity(0.58), in: Capsule())
+              .padding(10)
           }
-      }
+        }
 
       HStack(alignment: .firstTextBaseline, spacing: 12) {
         Text(CommunityEventDateText.fullDate(detail.summary.eventDate))
@@ -290,73 +588,35 @@ private struct CommunityEventHero: View {
           .foregroundStyle(TunedInDesign.mutedText)
       }
 
-      if !detail.summary.friendPreviews.isEmpty {
+      if !isCompact {
         HStack(spacing: 10) {
-          EventAvatarStack(profiles: detail.summary.friendPreviews.map(\.profile))
-          Text(friendLine)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(TunedInDesign.primaryText)
-          Spacer(minLength: 4)
-          Button("View all", action: onViewAllAttendance)
-            .font(.subheadline.weight(.bold))
-            .foregroundStyle(TunedInDesign.accent)
-        }
-      }
-
-      if allowsAttendance, detail.summary.phase() == .cancelled {
-        cancelledAttendanceControl
-      } else if allowsAttendance {
-        HStack(spacing: 12) {
-          if detail.summary.phase() == .memories {
-            Menu {
-              Button("I went", systemImage: "checkmark.circle") {
-                onSetAttendance(.went, audience)
-              }
-              Button("I didn’t go", systemImage: "xmark.circle") {
-                onSetAttendance(.didNotGo, audience)
-              }
-              if detail.summary.currentUserAttendance != nil {
-                Divider()
-                Button("Remove from my history", systemImage: "trash", role: .destructive) {
-                  onSetAttendance(nil, audience)
-                }
-              }
-            } label: {
-              attendanceLabel
-            }
-          } else {
-            Button {
-              onSetAttendance(nextAttendance, audience)
-            } label: {
-              attendanceLabel
-            }
-            .buttonStyle(TunedInPosterButtonStyle())
+          Button(action: onOpenConversation) {
+            Label("Chat", systemImage: "bubble.left.and.bubble.right")
+              .frame(maxWidth: .infinity)
           }
+          .buttonStyle(.bordered)
+          .buttonBorderShape(.capsule)
 
-          Menu {
-            ForEach(EventAudience.allCases, id: \.self) { option in
-              Button {
-                audience = option
-                if let current = detail.summary.currentUserAttendance {
-                  onSetAttendance(current, option)
-                }
-              } label: {
-                if audience == option {
-                  Label(option.title, systemImage: "checkmark")
-                } else {
-                  Text(option.title)
-                }
-              }
-            }
-          } label: {
-            Image(systemName: audienceIcon)
-              .font(.body.weight(.bold))
-              .foregroundStyle(TunedInDesign.primaryText)
-              .frame(width: 48, height: 48)
-              .background(TunedInDesign.raisedSurface, in: Circle())
+          Button(action: invitation == nil ? onAttendance : onAcceptInvitation) {
+            Label(
+              invitation == nil ? attendanceActionTitle : "Accept invite",
+              systemImage: invitation == nil ? attendanceIcon : "checkmark"
+            )
+              .frame(maxWidth: .infinity)
           }
-          .accessibilityLabel("Attendance visibility: \(audience.title)")
+          .buttonStyle(.borderedProminent)
+          .buttonBorderShape(.capsule)
+          .tint(TunedInDesign.accent)
+
+          Button(action: onMore) {
+            Image(systemName: "ellipsis")
+              .frame(width: 36, height: 36)
+          }
+          .buttonStyle(.bordered)
+          .buttonBorderShape(.circle)
         }
+        .font(.subheadline.weight(.bold))
+        .transition(.opacity)
       }
 
       HStack(spacing: 8) {
@@ -372,9 +632,6 @@ private struct CommunityEventHero: View {
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.top, 4)
-    .task(id: detail.summary.currentUserAudience) {
-      audience = detail.summary.currentUserAudience ?? .friends
-    }
   }
 
   private var coverCredit: String? {
@@ -388,73 +645,8 @@ private struct CommunityEventHero: View {
     return cover.source == .community ? "Community photo" : nil
   }
 
-  @ViewBuilder
-  private var cancelledAttendanceControl: some View {
-    if Date.now < detail.summary.memoryUnlockAt {
-      Label(
-        "Attendance is paused unless the performance actually happens.",
-        systemImage: "calendar.badge.exclamationmark"
-      )
-      .font(.caption.weight(.semibold))
-      .foregroundStyle(TunedInDesign.mutedText)
-    } else if detail.summary.currentUserAttendance == .went {
-      Label("You confirmed this performance happened", systemImage: "checkmark.seal.fill")
-        .font(.subheadline.weight(.semibold))
-        .foregroundStyle(TunedInDesign.primaryText)
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 18))
-    } else {
-      Button {
-        onConfirmCancelledPerformance(audience)
-      } label: {
-        Label("The performance happened — I went", systemImage: "checkmark.circle.fill")
-          .font(.headline)
-          .foregroundStyle(TunedInDesign.actionForeground)
-          .frame(maxWidth: .infinity)
-          .padding(.vertical, 13)
-          .background(TunedInDesign.accent, in: Capsule())
-      }
-      .buttonStyle(TunedInPosterButtonStyle())
-    }
-  }
-
-  private var attendanceLabel: some View {
-    Label(attendanceTitle, systemImage: attendanceIcon)
-      .font(.headline)
-      .foregroundStyle(TunedInDesign.actionForeground)
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, 13)
-      .background(TunedInDesign.accent, in: Capsule())
-  }
-
-  private var attendanceTitle: String {
-    if detail.summary.phase() == .memories {
-      switch detail.summary.currentUserAttendance {
-      case .going: return "Confirm attendance"
-      case .went: return "Went"
-      case .didNotGo: return "Didn’t go"
-      case nil: return "Add attendance"
-      }
-    }
-    return detail.summary.currentUserAttendance == nil ? "I’m going" : "Going"
-  }
-
   private var attendanceIcon: String {
     detail.summary.currentUserAttendance == nil ? "plus" : "checkmark"
-  }
-
-  private var nextAttendance: EventAttendanceStatus? {
-    guard detail.summary.currentUserAttendance == nil else { return nil }
-    return .going
-  }
-
-  private var audienceIcon: String {
-    switch audience {
-    case .privateOnly: "lock.fill"
-    case .friends: "person.2.fill"
-    case .community: "globe.americas.fill"
-    }
   }
 
   @ViewBuilder
@@ -469,40 +661,48 @@ private struct CommunityEventHero: View {
       Label("Cancelled", systemImage: "xmark.circle.fill")
         .foregroundStyle(TunedInDesign.accent)
     case .memories:
-      Label("Posts", systemImage: "square.and.pencil")
+      Label("Memories", systemImage: "square.grid.2x2")
         .foregroundStyle(TunedInDesign.accent)
     }
   }
 
-  private var friendLine: String {
-    let total = detail.summary.friendPreviews.count
-    let verb = detail.summary.phase() == .memories ? "went" : "are going"
-    return "\(total) friend\(total == 1 ? "" : "s") \(verb)"
+  private var attendanceActionTitle: String {
+    if detail.summary.phase() == .cancelled {
+      return Date.now >= detail.summary.memoryUnlockAt ? "I went" : "Attendance paused"
+    }
+    if detail.summary.phase() == .memories {
+      return detail.summary.currentUserAttendance == .went ? "Went" : "Attend"
+    }
+    return detail.summary.currentUserAttendance == .going ? "Going" : "I’m going"
   }
 }
 
-private struct EventOverviewPage: View {
+private struct EventConversationView: View {
   let detail: CommunityEventDetail
   let viewerID: UUID
   let repository: any EventRepository
-  let allowsConversation: Bool
-  let onReport: () -> Void
-  let onCommentAdded: () -> Void
+  let onChanged: () -> Void
+  let onDismiss: () -> Void
 
   @State private var comment = ""
   @State private var audience = EventAudience.friends
   @State private var replyTo: EventComment?
   @State private var isPosting = false
   @State private var errorMessage: String?
-  @State private var isShowingDetails = false
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 18) {
-      if allowsConversation {
+    ZStack {
+      TunedInDesign.pageBackground.ignoresSafeArea()
+
+      ScrollView {
+        VStack(alignment: .leading, spacing: 18) {
         VStack(alignment: .leading, spacing: 12) {
-          Text("Before the show")
-            .font(.headline)
+          Text("Chat")
+            .font(.largeTitle.weight(.bold))
             .foregroundStyle(TunedInDesign.primaryText)
+          Text(detail.summary.title)
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(TunedInDesign.mutedText)
 
           if detail.summary.phase() == .memories {
             Text("This discussion is read-only after the show.")
@@ -583,39 +783,20 @@ private struct EventOverviewPage: View {
             }
           }
         }
+        .padding(20)
+      }
       }
 
-      DisclosureGroup(isExpanded: $isShowingDetails) {
-        VStack(alignment: .leading, spacing: 12) {
-          EventMetadataRow(label: "Date", value: CommunityEventDateText.fullDate(detail.summary.eventDate))
-          if let startsAt = detail.summary.startsAt {
-            EventMetadataRow(
-              label: "Starts",
-              value: CommunityEventDateText.time(
-                startsAt,
-                timeZoneIdentifier: detail.summary.timeZoneIdentifier
-              )
-            )
-          }
-          EventMetadataRow(label: "Venue", value: detail.summary.venueName)
-          EventMetadataRow(label: "Location", value: detail.summary.areaName)
-          EventMetadataRow(label: "Source", value: detail.summary.sourceLabel)
-
-          Button(action: onReport) {
-            Label("Suggest a correction", systemImage: "exclamationmark.bubble")
-              .font(.subheadline.weight(.semibold))
-              .foregroundStyle(TunedInDesign.primaryText)
-          }
-          .buttonStyle(.plain)
-        }
-        .padding(.top, 12)
-      } label: {
-        Label("Concert details", systemImage: "info.circle")
-          .font(.subheadline.weight(.semibold))
-          .foregroundStyle(TunedInDesign.primaryText)
+      EventScrollTopMask()
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+    .safeAreaInset(edge: .bottom, spacing: 0) {
+      TunedInPersistentControlRegion {
+        TunedInSubscreenBackBar(title: "Chat", action: onDismiss)
+          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+          .padding(.top, 6)
+          .padding(.bottom, TunedInDesign.bottomControlInset)
       }
-      .tint(TunedInDesign.mutedText)
-      .padding(.vertical, 4)
     }
     .task {
       if let remembered = EventAudience(rawValue: UserDefaults.standard.string(
@@ -642,7 +823,7 @@ private struct EventOverviewPage: View {
       comment = ""
       replyTo = nil
       errorMessage = nil
-      onCommentAdded()
+      onChanged()
     } catch {
       errorMessage = error.localizedDescription
     }
@@ -681,26 +862,24 @@ private struct EventPeoplePage: View {
           .foregroundStyle(TunedInDesign.mutedText)
           .padding(.vertical, 8)
       } else {
-        ScrollView(.horizontal, showsIndicators: false) {
-          HStack(alignment: .top, spacing: 14) {
-            ForEach(sortedAttendances.prefix(8)) { attendance in
-              SocialProfileButton(profile: attendance.profile) {
-                VStack(spacing: 6) {
-                  ProfileAvatarView(profile: attendance.profile, size: 54)
-                  Text(attendance.profile.id == viewerID ? "You" : attendance.profile.displayName)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(TunedInDesign.primaryText)
-                    .lineLimit(1)
-                  Text(attendance.profile.relationship == .friends ? "Friend" : "Community")
-                    .font(.caption2)
-                    .foregroundStyle(TunedInDesign.mutedText)
-                }
-                .frame(width: 72)
-              }
+        Button(action: onViewAll) {
+          HStack(spacing: 12) {
+            EventAvatarStack(profiles: sortedAttendances.prefix(5).map(\.profile))
+            VStack(alignment: .leading, spacing: 2) {
+              Text(attendanceSummary)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(TunedInDesign.primaryText)
+              Text("View everyone")
+                .font(.caption)
+                .foregroundStyle(TunedInDesign.mutedText)
             }
+            Spacer()
+            Image(systemName: "chevron.right")
+              .font(.caption.weight(.bold))
+              .foregroundStyle(TunedInDesign.mutedText)
           }
-          .padding(.horizontal, 1)
         }
+        .buttonStyle(.plain)
       }
       Divider().overlay(TunedInDesign.cardBorder)
     }
@@ -715,6 +894,12 @@ private struct EventPeoplePage: View {
       }
       return lhs.profile.displayName < rhs.profile.displayName
     }
+  }
+
+  private var attendanceSummary: String {
+    let total = detail.attendances.count
+    let suffix = detail.summary.phase() == .memories ? "went" : "going"
+    return "\(total) \(total == 1 ? "person" : "people") \(suffix)"
   }
 }
 
@@ -738,7 +923,7 @@ private struct EventMemoriesPage: View {
           Image(systemName: "lock.fill")
             .foregroundStyle(TunedInDesign.mutedText)
           VStack(alignment: .leading, spacing: 3) {
-            Text("Posts unlock after the concert")
+            Text("Memories unlock after the concert")
               .font(.subheadline.weight(.semibold))
               .foregroundStyle(TunedInDesign.primaryText)
             Text("Add ratings, photos, videos, and a review after the concert.")
@@ -750,7 +935,7 @@ private struct EventMemoriesPage: View {
       } else {
         HStack(alignment: .firstTextBaseline) {
           VStack(alignment: .leading, spacing: 4) {
-            Text("Posts")
+            Text("Memories")
               .font(.title2.weight(.bold))
               .foregroundStyle(TunedInDesign.primaryText)
             if let score = detail.summary.averagePostScore {
@@ -758,7 +943,7 @@ private struct EventMemoriesPage: View {
                 CommunityEventScoreBadge(score: score, size: .compact)
                 Text(
                   "average from \(detail.summary.postCount) visible "
-                    + (detail.summary.postCount == 1 ? "post" : "posts")
+                    + (detail.summary.postCount == 1 ? "memory" : "memories")
                 )
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(TunedInDesign.mutedText)
@@ -767,7 +952,7 @@ private struct EventMemoriesPage: View {
           }
           Spacer()
           if detail.summary.canCreatePost() {
-            Button(myPost == nil ? "Create post" : "Edit post") {
+            Button(myPost == nil ? "Add memory" : "Edit memory") {
               isPresentingPost = true
             }
             .font(.subheadline.weight(.bold))
@@ -778,7 +963,7 @@ private struct EventMemoriesPage: View {
         }
 
         if detail.postPreviews.isEmpty {
-          Text("No posts yet. Going or Went still works without posting.")
+          Text("No memories yet. Going or Went still works without posting.")
             .font(.subheadline)
             .foregroundStyle(TunedInDesign.mutedText)
             .padding(.vertical, 12)
@@ -801,7 +986,7 @@ private struct EventMemoriesPage: View {
           if shouldShowAllPosts {
             Button { isPresentingAllPosts = true } label: {
               HStack {
-                Text("View all \(detail.summary.postCount) posts")
+                Text("View all \(detail.summary.postCount) memories")
                 Spacer()
                 Image(systemName: "chevron.right")
               }

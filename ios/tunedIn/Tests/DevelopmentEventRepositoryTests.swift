@@ -45,6 +45,33 @@
     }
 
     @Test
+    func eventScopedInvitationCanBeAcceptedWithoutDependingOnTheInboxPage() async throws {
+      let repository = DevelopmentEventRepository(now: now)
+      let viewerID = DevelopmentSocialFixture.currentUserID
+      let eventID = DevelopmentEventFixture.emptyUpcomingID
+
+      let invitation = try #require(
+        await repository.pendingInvitation(eventID: eventID, viewerID: viewerID)
+      )
+      #expect(invitation.sender.id == DevelopmentSocialFixture.morganID)
+
+      try await repository.respondToInvitation(
+        invitationID: invitation.id,
+        viewerID: viewerID,
+        response: .accepted,
+        audience: .friends
+      )
+
+      let remainingInvitation = try await repository.pendingInvitation(
+        eventID: eventID,
+        viewerID: viewerID
+      )
+      #expect(remainingInvitation == nil)
+      let detail = try await repository.eventDetail(id: eventID, viewerID: viewerID)
+      #expect(detail.summary.currentUserAttendance == .going)
+    }
+
+    @Test
     func fixturesIncludePurposefullyEmptyAndPackedConcerts() async throws {
       let repository = DevelopmentEventRepository(now: now)
       let viewerID = DevelopmentSocialFixture.currentUserID

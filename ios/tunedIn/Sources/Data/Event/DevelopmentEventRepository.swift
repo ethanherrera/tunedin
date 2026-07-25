@@ -26,6 +26,7 @@
     }
 
     private var events: [UUID: StoredEvent]
+    private var pendingInvitationByEventID: [UUID: EventInvitation]
     private var nextCreatedEventValue = 100
     private var nextPostValue = 100
     private var preparedPostIDs: [UUID: UUID] = [:]
@@ -34,6 +35,15 @@
     init(now: Date = .now) {
       self.now = now
       events = Self.makeFixtures(now: now)
+      let event = events[DevelopmentEventFixture.emptyUpcomingID]!.summary
+      pendingInvitationByEventID = [
+        event.id: EventInvitation(
+          id: Self.uuid(value: 1, prefix: "E1"),
+          event: event,
+          sender: Self.profile(DevelopmentSocialFixture.morganID),
+          createdAt: now.addingTimeInterval(-3_600)
+        )
+      ]
     }
 
     func searchEvents(query: String, viewerID: UUID) async throws -> [CommunityEventSummary] {
@@ -42,6 +52,9 @@
         .filter { stored in
           normalized.isEmpty
             || stored.summary.title.lowercased().contains(normalized)
+            || stored.summary.artists.contains {
+              $0.displayName.lowercased().contains(normalized)
+            }
             || stored.summary.venueName.lowercased().contains(normalized)
             || stored.summary.areaName.lowercased().contains(normalized)
         }
@@ -247,17 +260,36 @@
       events[eventID] = stored
     }
 
-    func pendingInvitations(viewerID _: UUID) async throws -> [EventInvitation] {
-      []
+    func pendingInvitations(viewerID: UUID) async throws -> [EventInvitation] {
+      guard viewerID == DevelopmentSocialFixture.currentUserID else { return [] }
+      return pendingInvitationByEventID.values.sorted { $0.createdAt > $1.createdAt }
+    }
+
+    func pendingInvitation(eventID: UUID, viewerID: UUID) async throws -> EventInvitation? {
+      guard viewerID == DevelopmentSocialFixture.currentUserID else { return nil }
+      return pendingInvitationByEventID[eventID]
     }
 
     func respondToInvitation(
-      invitationID _: UUID,
-      viewerID _: UUID,
-      response _: EventInvitationResponse,
-      audience _: EventAudience
+      invitationID: UUID,
+      viewerID: UUID,
+      response: EventInvitationResponse,
+      audience: EventAudience
     ) async throws {
-      throw CommunityEventError.invitationUnavailable
+      guard viewerID == DevelopmentSocialFixture.currentUserID,
+            let invitation = pendingInvitationByEventID.values.first(where: { $0.id == invitationID })
+      else {
+        throw CommunityEventError.invitationUnavailable
+      }
+      pendingInvitationByEventID[invitation.event.id] = nil
+      if response == .accepted {
+        _ = try await setAttendance(
+          eventID: invitation.event.id,
+          viewerID: viewerID,
+          status: .going,
+          audience: audience
+        )
+      }
     }
 
     func savePost(
@@ -403,6 +435,7 @@
         catalogPlaceID: input.place.id,
         catalogAreaID: areaID,
         catalogTourID: input.tour?.id,
+        tourName: input.tour?.displayName,
         venueName: input.place.displayName,
         areaName: areaName,
         eventDate: input.eventDate,
@@ -531,6 +564,7 @@
         catalogPlaceID: stored.summary.catalogPlaceID,
         catalogAreaID: stored.summary.catalogAreaID,
         catalogTourID: stored.summary.catalogTourID,
+        tourName: stored.summary.tourName,
         venueName: stored.summary.venueName,
         areaName: stored.summary.areaName,
         eventDate: stored.summary.eventDate,
@@ -657,6 +691,7 @@
         catalogPlaceID: upcoming.catalogPlaceID,
         catalogAreaID: upcoming.catalogAreaID,
         catalogTourID: nil,
+        tourName: nil,
         venueName: upcoming.venueName,
         areaName: upcoming.areaName,
         eventDate: future,
@@ -886,6 +921,7 @@
         catalogPlaceID: placeID,
         catalogAreaID: areaID,
         catalogTourID: artist == "Mitski" ? DevelopmentMusicCatalogFixture.landTourID : nil,
+        tourName: artist == "Mitski" ? "The Land Is Inhospitable Tour" : nil,
         venueName: venue,
         areaName: area,
         eventDate: eventDate,

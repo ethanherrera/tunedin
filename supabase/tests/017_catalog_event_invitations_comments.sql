@@ -1,6 +1,6 @@
 begin;
 
-select plan(19);
+select plan(21);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -103,11 +103,27 @@ select is(
   'a sender can invite a friend'
 );
 
+select set_config('request.jwt.claim.sub', 'e4000000-0000-4000-8000-000000000003', true);
+select is(
+  (select count(*) from public.get_pending_catalog_event_invitation(
+    current_setting('test.comment_event')::uuid
+  )),
+  0::bigint,
+  'a non-recipient cannot look up a pending invitation'
+);
+
 select set_config('request.jwt.claim.sub', 'e4000000-0000-4000-8000-000000000002', true);
 select is(
   (select count(*) from public.list_pending_catalog_event_invitations(null, 20)),
   1::bigint,
   'the recipient sees one pending invitation'
+);
+select is(
+  (select count(*) from public.get_pending_catalog_event_invitation(
+    current_setting('test.comment_event')::uuid
+  )),
+  1::bigint,
+  'the recipient can look up the event-scoped pending invitation'
 );
 select set_config('test.comment_invitation', (
   select invitation_id::text from public.list_pending_catalog_event_invitations(null, 20)

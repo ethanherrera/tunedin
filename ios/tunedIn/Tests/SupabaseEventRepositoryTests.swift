@@ -292,7 +292,8 @@ extension SupabaseEventRepositoryContractTests {
         ],
         "catalog_place_id":"30000000-0000-0000-0000-000000000001",
         "catalog_area_id":"40000000-0000-0000-0000-000000000001",
-        "catalog_tour_id":null,
+        "catalog_tour_id":"40000000-0000-0000-0000-000000000003",
+        "tour_name":"The Land Is Inhospitable Tour",
         "venue_name":"The Anthem",
         "area_name":"Washington, D.C.",
         "event_date":"2026-09-17",
@@ -311,7 +312,8 @@ extension SupabaseEventRepositoryContractTests {
     let summary = try CommunityEventSummary(databaseRecord: record)
 
     #expect(summary.id == UUID(uuidString: "50000000-0000-0000-0000-000000000001"))
-    #expect(summary.title == "Mitski")
+    #expect(summary.title == "The Land Is Inhospitable Tour")
+    #expect(summary.headlinerName == "Mitski")
     #expect(summary.venueName == "The Anthem")
     #expect(summary.areaName == "Washington, D.C.")
     #expect(summary.timeZoneIdentifier == "America/New_York")
