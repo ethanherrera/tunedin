@@ -122,7 +122,14 @@ struct CommunityCalendarView: View {
       } else {
         ForEach(entries) { entry in
           Button { onOpenEvent(entry.event) } label: {
-            AgendaRow(entry: entry)
+            ConcertPreviewCard(
+              event: entry.event,
+              showsSource: false,
+              eventRepository: repository,
+              style: .card,
+              statusText: entry.statusTitle,
+              friends: entry.friends
+            )
           }
             .buttonStyle(TunedInPosterButtonStyle())
         }
@@ -191,7 +198,7 @@ struct CommunityCalendarView: View {
         VStack(alignment: .leading, spacing: 10) {
           Text("\(invitation.sender.displayName) invited you").font(.headline)
           Button { onOpenEvent(invitation.event); isShowingInvitations = false } label: {
-            CommunityEventRow(event: invitation.event, showsSource: false, eventRepository: repository)
+            ConcertPreviewCard(event: invitation.event, showsSource: false, eventRepository: repository)
           }
           HStack {
             Button("Not now") { onRespondInvitation(invitation, .declined) }.buttonStyle(.bordered)
@@ -232,6 +239,14 @@ private struct CalendarEntry: Identifiable {
   let state: CommunityCalendarView.PersonalState
   let friends: [EventFriendPreview]
   var id: UUID { event.id }
+
+  var statusTitle: String {
+    switch state {
+    case .going: "Going"
+    case .went: "Went"
+    case .invited: "Invited"
+    }
+  }
 }
 
 private struct CalendarFriendPicker: View {
@@ -358,79 +373,6 @@ private struct CalendarFriendPickerRow: View {
       in: RoundedRectangle(cornerRadius: TunedInDesign.mediumCornerRadius, style: .continuous)
     )
     .accessibilityElement(children: .combine)
-  }
-}
-
-private struct AgendaRow: View {
-  let entry: CalendarEntry
-
-  var body: some View {
-    let time = CommunityEventDateText.time(for: entry.event)
-    HStack(spacing: 12) {
-      AgendaDateTile(date: entry.event.eventDate)
-      VStack(alignment: .leading, spacing: 3) {
-        Text(entry.event.title)
-          .font(.subheadline.weight(.bold))
-          .foregroundStyle(TunedInDesign.primaryText)
-          .lineLimit(1)
-        if entry.event.title != entry.event.headlinerName {
-          Text(entry.event.headlinerName)
-            .font(.caption.weight(.medium))
-            .foregroundStyle(TunedInDesign.primaryText)
-            .lineLimit(1)
-        }
-        Text("\(entry.event.venueName) · \(time)")
-          .font(.caption).foregroundStyle(TunedInDesign.mutedText).lineLimit(1)
-        if !entry.friends.isEmpty {
-          AvatarStack(friends: entry.friends)
-        } else {
-          Text(entry.state == .invited ? "Invited" : (entry.state == .went ? "Went" : "Going"))
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(TunedInDesign.accent)
-        }
-      }
-      Spacer()
-      Image(systemName: "chevron.right")
-        .font(.caption.weight(.bold))
-        .foregroundStyle(TunedInDesign.mutedText)
-    }
-    .padding(10).background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-  }
-}
-
-private struct AgendaDateTile: View {
-  let date: Date
-
-  var body: some View {
-    VStack(spacing: 1) {
-      Text(CommunityEventDateText.month(date))
-        .font(.caption2.weight(.bold))
-        .textCase(.uppercase)
-        .foregroundStyle(TunedInDesign.accent)
-      Text(CommunityEventDateText.day(date))
-        .font(.title3.weight(.bold))
-        .foregroundStyle(TunedInDesign.primaryText)
-    }
-    .frame(width: 52, height: 52)
-    .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-  }
-}
-
-private struct AvatarStack: View {
-  let friends: [EventFriendPreview]
-  var body: some View {
-    HStack(spacing: -7) {
-      ForEach(friends.prefix(3)) {
-        ProfileAvatarView(profile: $0.profile, size: 20)
-          .overlay(Circle().stroke(TunedInDesign.cardBackground, lineWidth: 1.5))
-      }
-      if friends.count > 3 {
-        Text("+\(friends.count - 3)")
-          .font(.caption2.weight(.bold))
-          .foregroundStyle(TunedInDesign.mutedText)
-          .padding(.leading, 10)
-      }
-    }
   }
 }
 
