@@ -191,11 +191,12 @@ struct TunedInGlassIconButton: View {
   let systemImage: String
   let accessibilityLabel: String
   var style: Style = .neutral
+  var remainsVisibleWithKeyboard = false
   let action: () -> Void
   @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
 
   var body: some View {
-    if keyboardPresentation.showsPersistentGlass {
+    if keyboardPresentation.showsPersistentGlass || remainsVisibleWithKeyboard {
       Button(action: action) {
         Image(systemName: systemImage)
           .font(.body.weight(.bold))
@@ -309,14 +310,23 @@ private struct TunedInGlassEffectIdentity: ViewModifier {
 }
 
 struct TunedInPersistentControlRegion<Content: View>: View {
+  let keepsVisibleWithKeyboard: Bool
   @ViewBuilder let content: Content
   @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
 
+  init(
+    keepsVisibleWithKeyboard: Bool = false,
+    @ViewBuilder content: () -> Content
+  ) {
+    self.keepsVisibleWithKeyboard = keepsVisibleWithKeyboard
+    self.content = content()
+  }
+
   var body: some View {
     content
-      .opacity(keyboardPresentation.showsPersistentGlass ? 1 : 0)
-      .allowsHitTesting(keyboardPresentation.showsPersistentGlass)
-      .accessibilityHidden(!keyboardPresentation.showsPersistentGlass)
+      .opacity(keepsVisibleWithKeyboard || keyboardPresentation.showsPersistentGlass ? 1 : 0)
+      .allowsHitTesting(keepsVisibleWithKeyboard || keyboardPresentation.showsPersistentGlass)
+      .accessibilityHidden(!keepsVisibleWithKeyboard && !keyboardPresentation.showsPersistentGlass)
   }
 }
 

@@ -89,7 +89,7 @@ struct CommunityEventDetailView: View {
     }
     .toolbar(.hidden, for: .navigationBar)
     .safeAreaInset(edge: .bottom, spacing: 0) {
-      TunedInPersistentControlRegion {
+      TunedInPersistentControlRegion(keepsVisibleWithKeyboard: true) {
         eventBottomBar
           .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
           .padding(.top, 6)
@@ -260,6 +260,7 @@ struct CommunityEventDetailView: View {
       TunedInGlassIconButton(
         systemImage: "chevron.backward",
         accessibilityLabel: "Back to previous screen",
+        remainsVisibleWithKeyboard: true,
         action: onDismiss
       )
     } center: {
