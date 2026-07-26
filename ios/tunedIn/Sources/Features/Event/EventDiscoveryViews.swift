@@ -22,8 +22,8 @@ struct EventDiscoveryView: View {
   @State private var results: [CommunityEventSummary] = []
   @State private var isLoadingEvents = false
   @State private var eventErrorMessage: String?
-  @State private var hasActivatedSearch = false
   @State private var peopleModel: PeopleHubModel
+  @FocusState private var isSearchFocused: Bool
 
   init(
     viewerID: UUID,
@@ -54,19 +54,20 @@ struct EventDiscoveryView: View {
           TunedInGlassSearchField(
             text: $query,
             prompt: selectedScope == .concerts ? "Search concerts" : "Search people by username",
-            onActivate: { hasActivatedSearch = true }
+            onFocusChange: { isSearchFocused = $0 }
           )
 
-          if hasActivatedSearch || !query.isEmpty {
-            Picker("Search category", selection: $selectedScope) {
-              ForEach(SearchScope.allCases, id: \.self) { scope in
-                Text(scope.rawValue).tag(scope)
-              }
+          Picker("Search category", selection: $selectedScope) {
+            ForEach(SearchScope.allCases, id: \.self) { scope in
+              Text(scope.rawValue).tag(scope)
             }
-            .pickerStyle(.segmented)
-
-            searchResults
           }
+          .pickerStyle(.segmented)
+          .opacity(isSearchActive ? 1 : 0)
+          .allowsHitTesting(isSearchActive)
+          .accessibilityHidden(!isSearchActive)
+
+          searchResults
         }
         .padding(.horizontal, 20)
         .padding(.top, 18)
@@ -179,6 +180,10 @@ struct EventDiscoveryView: View {
     case .people:
       ProfileInput.normalizedSearchQuery(query)
     }
+  }
+
+  private var isSearchActive: Bool {
+    isSearchFocused || !query.isEmpty
   }
 
   @MainActor

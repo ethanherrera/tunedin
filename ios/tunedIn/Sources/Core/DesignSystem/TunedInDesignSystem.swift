@@ -313,9 +313,10 @@ struct TunedInPersistentControlRegion<Content: View>: View {
   @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
 
   var body: some View {
-    if keyboardPresentation.showsPersistentGlass {
-      content
-    }
+    content
+      .opacity(keyboardPresentation.showsPersistentGlass ? 1 : 0)
+      .allowsHitTesting(keyboardPresentation.showsPersistentGlass)
+      .accessibilityHidden(!keyboardPresentation.showsPersistentGlass)
   }
 }
 
@@ -424,7 +425,7 @@ struct TunedInGlassSearchField: View {
   @Binding var text: String
   let prompt: String
   let style: Style
-  let onActivate: (() -> Void)?
+  let onFocusChange: ((Bool) -> Void)?
   @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
   @FocusState private var isFocused: Bool
 
@@ -432,12 +433,12 @@ struct TunedInGlassSearchField: View {
     text: Binding<String>,
     prompt: String,
     style: Style = .standard,
-    onActivate: (() -> Void)? = nil
+    onFocusChange: ((Bool) -> Void)? = nil
   ) {
     _text = text
     self.prompt = prompt
     self.style = style
-    self.onActivate = onActivate
+    self.onFocusChange = onFocusChange
   }
 
   var body: some View {
@@ -446,15 +447,14 @@ struct TunedInGlassSearchField: View {
         Image(systemName: "magnifyingglass")
           .foregroundStyle(TunedInDesign.mutedText)
 
-        TextField(prompt, text: $text, onEditingChanged: { isEditing in
-          if isEditing {
-            onActivate?()
-          }
-        })
+        TextField(prompt, text: $text)
           .textInputAutocapitalization(.never)
           .autocorrectionDisabled()
           .submitLabel(.search)
           .focused($isFocused)
+          .onChange(of: isFocused) { _, isFocused in
+            onFocusChange?(isFocused)
+          }
           .onSubmit { isFocused = false }
           .foregroundStyle(TunedInDesign.primaryText)
 
@@ -478,13 +478,6 @@ struct TunedInGlassSearchField: View {
         )
       )
 
-      if isFocused {
-        Button("Done") { isFocused = false }
-          .font(.subheadline.weight(.semibold))
-          .foregroundStyle(TunedInDesign.accent)
-          .transition(.opacity)
-          .accessibilityHint("Keeps the current search results visible")
-      }
     }
   }
 }
