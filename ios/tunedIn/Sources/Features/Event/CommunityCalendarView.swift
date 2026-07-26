@@ -110,7 +110,7 @@ struct CommunityCalendarView: View {
         Spacer()
         if selectedDay != nil {
           Button { withAnimation { selectedDay = nil } } label: {
-            Label("Show calendar", systemImage: "xmark")
+            Text("Show All")
               .font(.caption.weight(.semibold))
           }
           .buttonStyle(.bordered)
