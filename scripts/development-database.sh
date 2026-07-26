@@ -51,7 +51,7 @@ link_development_project() {
 
 require_protected_workflow() {
   if [[ "${GITHUB_ACTIONS:-}" != "true" || "${GITHUB_REF:-}" != refs/heads/* ]]; then
-    printf 'Development migrations may be applied only by the protected GitHub workflow from an explicitly requested branch.\n' >&2
+    printf 'Development migrations may be applied only by the manually dispatched GitHub workflow from an explicitly requested branch.\n' >&2
     exit 1
   fi
 }

@@ -12,7 +12,7 @@ Commands:
   status  List the deployed allow-listed function and configured secret names.
   plan    Show the reviewed commit and exact function that a later apply would deploy.
   apply   Reconcile runtime configuration and deploy only music-catalog from the
-          protected GitHub Development workflow on an explicitly requested
+          manually dispatched GitHub Development workflow on an explicitly requested
           branch.
 
 This helper never applies migrations, resets or seeds hosted data, deploys Supabase
@@ -29,7 +29,7 @@ require_command() {
 
 require_protected_workflow() {
   if [[ "${GITHUB_ACTIONS:-}" != "true" || "${GITHUB_REF:-}" != refs/heads/* ]]; then
-    printf 'Development Functions may be deployed only by the protected workflow from an explicitly requested branch.\n' >&2
+    printf 'Development Functions may be deployed only by the manually dispatched workflow from an explicitly requested branch.\n' >&2
     exit 1
   fi
   if [[ "${TUNEDIN_DEPLOYMENT_ENVIRONMENT:-}" != "Development" ]]; then

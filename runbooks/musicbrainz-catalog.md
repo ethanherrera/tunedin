@@ -108,7 +108,7 @@ make dev-functions-plan
 ```
 
 After the migration is deployed from the branch under test, dispatch the separate
-protected Function workflow from that same branch:
+manually dispatched Function workflow from that same branch:
 
 ```sh
 make dev-functions-deploy
