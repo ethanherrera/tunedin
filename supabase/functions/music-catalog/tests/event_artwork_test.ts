@@ -45,7 +45,7 @@ Deno.test("exact Event Art Archive artwork wins without consulting artist fallba
     remote_url: "https://images.example.test/event-500.jpg",
     provider_name: "MusicBrainz Event Art Archive",
     attribution: null,
-    source_page_url: "https://coverartarchive.org/event/f4000000-0000-4000-8000-000000000001",
+    source_page_url: "https://eventartarchive.org/event/f4000000-0000-4000-8000-000000000001",
     license_name: null,
     license_url: null,
   });

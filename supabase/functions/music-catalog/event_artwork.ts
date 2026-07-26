@@ -53,7 +53,7 @@ export class MusicBrainzEventArtworkScheduler implements EventArtworkScheduler {
     this.#defer = options.defer;
     this.#waitForMusicBrainzSlot = options.waitForMusicBrainzSlot;
     this.#fetch = options.fetch ?? fetch;
-    this.#eventArtBaseUrl = options.eventArtBaseUrl ?? new URL("https://coverartarchive.org/");
+    this.#eventArtBaseUrl = options.eventArtBaseUrl ?? new URL("https://eventartarchive.org/");
     this.#coverArtBaseUrl = options.coverArtBaseUrl ?? new URL("https://coverartarchive.org/");
     this.#wikidataBaseUrl = options.wikidataBaseUrl ?? new URL("https://www.wikidata.org/");
     this.#commonsApiUrl = options.commonsApiUrl ??
@@ -171,7 +171,7 @@ export class MusicBrainzEventArtworkScheduler implements EventArtworkScheduler {
       remote_url: imageUrl,
       provider_name: EVENT_ART_PROVIDER,
       attribution: null,
-      source_page_url: `https://coverartarchive.org/event/${eventMbid}`,
+      source_page_url: `https://eventartarchive.org/event/${eventMbid}`,
       license_name: null,
       license_url: null,
     };

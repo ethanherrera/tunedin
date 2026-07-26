@@ -15,6 +15,8 @@ Deno.test("hosted configuration accepts only official MusicBrainz and a contacta
     MUSICBRAINZ_USER_AGENT: "tunedIn/abc123 (mailto:catalog@example.com)",
   });
   assert.equal(configuration.musicBrainzBaseUrl.href, "https://musicbrainz.org/ws/2/");
+  assert.equal(configuration.musicBrainzEventArtBaseUrl.href, "https://eventartarchive.org/");
+  assert.equal(configuration.musicBrainzArtworkBaseUrl.href, "https://coverartarchive.org/");
 
   assert.throws(
     () =>

@@ -15,6 +15,7 @@ interface RuntimeConfiguration {
   anonymousKey: string;
   serviceRoleKey: string;
   musicBrainzBaseUrl: URL;
+  musicBrainzEventArtBaseUrl: URL;
   musicBrainzArtworkBaseUrl: URL;
   musicBrainzUserAgent: string;
 }
@@ -33,12 +34,16 @@ export function runtimeConfiguration(
   const configuredArtworkBaseUrl = environment.MUSICBRAINZ_ARTWORK_BASE_URL ??
     "https://coverartarchive.org/";
   const musicBrainzArtworkBaseUrl = requiredUrl(configuredArtworkBaseUrl);
+  const configuredEventArtBaseUrl = environment.MUSICBRAINZ_EVENT_ART_BASE_URL ??
+    (tunedInEnvironment === "Local" ? configuredArtworkBaseUrl : "https://eventartarchive.org/");
+  const musicBrainzEventArtBaseUrl = requiredUrl(configuredEventArtBaseUrl);
   const musicBrainzUserAgent = environment.MUSICBRAINZ_USER_AGENT ??
     "tunedIn/local (mailto:fixture-only@tunedin.invalid)";
 
   if (tunedInEnvironment === "Local") {
     if (
       !isLocalSupabaseUrl(supabaseUrl) || !isLocalMusicBrainzUrl(musicBrainzBaseUrl) ||
+      !isLocalArtworkUrl(musicBrainzEventArtBaseUrl) ||
       !isLocalArtworkUrl(musicBrainzArtworkBaseUrl)
     ) {
       throw configurationFailure();
@@ -52,6 +57,7 @@ export function runtimeConfiguration(
     }
     if (
       musicBrainzBaseUrl.href !== "https://musicbrainz.org/ws/2/" ||
+      musicBrainzEventArtBaseUrl.href !== "https://eventartarchive.org/" ||
       musicBrainzArtworkBaseUrl.href !== "https://coverartarchive.org/"
     ) {
       throw configurationFailure();
@@ -65,6 +71,7 @@ export function runtimeConfiguration(
     anonymousKey,
     serviceRoleKey,
     musicBrainzBaseUrl,
+    musicBrainzEventArtBaseUrl,
     musicBrainzArtworkBaseUrl,
     musicBrainzUserAgent,
   };
@@ -92,7 +99,7 @@ export function buildRuntimeHandler(
     backend,
     musicBrainzBaseUrl: configuration.musicBrainzBaseUrl,
     musicBrainzUserAgent: configuration.musicBrainzUserAgent,
-    eventArtBaseUrl: configuration.musicBrainzArtworkBaseUrl,
+    eventArtBaseUrl: configuration.musicBrainzEventArtBaseUrl,
     coverArtBaseUrl: configuration.musicBrainzArtworkBaseUrl,
     defer: deferBackgroundTask,
     waitForMusicBrainzSlot: () => {
