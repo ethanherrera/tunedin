@@ -50,12 +50,15 @@ struct CommunityEventDetailView: View {
       TunedInDesign.pageBackground.ignoresSafeArea()
 
       if let detail, detail.summary.cover != nil {
-        CommunityEventCoverImage(event: detail.summary, repository: repository)
-          .scaleEffect(1.16)
-          .blur(radius: 30)
-          .opacity(0.13)
-          .ignoresSafeArea()
-          .allowsHitTesting(false)
+        GeometryReader { proxy in
+          CommunityEventCoverImage(event: detail.summary, repository: repository)
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .scaleEffect(1.16)
+            .blur(radius: 30)
+            .opacity(0.13)
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
       }
 
       if isLoading, detail == nil {
