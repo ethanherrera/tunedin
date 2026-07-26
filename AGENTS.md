@@ -52,6 +52,7 @@ This repository contains the native tunedIn MVP: a SwiftUI iOS client and its Su
 - When Ethan explicitly resumes the work, first reopen the Simulator and exercise the affected journey from the last verified state before making additional iOS edits. If access was lost after an edit, leave that work uncommitted and identify it clearly until it has been inspected in the Simulator.
 - Run `make generate`, `make lint`, and `make test` for iOS changes.
 - After changing user interface behavior or layout, exercise the affected flow in the iPhone 13 Simulator with Computer Use and visually inspect the resulting state before handoff. A successful build alone is not sufficient UI verification.
+- When handing off simulator work for manual review, leave the app running in the requested app screen. Never leave the user at the Simulator Home screen or outside the app after launching it.
 - For an end-to-end local iOS path, run `make local-db-reset` once for the documented real local accounts and journeys, then use `make simulator-local` for subsequent launches. The simulator command starts/reuses Local Supabase and configures the ignored Local xcconfig without resetting data; the Local-only seeded-account picker creates normal Supabase sessions, while local Inbucket remains for email-auth testing.
 - Run `supabase test db` for migrations, RLS, or RPC changes; add behavior-focused pgTAP authorization tests.
 - Keep generated Swift database DTOs committed and current after a schema change.
