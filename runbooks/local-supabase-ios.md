@@ -2,13 +2,13 @@
 
 ## Purpose
 
-Run the complete tunedIn iOS journey—email sign-in, onboarding, private concerts, friendships, collaboration, comments, sharing, and activity—against the disposable Docker Supabase stack. Each reset loads valid, deterministic accounts and backend states so manual testing starts with usable data rather than setup screens. This procedure never contacts or changes `tunedin-dev`.
+Run the complete tunedIn iOS journey—email sign-in, onboarding, private concerts, friendships, collaboration, comments, sharing, and activity—against the current worktree's disposable Docker Supabase stack. Each reset loads valid, deterministic accounts and backend states so manual testing starts with usable data rather than setup screens. This procedure never contacts or changes `tunedin-dev`.
 
 ## Prerequisites and permissions
 
 - Docker Desktop is running.
 - Supabase CLI, Xcode, and an iPhone 13 Simulator are installed; run `make setup` to verify tools.
-- The local database may be reset. Do not use this procedure for data that must persist.
+- The current worktree's local database may be reset. Do not use this procedure for data that must persist.
 
 ## Commands
 
@@ -23,7 +23,7 @@ make local-db-reset
 make simulator-local
 ```
 
-`make local-db-reset` already runs the seed verification; `make local-seed-verify` is useful after inspecting or changing local data. `make simulator-local` automatically starts the Local stack and refreshes `Local.xcconfig`, but deliberately does not reset data—use `make local-db-reset` only when you want the catalog restored.
+`make local-db-reset` already runs the seed verification; `make local-seed-verify` is useful after inspecting or changing local data. `make simulator-local` automatically starts this worktree's Local stack and refreshes `Local.xcconfig`, but deliberately does not reset data—use `make local-db-reset` only when you want this worktree's catalog restored.
 
 ## Seeded accounts and journeys
 
@@ -46,15 +46,15 @@ To sign in to any seeded account:
 1. Tap **Continue as Local Listener** for the primary account, or **Choose another seeded account** for a specific journey.
 2. The app signs in through normal Local Supabase password auth and immediately applies the account's profile and RLS permissions.
 
-Sign out and repeat with another seeded address to inspect that person's valid view. The local database keeps all catalog data until the next `make local-db-reset`.
+Sign out and repeat with another seeded address to inspect that person's valid view. This worktree's local database keeps all catalog data until the next `make local-db-reset`.
 
-To test the email-link flow itself instead, enter a seeded address manually, use Local Inbucket at `http://127.0.0.1:54324`, copy the **Sign in** button address without opening it on the Mac, run `make simulator-auth-link`, then choose **Open** in tunedIn.
+To test the email-link flow itself instead, enter a seeded address manually, use the Inbucket URL from `./scripts/worktree-local-supabase.sh status`, copy the **Sign in** button address without opening it on the Mac, run `make simulator-auth-link`, then choose **Open** in tunedIn.
 
 ## Expected result and verification
 
 - `make local-db-reset` starts or reuses Docker Supabase, applies every migration, loads the local development seed, and passes `make local-seed-verify`.
 - `make local-seed-verify` proves the catalog contains 16 Local Auth accounts, 15 completed profiles plus one onboarding profile, five primary-account friends, pending outgoing/incoming/declined relationship states, six discoverable profiles, 24 concerts, eight collaborations, twelve comments, 73 activity events, and no private concert with collaborators.
-- `make simulator-local` starts or reuses Local Supabase, writes the running local API URL and publishable key only to ignored `ios/Config/Local.xcconfig`, then builds the `tunedIn-Local` scheme, installs it into the booted Simulator, and launches it. It never prints the key or resets data.
+- `make simulator-local` starts or reuses this worktree's Local Supabase, writes the running local API URL and publishable key only to ignored `ios/Config/Local.xcconfig`, then builds the `tunedIn-Local` scheme, installs it into this worktree's Simulator, and launches it. It never prints the key or resets data.
 - The Local scheme stores its temporary Supabase session and PKCE verifier in the Simulator app sandbox because command-line Simulator builds are unsigned. It is constrained to `127.0.0.1`/`localhost` and must never be used with a hosted project.
 - The Local-only account picker signs into seeded real Local Auth accounts with normal password sessions, so the app can create additional data through the hardened RPCs if a destructive/empty-state journey needs it and exercise collaboration/comment/activity paths under the same RLS and RPC rules covered by pgTAP.
 - Run `make backend-test` whenever schema, RLS, RPC, or realtime publication changes. Run `make test-local` after native changes that could depend on Local configuration.

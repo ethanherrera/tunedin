@@ -32,6 +32,7 @@ make build
 make test
 make lint
 make format
+make simulator-status
 make simulator-auth-link
 make simulator-onboarding
 make simulator-profile
@@ -45,9 +46,15 @@ make staging-status SUPABASE_PROJECT_REF=YOUR_STAGING_PROJECT_REF
 make staging-plan SUPABASE_PROJECT_REF=YOUR_STAGING_PROJECT_REF
 ```
 
+Local iOS build, test, install, launch, Auth-link, and cache commands target a dedicated iPhone 13
+Simulator whose identity is derived from the current Git worktree path. Different worktrees can
+therefore run at the same time without installing over one another or sharing app containers, and
+each worktree keeps build products in its own ignored `DerivedData/`. Run `make simulator-delete`
+before removing a worktree; see the [Worktree Simulators runbook](runbooks/worktree-simulators.md).
+
 For the temporary Development magic-link flow, copy the email button's link address and run
-`make simulator-auth-link` while tunedIn is installed in a booted Simulator. The helper validates
-the clipboard URL and never prints the one-time token.
+`make simulator-auth-link` while tunedIn is installed in this worktree's Simulator. The helper
+validates the clipboard URL and never prints the one-time token.
 
 The `simulator-onboarding`, `simulator-profile`, and `simulator-profile-error` commands launch
 Development-only deterministic UI fixtures without sending email. They do not create a Supabase

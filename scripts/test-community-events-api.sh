@@ -4,6 +4,9 @@ set -euo pipefail
 
 command -v jq >/dev/null || { echo "jq is required for the community-event API test." >&2; exit 1; }
 
+root_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+local_supabase_helper="${root_dir}/scripts/worktree-local-supabase.sh"
+
 api_url=""
 publishable_key=""
 while IFS='=' read -r key quoted_value; do
@@ -13,7 +16,7 @@ while IFS='=' read -r key quoted_value; do
     API_URL) api_url="$value" ;;
     PUBLISHABLE_KEY) publishable_key="$value" ;;
   esac
-done < <(supabase status -o env)
+done < <("${local_supabase_helper}" status-env)
 
 if [[ "$api_url" != http://127.0.0.1:* || -z "$publishable_key" ]]; then
   echo "Community-event integration tests run only against Local Supabase. Run 'make local-db-reset'." >&2

@@ -3,11 +3,12 @@ SHELL := /bin/bash
 PROJECT := tunedIn.xcodeproj
 SCHEME := tunedIn-Development
 LOCAL_SCHEME := tunedIn-Local
-DESTINATION := platform=iOS Simulator,name=iPhone 13
+DESTINATION ?=
+DERIVED_DATA_PATH ?= $(CURDIR)/DerivedData
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup configure local-db-start configure-local-supabase local-next-steps generate format lint workflow-lint distribution-metadata-verify staging-configuration-test staging-auth-test staging-auth-plan staging-auth-verify staging-apple-sign-in-test staging-apple-sign-in-plan staging-apple-sign-in-verify staging-ipa-signing-test posthog-test posthog-plan posthog-verify posthog-apply build build-local build-staging archive-staging test test-local check cache-reset simulator-auth-link simulator-local simulator-catalog simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error simulator-community-events local-db-reset local-seed-verify supabase-types check-supabase-types backend-test functions-test local-catalog-start local-catalog-stop local-catalog-status local-catalog-verify musicbrainz-smoke community-events-integration-test storage-integration-test backend-verify dev-status dev-plan dev-deploy dev-functions-status dev-functions-plan dev-functions-deploy dev-login-link simulator-dev-login staging-status staging-plan staging-promote
+.PHONY: help setup configure local-db-start configure-local-supabase local-status local-next-steps generate format lint workflow-lint distribution-metadata-verify staging-configuration-test staging-auth-test staging-auth-plan staging-auth-verify staging-apple-sign-in-test staging-apple-sign-in-plan staging-apple-sign-in-verify staging-ipa-signing-test posthog-test posthog-plan posthog-verify posthog-apply simulator-script-test build build-local build-staging archive-staging test test-local check cache-reset simulator-create simulator-status simulator-delete simulator-auth-link simulator-local simulator-catalog simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error simulator-community-events local-db-reset local-seed-verify supabase-types check-supabase-types backend-test functions-test local-catalog-start local-catalog-stop local-catalog-status local-catalog-verify musicbrainz-smoke community-events-integration-test storage-integration-test backend-verify dev-status dev-plan dev-deploy dev-functions-status dev-functions-plan dev-functions-deploy dev-login-link simulator-dev-login staging-status staging-plan staging-promote
 
 help: ## List available development commands.
 	@awk 'BEGIN {FS = ":.*##"}; /^[a-zA-Z_-]+:.*##/ { printf "%-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -19,10 +20,13 @@ configure: ## Create ignored local Xcode configuration files from templates.
 	@./scripts/configure-local.sh
 
 local-db-start: ## Start or reuse the disposable local Supabase stack without changing its data.
-	@supabase start >/dev/null
+	@./scripts/worktree-local-supabase.sh start >/dev/null
 
 configure-local-supabase: local-db-start ## Point the ignored Local Xcode configuration at the local Supabase stack.
 	@./scripts/configure-local-supabase.sh
+
+local-status: ## Show this worktree's non-secret Local Supabase and MusicBrainz endpoints.
+	@./scripts/worktree-local-supabase.sh status
 
 generate: ## Regenerate the committed Xcode project from project.yml.
 	@xcodegen generate --spec project.yml
@@ -77,32 +81,50 @@ posthog-verify: ## Fail when PostHog Staging differs from the tracked contract.
 posthog-apply: ## Apply the tracked contract to PostHog Staging (confirmation required).
 	@python3 scripts/posthog_control.py apply
 
-build: generate ## Build the Development scheme for the iPhone 13 Simulator.
-	@xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' CODE_SIGNING_ALLOWED=NO build
+simulator-script-test: ## Test worktree Simulator selection and build isolation without launching Xcode.
+	@./scripts/tests/test-worktree-simulator.sh
 
-build-local: generate ## Build the Local Supabase scheme for the iPhone 13 Simulator.
-	@xcodebuild -project $(PROJECT) -scheme $(LOCAL_SCHEME) -destination '$(DESTINATION)' CODE_SIGNING_ALLOWED=NO build
+build: generate ## Build Development for this worktree's isolated iPhone 13 Simulator.
+	@TUNEDIN_SIMULATOR_DESTINATION="$(DESTINATION)" TUNEDIN_DERIVED_DATA_PATH="$(DERIVED_DATA_PATH)" \
+		./scripts/xcodebuild-simulator.sh -project $(PROJECT) -scheme $(SCHEME) CODE_SIGNING_ALLOWED=NO build
 
-build-staging: generate ## Build the Staging scheme for the iPhone 13 Simulator without signing.
-	@xcodebuild -project $(PROJECT) -scheme tunedIn-Staging -destination '$(DESTINATION)' CODE_SIGNING_ALLOWED=NO build
+build-local: generate ## Build Local Supabase for this worktree's isolated iPhone 13 Simulator.
+	@TUNEDIN_SIMULATOR_DESTINATION="$(DESTINATION)" TUNEDIN_DERIVED_DATA_PATH="$(DERIVED_DATA_PATH)" \
+		./scripts/xcodebuild-simulator.sh -project $(PROJECT) -scheme $(LOCAL_SCHEME) CODE_SIGNING_ALLOWED=NO build
+
+build-staging: generate ## Build the Staging scheme for this worktree's isolated iPhone 13 Simulator without signing.
+	@TUNEDIN_SIMULATOR_DESTINATION="$(DESTINATION)" TUNEDIN_DERIVED_DATA_PATH="$(DERIVED_DATA_PATH)" \
+		./scripts/xcodebuild-simulator.sh -project $(PROJECT) -scheme tunedIn-Staging CODE_SIGNING_ALLOWED=NO build
 
 archive-staging: generate ## Create a signed local Staging archive for manual Xcode validation.
 	@mkdir -p build
 	@xcodebuild -project $(PROJECT) -scheme tunedIn-Staging -configuration Staging \
 		-destination 'generic/platform=iOS' -archivePath build/tunedIn-Staging.xcarchive archive
 
-test: generate ## Run the Swift Testing suite on the iPhone 13 Simulator.
-	@xcodebuild -project $(PROJECT) -scheme $(SCHEME) -destination '$(DESTINATION)' CODE_SIGNING_ALLOWED=NO test
+test: generate ## Run the Swift Testing suite on this worktree's isolated iPhone 13 Simulator.
+	@TUNEDIN_SIMULATOR_DESTINATION="$(DESTINATION)" TUNEDIN_DERIVED_DATA_PATH="$(DERIVED_DATA_PATH)" \
+		./scripts/xcodebuild-simulator.sh -project $(PROJECT) -scheme $(SCHEME) CODE_SIGNING_ALLOWED=NO test
 
 test-local: generate ## Run the Swift Testing suite with Local Supabase configuration.
-	@xcodebuild -project $(PROJECT) -scheme $(LOCAL_SCHEME) -destination '$(DESTINATION)' CODE_SIGNING_ALLOWED=NO test
+	@TUNEDIN_SIMULATOR_DESTINATION="$(DESTINATION)" TUNEDIN_DERIVED_DATA_PATH="$(DERIVED_DATA_PATH)" \
+		./scripts/xcodebuild-simulator.sh -project $(PROJECT) -scheme $(LOCAL_SCHEME) CODE_SIGNING_ALLOWED=NO test
 
-check: generate lint workflow-lint distribution-metadata-verify staging-configuration-test staging-auth-test staging-apple-sign-in-test staging-ipa-signing-test posthog-test test ## Run generation, linting, workflow, auth, telemetry, metadata, and logic tests.
+check: generate lint workflow-lint distribution-metadata-verify staging-configuration-test staging-auth-test staging-apple-sign-in-test staging-ipa-signing-test posthog-test simulator-script-test test ## Run generation, linting, workflow, auth, telemetry, metadata, and logic tests.
 
-cache-reset: ## Clear app-owned caches for tunedIn in the booted Simulator.
+cache-reset: ## Clear app-owned caches for tunedIn in this worktree's Simulator.
 	@./scripts/reset-simulator-cache.sh
 
-simulator-auth-link: ## Open a copied Supabase sign-in link in the booted Simulator.
+simulator-create: ## Create this worktree's isolated iPhone 13 Simulator.
+	@./scripts/worktree-simulator.sh udid >/dev/null
+	@./scripts/worktree-simulator.sh status
+
+simulator-status: ## Show this worktree's Simulator name, UUID, and state.
+	@./scripts/worktree-simulator.sh status
+
+simulator-delete: ## Shut down and delete only this worktree's Simulator.
+	@./scripts/worktree-simulator.sh delete
+
+simulator-auth-link: ## Open a copied Supabase sign-in link in this worktree's Simulator.
 	@./scripts/open-simulator-auth-link.sh
 
 simulator-local: ## Start Local Supabase/catalog fixtures, configure, build, install, and launch without reset.
@@ -148,7 +170,7 @@ local-next-steps:
 	@printf '  1. In the app, tap Continue as Local Listener (no email link needed).\n'
 	@printf '  2. Use Choose another seeded account to switch journeys.\n'
 	@printf '  Other journeys: newcomer for onboarding; sasha/theo/june for request states.\n'
-	@printf '  To test email auth itself, use Inbucket at http://127.0.0.1:54324 and make simulator-auth-link.\n\n'
+	@printf '  To test email auth itself, use the Inbucket URL from make local-status and make simulator-auth-link.\n\n'
 
 supabase-types: ## Generate Swift database DTOs from the migrated local schema.
 	@./scripts/generate-supabase-types.sh
@@ -157,7 +179,7 @@ check-supabase-types: ## Fail when generated Swift DTOs differ from the local sc
 	@./scripts/check-supabase-types.sh
 
 backend-test: ## Run pgTAP tests against a disposable local Supabase stack.
-	@supabase test db --local
+	@./scripts/worktree-local-supabase.sh test-db
 
 functions-test: ## Format-check, lint, type-check, and test Edge Functions with committed fixtures.
 	@cd supabase/functions && deno task test

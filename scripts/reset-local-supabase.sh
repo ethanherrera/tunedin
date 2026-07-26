@@ -4,7 +4,7 @@ set -euo pipefail
 readonly max_attempts=2
 
 for attempt in $(seq 1 "$max_attempts"); do
-  if supabase start >/dev/null && supabase db reset; then
+  if ./scripts/worktree-local-supabase.sh start >/dev/null && ./scripts/worktree-local-supabase.sh reset; then
     echo "Disposable Local Supabase database reset successfully."
     exit 0
   fi
@@ -15,5 +15,5 @@ for attempt in $(seq 1 "$max_attempts"); do
   fi
 
   echo "Local Supabase reset failed; rebuilding the disposable stack and retrying once." >&2
-  supabase stop --no-backup >/dev/null 2>&1 || true
+  ./scripts/worktree-local-supabase.sh stop >/dev/null 2>&1 || true
 done

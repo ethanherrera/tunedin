@@ -20,21 +20,16 @@ if ! command -v xcrun >/dev/null 2>&1; then
   exit 1
 fi
 
-device_identifier="$(xcrun simctl list devices available | awk -F '[()]' '
-  /^[[:space:]]*iPhone 13 \(/ { print $2; exit }
-')"
-
-if [[ -z "${device_identifier}" ]]; then
-  printf 'Could not find an available iPhone 13 Simulator runtime. Install one in Xcode, then rerun the scenario command.\n' >&2
-  exit 1
-fi
-
+device_identifier="$(./scripts/worktree-simulator.sh boot)"
 destination="platform=iOS Simulator,id=${device_identifier}"
 
-xcrun simctl boot "${device_identifier}" >/dev/null 2>&1 || true
-xcrun simctl bootstatus "${device_identifier}" -b >/dev/null
-
-settings="$(xcodebuild -project "${project}" -scheme "${scheme}" -destination "${destination}" -showBuildSettings)"
+settings="$(
+  TUNEDIN_SIMULATOR_DESTINATION="${destination}" \
+    ./scripts/xcodebuild-simulator.sh \
+    -project "${project}" \
+    -scheme "${scheme}" \
+    -showBuildSettings
+)"
 target_build_dir="$(awk -F ' = ' '/^[[:space:]]*TARGET_BUILD_DIR = / { print $2; exit }' <<<"${settings}")"
 wrapper_name="$(awk -F ' = ' '/^[[:space:]]*WRAPPER_NAME = / { print $2; exit }' <<<"${settings}")"
 app_path="${target_build_dir}/${wrapper_name}"
@@ -60,4 +55,6 @@ else
     "${scenario}" >/dev/null
 fi
 
-printf 'Installed and launched tunedIn Development scenario on iPhone 13: %s.\n' "${scenario}"
+printf 'Installed and launched tunedIn Development scenario %s on this worktree Simulator: %s.\n' \
+  "${scenario}" \
+  "${device_identifier}"
