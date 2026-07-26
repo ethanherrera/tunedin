@@ -173,7 +173,7 @@ struct EventDiscoveryView: View {
             isSearchFieldFocused = false
             onOpenEvent(event)
           } label: {
-            CommunityEventRow(event: event, showsSource: true, eventRepository: eventRepository)
+            ConcertPreviewCard(event: event, showsSource: true, eventRepository: eventRepository)
           }
           .buttonStyle(TunedInPosterButtonStyle())
           .onAppear {
@@ -637,7 +637,7 @@ struct CommunityEventCreationView: View {
                 .foregroundStyle(TunedInDesign.mutedText)
               ForEach(duplicateCandidates) { candidate in
                 Button { onCreated(candidate) } label: {
-                  CommunityEventRow(
+                  ConcertPreviewCard(
                     event: candidate,
                     showsSource: true,
                     eventRepository: eventRepository

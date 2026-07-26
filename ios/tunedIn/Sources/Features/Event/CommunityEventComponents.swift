@@ -1,51 +1,56 @@
 import SwiftUI
 
-struct CommunityEventRow: View {
+struct ConcertPreviewCard: View {
+  enum Style: Equatable {
+    case plain
+    case card
+  }
+
   let event: CommunityEventSummary
   let showsSource: Bool
   let eventRepository: (any EventRepository)?
+  let style: Style
+  let statusText: String?
+  let friends: [EventFriendPreview]?
+
+  private static let cardHeight: CGFloat = 112
+  private static let thumbnailWidth: CGFloat = 78
+  private static let thumbnailHeight: CGFloat = 78
 
   init(
     event: CommunityEventSummary,
     showsSource: Bool,
-    eventRepository: (any EventRepository)? = nil
+    eventRepository: (any EventRepository)? = nil,
+    style: Style = .plain,
+    statusText: String? = nil,
+    friends: [EventFriendPreview]? = nil
   ) {
     self.event = event
     self.showsSource = showsSource
     self.eventRepository = eventRepository
+    self.style = style
+    self.statusText = statusText
+    self.friends = friends
   }
 
   var body: some View {
-    HStack(spacing: 13) {
-      if event.cover != nil {
-        ZStack(alignment: .topLeading) {
-          CommunityEventCoverImage(event: event, repository: eventRepository)
-            .frame(width: 106, height: 92)
+    HStack(spacing: 10) {
+      thumbnail
 
-          EventDatePill(date: event.eventDate)
-            .padding(7)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-      } else {
-        EventDateTile(date: event.eventDate)
-      }
-
-      VStack(alignment: .leading, spacing: 5) {
-        Text(event.title)
+      VStack(alignment: .leading, spacing: 3) {
+        Text(event.headlinerName)
           .font(.headline)
           .foregroundStyle(TunedInDesign.primaryText)
-          .lineLimit(2)
+          .lineLimit(1)
         if event.title != event.headlinerName {
-          Text(event.headlinerName)
+          Text(event.title)
             .font(.subheadline.weight(.medium))
             .foregroundStyle(TunedInDesign.primaryText)
             .lineLimit(1)
         }
-        Text("\(event.venueName) · \(event.areaName)")
-          .font(.subheadline)
-          .foregroundStyle(TunedInDesign.mutedText)
-          .lineLimit(2)
-        eventStatusLine
+        timeLine
+        locationLine
+        statusLine
         if showsSource {
           Text(event.sourceLabel)
             .font(.caption2.weight(.semibold))
@@ -53,36 +58,92 @@ struct CommunityEventRow: View {
             .lineLimit(1)
         }
       }
-      Spacer(minLength: 0)
+      .frame(maxWidth: .infinity, alignment: .leading)
       Image(systemName: "chevron.right")
         .font(.caption.weight(.bold))
         .foregroundStyle(TunedInDesign.mutedText)
     }
-    .padding(.vertical, 8)
+    .frame(maxWidth: .infinity)
+    .frame(height: Self.cardHeight, alignment: .center)
+    .padding(.horizontal, style == .card ? 8 : 0)
+    .background {
+      if style == .card {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+          .fill(TunedInDesign.cardBackground)
+      }
+    }
+    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     .contentShape(Rectangle())
   }
 
-  private var eventStatusLine: some View {
-    HStack(spacing: 8) {
-      switch event.phase() {
-      case .cancelled:
-        Label("Cancelled", systemImage: "xmark.circle.fill")
-      case .postponed:
-        Label("Postponed", systemImage: "clock.badge.exclamationmark")
-      case .upcoming, .memories:
-        if event.currentUserAttendance != nil {
-          Label(event.phase() == .memories ? "Went" : "Going", systemImage: "checkmark.circle.fill")
-        }
+  private var thumbnail: some View {
+    ZStack(alignment: .topLeading) {
+      if event.cover != nil {
+        CommunityEventCoverImage(event: event, repository: eventRepository)
+      } else {
+        EventDateTile(date: event.eventDate)
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+          .background(TunedInDesign.raisedSurface)
       }
-      if !event.friendPreviews.isEmpty {
-        Label(
-          "\(event.friendPreviews.count) friend\(event.friendPreviews.count == 1 ? "" : "s")",
-          systemImage: "person.2.fill"
-        )
+
+      if event.cover != nil {
+        EventDatePill(date: event.eventDate)
+          .padding(7)
       }
     }
-    .font(.caption.weight(.semibold))
-    .foregroundStyle(TunedInDesign.accent)
+    .frame(width: Self.thumbnailWidth, height: Self.thumbnailHeight)
+    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    .accessibilityHidden(true)
+  }
+
+  private var locationLine: some View {
+    Text("\(event.venueName) · \(event.areaName)")
+      .lineLimit(1)
+      .truncationMode(.tail)
+    .font(.subheadline)
+    .foregroundStyle(TunedInDesign.mutedText)
+    .frame(maxWidth: .infinity, alignment: .leading)
+  }
+
+  private var timeLine: some View {
+    Text(CommunityEventDateText.time(for: event))
+      .font(.caption.weight(.semibold))
+      .foregroundStyle(TunedInDesign.mutedText)
+      .fixedSize(horizontal: true, vertical: false)
+      .lineLimit(1)
+  }
+
+  @ViewBuilder
+  private var statusLine: some View {
+    let eventFriends = friends ?? event.friendPreviews
+    if let statusText {
+      Text(statusText)
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(TunedInDesign.accent)
+        .lineLimit(1)
+    } else {
+      HStack(spacing: 8) {
+        switch event.phase() {
+        case .cancelled:
+          Label("Cancelled", systemImage: "xmark.circle.fill")
+        case .postponed:
+          Label("Postponed", systemImage: "clock.badge.exclamationmark")
+        case .upcoming, .memories:
+          if event.currentUserAttendance != nil {
+            Label(event.phase() == .memories ? "Went" : "Going", systemImage: "checkmark.circle.fill")
+          }
+        }
+        if !eventFriends.isEmpty {
+          Label(
+            "\(eventFriends.count) friend\(eventFriends.count == 1 ? "" : "s")",
+            systemImage: "person.2.fill"
+          )
+        }
+      }
+      .font(.caption.weight(.semibold))
+      .foregroundStyle(TunedInDesign.accent)
+      .lineLimit(1)
+    }
   }
 }
 

@@ -94,12 +94,6 @@ struct CommunityProfileHistorySection: View {
                 "Open post about \(entry.event.title), "
                   + CommunityEventDateText.compactDate(entry.event.eventDate)
               )
-              .accessibilityValue(
-                entry.post.score.map {
-                  "Score \($0.formatted(.number.precision(.fractionLength(1)))), "
-                    + CommunityEventScoreBand(score: $0).accessibilityDescription
-                } ?? "Not scored"
-              )
             }
           }
           .padding(.horizontal, -20)
@@ -160,7 +154,7 @@ struct CommunityProfileHistorySection: View {
       } else {
         ForEach(events.prefix(3)) { event in
           Button { onOpenEvent(event, nil) } label: {
-            CommunityEventRow(
+            ConcertPreviewCard(
               event: event,
               showsSource: false,
               eventRepository: eventRepository
@@ -233,7 +227,7 @@ private struct ProfileConcertDirectoryView: View {
             .padding(.bottom, 8)
           ForEach(events) { event in
             Button { onOpenEvent(event) } label: {
-              CommunityEventRow(
+              ConcertPreviewCard(
                 event: event,
                 showsSource: false,
                 eventRepository: eventRepository
@@ -281,17 +275,9 @@ private struct ProfilePostGridTile: View {
         )
 
         VStack(alignment: .leading, spacing: 2) {
-          if let score = entry.post.score {
-            CommunityEventScoreBadge(score: score, size: .compact)
-          }
-          Text(entry.event.title)
+          Text(entry.event.headlinerName)
             .font(.caption2.weight(.semibold))
-            .lineLimit(2)
-          if entry.event.title != entry.event.headlinerName {
-            Text(entry.event.headlinerName)
-              .font(.caption2.weight(.medium))
-              .lineLimit(1)
-          }
+            .lineLimit(1)
           Text(CommunityEventDateText.compactDate(entry.event.eventDate))
             .font(.caption2)
             .foregroundStyle(.white.opacity(0.86))
