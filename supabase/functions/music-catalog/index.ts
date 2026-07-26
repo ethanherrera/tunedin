@@ -7,17 +7,6 @@ import { MusicCatalogService } from "./service.ts";
 
 declare const EdgeRuntime: { waitUntil(task: Promise<unknown>): void };
 
-addEventListener("unhandledrejection", (event) => {
-  // Background work must never turn a completed search into an opaque platform
-  // failure. Do not record the request, user, provider payload, or identifiers.
-  const reason = event.reason;
-  console.error(
-    "music-catalog background task failed",
-    reason instanceof Error ? reason.message : "unknown error",
-  );
-  event.preventDefault();
-});
-
 type TunedInEnvironment = "Local" | "Development" | "Staging" | "Production";
 
 interface RuntimeConfiguration {
@@ -141,32 +130,7 @@ if (import.meta.main) {
         }),
       );
   }
-  Deno.serve(async (request) => {
-    try {
-      return await handler(request);
-    } catch (error) {
-      // Keep this diagnostic payload deliberately free of request data, tokens,
-      // raw provider responses, and user-created text.
-      console.error(
-        "music-catalog request failed",
-        error instanceof Error ? error.message : "unknown error",
-      );
-      const safeError = new CatalogError(
-        "internal_error",
-        500,
-        "The catalog request could not be completed.",
-        true,
-      );
-      return new Response(JSON.stringify(safeErrorBody(safeError)), {
-        status: safeError.status,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Cache-Control": "no-store",
-          "Content-Type": "application/json; charset=utf-8",
-        },
-      });
-    }
-  });
+  Deno.serve(handler);
 }
 
 function requiredValue(value: string | undefined): string {
