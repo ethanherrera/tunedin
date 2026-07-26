@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   verify-and-deploy:
-    if: github.ref == 'refs/heads/main' && inputs.confirm == 'deploy-development-functions'
+    if: inputs.confirm == 'deploy-development-functions'
     name: Verify and deploy Development music-catalog
     runs-on: ubuntu-latest
     environment:
@@ -27,7 +27,7 @@ jobs:
       MUSICBRAINZ_USER_AGENT: ${{ vars.MUSICBRAINZ_USER_AGENT }}
       TUNEDIN_DEPLOYMENT_ENVIRONMENT: Development
     steps:
-      - name: Check out the reviewed main commit
+      - name: Check out the explicitly requested branch commit
         uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}

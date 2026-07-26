@@ -196,9 +196,9 @@ dev-status: ## Show remote migration parity for the hosted tunedin-dev database.
 dev-plan: ## Print migrations that would be applied to hosted tunedin-dev.
 	@./scripts/development-database.sh plan
 
-dev-deploy: ## Trigger the manually approved Development migration workflow from main.
-	@gh workflow run deploy-development.yml --ref main -f confirm=deploy-development
-	@printf 'Queued the Development migration workflow. Review its GitHub Actions summary for the deployed commit and migration parity.\n'
+dev-deploy: ## Trigger the manually approved Development migration workflow from the current branch.
+	@branch="$$(git branch --show-current)"; gh workflow run deploy-development.yml --ref "$$branch" -f confirm=deploy-development
+	@printf 'Queued the Development migration workflow from the current branch. Review its GitHub Actions summary for the deployed commit and migration parity.\n'
 
 dev-functions-status: ## List deployed Development Functions and configured runtime secret names.
 	@./scripts/development-functions.sh status
@@ -206,9 +206,9 @@ dev-functions-status: ## List deployed Development Functions and configured runt
 dev-functions-plan: ## Show the read-only Development music-catalog deployment plan.
 	@./scripts/development-functions.sh plan
 
-dev-functions-deploy: ## Trigger the protected Development function workflow from main.
-	@gh workflow run deploy-development-functions.yml --ref main -f confirm=deploy-development-functions
-	@printf 'Queued the Development function workflow. Review its summary for the deployed commit and function version.\n'
+dev-functions-deploy: ## Trigger the protected Development function workflow from the current branch.
+	@branch="$$(git branch --show-current)"; gh workflow run deploy-development-functions.yml --ref "$$branch" -f confirm=deploy-development-functions
+	@printf 'Queued the Development function workflow from the current branch. Review its summary for the deployed commit and function version.\n'
 
 dev-login-link: ## Copy a no-email tunedin-dev login link (EMAIL=user@example.com).
 	@./scripts/generate-development-login-link.sh

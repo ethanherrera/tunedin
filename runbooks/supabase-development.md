@@ -12,7 +12,7 @@ Operate the shared hosted `tunedin-dev` project used by local iOS Development bu
 
 ## Database migrations
 
-Use the dedicated [Development Database Deployment](./development-database-deployment.md) runbook for hosted schema changes. Do not run `supabase db push` directly against `tunedin-dev`; use the manually dispatched workflow after the reviewed migration reaches `main`.
+Use the dedicated [Development Database Deployment](./development-database-deployment.md) runbook for hosted schema changes. Do not run `supabase db push` directly against `tunedin-dev`; use the manually dispatched workflow from the requested branch.
 
 The following commands are read-only preflight checks:
 

@@ -2,14 +2,14 @@
 
 ## Purpose
 
-Safely apply reviewed, forward-only Supabase database migrations from `main` to the shared hosted `tunedin-dev` project. The deployment is manually triggered and fully recorded in GitHub Actions.
+Safely apply forward-only Supabase database migrations from an explicitly requested branch to the shared hosted `tunedin-dev` project. The deployment is manually triggered and fully recorded in GitHub Actions.
 
 This procedure applies database migrations only. It does **not** reset hosted data, load local seed data, push `supabase/config.toml`, deploy Edge Functions, or modify iOS configuration.
 
 ## Prerequisites and permissions
 
-- The migration pull request is merged, and `main` contains its approved commit.
-- The Backend pull-request check passed: disposable reset, generated Swift type check, and pgTAP authorization tests.
+- The requested branch contains the intended migration commit.
+- The workflow will repeat disposable reset, generated Swift type check, and pgTAP authorization tests before it can mutate Development.
 - GitHub CLI is authenticated with permission to dispatch workflows for `ethanherrera/tunedin`.
 - The GitHub `Development` environment contains `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_PASSWORD`; neither value is printed or stored in the repository.
 - Supabase CLI access belongs to Ethan's `tunedIn` organization and the workflow targets only project ref `dmrlpyxhqhunfndihvai`.
@@ -25,17 +25,17 @@ Do not create repository-wide copies of these secrets. Do not put a Supabase ser
 
 ## Commands
 
-From the repository root, after updating local `main`:
+From the repository root on the branch to test:
 
 ```sh
-git switch main
-git pull --ff-only
+git fetch origin
+git rebase origin/main
 make dev-status
 make dev-plan
 make dev-deploy
 ```
 
-`make dev-deploy` dispatches the manually confirmed `Deploy Development Database` workflow from `main`. It does not wait for or poll the workflow.
+`make dev-deploy` dispatches the manually confirmed `Deploy Development Database` workflow from the current branch. It does not wait for or poll the workflow.
 
 ## Expected result and verification
 
