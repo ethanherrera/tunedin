@@ -446,7 +446,7 @@ required by repository policy.
 
 Add a separate manually dispatched `Deploy Development Functions` workflow that:
 
-- runs only from a reviewed `main` commit;
+- runs from the explicitly requested branch commit after Local verification;
 - uses the protected `Development` GitHub Environment;
 - runs Deno format/lint/unit tests and disposable backend verification;
 - deploys only the allow-listed `music-catalog` function;
@@ -456,11 +456,12 @@ Add a separate manually dispatched `Deploy Development Functions` workflow that:
 Add corresponding read-only plan/status and deploy Make targets. Deployment order
 for Development is:
 
-1. merge reviewed additive schema/function/client changes;
+1. verify the requested branch locally;
 2. run `Deploy Development Database` for migrations;
 3. run `Deploy Development Functions` for the gateway;
 4. run the hosted Development smoke plan with a normal account;
-5. use the live Development iOS flow.
+5. use the live Development iOS flow; and
+6. merge to `main` only after the Development result is acceptable.
 
 The protected environment supplies the contactable MusicBrainz User-Agent value and
 any future commercial credential. No such value belongs in the app binary.
@@ -569,11 +570,11 @@ only part of the new identity model.
 The pull request must not deploy or merge itself. After review and Ethan's explicit
 merge permission, deployment remains intentionally ordered and manual:
 
-1. merge the reviewed commit to `main`;
-2. dispatch `Deploy Development Database` and verify migration parity;
-3. dispatch `Deploy Development Functions` and verify the active `music-catalog`
+1. dispatch `Deploy Development Database` from the reviewed branch and verify migration parity;
+2. dispatch `Deploy Development Functions` and verify the active `music-catalog`
    version;
-4. complete the hosted Development smoke with a normal account; and
+3. complete the hosted Development smoke with a normal account;
+4. merge the reviewed commit to `main`; and
 5. promote to Staging through its existing protected workflow when approved.
 
 After supported-client adoption, remove the legacy string wrappers in a separate

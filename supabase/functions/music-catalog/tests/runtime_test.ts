@@ -45,6 +45,7 @@ Deno.test("Local permits only the exact Docker gateway and fixture-stub hosts", 
     TUNEDIN_ENVIRONMENT: "Local",
     SUPABASE_URL: "http://kong:8000",
     MUSICBRAINZ_BASE_URL: "http://host.docker.internal:18081/ws/2/",
+    MUSICBRAINZ_ARTWORK_BASE_URL: "http://host.docker.internal:18081/",
   });
   assert.equal(dockerConfiguration.environment, "Local");
 
@@ -53,6 +54,7 @@ Deno.test("Local permits only the exact Docker gateway and fixture-stub hosts", 
     TUNEDIN_ENVIRONMENT: "Local",
     SUPABASE_URL: "http://127.0.0.1:54321",
     MUSICBRAINZ_BASE_URL: "http://127.0.0.1:18081/ws/2/",
+    MUSICBRAINZ_ARTWORK_BASE_URL: "http://127.0.0.1:18081/",
   });
   assert.equal(hostConfiguration.environment, "Local");
 
@@ -63,6 +65,7 @@ Deno.test("Local permits only the exact Docker gateway and fixture-stub hosts", 
         TUNEDIN_ENVIRONMENT: "Local",
         SUPABASE_URL: "https://abcdefghijklmnopqrst.supabase.co",
         MUSICBRAINZ_BASE_URL: "http://host.docker.internal:18081/ws/2/",
+        MUSICBRAINZ_ARTWORK_BASE_URL: "http://host.docker.internal:18081/",
       }),
     isConfigurationError,
   );
@@ -73,6 +76,7 @@ Deno.test("Local permits only the exact Docker gateway and fixture-stub hosts", 
         TUNEDIN_ENVIRONMENT: "Local",
         SUPABASE_URL: "http://kong:8000",
         MUSICBRAINZ_BASE_URL: "http://example.com:18081/ws/2/",
+        MUSICBRAINZ_ARTWORK_BASE_URL: "http://host.docker.internal:18081/",
       }),
     isConfigurationError,
   );

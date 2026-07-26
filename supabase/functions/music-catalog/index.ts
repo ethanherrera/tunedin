@@ -1,8 +1,11 @@
 import { SupabaseCatalogBackend } from "./backend.ts";
+import { MusicBrainzEventArtworkScheduler } from "./event_artwork.ts";
 import { CatalogError, safeErrorBody } from "./errors.ts";
 import { createMusicCatalogHandler } from "./handler.ts";
 import { MusicBrainzClient } from "./musicbrainz.ts";
 import { MusicCatalogService } from "./service.ts";
+
+declare const EdgeRuntime: { waitUntil(task: Promise<unknown>): void };
 
 type TunedInEnvironment = "Local" | "Development" | "Staging" | "Production";
 
@@ -12,6 +15,7 @@ interface RuntimeConfiguration {
   anonymousKey: string;
   serviceRoleKey: string;
   musicBrainzBaseUrl: URL;
+  musicBrainzArtworkBaseUrl: URL;
   musicBrainzUserAgent: string;
 }
 
@@ -26,11 +30,17 @@ export function runtimeConfiguration(
   const serviceRoleKey = requiredValue(environment.SUPABASE_SERVICE_ROLE_KEY);
   const configuredBaseUrl = environment.MUSICBRAINZ_BASE_URL ?? "https://musicbrainz.org/ws/2/";
   const musicBrainzBaseUrl = requiredUrl(configuredBaseUrl);
+  const configuredArtworkBaseUrl = environment.MUSICBRAINZ_ARTWORK_BASE_URL ??
+    "https://coverartarchive.org/";
+  const musicBrainzArtworkBaseUrl = requiredUrl(configuredArtworkBaseUrl);
   const musicBrainzUserAgent = environment.MUSICBRAINZ_USER_AGENT ??
     "tunedIn/local (mailto:fixture-only@tunedin.invalid)";
 
   if (tunedInEnvironment === "Local") {
-    if (!isLocalSupabaseUrl(supabaseUrl) || !isLocalMusicBrainzUrl(musicBrainzBaseUrl)) {
+    if (
+      !isLocalSupabaseUrl(supabaseUrl) || !isLocalMusicBrainzUrl(musicBrainzBaseUrl) ||
+      !isLocalArtworkUrl(musicBrainzArtworkBaseUrl)
+    ) {
       throw configurationFailure();
     }
   } else {
@@ -40,7 +50,10 @@ export function runtimeConfiguration(
     ) {
       throw configurationFailure();
     }
-    if (musicBrainzBaseUrl.href !== "https://musicbrainz.org/ws/2/") {
+    if (
+      musicBrainzBaseUrl.href !== "https://musicbrainz.org/ws/2/" ||
+      musicBrainzArtworkBaseUrl.href !== "https://coverartarchive.org/"
+    ) {
       throw configurationFailure();
     }
     if (!isContactableUserAgent(musicBrainzUserAgent)) throw configurationFailure();
@@ -52,6 +65,7 @@ export function runtimeConfiguration(
     anonymousKey,
     serviceRoleKey,
     musicBrainzBaseUrl,
+    musicBrainzArtworkBaseUrl,
     musicBrainzUserAgent,
   };
 }
@@ -74,7 +88,19 @@ export function buildRuntimeHandler(
       return serviceReference.current.waitForAdditionalUpstreamSlot();
     },
   });
-  const service = new MusicCatalogService({ backend, upstream });
+  const eventArtworkScheduler = new MusicBrainzEventArtworkScheduler({
+    backend,
+    musicBrainzBaseUrl: configuration.musicBrainzBaseUrl,
+    musicBrainzUserAgent: configuration.musicBrainzUserAgent,
+    eventArtBaseUrl: configuration.musicBrainzArtworkBaseUrl,
+    coverArtBaseUrl: configuration.musicBrainzArtworkBaseUrl,
+    defer: deferBackgroundTask,
+    waitForMusicBrainzSlot: () => {
+      if (serviceReference.current === undefined) throw configurationFailure();
+      return serviceReference.current.waitForAdditionalUpstreamSlot();
+    },
+  });
+  const service = new MusicCatalogService({ backend, upstream, eventArtworkScheduler });
   serviceReference.current = service;
   return createMusicCatalogHandler({ service });
 }
@@ -139,6 +165,20 @@ function isLocalMusicBrainzUrl(url: URL): boolean {
     numericPort <= 65_535;
   return url.protocol === "http:" && allowedHost && allowedPort && url.pathname === "/ws/2/" &&
     url.search === "" && url.username === "" && url.password === "" && url.hash === "";
+}
+
+function isLocalArtworkUrl(url: URL): boolean {
+  const allowedHost = url.hostname === "127.0.0.1" || url.hostname === "localhost" ||
+    url.hostname === "[::1]" || url.hostname === "host.docker.internal";
+  const numericPort = Number(url.port);
+  const allowedPort = Number.isInteger(numericPort) && numericPort >= 1_024 &&
+    numericPort <= 65_535;
+  return url.protocol === "http:" && allowedHost && allowedPort && url.pathname === "/" &&
+    url.search === "" && url.username === "" && url.password === "" && url.hash === "";
+}
+
+function deferBackgroundTask(task: Promise<void>): void {
+  EdgeRuntime.waitUntil(task);
 }
 
 function isContactableUserAgent(value: string): boolean {

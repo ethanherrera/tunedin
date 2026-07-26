@@ -104,6 +104,28 @@ export interface MusicBrainzEventInput {
   source_updated_at: string | null;
 }
 
+export interface MusicBrainzEventArtworkCandidate {
+  eventId: string;
+  event: MusicBrainzEventInput;
+}
+
+// These fields deliberately mirror the provider-neutral event-cover columns.
+// Imported media stays remote and always carries its origin/provenance rather
+// than being copied into tunedIn Storage.
+export interface MusicBrainzEventCover {
+  source: "provider" | "wikimedia";
+  remote_url: string;
+  provider_name: string | null;
+  attribution: string | null;
+  source_page_url: string | null;
+  license_name: string | null;
+  license_url: string | null;
+}
+
+export interface EventArtworkScheduler {
+  schedule(candidates: MusicBrainzEventArtworkCandidate[]): void;
+}
+
 export interface SafeErrorBody {
   error: {
     code: string;
@@ -174,6 +196,13 @@ export interface CatalogBackend {
   reserveRequestSlot(maxWaitMs: number): Promise<Date>;
   upsertMusicBrainz(input: UpsertMusicBrainzInput): Promise<CatalogResult>;
   upsertMusicBrainzEvent(input: MusicBrainzEventInput): Promise<string>;
+  claimMusicBrainzEventArtwork(eventId: string): Promise<boolean>;
+  completeMusicBrainzEventArtwork(
+    eventId: string,
+    cover: MusicBrainzEventCover | null,
+    priority: number | null,
+  ): Promise<void>;
+  failMusicBrainzEventArtwork(eventId: string): Promise<void>;
 }
 
 export interface UpstreamTransport {

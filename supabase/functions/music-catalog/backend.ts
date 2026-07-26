@@ -7,6 +7,7 @@ import type {
   CatalogResult,
   JsonObject,
   JsonValue,
+  MusicBrainzEventCover,
   MusicBrainzEventInput,
   UpsertMusicBrainzInput,
 } from "./types.ts";
@@ -294,6 +295,30 @@ export class SupabaseCatalogBackend implements CatalogBackend {
       p_event: asJsonValue(input),
     });
     return requiredDatabaseUuid(payload);
+  }
+
+  async claimMusicBrainzEventArtwork(eventId: string): Promise<boolean> {
+    const payload = await this.#serviceRpc("claim_musicbrainz_event_artwork", {
+      p_event_id: eventId,
+    });
+    if (typeof payload !== "boolean") throw databaseFailure();
+    return payload;
+  }
+
+  async completeMusicBrainzEventArtwork(
+    eventId: string,
+    cover: MusicBrainzEventCover | null,
+    priority: number | null,
+  ): Promise<void> {
+    await this.#serviceRpc("complete_musicbrainz_event_artwork", {
+      p_event_id: eventId,
+      p_cover: cover === null ? null : asJsonValue(cover),
+      p_priority: priority,
+    });
+  }
+
+  async failMusicBrainzEventArtwork(eventId: string): Promise<void> {
+    await this.#serviceRpc("fail_musicbrainz_event_artwork", { p_event_id: eventId });
   }
 
   async #serviceRpc(name: string, body: JsonObject): Promise<unknown> {

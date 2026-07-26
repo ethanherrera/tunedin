@@ -146,6 +146,51 @@ for (
   }
 }
 
+const eventSearch = await catalogRequest({
+  operation: "search_events",
+  query: "Fixture Headliner",
+  offset: 0,
+  beginDate: null,
+  endDate: null,
+});
+assert(
+  eventSearch.response.ok && isObject(eventSearch.payload) &&
+    Array.isArray(eventSearch.payload.eventIds) &&
+    typeof eventSearch.payload.eventIds[0] === "string",
+  "Fixture event discovery did not return its persisted concert ID.",
+);
+const eventId = eventSearch.payload.eventIds[0];
+let importedCoverUrl: unknown = null;
+for (let attempt = 0; attempt < 10 && importedCoverUrl === null; attempt += 1) {
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const summaryResponse = await fetch(
+    new URL("rest/v1/rpc/list_discoverable_catalog_event_summaries", apiUrl),
+    {
+      method: "POST",
+      headers: {
+        Authorization: authorization,
+        apikey: publishableKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ p_event_ids: [eventId] }),
+    },
+  );
+  const summaries = await boundedJson(summaryResponse);
+  if (
+    !summaryResponse.ok || !Array.isArray(summaries) ||
+    !isObject(summaries[0]) ||
+    !isObject(summaries[0].event) ||
+    !Array.isArray(summaries[0].event.artists) ||
+    !isObject(summaries[0].event.artists[0]) ||
+    !isObject(summaries[0].event.artists[0].event_cover)
+  ) continue;
+  importedCoverUrl = summaries[0].event.artists[0].event_cover.remote_url;
+}
+assert(
+  importedCoverUrl === "https://fixture-art.tunedin.invalid/event-500.jpg",
+  "Fixture event artwork was not written through after event discovery.",
+);
+
 console.log("Local music catalog fixture gateway verified.");
 
 async function catalogRequest(

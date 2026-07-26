@@ -46,6 +46,16 @@ Deno.serve({ hostname: "0.0.0.0", port }, async (request) => {
   }
 
   const url = new URL(request.url);
+  const artworkMatch = url.pathname.match(/^\/(event|release-group)\/([0-9a-f-]+)$/);
+  if (artworkMatch !== null) {
+    if (
+      artworkMatch[1] === "event" &&
+      artworkMatch[2] === "f4000000-0000-4000-8000-000000000001"
+    ) {
+      return fixtureResponse("event-art-exact.json");
+    }
+    return json({ images: [] });
+  }
   const match = url.pathname.match(
     /^\/ws\/2\/(artist|area|place|recording|series|event)(?:\/([0-9a-f-]+))?$/,
   );

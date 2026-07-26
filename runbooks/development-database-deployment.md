@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Safely apply forward-only Supabase database migrations from an explicitly requested branch to the shared hosted `tunedin-dev` project. The deployment is manually triggered and fully recorded in GitHub Actions.
+Safely apply forward-only Supabase database migrations from an explicitly requested branch to the shared hosted `tunedin-dev` project. Development is the shared integration environment between disposable Local and protected Staging, so the requested branch may be unmerged and its data/contracts may be in progress. The deployment is manually triggered and fully recorded in GitHub Actions.
 
 This procedure applies database migrations only. It does **not** reset hosted data, load local seed data, push `supabase/config.toml`, deploy Edge Functions, or modify iOS configuration.
 
@@ -55,4 +55,4 @@ make dev-deploy
 
 - GitHub Actions retains the deployment run, commit SHA, migration output, and actor as the primary audit record.
 - Use Supabase Logs Explorer and the relevant pull request for investigation context.
-- Run this procedure after every merged database migration. Run `make dev-status` before a planned deployment or when diagnosing a Development schema mismatch.
+- Run this procedure after Local verification when a branch needs shared Development testing. Run `make dev-status` before a planned deployment or when diagnosing a Development schema mismatch.

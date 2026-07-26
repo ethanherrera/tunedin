@@ -7,12 +7,12 @@ Operate the private `images` bucket, fixed profile/main photos, and reserved con
 ## Prerequisites and permissions
 
 - Docker and Supabase CLI for Local verification.
-- A reviewed `main` commit and protected Development environment access for hosted deployment.
+- Local verification on the requested branch and protected Development environment access for hosted deployment.
 - Never use the dashboard to create or change this bucket.
 
 ## Commands and expected result
 
-Run `make backend-verify` to rebuild Local, verify the bucket/schema, regenerate types, and run authorization tests. Run `make simulator-local`; use Settings → Profile Photo and the concert creation/edit main-photo controls for real local flows. After merge, dispatch `make dev-deploy`; the protected workflow applies the same migrations to Development.
+Run `make backend-verify` to rebuild Local, verify the bucket/schema, regenerate types, and run authorization tests. Run `make simulator-local`; use Settings → Profile Photo and the concert creation/edit main-photo controls for real local flows. For shared Development testing, dispatch `make dev-deploy` from the requested branch; Staging remains the post-`main` environment.
 
 ## Verification
 
