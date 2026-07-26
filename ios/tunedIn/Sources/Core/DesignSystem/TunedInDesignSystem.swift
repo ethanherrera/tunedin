@@ -425,20 +425,13 @@ struct TunedInGlassSearchField: View {
   @Binding var text: String
   let prompt: String
   let style: Style
-  let onFocusChange: ((Bool) -> Void)?
   @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
   @FocusState private var isFocused: Bool
 
-  init(
-    text: Binding<String>,
-    prompt: String,
-    style: Style = .standard,
-    onFocusChange: ((Bool) -> Void)? = nil
-  ) {
+  init(text: Binding<String>, prompt: String, style: Style = .standard) {
     _text = text
     self.prompt = prompt
     self.style = style
-    self.onFocusChange = onFocusChange
   }
 
   var body: some View {
@@ -452,9 +445,6 @@ struct TunedInGlassSearchField: View {
           .autocorrectionDisabled()
           .submitLabel(.search)
           .focused($isFocused)
-          .onChange(of: isFocused) { _, isFocused in
-            onFocusChange?(isFocused)
-          }
           .onSubmit { isFocused = false }
           .foregroundStyle(TunedInDesign.primaryText)
 
@@ -567,17 +557,20 @@ private struct TunedInEdgeSwipeBackModifier: ViewModifier {
   let action: () -> Void
 
   func body(content: Content) -> some View {
-    content.simultaneousGesture(
-      DragGesture(minimumDistance: 18, coordinateSpace: .global)
-        .onEnded { value in
-          guard isEnabled,
-                value.startLocation.x <= 28,
-                value.translation.width >= 72,
-                abs(value.translation.height) < abs(value.translation.width) * 0.7
-          else { return }
-          action()
-        }
-    )
+    if isEnabled {
+      content.simultaneousGesture(
+        DragGesture(minimumDistance: 18, coordinateSpace: .global)
+          .onEnded { value in
+            guard value.startLocation.x <= 28,
+                  value.translation.width >= 72,
+                  abs(value.translation.height) < abs(value.translation.width) * 0.7
+            else { return }
+            action()
+          }
+      )
+    } else {
+      content
+    }
   }
 }
 

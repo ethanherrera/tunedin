@@ -23,7 +23,6 @@ struct EventDiscoveryView: View {
   @State private var isLoadingEvents = false
   @State private var eventErrorMessage: String?
   @State private var peopleModel: PeopleHubModel
-  @FocusState private var isSearchFocused: Bool
 
   init(
     viewerID: UUID,
@@ -53,8 +52,7 @@ struct EventDiscoveryView: View {
         VStack(alignment: .leading, spacing: 14) {
           TunedInGlassSearchField(
             text: $query,
-            prompt: selectedScope == .concerts ? "Search concerts" : "Search people by username",
-            onFocusChange: { isSearchFocused = $0 }
+            prompt: selectedScope == .concerts ? "Search concerts" : "Search people by username"
           )
 
           Picker("Search category", selection: $selectedScope) {
@@ -183,7 +181,7 @@ struct EventDiscoveryView: View {
   }
 
   private var isSearchActive: Bool {
-    isSearchFocused || !query.isEmpty
+    !query.isEmpty
   }
 
   @MainActor
