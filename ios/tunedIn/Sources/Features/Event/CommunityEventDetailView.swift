@@ -97,14 +97,13 @@ struct CommunityEventDetailView: View {
       }
     }
     .task { await load() }
-    .sheet(isPresented: $isPresentingInvites) {
+    .fullScreenCover(isPresented: $isPresentingInvites) {
       EventInviteView(
         eventID: eventID,
         viewerID: viewerID,
-        repository: repository
+        repository: repository,
+        onDismiss: { isPresentingInvites = false }
       )
-      .presentationDetents([.medium, .large])
-      .presentationDragIndicator(.visible)
     }
     .sheet(isPresented: $isPresentingReport) {
       EventReportView(
@@ -1550,8 +1549,8 @@ private struct EventInviteView: View {
   let eventID: UUID
   let viewerID: UUID
   let repository: any EventRepository
+  let onDismiss: () -> Void
 
-  @Environment(\.dismiss) private var dismiss
   @State private var candidates: [EventInviteCandidate] = []
   @State private var selection: Set<UUID> = []
   @State private var isLoading = true
@@ -1637,6 +1636,16 @@ private struct EventInviteView: View {
         }
       }
       .toolbar(.hidden, for: .navigationBar)
+      .safeAreaInset(edge: .bottom, spacing: 0) {
+        TunedInPersistentControlRegion {
+          TunedInSubscreenBackBar(title: "Invite friends") {
+            onDismiss()
+          }
+          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+          .padding(.top, 8)
+          .padding(.bottom, TunedInDesign.bottomControlInset)
+        }
+      }
     }
     .task { await load() }
   }
@@ -1670,7 +1679,7 @@ private struct EventInviteView: View {
         senderID: viewerID,
         recipientIDs: Array(selection)
       )
-      dismiss()
+      onDismiss()
     } catch {
       errorMessage = error.localizedDescription
     }

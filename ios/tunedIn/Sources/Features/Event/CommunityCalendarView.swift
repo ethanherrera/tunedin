@@ -199,8 +199,17 @@ struct CommunityCalendarView: View {
           }
         }
       }
-      .navigationTitle("Invitations")
-      .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { isShowingInvitations = false } } }
+      .toolbar(.hidden, for: .navigationBar)
+      .safeAreaInset(edge: .bottom, spacing: 0) {
+        TunedInPersistentControlRegion {
+          TunedInSubscreenBackBar(title: "Invitations") {
+            isShowingInvitations = false
+          }
+          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+          .padding(.top, 8)
+          .padding(.bottom, TunedInDesign.bottomControlInset)
+        }
+      }
     }
   }
 
@@ -365,6 +374,12 @@ private struct AgendaRow: View {
           .font(.subheadline.weight(.bold))
           .foregroundStyle(TunedInDesign.primaryText)
           .lineLimit(1)
+        if entry.event.title != entry.event.headlinerName {
+          Text(entry.event.headlinerName)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(TunedInDesign.primaryText)
+            .lineLimit(1)
+        }
         Text("\(entry.event.venueName) · \(time)")
           .font(.caption).foregroundStyle(TunedInDesign.mutedText).lineLimit(1)
         if !entry.friends.isEmpty {

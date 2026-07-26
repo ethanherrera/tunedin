@@ -3,7 +3,7 @@ import SwiftUI
 
 struct EventDiscoveryView: View {
   private enum SearchScope: String, CaseIterable, Hashable {
-    case concerts = "Concerts"
+    case concerts = "Concert"
     case people = "People"
   }
 
@@ -14,35 +14,28 @@ struct EventDiscoveryView: View {
 
   let viewerID: UUID
   let eventRepository: any EventRepository
-  let musicCatalogRepository: any MusicCatalogRepository
   let onOpenEvent: (CommunityEventSummary) -> Void
   let onOpenProfile: (SocialProfile) -> Void
-  let onDismiss: () -> Void
 
   @State private var query = ""
   @State private var selectedScope = SearchScope.concerts
   @State private var results: [CommunityEventSummary] = []
-  @State private var isLoadingEvents = true
+  @State private var isLoadingEvents = false
   @State private var eventErrorMessage: String?
-  @State private var isPresentingCreation = false
   @State private var peopleModel: PeopleHubModel
 
   init(
     viewerID: UUID,
     eventRepository: any EventRepository,
-    musicCatalogRepository: any MusicCatalogRepository,
     socialRepository: any SocialRepository,
     currentUsername: String,
     onOpenEvent: @escaping (CommunityEventSummary) -> Void,
-    onOpenProfile: @escaping (SocialProfile) -> Void,
-    onDismiss: @escaping () -> Void
+    onOpenProfile: @escaping (SocialProfile) -> Void
   ) {
     self.viewerID = viewerID
     self.eventRepository = eventRepository
-    self.musicCatalogRepository = musicCatalogRepository
     self.onOpenEvent = onOpenEvent
     self.onOpenProfile = onOpenProfile
-    self.onDismiss = onDismiss
     _peopleModel = State(
       initialValue: PeopleHubModel(
         repository: socialRepository,
@@ -56,14 +49,10 @@ struct EventDiscoveryView: View {
       TunedInDesign.pageBackground.ignoresSafeArea()
 
       ScrollView {
-        VStack(alignment: .leading, spacing: 18) {
-          Text("Search")
-            .font(.system(size: 34, weight: .bold))
-            .foregroundStyle(TunedInDesign.primaryText)
-
+        VStack(alignment: .leading, spacing: 14) {
           TunedInGlassSearchField(
             text: $query,
-            prompt: "Artist, venue, city, or @username"
+            prompt: selectedScope == .concerts ? "Search concerts" : "Search people by username"
           )
 
           Picker("Search category", selection: $selectedScope) {
@@ -72,65 +61,38 @@ struct EventDiscoveryView: View {
             }
           }
           .pickerStyle(.segmented)
+          .opacity(isSearchActive ? 1 : 0)
+          .allowsHitTesting(isSearchActive)
+          .accessibilityHidden(!isSearchActive)
 
           searchResults
-
-          if selectedScope == .concerts {
-            Button { isPresentingCreation = true } label: {
-              Label("Add a concert", systemImage: "plus.circle.fill")
-                .font(.headline)
-                .foregroundStyle(TunedInDesign.actionForeground)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 15)
-                .background(TunedInDesign.accent, in: Capsule())
-            }
-            .buttonStyle(TunedInPosterButtonStyle())
-            .padding(.top, 4)
-          }
         }
         .padding(.horizontal, 20)
         .padding(.top, 18)
         .padding(.bottom, 24)
       }
-      .refreshable { await refreshSelectedScope() }
     }
     .toolbar(.hidden, for: .navigationBar)
-    .safeAreaInset(edge: .bottom, spacing: 0) {
-      TunedInPersistentControlRegion {
-        TunedInSubscreenBackBar(title: "Search", action: onDismiss)
-          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
-          .padding(.top, 8)
-          .padding(.bottom, TunedInDesign.bottomControlInset)
-      }
-    }
     .task(id: searchRequest) {
-      if !query.isEmpty {
-        try? await Task.sleep(for: .milliseconds(250))
-        guard !Task.isCancelled else { return }
+      guard !normalizedQuery.isEmpty else {
+        clearSearchResults()
+        return
       }
+      try? await Task.sleep(for: .milliseconds(250))
+      guard !Task.isCancelled else { return }
       await searchSelectedScope()
-    }
-    .fullScreenCover(isPresented: $isPresentingCreation) {
-      CommunityEventCreationView(
-        creatorID: viewerID,
-        eventRepository: eventRepository,
-        musicCatalogRepository: musicCatalogRepository,
-        onCreated: { event in
-          isPresentingCreation = false
-          onOpenEvent(event)
-        },
-        onDismiss: { isPresentingCreation = false }
-      )
     }
   }
 
   @ViewBuilder
   private var searchResults: some View {
-    switch selectedScope {
-    case .concerts:
-      concertResults
-    case .people:
-      peopleResults
+    if !normalizedQuery.isEmpty {
+      switch selectedScope {
+      case .concerts:
+        concertResults
+      case .people:
+        peopleResults
+      }
     }
   }
 
@@ -146,13 +108,17 @@ struct EventDiscoveryView: View {
     } else if results.isEmpty {
       EventEmptyView(
         systemImage: "music.note.list",
-        title: query.isEmpty ? "No concerts yet" : "No matching concert",
-        message: "If the concert isn’t here, add it for the community using the music catalog."
+        title: "No matching concerts",
+        message: "Try a different artist, venue, city, or tour."
       )
     } else {
       LazyVStack(spacing: 12) {
-        eventSection(title: "Upcoming", events: upcomingResults)
-        eventSection(title: "Past", events: pastResults)
+        ForEach(results) { event in
+          Button { onOpenEvent(event) } label: {
+            CommunityEventRow(event: event, showsSource: true, eventRepository: eventRepository)
+          }
+          .buttonStyle(TunedInPosterButtonStyle())
+        }
       }
     }
   }
@@ -160,13 +126,7 @@ struct EventDiscoveryView: View {
   @ViewBuilder
   private var peopleResults: some View {
     let normalizedQuery = ProfileInput.normalizedSearchQuery(query)
-    if normalizedQuery.isEmpty {
-      EventEmptyView(
-        systemImage: "person.2",
-        title: "Find people",
-        message: "Search by @username to find friends and public profiles."
-      )
-    } else if peopleModel.isSearching {
+    if peopleModel.isSearching {
       VStack(spacing: 8) {
         ForEach(0 ..< 5, id: \.self) { _ in
           HStack(spacing: 12) {
@@ -211,33 +171,17 @@ struct EventDiscoveryView: View {
     SearchRequest(scope: selectedScope, query: query)
   }
 
-  private var upcomingResults: [CommunityEventSummary] {
-    results
-      .filter { $0.phase() != .memories }
-      .sorted { $0.eventDate < $1.eventDate }
-  }
-
-  private var pastResults: [CommunityEventSummary] {
-    results
-      .filter { $0.phase() == .memories }
-      .sorted { $0.eventDate > $1.eventDate }
-  }
-
-  @ViewBuilder
-  private func eventSection(title: String, events: [CommunityEventSummary]) -> some View {
-    if !events.isEmpty {
-      Text(title)
-        .font(.headline)
-        .foregroundStyle(TunedInDesign.primaryText)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, title == "Past" ? 8 : 0)
-      ForEach(events) { event in
-        Button { onOpenEvent(event) } label: {
-          CommunityEventRow(event: event, showsSource: true, eventRepository: eventRepository)
-        }
-        .buttonStyle(TunedInPosterButtonStyle())
-      }
+  private var normalizedQuery: String {
+    switch selectedScope {
+    case .concerts:
+      CatalogInput.normalizedText(query)
+    case .people:
+      ProfileInput.normalizedSearchQuery(query)
     }
+  }
+
+  private var isSearchActive: Bool {
+    !query.isEmpty
   }
 
   @MainActor
@@ -250,18 +194,16 @@ struct EventDiscoveryView: View {
     }
   }
 
-  @MainActor
-  private func refreshSelectedScope() async {
-    switch selectedScope {
-    case .concerts:
-      await searchEvents()
-    case .people:
-      await searchPeople(refresh: true)
-    }
+  private func clearSearchResults() {
+    results = []
+    isLoadingEvents = false
+    eventErrorMessage = nil
+    peopleModel.query = ""
   }
 
   @MainActor
   private func searchEvents() async {
+    guard !CatalogInput.normalizedText(query).isEmpty else { return }
     isLoadingEvents = results.isEmpty
     defer { isLoadingEvents = false }
     do {

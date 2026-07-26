@@ -286,6 +286,11 @@ private struct ProfilePostGridTile: View {
           Text(entry.event.title)
             .font(.caption2.weight(.semibold))
             .lineLimit(2)
+          if entry.event.title != entry.event.headlinerName {
+            Text(entry.event.headlinerName)
+              .font(.caption2.weight(.medium))
+              .lineLimit(1)
+          }
           Text(CommunityEventDateText.compactDate(entry.event.eventDate))
             .font(.caption2)
             .foregroundStyle(.white.opacity(0.86))

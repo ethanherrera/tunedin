@@ -313,9 +313,10 @@ struct TunedInPersistentControlRegion<Content: View>: View {
   @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
 
   var body: some View {
-    if keyboardPresentation.showsPersistentGlass {
-      content
-    }
+    content
+      .opacity(keyboardPresentation.showsPersistentGlass ? 1 : 0)
+      .allowsHitTesting(keyboardPresentation.showsPersistentGlass)
+      .accessibilityHidden(!keyboardPresentation.showsPersistentGlass)
   }
 }
 
@@ -424,8 +425,6 @@ struct TunedInGlassSearchField: View {
   @Binding var text: String
   let prompt: String
   let style: Style
-  @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
-  @FocusState private var isFocused: Bool
 
   init(text: Binding<String>, prompt: String, style: Style = .standard) {
     _text = text
@@ -443,8 +442,6 @@ struct TunedInGlassSearchField: View {
           .textInputAutocapitalization(.never)
           .autocorrectionDisabled()
           .submitLabel(.search)
-          .focused($isFocused)
-          .onSubmit { isFocused = false }
           .foregroundStyle(TunedInDesign.primaryText)
 
         if !text.isEmpty {
@@ -463,17 +460,10 @@ struct TunedInGlassSearchField: View {
       .modifier(
         TunedInLiquidGlassSearchSurface(
           style: style,
-          isGlassEnabled: keyboardPresentation.showsPersistentGlass
+          isGlassEnabled: true
         )
       )
 
-      if isFocused {
-        Button("Done") { isFocused = false }
-          .font(.subheadline.weight(.semibold))
-          .foregroundStyle(TunedInDesign.accent)
-          .transition(.opacity)
-          .accessibilityHint("Keeps the current search results visible")
-      }
     }
   }
 }
@@ -563,17 +553,20 @@ private struct TunedInEdgeSwipeBackModifier: ViewModifier {
   let action: () -> Void
 
   func body(content: Content) -> some View {
-    content.simultaneousGesture(
-      DragGesture(minimumDistance: 18, coordinateSpace: .global)
-        .onEnded { value in
-          guard isEnabled,
-                value.startLocation.x <= 28,
-                value.translation.width >= 72,
-                abs(value.translation.height) < abs(value.translation.width) * 0.7
-          else { return }
-          action()
-        }
-    )
+    if isEnabled {
+      content.simultaneousGesture(
+        DragGesture(minimumDistance: 18, coordinateSpace: .global)
+          .onEnded { value in
+            guard value.startLocation.x <= 28,
+                  value.translation.width >= 72,
+                  abs(value.translation.height) < abs(value.translation.width) * 0.7
+            else { return }
+            action()
+          }
+      )
+    } else {
+      content
+    }
   }
 }
 

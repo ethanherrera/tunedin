@@ -1,5 +1,6 @@
 import PhotosUI
 import SwiftUI
+import UIKit
 
 // Main-tab transition code temporarily shares this file with the existing profile surfaces.
 // swiftlint:disable file_length
@@ -8,6 +9,7 @@ import SwiftUI
 struct MainTabView: View {
   private enum Tab: Hashable {
     case feed
+    case search
     case plans
     case profile
   }
@@ -28,14 +30,17 @@ struct MainTabView: View {
   let eventRepository: any EventRepository
   let socialRepository: any SocialRepository
 
-  @State private var isPresentingEventDiscovery = false
   @State private var isPresentingCommunityEventCreation = false
+  @State private var isPresentingProfileFriends = false
+  @State private var isPresentingProfileSettings = false
   @State private var pendingCommunityEvent: CommunityEventRoute?
   @State private var presentedCommunityEvent: CommunityEventRoute?
   @State private var pendingSearchedProfile: SocialProfile?
   @State private var presentedSearchedProfile: SocialProfile?
+  @State private var profileToRestoreAfterCommunityEvent: SocialProfile?
   @State private var selectedTab: Tab = .feed
   @State private var feedNavigationID = UUID()
+  @State private var searchNavigationID = UUID()
   @State private var plansNavigationID = UUID()
   @State private var profileNavigationID = UUID()
   @State private var selectionFeedbackTrigger = 0
@@ -64,27 +69,6 @@ struct MainTabView: View {
         floatingControls.back(or: { activateTab(.profile) })
       }
       .fullScreenCover(
-        isPresented: $isPresentingEventDiscovery,
-        onDismiss: presentPendingDiscoveryDestination
-      ) {
-        EventDiscoveryView(
-          viewerID: profile.id,
-          eventRepository: eventRepository,
-          musicCatalogRepository: musicCatalogRepository,
-          socialRepository: socialRepository,
-          currentUsername: profile.username ?? "",
-          onOpenEvent: { event in
-            pendingCommunityEvent = CommunityEventRoute(event: event, postID: nil)
-            isPresentingEventDiscovery = false
-          },
-          onOpenProfile: { searchedProfile in
-            pendingSearchedProfile = searchedProfile
-            isPresentingEventDiscovery = false
-          },
-          onDismiss: { isPresentingEventDiscovery = false }
-        )
-      }
-      .fullScreenCover(
         isPresented: $isPresentingCommunityEventCreation,
         onDismiss: presentPendingDiscoveryDestination
       ) {
@@ -98,6 +82,67 @@ struct MainTabView: View {
           },
           onDismiss: { isPresentingCommunityEventCreation = false }
         )
+      }
+      .fullScreenCover(
+        isPresented: $isPresentingProfileFriends,
+        onDismiss: presentPendingProfileDestination
+      ) {
+        NavigationStack {
+          FriendsListView(
+            currentUserID: profile.id,
+            currentUsername: profile.username ?? "",
+            socialRepository: socialRepository,
+            postRepository: postRepository,
+            eventRepository: eventRepository,
+            onOpenCommunityEvent: { event, postID in
+              pendingCommunityEvent = CommunityEventRoute(event: event, postID: postID)
+              isPresentingProfileFriends = false
+            },
+            onOpenProfile: { requestedProfile in
+              pendingSearchedProfile = requestedProfile
+              isPresentingProfileFriends = false
+            },
+            onDismiss: { isPresentingProfileFriends = false },
+            managesFloatingControls: false
+          )
+          .toolbar(.hidden, for: .navigationBar)
+          .safeAreaInset(edge: .bottom, spacing: 0) {
+            TunedInPersistentControlRegion {
+              TunedInSubscreenBackBar(title: "Friends") {
+                isPresentingProfileFriends = false
+              }
+              .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+              .padding(.top, 8)
+              .padding(.bottom, TunedInDesign.bottomControlInset)
+            }
+          }
+        }
+        .environmentObject(floatingControls)
+        .tunedInKeyboardManaged()
+      }
+      .fullScreenCover(isPresented: $isPresentingProfileSettings) {
+        NavigationStack {
+          SettingsView(
+            session: session,
+            user: user,
+            profile: profile,
+            onDismiss: { isPresentingProfileSettings = false },
+            managesFloatingControls: false
+          )
+          .toolbar(.hidden, for: .navigationBar)
+          .safeAreaInset(edge: .bottom, spacing: 0) {
+            TunedInPersistentControlRegion {
+              TunedInSubscreenBackBar(title: "Settings") {
+                isPresentingProfileSettings = false
+              }
+              .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+              .padding(.top, 8)
+              .padding(.bottom, TunedInDesign.bottomControlInset)
+            }
+          }
+        }
+        .environmentObject(floatingControls)
+        .tunedInKeyboardManaged()
       }
       .fullScreenCover(
         item: $presentedCommunityEvent,
@@ -126,6 +171,7 @@ struct MainTabView: View {
             eventRepository: eventRepository,
             onOpenCommunityEvent: { event, postID in
               pendingCommunityEvent = CommunityEventRoute(event: event, postID: postID)
+              profileToRestoreAfterCommunityEvent = searchedProfile
               presentedSearchedProfile = nil
             },
             onDismiss: { presentedSearchedProfile = nil }
@@ -163,9 +209,11 @@ struct MainTabView: View {
           .transition(TunedInMotion.controlSceneTransition(reduceMotion: reduceMotion))
       case .none:
         TunedInGlassBottomBar {
-          HStack(spacing: 0) {
-            homeNavigationButtons
-          }
+          homeNavigationButtons
+            .frame(
+              maxWidth: .infinity,
+              minHeight: primaryNavigationContentHeight
+            )
         }
         .animation(TunedInMotion.selection(reduceMotion: reduceMotion), value: selectedTab)
         .transition(TunedInMotion.controlSceneTransition(reduceMotion: reduceMotion))
@@ -199,6 +247,11 @@ struct MainTabView: View {
     if let pendingCommunityEvent {
       self.pendingCommunityEvent = nil
       presentedCommunityEvent = pendingCommunityEvent
+      return
+    }
+    if let profileToRestoreAfterCommunityEvent {
+      self.profileToRestoreAfterCommunityEvent = nil
+      presentedSearchedProfile = profileToRestoreAfterCommunityEvent
     }
   }
 
@@ -247,6 +300,20 @@ struct MainTabView: View {
         }
       )
       .id(feedNavigationID)
+    case .search:
+      EventDiscoveryView(
+        viewerID: profile.id,
+        eventRepository: eventRepository,
+        socialRepository: socialRepository,
+        currentUsername: profile.username ?? "",
+        onOpenEvent: { event in
+          presentedCommunityEvent = CommunityEventRoute(event: event, postID: nil)
+        },
+        onOpenProfile: { searchedProfile in
+          routeToSocialProfile(searchedProfile)
+        }
+      )
+      .id(searchNavigationID)
     case .plans:
       if supportsPlans {
         CommunityPlansView(
@@ -272,7 +339,9 @@ struct MainTabView: View {
         socialRepository: socialRepository,
         onOpenCommunityEvent: { event, postID in
           presentedCommunityEvent = CommunityEventRoute(event: event, postID: postID)
-        }
+        },
+        onOpenFriends: { isPresentingProfileFriends = true },
+        onOpenSettings: { isPresentingProfileSettings = true }
       )
       .id(profileNavigationID)
     }
@@ -281,6 +350,7 @@ struct MainTabView: View {
   @ViewBuilder
   private var mainTabButtons: some View {
     tabButton(.feed, title: "Home", icon: "music.note.house")
+    tabButton(.search, title: "Search", icon: "magnifyingglass")
     if supportsPlans {
       tabButton(.plans, title: "Calendar", icon: "calendar")
     }
@@ -289,24 +359,26 @@ struct MainTabView: View {
 
   @ViewBuilder
   private var homeNavigationButtons: some View {
-    tabButton(.feed, title: "Home", icon: "music.note.house")
-    navigationActionButton(
-      systemImage: "magnifyingglass",
-      accessibilityLabel: "Search"
-    ) {
-      isPresentingEventDiscovery = true
+    HStack(spacing: 0) {
+      tabButton(.feed, title: "Home", icon: "music.note.house")
+        .frame(maxWidth: .infinity)
+      tabButton(.search, title: "Search", icon: "magnifyingglass")
+        .frame(maxWidth: .infinity)
+      navigationActionButton(
+        systemImage: "plus",
+        accessibilityLabel: "Add concert",
+        isAccent: true
+      ) {
+        isPresentingCommunityEventCreation = true
+      }
+      .frame(maxWidth: .infinity)
+      if supportsPlans {
+        tabButton(.plans, title: "Calendar", icon: "calendar")
+          .frame(maxWidth: .infinity)
+      }
+      tabButton(.profile, title: "Profile", icon: "person.crop.circle")
+        .frame(maxWidth: .infinity)
     }
-    navigationActionButton(
-      systemImage: "plus",
-      accessibilityLabel: "Add concert",
-      isAccent: true
-    ) {
-      isPresentingCommunityEventCreation = true
-    }
-    if supportsPlans {
-      tabButton(.plans, title: "Calendar", icon: "calendar")
-    }
-    tabButton(.profile, title: "Profile", icon: "person.crop.circle")
   }
 
   private func tabButton(_ tab: Tab, title: String, icon: String) -> some View {
@@ -352,6 +424,8 @@ struct MainTabView: View {
     switch tab {
     case .feed:
       feedNavigationID = UUID()
+    case .search:
+      searchNavigationID = UUID()
     case .plans:
       plansNavigationID = UUID()
     case .profile:
@@ -395,6 +469,10 @@ struct MainTabView: View {
     }
     .contentShape(.interaction, Capsule())
     .accessibilityAddTraits(isSelected ? .isSelected : [])
+  }
+
+  private var primaryNavigationContentHeight: CGFloat {
+    min(max(60, UIScreen.main.bounds.width * 0.164), 72)
   }
 }
 
@@ -451,6 +529,8 @@ struct ProfileTabView: View {
   let eventRepository: any EventRepository
   let socialRepository: any SocialRepository
   let onOpenCommunityEvent: (CommunityEventSummary, UUID?) -> Void
+  let onOpenFriends: () -> Void
+  let onOpenSettings: () -> Void
 
   @State private var friendCount = 0
   @State private var communityHistory = CommunityProfileHistory.empty
@@ -501,8 +581,8 @@ struct ProfileTabView: View {
 
   private var profileHeader: some View {
     ProfileIdentityHeader(profile: currentSocialProfile) {
-      NavigationLink {
-        SettingsView(session: session, user: user, profile: profile)
+      Button {
+        onOpenSettings()
       } label: {
         Image(systemName: "slider.horizontal.3")
           .font(.subheadline.weight(.bold))
@@ -515,16 +595,26 @@ struct ProfileTabView: View {
   }
 
   private var friendCountLink: some View {
-    ProfileFriendsLink(count: friendCount) {
-      FriendsListView(
-        currentUserID: profile.id,
-        currentUsername: profile.username ?? "",
-        socialRepository: socialRepository,
-        postRepository: postRepository,
-        eventRepository: eventRepository,
-        onOpenCommunityEvent: onOpenCommunityEvent
-      )
+    Button {
+      onOpenFriends()
+    } label: {
+      HStack(spacing: 10) {
+        Image(systemName: "person.2")
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(TunedInDesign.mutedText)
+        Text(friendCountLabel)
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(TunedInDesign.primaryText)
+      }
+      .padding(.vertical, 8)
+      .contentShape(Rectangle())
     }
+    .buttonStyle(.plain)
+    .accessibilityLabel("Open \(friendCountLabel)")
+  }
+
+  private var friendCountLabel: String {
+    "\(friendCount) \(friendCount == 1 ? "friend" : "friends")"
   }
 
   private func loadFriendCount(policy: CacheReadPolicy) async {
@@ -607,6 +697,8 @@ struct SettingsView: View {
   let session: AppSession
   let user: AuthenticatedUser
   let profile: Profile
+  let onDismiss: (() -> Void)?
+  let managesFloatingControls: Bool
 
   @Environment(\.dismiss) private var dismiss
   @EnvironmentObject private var floatingControls: AppFloatingControls
@@ -646,12 +738,19 @@ struct SettingsView: View {
     .navigationBarTitleDisplayMode(.inline)
     .navigationBarBackButtonHidden()
     .onAppear {
-      floatingControls.configureBackOnly(title: "Settings", owner: floatingControlOwner) {
-        floatingControls.reset()
-        dismiss()
+      guard managesFloatingControls else { return }
+      Task { @MainActor in
+        await Task.yield()
+        floatingControls.configureBackOnly(title: "Settings", owner: floatingControlOwner) {
+          floatingControls.reset()
+          close()
+        }
       }
     }
-    .onDisappear { floatingControls.resetBackOnly(owner: floatingControlOwner) }
+    .onDisappear {
+      guard managesFloatingControls else { return }
+      floatingControls.resetBackOnly(owner: floatingControlOwner)
+    }
     .tint(TunedInDesign.accent)
     .onChange(of: selectedPhoto) { _, item in
       guard let item else { return }
@@ -679,6 +778,14 @@ struct SettingsView: View {
       FeedbackView(session: session) {
         feedbackConfirmation = "Thank you for helping make tunedIn better."
       }
+    }
+  }
+
+  private func close() {
+    if let onDismiss {
+      onDismiss()
+    } else {
+      dismiss()
     }
   }
 

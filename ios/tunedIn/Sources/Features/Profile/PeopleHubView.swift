@@ -16,6 +16,9 @@ struct FriendsListView: View {
   let postRepository: any PostRepository
   let eventRepository: any EventRepository
   let onOpenCommunityEvent: (CommunityEventSummary, UUID?) -> Void
+  let onOpenProfile: ((SocialProfile) -> Void)?
+  let onDismiss: (() -> Void)?
+  let managesFloatingControls: Bool
 
   @State private var model: PeopleHubModel
   @State private var query = ""
@@ -33,7 +36,10 @@ struct FriendsListView: View {
     socialRepository: any SocialRepository,
     postRepository: any PostRepository,
     eventRepository: any EventRepository,
-    onOpenCommunityEvent: @escaping (CommunityEventSummary, UUID?) -> Void
+    onOpenCommunityEvent: @escaping (CommunityEventSummary, UUID?) -> Void,
+    onOpenProfile: ((SocialProfile) -> Void)? = nil,
+    onDismiss: (() -> Void)? = nil,
+    managesFloatingControls: Bool = true
   ) {
     let requestedProfileUsername = profileUsername ?? currentUsername
     self.profileUsername = requestedProfileUsername
@@ -43,6 +49,9 @@ struct FriendsListView: View {
     self.postRepository = postRepository
     self.eventRepository = eventRepository
     self.onOpenCommunityEvent = onOpenCommunityEvent
+    self.onOpenProfile = onOpenProfile
+    self.onDismiss = onDismiss
+    self.managesFloatingControls = managesFloatingControls
     _model = State(
       initialValue: PeopleHubModel(
         repository: socialRepository,
@@ -163,14 +172,29 @@ struct FriendsListView: View {
       }
     }
     .onAppear {
-      floatingControls.configureBackOnly(title: "Friends", owner: floatingControlOwner) {
-        floatingControls.reset()
-        dismiss()
+      guard managesFloatingControls else { return }
+      Task { @MainActor in
+        await Task.yield()
+        floatingControls.configureBackOnly(title: "Friends", owner: floatingControlOwner) {
+          floatingControls.reset()
+          close()
+        }
       }
     }
-    .onDisappear { floatingControls.resetBackOnly(owner: floatingControlOwner) }
+    .onDisappear {
+      guard managesFloatingControls else { return }
+      floatingControls.resetBackOnly(owner: floatingControlOwner)
+    }
     .tunedInEdgeSwipeBack {
       floatingControls.reset()
+      close()
+    }
+  }
+
+  private func close() {
+    if let onDismiss {
+      onDismiss()
+    } else {
       dismiss()
     }
   }
@@ -219,18 +243,26 @@ struct FriendsListView: View {
   }
 
   private func friendProfileLink(_ profile: SocialProfile) -> some View {
-    NavigationLink {
-      PersonProfileView(
-        profile: profile,
-        currentUserID: currentUserID,
-        currentUsername: currentUsername,
-        socialRepository: socialRepository,
-        postRepository: postRepository,
-        eventRepository: eventRepository,
-        onOpenCommunityEvent: onOpenCommunityEvent
-      )
-    } label: {
-      PersonRow(profile: profile)
+    Group {
+      if let onOpenProfile {
+        Button { onOpenProfile(profile) } label: {
+          PersonRow(profile: profile)
+        }
+      } else {
+        NavigationLink {
+          PersonProfileView(
+            profile: profile,
+            currentUserID: currentUserID,
+            currentUsername: currentUsername,
+            socialRepository: socialRepository,
+            postRepository: postRepository,
+            eventRepository: eventRepository,
+            onOpenCommunityEvent: onOpenCommunityEvent
+          )
+        } label: {
+          PersonRow(profile: profile)
+        }
+      }
     }
     .buttonStyle(.plain)
   }
