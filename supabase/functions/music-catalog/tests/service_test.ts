@@ -82,6 +82,9 @@ Deno.test("event discovery is rate-gated and writes only validated provider rows
   const response = await service.searchEvents({
     operation: "search_events",
     query: "Fixture Artist",
+    offset: 0,
+    beginDate: null,
+    endDate: null,
   }, profile.authorization);
 
   assert.equal(backend.reserveCalls, 1);
@@ -430,8 +433,13 @@ class FakeUpstream implements UpstreamTransport {
     return Promise.resolve(this.lookupResult);
   }
 
-  searchEvents(_query: string): Promise<MusicBrainzEventInput[]> {
-    return Promise.resolve(this.eventResults);
+  searchEvents(
+    _query: string,
+    _offset: number,
+    _beginDate: string | null,
+    _endDate: string | null,
+  ): Promise<{ results: MusicBrainzEventInput[]; hasMore: boolean }> {
+    return Promise.resolve({ results: this.eventResults, hasMore: false });
   }
 
   releaseSearch(): void {

@@ -28,6 +28,9 @@ export interface ResolveRequest {
 export interface SearchEventsRequest {
   operation: "search_events";
   query: string;
+  offset: number;
+  beginDate: string | null;
+  endDate: string | null;
 }
 
 export type CatalogRequest = SearchRequest | ResolveRequest | SearchEventsRequest;
@@ -77,6 +80,8 @@ export interface ResolveResponse {
 export interface SearchEventsResponse {
   operation: "search_events";
   eventIds: string[];
+  offset: number;
+  hasMore: boolean;
 }
 
 export interface MusicBrainzEventInput {
@@ -182,5 +187,10 @@ export interface UpstreamTransport {
     hasMore: boolean;
   }>;
   lookup(kind: CatalogKind, musicBrainzId: string): Promise<CatalogResult>;
-  searchEvents(query: string): Promise<MusicBrainzEventInput[]>;
+  searchEvents(
+    query: string,
+    offset: number,
+    beginDate: string | null,
+    endDate: string | null,
+  ): Promise<{ results: MusicBrainzEventInput[]; hasMore: boolean }>;
 }

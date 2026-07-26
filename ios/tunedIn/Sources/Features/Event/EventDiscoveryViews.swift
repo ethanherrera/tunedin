@@ -10,6 +10,7 @@ struct EventDiscoveryView: View {
   private struct SearchRequest: Hashable {
     let scope: SearchScope
     let query: String
+    let filter: EventSearchFilter
   }
 
   let viewerID: UUID
@@ -21,6 +22,12 @@ struct EventDiscoveryView: View {
   @State private var selectedScope = SearchScope.concerts
   @State private var results: [CommunityEventSummary] = []
   @State private var isLoadingEvents = false
+  @State private var isLoadingMoreEvents = false
+  @State private var eventSearchHasMore = false
+  @State private var nextEventSearchOffset = 0
+  @State private var eventSearchFilter = EventSearchFilter.none
+  @State private var isShowingFilterMenu = false
+  @State private var isShowingDateFilter = false
   @State private var eventErrorMessage: String?
   @State private var peopleModel: PeopleHubModel
   @FocusState private var isSearchFieldFocused: Bool
@@ -49,7 +56,7 @@ struct EventDiscoveryView: View {
     ZStack {
       TunedInDesign.pageBackground.ignoresSafeArea()
 
-      ScrollView {
+      VStack(alignment: .leading, spacing: 14) {
         VStack(alignment: .leading, spacing: 14) {
           TunedInGlassSearchField(
             text: $query,
@@ -67,14 +74,60 @@ struct EventDiscoveryView: View {
           .allowsHitTesting(isSearchActive)
           .accessibilityHidden(!isSearchActive)
 
-          searchResults
         }
         .padding(.horizontal, 20)
         .padding(.top, 18)
-        .padding(.bottom, 24)
+
+        ScrollView {
+          searchResults
+            .padding(.horizontal, 20)
+            .padding(.bottom, 24)
+        }
+      }
+
+      if selectedScope == .concerts, isSearchActive {
+        if isShowingFilterMenu {
+          Color.clear
+            .contentShape(Rectangle())
+            .onTapGesture {
+              isShowingFilterMenu = false
+            }
+        }
+
+        VStack {
+          Spacer()
+          HStack {
+            Spacer()
+            VStack(alignment: .trailing, spacing: 10) {
+              if isShowingFilterMenu {
+                EventSearchFilterMenu(isActive: isDateFilterActive) {
+                  isShowingFilterMenu = false
+                  Task { @MainActor in
+                    await Task.yield()
+                    isShowingDateFilter = true
+                  }
+                }
+                .transition(.scale(scale: 0.9, anchor: .bottomTrailing).combined(with: .opacity))
+              }
+
+              floatingFilterControl
+            }
+          }
+        }
+        .padding(.trailing, 24)
+        .padding(.bottom, 20)
+        .animation(.snappy(duration: 0.24), value: isShowingFilterMenu)
       }
     }
     .toolbar(.hidden, for: .navigationBar)
+    .sheet(isPresented: $isShowingDateFilter) {
+      EventSearchDateFilterSheet(filter: eventSearchFilter) { filter in
+        eventSearchFilter = filter
+      } onClear: {
+        eventSearchFilter = .none
+      }
+      .presentationDetents([.medium, .large])
+    }
     .task(id: searchRequest) {
       guard !normalizedQuery.isEmpty else {
         clearSearchResults()
@@ -123,6 +176,15 @@ struct EventDiscoveryView: View {
             CommunityEventRow(event: event, showsSource: true, eventRepository: eventRepository)
           }
           .buttonStyle(TunedInPosterButtonStyle())
+          .onAppear {
+            guard event.id == results.last?.id, eventSearchHasMore, !isLoadingMoreEvents else { return }
+            Task { await loadMoreEvents() }
+          }
+        }
+        if isLoadingMoreEvents {
+          ProgressView("Loading more concerts")
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
         }
       }
     }
@@ -176,7 +238,11 @@ struct EventDiscoveryView: View {
   }
 
   private var searchRequest: SearchRequest {
-    SearchRequest(scope: selectedScope, query: query)
+    SearchRequest(
+      scope: selectedScope,
+      query: query,
+      filter: selectedScope == .concerts ? eventSearchFilter : .none
+    )
   }
 
   private var normalizedQuery: String {
@@ -192,6 +258,22 @@ struct EventDiscoveryView: View {
     !query.isEmpty
   }
 
+  private var floatingFilterControl: some View {
+    TunedInGlassIconButton(
+      systemImage: "line.3.horizontal.decrease",
+      accessibilityLabel: "Open search filters",
+      style: isDateFilterActive ? .accent : .neutral,
+      remainsVisibleWithKeyboard: true
+    ) {
+      isSearchFieldFocused = false
+      isShowingFilterMenu.toggle()
+    }
+  }
+
+  private var isDateFilterActive: Bool {
+    eventSearchFilter != .none
+  }
+
   @MainActor
   private func searchSelectedScope() async {
     switch selectedScope {
@@ -205,6 +287,9 @@ struct EventDiscoveryView: View {
   private func clearSearchResults() {
     results = []
     isLoadingEvents = false
+    isLoadingMoreEvents = false
+    eventSearchHasMore = false
+    nextEventSearchOffset = 0
     eventErrorMessage = nil
     peopleModel.query = ""
   }
@@ -212,13 +297,46 @@ struct EventDiscoveryView: View {
   @MainActor
   private func searchEvents() async {
     guard !CatalogInput.normalizedText(query).isEmpty else { return }
-    isLoadingEvents = results.isEmpty
+    isLoadingEvents = true
     defer { isLoadingEvents = false }
     do {
-      results = try await eventRepository.searchEvents(query: query, viewerID: viewerID)
+      let page = try await eventRepository.searchEvents(
+        query: query,
+        filter: eventSearchFilter,
+        offset: 0,
+        viewerID: viewerID
+      )
+      guard !Task.isCancelled else { return }
+      results = page.events
+      nextEventSearchOffset = page.offset + EventSearchPage.limit
+      eventSearchHasMore = page.hasMore
       eventErrorMessage = nil
     } catch {
+      guard !Task.isCancelled else { return }
       eventErrorMessage = error.localizedDescription
+    }
+  }
+
+  @MainActor
+  private func loadMoreEvents() async {
+    guard eventSearchHasMore, !isLoadingMoreEvents else { return }
+    isLoadingMoreEvents = true
+    defer { isLoadingMoreEvents = false }
+    do {
+      let page = try await eventRepository.searchEvents(
+        query: query,
+        filter: eventSearchFilter,
+        offset: nextEventSearchOffset,
+        viewerID: viewerID
+      )
+      guard !Task.isCancelled else { return }
+      let existingIDs = Set(results.map(\.id))
+      results.append(contentsOf: page.events.filter { !existingIDs.contains($0.id) })
+      nextEventSearchOffset = page.offset + EventSearchPage.limit
+      eventSearchHasMore = page.hasMore
+    } catch {
+      guard !Task.isCancelled else { return }
+      eventSearchHasMore = false
     }
   }
 
@@ -229,6 +347,173 @@ struct EventDiscoveryView: View {
       await peopleModel.refreshSearch()
     } else {
       await peopleModel.search()
+    }
+  }
+}
+
+private struct EventSearchFilterMenu: View {
+  let isActive: Bool
+  let onSelectDate: () -> Void
+
+  var body: some View {
+    TunedInGlassPopover {
+      Button(action: onSelectDate) {
+        HStack(spacing: 10) {
+          Label("Date", systemImage: "calendar")
+          Spacer()
+          if isActive {
+            Image(systemName: "checkmark")
+              .font(.subheadline.weight(.bold))
+          }
+        }
+          .font(.body.weight(.semibold))
+          .foregroundStyle(isActive ? TunedInDesign.accent : TunedInDesign.primaryText)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(.horizontal, 18)
+          .padding(.vertical, 16)
+          .contentShape(.interaction, RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius))
+          .background(
+            isActive ? TunedInDesign.accent.opacity(0.12) : .clear,
+            in: RoundedRectangle(cornerRadius: TunedInDesign.cornerRadius, style: .continuous)
+          )
+      }
+      .buttonStyle(.plain)
+      .accessibilityHint("Filters concerts by date")
+    }
+    .frame(width: 156)
+  }
+}
+
+private struct EventSearchDateFilterSheet: View {
+  let filter: EventSearchFilter
+  let onApply: (EventSearchFilter) -> Void
+  let onClear: () -> Void
+
+  @Environment(\.dismiss) private var dismiss
+  @State private var fromDate: Date?
+  @State private var toDate: Date?
+
+  init(
+    filter: EventSearchFilter,
+    onApply: @escaping (EventSearchFilter) -> Void,
+    onClear: @escaping () -> Void
+  ) {
+    self.filter = filter
+    self.onApply = onApply
+    self.onClear = onClear
+    _fromDate = State(initialValue: filter.beginDate)
+    _toDate = State(initialValue: filter.endDate)
+  }
+
+  var body: some View {
+    NavigationStack {
+      ZStack {
+        TunedInDesign.pageBackground.ignoresSafeArea()
+
+        ScrollView {
+          VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 5) {
+              Text("Date")
+                .font(.title2.weight(.bold))
+                .foregroundStyle(TunedInDesign.primaryText)
+              Text("Use either bound, or both for a date range.")
+                .font(.subheadline)
+                .foregroundStyle(TunedInDesign.mutedText)
+            }
+
+            TunedInGlassSection {
+              VStack(spacing: 0) {
+                optionalDatePicker("From", selection: $fromDate)
+                  .onChange(of: fromDate) { _, fromDate in
+                    guard let fromDate, let toDate, toDate < fromDate else { return }
+                    self.toDate = fromDate
+                  }
+
+                Divider()
+                  .overlay(TunedInDesign.cardBorder)
+                  .padding(.vertical, 10)
+
+                optionalDatePicker("To", selection: $toDate)
+                  .onChange(of: toDate) { _, toDate in
+                    guard let toDate, let fromDate, fromDate > toDate else { return }
+                    self.fromDate = toDate
+                  }
+              }
+            }
+          }
+          .padding(.horizontal, 20)
+          .padding(.top, 24)
+          .padding(.bottom, TunedInDesign.scrollContentBottomInset + TunedInDesign.controlSize)
+        }
+      }
+      .toolbar(.hidden, for: .navigationBar)
+      .safeAreaInset(edge: .bottom, spacing: 0) {
+        TunedInPersistentControlRegion {
+          bottomControls
+            .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+            .padding(.top, 8)
+            .padding(.bottom, TunedInDesign.bottomControlInset)
+        }
+      }
+    }
+  }
+
+  private var bottomControls: some View {
+    TunedInGlassTraversalLayout {
+      TunedInGlassIconButton(
+        systemImage: "chevron.backward",
+        accessibilityLabel: "Back to concert search",
+        remainsVisibleWithKeyboard: true
+      ) {
+        dismiss()
+      }
+    } center: {
+      TunedInGlassBottomBar {
+        Button {
+          onClear()
+          dismiss()
+        } label: {
+          Text("Clear")
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(TunedInDesign.primaryText)
+            .frame(minWidth: 112, minHeight: 48)
+            .padding(.horizontal, 14)
+            .contentShape(.interaction, Capsule())
+        }
+        .buttonStyle(.plain)
+      }
+    } trailing: {
+      TunedInGlassIconButton(
+        systemImage: "checkmark",
+        accessibilityLabel: "Apply date filter",
+        style: .accent,
+        remainsVisibleWithKeyboard: true
+      ) {
+        onApply(EventSearchFilter(beginDate: fromDate, endDate: toDate))
+        dismiss()
+      }
+    }
+  }
+
+  private func optionalDatePicker(
+    _ title: String,
+    selection: Binding<Date?>
+  ) -> some View {
+    HStack {
+      DatePicker(title, selection: Binding(
+        get: { selection.wrappedValue ?? Calendar.current.startOfDay(for: .now) },
+        set: { selection.wrappedValue = Calendar.current.startOfDay(for: $0) }
+      ), displayedComponents: .date)
+      .tint(TunedInDesign.accent)
+
+      if selection.wrappedValue != nil {
+        Button("Clear \(title)", systemImage: "xmark.circle.fill") {
+          selection.wrappedValue = nil
+        }
+        .labelStyle(.iconOnly)
+        .buttonStyle(.borderless)
+        .accessibilityLabel("Clear \(title.lowercased()) date")
+      }
     }
   }
 }

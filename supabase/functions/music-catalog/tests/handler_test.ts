@@ -211,8 +211,13 @@ class HandlerUpstream implements UpstreamTransport {
     return Promise.resolve(fixtureResult());
   }
 
-  searchEvents(_query: string): Promise<MusicBrainzEventInput[]> {
-    return Promise.resolve([]);
+  searchEvents(
+    _query: string,
+    _offset: number,
+    _beginDate: string | null,
+    _endDate: string | null,
+  ): Promise<{ results: MusicBrainzEventInput[]; hasMore: boolean }> {
+    return Promise.resolve({ results: [], hasMore: false });
   }
 }
 

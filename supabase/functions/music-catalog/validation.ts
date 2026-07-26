@@ -82,8 +82,19 @@ export function parseCatalogRequest(value: unknown): CatalogRequest {
   }
 
   if (value.operation === "search_events") {
-    assertExactKeys(value, ["operation", "query"]);
-    return { operation: "search_events", query: normalizeSearchQuery(value.query) };
+    assertExactKeys(value, ["operation", "query", "offset", "beginDate", "endDate"]);
+    const beginDate = parseEventDate(value.beginDate, "Begin date");
+    const endDate = parseEventDate(value.endDate, "End date");
+    if (beginDate !== null && endDate !== null && beginDate > endDate) {
+      throw invalidRequest("Begin date must not be after end date.");
+    }
+    return {
+      operation: "search_events",
+      query: normalizeSearchQuery(value.query),
+      offset: value.offset === undefined ? 0 : parseOffset(value.offset),
+      beginDate,
+      endDate,
+    };
   }
 
   throw invalidRequest("The catalog operation is not supported.");
@@ -113,6 +124,18 @@ export function normalizeSearchQuery(value: unknown): string {
     throw invalidRequest("Catalog searches must contain 2-100 characters.");
   }
   return normalized;
+}
+
+function parseEventDate(value: unknown, fieldName: string): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw invalidRequest(`${fieldName} must be an ISO calendar date.`);
+  }
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== value) {
+    throw invalidRequest(`${fieldName} must be an ISO calendar date.`);
+  }
+  return value;
 }
 
 export function parseUuid(value: unknown, fieldName = "ID"): string {

@@ -1,6 +1,6 @@
 begin;
 
-select plan(6);
+select plan(8);
 
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
@@ -10,6 +10,12 @@ select throws_ok(
   $$select public.upsert_musicbrainz_catalog_event('{}'::jsonb)$$,
   '42501', null,
   'ordinary clients cannot invoke the MusicBrainz event importer'
+);
+
+select throws_ok(
+  $$select * from public.list_discoverable_catalog_event_summaries(array[]::uuid[])$$,
+  '42501', null,
+  'ordinary clients cannot list provider event summaries before onboarding'
 );
 
 reset role;
@@ -76,6 +82,16 @@ select is(
    limit 1),
   current_setting('test.mb_event_id')::uuid,
   'provider search matches a supporting artist in the MusicBrainz lineup'
+);
+
+select is(
+  (select (event ->> 'event_id')::uuid
+   from public.list_discoverable_catalog_event_summaries(
+     array[current_setting('test.mb_event_id')::uuid]
+   )
+   limit 1),
+  current_setting('test.mb_event_id')::uuid,
+  'authenticated discovery can load the gateway-ordered MusicBrainz event summary'
 );
 
 reset role;

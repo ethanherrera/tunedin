@@ -12,6 +12,7 @@ import { artistCreditsFromMetadata } from "./result_validation.ts";
 import { buildLuceneQuery, isPlainObject, parseMusicBrainzUuid } from "./validation.ts";
 
 const SEARCH_LIMIT = 15;
+const EVENT_SEARCH_LIMIT = 20;
 const MAX_RESPONSE_BYTES = 1_000_000;
 const DEFAULT_TIMEOUT_MS = 8_000;
 const MAX_REDIRECTS = 2;
@@ -102,27 +103,35 @@ export class MusicBrainzClient implements UpstreamTransport {
     return entity;
   }
 
-  async searchEvents(query: string): Promise<MusicBrainzEventInput[]> {
+  async searchEvents(
+    query: string,
+    offset: number,
+    beginDate: string | null,
+    endDate: string | null,
+  ): Promise<{ results: MusicBrainzEventInput[]; hasMore: boolean }> {
     const url = new URL("event", this.#baseUrl);
-    url.searchParams.set(
-      "query",
-      `type:"Concert" AND (event:"${escapeEventQuery(query)}" OR artist:"${
-        escapeEventQuery(query)
-      }" OR place:"${escapeEventQuery(query)}" OR area:"${escapeEventQuery(query)}")`,
-    );
+    url.searchParams.set("query", buildEventLuceneQuery(query, beginDate, endDate));
     url.searchParams.set("fmt", "json");
-    url.searchParams.set("limit", "5");
+    url.searchParams.set("limit", String(EVENT_SEARCH_LIMIT));
+    url.searchParams.set("offset", String(offset));
     url.searchParams.set("inc", "artist-rels+place-rels");
     const payload = await this.#requestJson(url, "search");
     const root = objectValue(payload);
-    return arrayValue(root.events, "events", 5)
-      .flatMap((value) => {
-        try {
-          return [decodeEvent(value)];
-        } catch {
-          return [];
-        }
-      });
+    const responseOffset = integerValue(root.offset, "offset", 0, 10_000_000);
+    const count = integerValue(root.count, "count", 0, 10_000_000);
+    if (responseOffset !== offset) throw invalidUpstream();
+    const events = arrayValue(root.events, "events", EVENT_SEARCH_LIMIT);
+    return {
+      results: events
+        .flatMap((value) => {
+          try {
+            return [decodeEvent(value)];
+          } catch {
+            return [];
+          }
+        }),
+      hasMore: responseOffset + events.length < count,
+    };
   }
 
   async #requestJson(
@@ -556,6 +565,19 @@ function normalizeEventTime(value: string): string {
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:${
     String(second).padStart(2, "0")
   }`;
+}
+
+function buildEventLuceneQuery(
+  query: string,
+  beginDate: string | null,
+  endDate: string | null,
+): string {
+  const terms = query.split(/\s+/u).map(escapeEventQuery).join(" AND ");
+  const clauses = ['type:"Concert"', `(${terms})`];
+  if (beginDate !== null || endDate !== null) {
+    clauses.push(`begin:[${beginDate ?? "*"} TO ${endDate ?? "*"}]`);
+  }
+  return clauses.join(" AND ");
 }
 
 function escapeEventQuery(value: string): string {

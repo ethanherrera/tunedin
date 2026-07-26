@@ -24,10 +24,38 @@ struct EventRepositoryCapabilities: OptionSet, Equatable, Sendable {
   ]
 }
 
+struct EventSearchFilter: Equatable, Hashable, Sendable {
+  var beginDate: Date?
+  var endDate: Date?
+
+  static let none = Self(beginDate: nil, endDate: nil)
+
+  func includes(_ eventDate: Date, calendar: Calendar = .current) -> Bool {
+    let day = calendar.startOfDay(for: eventDate)
+    if let beginDate, day < calendar.startOfDay(for: beginDate) { return false }
+    if let endDate, day > calendar.startOfDay(for: endDate) { return false }
+    return true
+  }
+}
+
+struct EventSearchPage: Equatable, Sendable {
+  static let limit = 20
+
+  let events: [CommunityEventSummary]
+  let offset: Int
+  let hasMore: Bool
+}
+
 protocol EventRepository: Sendable {
   var capabilities: EventRepositoryCapabilities { get }
 
   func searchEvents(query: String, viewerID: UUID) async throws -> [CommunityEventSummary]
+  func searchEvents(
+    query: String,
+    filter: EventSearchFilter,
+    offset: Int,
+    viewerID: UUID
+  ) async throws -> EventSearchPage
   func duplicateCandidates(
     for input: CommunityEventCreationInput,
     viewerID: UUID
@@ -99,6 +127,22 @@ protocol EventRepository: Sendable {
 }
 
 extension EventRepository {
+  func searchEvents(
+    query: String,
+    filter: EventSearchFilter,
+    offset: Int,
+    viewerID: UUID
+  ) async throws -> EventSearchPage {
+    let matching = try await searchEvents(query: query, viewerID: viewerID)
+      .filter { filter.includes($0.eventDate) }
+    let page = Array(matching.dropFirst(offset).prefix(EventSearchPage.limit))
+    return EventSearchPage(
+      events: page,
+      offset: offset,
+      hasMore: offset + page.count < matching.count
+    )
+  }
+
   func duplicateCandidates(
     for _: CommunityEventCreationInput,
     viewerID _: UUID

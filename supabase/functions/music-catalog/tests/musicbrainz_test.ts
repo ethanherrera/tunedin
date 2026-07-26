@@ -122,6 +122,38 @@ Deno.test("MusicBrainz search sends JSON headers, meaningful User-Agent, bounds,
   assert.equal(captured.url?.searchParams.get("query"), 'artist:"AC\\/DC \\+ artist\\:other"');
 });
 
+Deno.test("event search keeps MusicBrainz-native relevance, date bounds, and page offset", async () => {
+  const captured: { url?: URL } = {};
+  const client = new MusicBrainzClient({
+    baseUrl,
+    userAgent,
+    fetch: (input) => {
+      captured.url = new URL(String(input));
+      return Promise.resolve(jsonResponse(JSON.stringify({
+        count: 40,
+        offset: 20,
+        events: [],
+      })));
+    },
+  });
+
+  const response = await client.searchEvents(
+    "eternal sunshine oakland",
+    20,
+    "2026-08-15",
+    "2026-08-31",
+  );
+
+  assert.deepEqual(response.results, []);
+  assert.equal(response.hasMore, true);
+  assert.equal(captured.url?.searchParams.get("limit"), "20");
+  assert.equal(captured.url?.searchParams.get("offset"), "20");
+  assert.equal(
+    captured.url?.searchParams.get("query"),
+    'type:"Concert" AND (eternal AND sunshine AND oakland) AND begin:[2026-08-15 TO 2026-08-31]',
+  );
+});
+
 Deno.test("lookup follows bounded same-origin redirects and reserves another slot", async () => {
   const lookup = await fixtureText("lookup-artist.json");
   let calls = 0;
