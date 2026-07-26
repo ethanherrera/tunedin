@@ -26,7 +26,7 @@ metrics_json="$("${local_supabase_helper}" query --local -o json "
 ")"
 
 metrics="$(jq -er '
-  .rows[0] | [
+  (if type == "array" then .[0] else .rows[0] end) | [
     .metric_0,
     .metric_1,
     .metric_2,
