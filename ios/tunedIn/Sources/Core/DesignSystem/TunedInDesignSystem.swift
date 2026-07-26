@@ -424,13 +424,20 @@ struct TunedInGlassSearchField: View {
   @Binding var text: String
   let prompt: String
   let style: Style
+  let onActivate: (() -> Void)?
   @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
   @FocusState private var isFocused: Bool
 
-  init(text: Binding<String>, prompt: String, style: Style = .standard) {
+  init(
+    text: Binding<String>,
+    prompt: String,
+    style: Style = .standard,
+    onActivate: (() -> Void)? = nil
+  ) {
     _text = text
     self.prompt = prompt
     self.style = style
+    self.onActivate = onActivate
   }
 
   var body: some View {
@@ -439,7 +446,11 @@ struct TunedInGlassSearchField: View {
         Image(systemName: "magnifyingglass")
           .foregroundStyle(TunedInDesign.mutedText)
 
-        TextField(prompt, text: $text)
+        TextField(prompt, text: $text, onEditingChanged: { isEditing in
+          if isEditing {
+            onActivate?()
+          }
+        })
           .textInputAutocapitalization(.never)
           .autocorrectionDisabled()
           .submitLabel(.search)

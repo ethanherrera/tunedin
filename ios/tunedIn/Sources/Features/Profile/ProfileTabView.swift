@@ -8,6 +8,7 @@ import SwiftUI
 struct MainTabView: View {
   private enum Tab: Hashable {
     case feed
+    case search
     case plans
     case profile
   }
@@ -28,7 +29,6 @@ struct MainTabView: View {
   let eventRepository: any EventRepository
   let socialRepository: any SocialRepository
 
-  @State private var isPresentingEventDiscovery = false
   @State private var isPresentingCommunityEventCreation = false
   @State private var pendingCommunityEvent: CommunityEventRoute?
   @State private var presentedCommunityEvent: CommunityEventRoute?
@@ -36,6 +36,7 @@ struct MainTabView: View {
   @State private var presentedSearchedProfile: SocialProfile?
   @State private var selectedTab: Tab = .feed
   @State private var feedNavigationID = UUID()
+  @State private var searchNavigationID = UUID()
   @State private var plansNavigationID = UUID()
   @State private var profileNavigationID = UUID()
   @State private var selectionFeedbackTrigger = 0
@@ -62,27 +63,6 @@ struct MainTabView: View {
           && !floatingControls.isInteractionLocked
       ) {
         floatingControls.back(or: { activateTab(.profile) })
-      }
-      .fullScreenCover(
-        isPresented: $isPresentingEventDiscovery,
-        onDismiss: presentPendingDiscoveryDestination
-      ) {
-        EventDiscoveryView(
-          viewerID: profile.id,
-          eventRepository: eventRepository,
-          musicCatalogRepository: musicCatalogRepository,
-          socialRepository: socialRepository,
-          currentUsername: profile.username ?? "",
-          onOpenEvent: { event in
-            pendingCommunityEvent = CommunityEventRoute(event: event, postID: nil)
-            isPresentingEventDiscovery = false
-          },
-          onOpenProfile: { searchedProfile in
-            pendingSearchedProfile = searchedProfile
-            isPresentingEventDiscovery = false
-          },
-          onDismiss: { isPresentingEventDiscovery = false }
-        )
       }
       .fullScreenCover(
         isPresented: $isPresentingCommunityEventCreation,
@@ -247,6 +227,20 @@ struct MainTabView: View {
         }
       )
       .id(feedNavigationID)
+    case .search:
+      EventDiscoveryView(
+        viewerID: profile.id,
+        eventRepository: eventRepository,
+        socialRepository: socialRepository,
+        currentUsername: profile.username ?? "",
+        onOpenEvent: { event in
+          presentedCommunityEvent = CommunityEventRoute(event: event, postID: nil)
+        },
+        onOpenProfile: { searchedProfile in
+          routeToSocialProfile(searchedProfile)
+        }
+      )
+      .id(searchNavigationID)
     case .plans:
       if supportsPlans {
         CommunityPlansView(
@@ -281,6 +275,7 @@ struct MainTabView: View {
   @ViewBuilder
   private var mainTabButtons: some View {
     tabButton(.feed, title: "Home", icon: "music.note.house")
+    tabButton(.search, title: "Search", icon: "magnifyingglass")
     if supportsPlans {
       tabButton(.plans, title: "Calendar", icon: "calendar")
     }
@@ -290,12 +285,7 @@ struct MainTabView: View {
   @ViewBuilder
   private var homeNavigationButtons: some View {
     tabButton(.feed, title: "Home", icon: "music.note.house")
-    navigationActionButton(
-      systemImage: "magnifyingglass",
-      accessibilityLabel: "Search"
-    ) {
-      isPresentingEventDiscovery = true
-    }
+    tabButton(.search, title: "Search", icon: "magnifyingglass")
     navigationActionButton(
       systemImage: "plus",
       accessibilityLabel: "Add concert",
@@ -352,6 +342,8 @@ struct MainTabView: View {
     switch tab {
     case .feed:
       feedNavigationID = UUID()
+    case .search:
+      searchNavigationID = UUID()
     case .plans:
       plansNavigationID = UUID()
     case .profile:
