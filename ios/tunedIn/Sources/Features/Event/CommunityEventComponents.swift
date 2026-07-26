@@ -406,7 +406,10 @@ private struct EventDatePill: View {
   let date: Date
 
   var body: some View {
-    Text(date.formatted(.dateTime.month(.abbreviated).day()))
+    Text(
+      "\(CommunityEventDateText.month(date)) "
+        + "\(CommunityEventDateText.day(date)) ’\(CommunityEventDateText.shortYear(date))"
+    )
       .font(.caption2.weight(.heavy))
       .textCase(.uppercase)
       .foregroundStyle(.white)
@@ -706,7 +709,7 @@ struct EventDateTile: View {
       Text(CommunityEventDateText.day(date))
         .font(.title2.weight(.bold))
         .foregroundStyle(TunedInDesign.primaryText)
-      Text(CommunityEventDateText.weekday(date))
+      Text(CommunityEventDateText.year(date))
         .font(.caption2.weight(.semibold))
         .foregroundStyle(TunedInDesign.mutedText)
     }
@@ -745,8 +748,12 @@ enum CommunityEventDateText {
     formatter(format: "d").string(from: date)
   }
 
-  static func weekday(_ date: Date) -> String {
-    formatter(format: "EEE").string(from: date)
+  static func year(_ date: Date) -> String {
+    formatter(format: "yyyy").string(from: date)
+  }
+
+  static func shortYear(_ date: Date) -> String {
+    formatter(format: "yy").string(from: date)
   }
 
   private static func formatter(
