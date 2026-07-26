@@ -425,8 +425,6 @@ struct TunedInGlassSearchField: View {
   @Binding var text: String
   let prompt: String
   let style: Style
-  @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
-  @FocusState private var isFocused: Bool
 
   init(text: Binding<String>, prompt: String, style: Style = .standard) {
     _text = text
@@ -444,8 +442,6 @@ struct TunedInGlassSearchField: View {
           .textInputAutocapitalization(.never)
           .autocorrectionDisabled()
           .submitLabel(.search)
-          .focused($isFocused)
-          .onSubmit { isFocused = false }
           .foregroundStyle(TunedInDesign.primaryText)
 
         if !text.isEmpty {
@@ -464,7 +460,7 @@ struct TunedInGlassSearchField: View {
       .modifier(
         TunedInLiquidGlassSearchSurface(
           style: style,
-          isGlassEnabled: keyboardPresentation.showsPersistentGlass
+          isGlassEnabled: true
         )
       )
 

@@ -82,15 +82,6 @@ private struct TunedInKeyboardPresentationModifier: ViewModifier {
       .scrollDismissesKeyboard(.interactively)
       .environment(\.tunedInKeyboardPresentation, presentation)
       .environment(\.tunedInKeyboardAccessoryCoordinator, coordinator)
-      .toolbar {
-        if coordinator.isActive(accessoryOwner) {
-          ToolbarItemGroup(placement: .keyboard) {
-            Spacer()
-            Button("Done", action: dismissKeyboard)
-              .font(.body.weight(.semibold))
-          }
-        }
-      }
       .onAppear { coordinator.register(accessoryOwner) }
       .onDisappear { coordinator.unregister(accessoryOwner) }
       .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
@@ -133,15 +124,6 @@ private struct TunedInKeyboardPresentationModifier: ViewModifier {
     withTransaction(TunedInKeyboardPresentation.immediateTransaction) {
       presentation = updatedPresentation
     }
-  }
-
-  private func dismissKeyboard() {
-    UIApplication.shared.sendAction(
-      #selector(UIResponder.resignFirstResponder),
-      to: nil,
-      from: nil,
-      for: nil
-    )
   }
 }
 
