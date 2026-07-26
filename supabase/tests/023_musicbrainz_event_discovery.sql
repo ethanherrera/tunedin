@@ -1,6 +1,6 @@
 begin;
 
-select plan(5);
+select plan(6);
 
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
@@ -23,7 +23,10 @@ select set_config(
       "event_date":"2026-08-01",
       "local_start_time":"20:00:00",
       "venue":{"mbid":"f3000000-0000-4000-8000-000000000002","name":"Fixture MusicBrainz Hall","area_mbid":"f3000000-0000-4000-8000-000000000003","area_name":"Fixture City"},
-      "artists":[{"mbid":"f3000000-0000-4000-8000-000000000004","name":"Fixture Headliner","is_headliner":true}],
+      "artists":[
+        {"mbid":"f3000000-0000-4000-8000-000000000004","name":"Fixture Headliner","is_headliner":true},
+        {"mbid":"f3000000-0000-4000-8000-000000000005","name":"Fixture Support","is_headliner":false}
+      ],
       "source_status":"active",
       "source_updated_at":null
     }'::jsonb
@@ -67,6 +70,14 @@ select is(
   'provider detail exposes the stable MusicBrainz source link'
 );
 
+select is(
+  (select (event ->> 'event_id')::uuid
+   from public.search_discoverable_catalog_events('fixture support')
+   limit 1),
+  current_setting('test.mb_event_id')::uuid,
+  'provider search matches a supporting artist in the MusicBrainz lineup'
+);
+
 reset role;
 
 select is(
@@ -77,7 +88,10 @@ select is(
       "event_date":"2026-08-01",
       "local_start_time":"21:00:00",
       "venue":{"mbid":"f3000000-0000-4000-8000-000000000002","name":"Fixture MusicBrainz Hall","area_mbid":"f3000000-0000-4000-8000-000000000003","area_name":"Fixture City"},
-      "artists":[{"mbid":"f3000000-0000-4000-8000-000000000004","name":"Fixture Headliner","is_headliner":true}],
+      "artists":[
+        {"mbid":"f3000000-0000-4000-8000-000000000004","name":"Fixture Headliner","is_headliner":true},
+        {"mbid":"f3000000-0000-4000-8000-000000000005","name":"Fixture Support","is_headliner":false}
+      ],
       "source_status":"active",
       "source_updated_at":null
     }'::jsonb

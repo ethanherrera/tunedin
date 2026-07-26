@@ -45,6 +45,14 @@ The helper is hard-coded to `tunedin-dev`, obtains a temporary admin credential 
 
 Run this command only from a trusted Mac. A generated link is short-lived authentication material: never paste it into chat, logs, issues, or shell arguments. If generation fails, confirm `supabase projects list` succeeds for Ethan’s `tunedIn` organization, then retry once manually. Authentication activity is recorded in the hosted Supabase Auth logs; the helper has no database migration or hosted reset capability.
 
+When a booted iPhone Simulator has the Development build installed, use the one-command variant instead:
+
+```sh
+make simulator-dev-login EMAIL=owner.device-test@example.com
+```
+
+It generates the same normal, short-lived Development session and opens it directly in the Simulator. It is not a privileged session or an RLS bypass. Because the command-line Simulator build is unsigned, its Development-only session cache is app-scoped UserDefaults; physical devices continue to use Keychain. Choose **Open** if iOS asks to return to tunedIn.
+
 ### Simulator magic-link smoke test
 
 1. Run tunedIn with the `tunedIn-Development` scheme in a booted iOS Simulator.

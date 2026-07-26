@@ -76,9 +76,20 @@ final class AppContainer {
   }
 
   private static func makeSupabaseClient(configuration: AppConfiguration) -> SupabaseClient {
-    let authStorage: any AuthLocalStorage = configuration.usesLocalSimulatorAuthStorage
-      ? LocalSimulatorAuthStorage()
-      : AuthClient.Configuration.defaultLocalStorage
+    let authStorage: any AuthLocalStorage
+    if configuration.usesLocalSimulatorAuthStorage {
+      authStorage = LocalSimulatorAuthStorage()
+    } else {
+      #if targetEnvironment(simulator)
+        if configuration.environment == .development {
+          authStorage = DevelopmentSimulatorAuthStorage()
+        } else {
+          authStorage = AuthClient.Configuration.defaultLocalStorage
+        }
+      #else
+        authStorage = AuthClient.Configuration.defaultLocalStorage
+      #endif
+    }
     return SupabaseClient(
       supabaseURL: configuration.supabaseURL,
       supabaseKey: configuration.supabasePublishableKey,
