@@ -7,6 +7,17 @@ import { MusicCatalogService } from "./service.ts";
 
 declare const EdgeRuntime: { waitUntil(task: Promise<unknown>): void };
 
+addEventListener("unhandledrejection", (event) => {
+  // Background work must never turn a completed search into an opaque platform
+  // failure. Do not record the request, user, provider payload, or identifiers.
+  const reason = event.reason;
+  console.error(
+    "music-catalog background task failed",
+    reason instanceof Error ? reason.message : "unknown error",
+  );
+  event.preventDefault();
+});
+
 type TunedInEnvironment = "Local" | "Development" | "Staging" | "Production";
 
 interface RuntimeConfiguration {
