@@ -10,6 +10,7 @@ This directory contains the versioned Supabase schema, RLS policies, hardened RP
 - Keep access logic in reusable Postgres helper functions, then use those helpers consistently in RLS policies and RPCs.
 - Permission-sensitive multi-table actions must be narrowly scoped `SECURITY DEFINER` RPCs with a fixed `search_path`, authenticated-caller validation, least-privilege grants, and pgTAP coverage.
 - The hosted Development project is the day-to-day backend. Docker/local Supabase is only a disposable test environment.
+- Local Supabase lifecycle commands are worktree-scoped: use `scripts/worktree-local-supabase.sh` or the corresponding `make` target so migrations, seed data, Storage, Auth, Inbucket, and Edge Functions stay inside the current worktree's disposable stack. Never run a raw `supabase` lifecycle command from the repository root when another worktree may be active.
 - Apply migrations to the hosted project only through `make dev-deploy` from an explicitly requested branch. The workflow reruns disposable backend verification before it mutates `tunedin-dev`.
 - `supabase/seeds/development.sql` is for disposable local resets only. Never reset or seed the shared hosted project through a migration deployment.
 - Seed data must be deterministic and synthetic; never copy production data.

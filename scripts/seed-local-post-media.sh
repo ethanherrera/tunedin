@@ -5,6 +5,7 @@ command -v jq >/dev/null || { echo "jq is required to seed Local Post media." >&
 command -v psql >/dev/null || { echo "psql is required to seed Local feed activity." >&2; exit 1; }
 
 root_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+local_supabase_helper="${root_dir}/scripts/worktree-local-supabase.sh"
 api_url=""
 publishable_key=""
 db_url=""
@@ -16,7 +17,7 @@ while IFS='=' read -r key quoted_value; do
     PUBLISHABLE_KEY) publishable_key="$value" ;;
     DB_URL) db_url="$value" ;;
   esac
-done < <(supabase status -o env)
+done < <("${local_supabase_helper}" status-env)
 
 if [[ "$api_url" != http://127.0.0.1:* || -z "$publishable_key" || -z "$db_url" ]]; then
   echo "Post media fixtures run only against Local Supabase." >&2

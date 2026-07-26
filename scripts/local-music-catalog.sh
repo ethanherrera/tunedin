@@ -2,13 +2,17 @@
 set -euo pipefail
 
 readonly repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly local_supabase_helper="${repository_root}/scripts/worktree-local-supabase.sh"
 readonly state_directory="${repository_root}/supabase/.temp/music-catalog"
 readonly stub_pid_file="${state_directory}/stub.pid"
 readonly function_pid_file="${state_directory}/function.pid"
 readonly stub_log_file="${state_directory}/stub.log"
 readonly function_log_file="${state_directory}/function.log"
 readonly function_env_file="${state_directory}/function.env"
-readonly stub_port="${MUSICBRAINZ_STUB_PORT:-18081}"
+stub_port="${MUSICBRAINZ_STUB_PORT:-}"
+if [[ -z "${stub_port}" ]]; then
+  stub_port="$("${local_supabase_helper}" stub-port)"
+fi
 
 usage() {
   cat <<'USAGE'
@@ -122,7 +126,7 @@ start_catalog() {
   require_command curl
   cd "$repository_root"
   local status_output
-  if ! status_output="$(supabase status -o env 2>/dev/null)"; then
+  if ! status_output="$("${local_supabase_helper}" status-env 2>/dev/null)"; then
     printf 'Disposable Local Supabase is not running. Run make local-db-start first.\n' >&2
     exit 1
   fi
@@ -130,7 +134,7 @@ start_catalog() {
   write_function_environment
 
   if ! read_pid "$stub_pid_file" >/dev/null; then
-    nohup deno run \
+    MUSICBRAINZ_STUB_PORT="$stub_port" nohup deno run \
       --allow-env=MUSICBRAINZ_STUB_PORT \
       --allow-net="0.0.0.0:${stub_port},127.0.0.1:${stub_port}" \
       --allow-read="${repository_root}/supabase/functions/music-catalog/fixtures" \
@@ -143,7 +147,7 @@ start_catalog() {
   fi
 
   if ! read_pid "$function_pid_file" >/dev/null; then
-    nohup supabase functions serve --env-file "$function_env_file" \
+    nohup "${local_supabase_helper}" functions serve --env-file "$function_env_file" \
       >"$function_log_file" 2>&1 &
     printf '%s\n' "$!" >"$function_pid_file"
     wait_for_process "$function_pid_file" "Local Edge Function worker" || {
@@ -213,7 +217,7 @@ read_env_value() {
 verify_catalog() {
   start_catalog >/dev/null
   local status_output
-  status_output="$(supabase status -o env 2>/dev/null)"
+  status_output="$("${local_supabase_helper}" status-env 2>/dev/null)"
   local api_url
   local publishable_key
   api_url="$(read_env_value "$status_output" API_URL)"

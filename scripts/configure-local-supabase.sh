@@ -17,8 +17,8 @@ if ! grep -q '^[[:space:]]*TUNEDIN_USE_LOCAL_AUTH_STORAGE[[:space:]]*=' "${confi
   printf '\nTUNEDIN_USE_LOCAL_AUTH_STORAGE = YES\n' >>"${configuration_file}"
 fi
 
-if ! status_output="$(supabase status -o env 2>/dev/null)"; then
-  printf 'Local Supabase is not running. Run supabase start, then rerun make configure-local-supabase.\n' >&2
+if ! status_output="$(./scripts/worktree-local-supabase.sh status-env 2>/dev/null)"; then
+  printf 'This worktree Local Supabase is not running. Run make local-db-start, then rerun make configure-local-supabase.\n' >&2
   exit 1
 fi
 

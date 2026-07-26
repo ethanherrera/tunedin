@@ -14,12 +14,14 @@ case "$bundle_identifier" in
     ;;
 esac
 
-if ! container="$(xcrun simctl get_app_container booted "$bundle_identifier" data 2>/dev/null)"; then
-  printf 'The selected app is not installed in a booted Simulator: %s\n' "$bundle_identifier" >&2
+device_identifier="$(./scripts/worktree-simulator.sh udid)"
+
+if ! container="$(xcrun simctl get_app_container "${device_identifier}" "$bundle_identifier" data 2>/dev/null)"; then
+  printf 'The selected app is not installed in this worktree Simulator: %s\n' "$bundle_identifier" >&2
   exit 1
 fi
 
-xcrun simctl terminate booted "$bundle_identifier" >/dev/null 2>&1 || true
+xcrun simctl terminate "${device_identifier}" "$bundle_identifier" >/dev/null 2>&1 || true
 
 readonly cache_root="$container/Library/Caches/tunedIn/Cache"
 case "$cache_root" in
@@ -35,4 +37,4 @@ if [[ -d "$cache_root" ]]; then
   rm -rf -- "$cache_root"
 fi
 
-printf 'Cleared the tunedIn Simulator cache for %s.\n' "$bundle_identifier"
+printf 'Cleared the tunedIn Simulator cache for %s on %s.\n' "$bundle_identifier" "${device_identifier}"

@@ -9,7 +9,7 @@ if [[ -n "${SUPABASE_PROJECT_REF:-}" ]]; then
 fi
 
 mkdir -p "$(dirname "${output}")"
-supabase gen types "${arguments[@]}" --lang swift --swift-access-control public --schema public >"${output}"
+./scripts/worktree-local-supabase.sh types "${arguments[@]}" --lang swift --swift-access-control public --schema public >"${output}"
 
 # The CLI currently emits the Postgres enum value `private` without escaping the
 # Swift keyword. Keep the generated API accurate and compilable until upstream

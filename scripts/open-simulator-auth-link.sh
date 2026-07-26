@@ -29,10 +29,13 @@ case "${auth_url}" in
     ;;
 esac
 
-if ! xcrun simctl openurl booted "${auth_url}" >/dev/null; then
-  printf 'Could not open the link. Boot an iOS Simulator with tunedIn installed and try again.\n' >&2
+device_identifier="$(./scripts/worktree-simulator.sh udid)"
+
+if ! xcrun simctl openurl "${device_identifier}" "${auth_url}" >/dev/null; then
+  printf 'Could not open the link. Launch tunedIn in this worktree Simulator and try again.\n' >&2
   exit 1
 fi
 
 unset auth_url
-printf 'Opened the Supabase sign-in link in the booted iOS Simulator. Choose Open if iOS asks to reopen tunedIn.\n'
+printf 'Opened the Supabase sign-in link in this worktree Simulator (%s). Choose Open if iOS asks to reopen tunedIn.\n' \
+  "${device_identifier}"
