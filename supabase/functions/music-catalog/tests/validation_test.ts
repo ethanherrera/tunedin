@@ -33,6 +33,44 @@ Deno.test("search rejects removed concert context fields", () => {
   );
 });
 
+Deno.test("event search accepts an optional calendar-date range and rejects invalid bounds", () => {
+  assert.deepEqual(
+    parseCatalogRequest({
+      operation: "search_events",
+      query: "Eternal Sunshine Oakland",
+      offset: 20,
+      beginDate: "2026-08-15",
+      endDate: "2026-08-31",
+    }),
+    {
+      operation: "search_events",
+      query: "Eternal Sunshine Oakland",
+      offset: 20,
+      beginDate: "2026-08-15",
+      endDate: "2026-08-31",
+    },
+  );
+  assertCatalogError(
+    () =>
+      parseCatalogRequest({
+        operation: "search_events",
+        query: "Fixture concert",
+        beginDate: "2026-02-30",
+      }),
+    "invalid_request",
+  );
+  assertCatalogError(
+    () =>
+      parseCatalogRequest({
+        operation: "search_events",
+        query: "Fixture concert",
+        beginDate: "2026-08-31",
+        endDate: "2026-08-15",
+      }),
+    "invalid_request",
+  );
+});
+
 Deno.test("resolve rejects non-MusicBrainz UUIDs", () => {
   assertCatalogError(
     () =>

@@ -127,11 +127,16 @@ export class MusicCatalogService {
     const profile = await this.#backend.authenticate(authorization);
     await this.#backend.consumeSearchQuota(profile.id);
     await this.waitForAdditionalUpstreamSlot();
-    const candidates = await this.#upstream.searchEvents(request.query);
-    const eventIds = await Promise.all(
-      candidates.slice(0, 5).map((candidate) => this.#backend.upsertMusicBrainzEvent(candidate)),
+    const page = await this.#upstream.searchEvents(
+      request.query,
+      request.offset,
+      request.beginDate,
+      request.endDate,
     );
-    return { operation: "search_events", eventIds };
+    const eventIds = await Promise.all(
+      page.results.map((candidate) => this.#backend.upsertMusicBrainzEvent(candidate)),
+    );
+    return { operation: "search_events", eventIds, offset: request.offset, hasMore: page.hasMore };
   }
 
   async #loadLocalMatches(

@@ -16,19 +16,48 @@ struct SupabaseEventRepository: EventRepository {
     self.signedURLs = signedURLs
   }
 
-  func searchEvents(query: String, viewerID _: UUID) async throws -> [CommunityEventSummary] {
+  func searchEvents(query: String, viewerID: UUID) async throws -> [CommunityEventSummary] {
+    try await searchEvents(
+      query: query,
+      filter: .none,
+      offset: 0,
+      viewerID: viewerID
+    ).events
+  }
+
+  func searchEvents(
+    query: String,
+    filter: EventSearchFilter,
+    offset: Int,
+    viewerID _: UUID
+  ) async throws -> EventSearchPage {
     try await withAppFailure {
       let normalized = CatalogInput.normalizedText(query)
       let stored = try await discoverableSearch(query: normalized)
+        .filter { filter.includes($0.eventDate) }
       do {
-        let _: MusicBrainzEventDiscoveryResponse = try await client.functions.invoke(
+        let response: MusicBrainzEventDiscoveryResponse = try await client.functions.invoke(
           "music-catalog",
-          options: FunctionInvokeOptions(body: MusicBrainzEventDiscoveryRequest(query: normalized))
+          options: FunctionInvokeOptions(
+            body: MusicBrainzEventDiscoveryRequest(query: normalized, filter: filter, offset: offset)
+          )
         )
-        return try await discoverableSearch(query: normalized)
+        let events = try await discoverableEventSummaries(ids: response.eventIDs)
+        return EventSearchPage(
+          events: events.isEmpty && offset == 0 ? stored : events,
+          offset: response.offset,
+          hasMore: response.hasMore
+        )
       } catch {
-        if !stored.isEmpty { return stored }
-        throw error
+        if !stored.isEmpty {
+          let page = Array(stored.dropFirst(offset).prefix(EventSearchPage.limit))
+          return EventSearchPage(
+            events: page,
+            offset: offset,
+            hasMore: offset + page.count < stored.count
+          )
+        }
+        return EventSearchPage(events: [], offset: offset, hasMore: false)
       }
     }
   }
@@ -86,6 +115,17 @@ struct SupabaseEventRepository: EventRepository {
   private func discoverableSearch(query: String) async throws -> [CommunityEventSummary] {
     let response: PostgrestResponse<[CatalogEventProjectionRPCRecord]> = try await client
       .rpc("search_discoverable_catalog_events", params: DiscoverableEventSearchParameters(query: query))
+      .execute()
+    return try await summaries(from: response.value.map(\.event))
+  }
+
+  private func discoverableEventSummaries(ids: [UUID]) async throws -> [CommunityEventSummary] {
+    guard !ids.isEmpty else { return [] }
+    let response: PostgrestResponse<[CatalogEventProjectionRPCRecord]> = try await client
+      .rpc(
+        "list_discoverable_catalog_event_summaries",
+        params: DiscoverableEventSummariesParameters(eventIDs: ids)
+      )
       .execute()
     return try await summaries(from: response.value.map(\.event))
   }
@@ -861,17 +901,37 @@ private struct DiscoverableEventSearchParameters: Encodable, Sendable {
   }
 }
 
+private struct DiscoverableEventSummariesParameters: Encodable, Sendable {
+  let eventIDs: [UUID]
+
+  enum CodingKeys: String, CodingKey {
+    case eventIDs = "p_event_ids"
+  }
+}
+
 private struct MusicBrainzEventDiscoveryRequest: Encodable, Sendable {
   let operation = "search_events"
   let query: String
+  let offset: Int
+  let beginDate: String?
+  let endDate: String?
+
+  init(query: String, filter: EventSearchFilter, offset: Int) {
+    self.query = query
+    self.offset = offset
+    beginDate = filter.beginDate.map { CommunityEventDateCoding.dateString($0, timeZoneIdentifier: TimeZone.current.identifier) }
+    endDate = filter.endDate.map { CommunityEventDateCoding.dateString($0, timeZoneIdentifier: TimeZone.current.identifier) }
+  }
 }
 
 private struct MusicBrainzEventDiscoveryResponse: Decodable, Sendable {
   let operation: String
   let eventIDs: [UUID]
+  let offset: Int
+  let hasMore: Bool
 
   enum CodingKeys: String, CodingKey {
-    case operation
+    case operation, offset, hasMore
     case eventIDs = "eventIds"
   }
 }
