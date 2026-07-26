@@ -435,11 +435,18 @@ struct TunedInGlassSearchField: View {
   @Binding var text: String
   let prompt: String
   let style: Style
+  private let isFocused: FocusState<Bool>.Binding?
 
-  init(text: Binding<String>, prompt: String, style: Style = .standard) {
+  init(
+    text: Binding<String>,
+    prompt: String,
+    style: Style = .standard,
+    isFocused: FocusState<Bool>.Binding? = nil
+  ) {
     _text = text
     self.prompt = prompt
     self.style = style
+    self.isFocused = isFocused
   }
 
   var body: some View {
@@ -448,11 +455,20 @@ struct TunedInGlassSearchField: View {
         Image(systemName: "magnifyingglass")
           .foregroundStyle(TunedInDesign.mutedText)
 
-        TextField(prompt, text: $text)
-          .textInputAutocapitalization(.never)
-          .autocorrectionDisabled()
-          .submitLabel(.search)
-          .foregroundStyle(TunedInDesign.primaryText)
+        if let isFocused {
+          TextField(prompt, text: $text)
+            .focused(isFocused)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .submitLabel(.search)
+            .foregroundStyle(TunedInDesign.primaryText)
+        } else {
+          TextField(prompt, text: $text)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .submitLabel(.search)
+            .foregroundStyle(TunedInDesign.primaryText)
+        }
 
         if !text.isEmpty {
           Button {
