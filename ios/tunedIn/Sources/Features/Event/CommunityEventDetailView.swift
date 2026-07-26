@@ -560,16 +560,11 @@ private struct CommunityEventHero: View {
         }
 
       HStack(alignment: .firstTextBaseline, spacing: 12) {
-        Text(CommunityEventDateText.fullDate(detail.summary.startsAt))
+        Text(CommunityEventDateText.fullDate(detail.summary.eventDate))
           .font(.caption.weight(.bold))
           .textCase(.uppercase)
           .foregroundStyle(TunedInDesign.mutedText)
-        Text(
-          CommunityEventDateText.time(
-            detail.summary.startsAt,
-            timeZoneIdentifier: detail.summary.timeZoneIdentifier
-          )
-        )
+        Text(CommunityEventDateText.time(for: detail.summary))
         .font(.caption.weight(.semibold))
         .foregroundStyle(TunedInDesign.mutedText)
         Spacer()
@@ -624,6 +619,12 @@ private struct CommunityEventHero: View {
       }
       .font(.caption2.weight(.semibold))
       .foregroundStyle(TunedInDesign.mutedText)
+
+      if let sourceURL = detail.summary.sourceURL {
+        Link("View on MusicBrainz", destination: sourceURL)
+          .font(.caption.weight(.semibold))
+          .foregroundStyle(TunedInDesign.accent)
+      }
 
       Divider().overlay(TunedInDesign.cardBorder)
     }

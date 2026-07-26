@@ -662,12 +662,18 @@ enum CommunityEventDateText {
     formatter(dateStyle: .medium).string(from: date)
   }
 
-  static func time(_ date: Date, timeZoneIdentifier _: String) -> String {
+  static func time(for event: CommunityEventSummary) -> String {
+    if event.sourceLabel == "MusicBrainz" {
+      guard let sourceTime = event.sourceLocalStartTime,
+            let date = localTimeFormatter.date(from: sourceTime)
+      else { return "Time not listed" }
+      return localTimeDisplayFormatter.string(from: date)
+    }
     let formatter = DateFormatter()
     formatter.locale = .current
-    formatter.timeZone = .current
+    formatter.timeZone = TimeZone(identifier: event.timeZoneIdentifier) ?? .current
     formatter.dateFormat = "h:mm a z"
-    return formatter.string(from: date)
+    return formatter.string(from: event.startsAt)
   }
 
   static func month(_ date: Date) -> String {
@@ -702,6 +708,22 @@ enum CommunityEventDateText {
     formatter.dateFormat = format
     return formatter
   }
+
+  private static let localTimeFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.locale = .current
+    formatter.timeZone = TimeZone(secondsFromGMT: 0)
+    formatter.dateFormat = "HH:mm:ss"
+    return formatter
+  }()
+
+  private static let localTimeDisplayFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.locale = .current
+    formatter.timeZone = TimeZone(secondsFromGMT: 0)
+    formatter.dateFormat = "h:mm a"
+    return formatter
+  }()
 }
 
 struct EventAvatarStack: View {

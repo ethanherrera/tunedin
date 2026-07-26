@@ -12,6 +12,8 @@ import type {
   JsonValue,
   ResolveRequest,
   ResolveResponse,
+  SearchEventsRequest,
+  SearchEventsResponse,
   SearchRequest,
   SearchResponse,
   UpsertMusicBrainzInput,
@@ -116,6 +118,20 @@ export class MusicCatalogService {
       isPartial,
       results,
     };
+  }
+
+  async searchEvents(
+    request: SearchEventsRequest,
+    authorization: string,
+  ): Promise<SearchEventsResponse> {
+    const profile = await this.#backend.authenticate(authorization);
+    await this.#backend.consumeSearchQuota(profile.id);
+    await this.waitForAdditionalUpstreamSlot();
+    const candidates = await this.#upstream.searchEvents(request.query);
+    const eventIds = await Promise.all(
+      candidates.slice(0, 5).map((candidate) => this.#backend.upsertMusicBrainzEvent(candidate)),
+    );
+    return { operation: "search_events", eventIds };
   }
 
   async #loadLocalMatches(

@@ -5,6 +5,7 @@ import type {
   CatalogKind,
   CatalogResult,
   JsonObject,
+  MusicBrainzEventInput,
   UpstreamTransport,
 } from "./types.ts";
 import { artistCreditsFromMetadata } from "./result_validation.ts";
@@ -99,6 +100,29 @@ export class MusicBrainzClient implements UpstreamTransport {
       throw invalidUpstream();
     }
     return entity;
+  }
+
+  async searchEvents(query: string): Promise<MusicBrainzEventInput[]> {
+    const url = new URL("event", this.#baseUrl);
+    url.searchParams.set(
+      "query",
+      `type:"Concert" AND (event:"${escapeEventQuery(query)}" OR artist:"${
+        escapeEventQuery(query)
+      }" OR place:"${escapeEventQuery(query)}" OR area:"${escapeEventQuery(query)}")`,
+    );
+    url.searchParams.set("fmt", "json");
+    url.searchParams.set("limit", "5");
+    url.searchParams.set("inc", "artist-rels+place-rels");
+    const payload = await this.#requestJson(url, "search");
+    const root = objectValue(payload);
+    return arrayValue(root.events, "events", 5)
+      .flatMap((value) => {
+        try {
+          return [decodeEvent(value)];
+        } catch {
+          return [];
+        }
+      });
   }
 
   async #requestJson(
@@ -469,6 +493,73 @@ function decodeTour(object: Record<string, unknown>): CatalogResult {
       artistCredit: credits.map((credit) => ({ ...credit })),
     },
   );
+}
+
+function decodeEvent(value: unknown): MusicBrainzEventInput {
+  const event = objectValue(value);
+  if (optionalString(event.type, "type", 80)?.toLocaleLowerCase("en-US") !== "concert") {
+    throw invalidUpstream();
+  }
+  const lifeSpan = objectValue(event["life-span"]);
+  const eventDate = stringValue(lifeSpan.begin, "life-span.begin", 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) throw invalidUpstream();
+  const rawTime = optionalString(event.time, "time", 32);
+  const localStartTime = rawTime === null ? null : normalizeEventTime(rawTime);
+  const relations = arrayValue(event.relations, "relations", 100);
+  const artists: MusicBrainzEventInput["artists"] = [];
+  let venue: MusicBrainzEventInput["venue"] | null = null;
+  for (const value of relations) {
+    const relation = objectValue(value);
+    const artist = optionalObject(relation.artist);
+    if (artist !== null && artists.length < 10) {
+      artists.push({
+        mbid: requiredUuid(artist.id, "relations.artist.id"),
+        name: stringValue(artist.name, "relations.artist.name", 160),
+        is_headliner: relation.type === "main performer" || relation.type === "headliner",
+      });
+    }
+    const place = optionalObject(relation.place);
+    if (place !== null && venue === null) {
+      const area = optionalObject(place.area);
+      venue = {
+        mbid: requiredUuid(place.id, "relations.place.id"),
+        name: stringValue(place.name, "relations.place.name", 160),
+        area_mbid: area === null ? null : optionalUuid(area.id, "relations.place.area.id"),
+        area_name: area === null
+          ? null
+          : optionalString(area.name, "relations.place.area.name", 160),
+      };
+    }
+  }
+  if (artists.length === 0 || venue === null) throw invalidUpstream();
+  if (!artists.some((artist) => artist.is_headliner)) artists[0].is_headliner = true;
+  return {
+    event_mbid: requiredUuid(event.id, "id"),
+    title: stringValue(event.name, "name", 160),
+    event_date: eventDate,
+    local_start_time: localStartTime,
+    venue,
+    artists,
+    source_status: event.cancelled === true ? "cancelled" : "active",
+    source_updated_at: optionalString(event["last-updated"], "last-updated", 40),
+  };
+}
+
+function normalizeEventTime(value: string): string {
+  const normalized = value.replace(/\s+/g, "");
+  const matched = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(normalized);
+  if (matched === null) throw invalidUpstream();
+  const hour = Number(matched[1]);
+  const minute = Number(matched[2]);
+  const second = Number(matched[3] ?? "0");
+  if (hour > 23 || minute > 59 || second > 59) throw invalidUpstream();
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:${
+    String(second).padStart(2, "0")
+  }`;
+}
+
+function escapeEventQuery(value: string): string {
+  return value.replace(/[+\-&|!(){}\[\]^"~*?:\\/]/g, "\\$&");
 }
 
 function candidate(

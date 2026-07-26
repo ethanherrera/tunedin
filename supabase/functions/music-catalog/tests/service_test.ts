@@ -8,6 +8,7 @@ import type {
   CatalogKind,
   CatalogResult,
   JsonValue,
+  MusicBrainzEventInput,
   SearchRequest,
   UpsertMusicBrainzInput,
   UpstreamTransport,
@@ -70,6 +71,22 @@ Deno.test("write-through MusicBrainz rows are deduplicated without paging skips"
   assert.equal(first.hasMore, true);
   assert.equal(second.hasMore, false);
   assert.deepEqual(upstream.searchOffsets, [0, 15]);
+});
+
+Deno.test("event discovery is rate-gated and writes only validated provider rows", async () => {
+  const backend = new FakeBackend();
+  const upstream = new FakeUpstream([]);
+  upstream.eventResults = [musicBrainzEvent()];
+  const service = new MusicCatalogService({ backend, upstream });
+
+  const response = await service.searchEvents({
+    operation: "search_events",
+    query: "Fixture Artist",
+  }, profile.authorization);
+
+  assert.equal(backend.reserveCalls, 1);
+  assert.equal(backend.eventUpsertInputs.length, 1);
+  assert.equal(response.eventIds.length, 1);
 });
 
 Deno.test("local pagination reads beyond 20 rows before filling from MusicBrainz", async () => {
@@ -292,6 +309,7 @@ class FakeBackend implements CatalogBackend {
   localResults: CatalogResult[] = [];
   upsertResult: CatalogResult = storedArtist();
   readonly upsertInputs: UpsertMusicBrainzInput[] = [];
+  readonly eventUpsertInputs: MusicBrainzEventInput[] = [];
   readonly cache = new Map<string, JsonValue>();
   artistContexts: ArtistSearchContext[] = [];
   readonly contextRequests: string[][] = [];
@@ -368,6 +386,11 @@ class FakeBackend implements CatalogBackend {
     this.upsertInputs.push(input);
     return Promise.resolve(this.upsertResult);
   }
+
+  upsertMusicBrainzEvent(_input: MusicBrainzEventInput): Promise<string> {
+    this.eventUpsertInputs.push(_input);
+    return Promise.resolve("e1000000-0000-4000-8000-000000000001");
+  }
 }
 
 class FakeUpstream implements UpstreamTransport {
@@ -377,6 +400,7 @@ class FakeUpstream implements UpstreamTransport {
   pauseSearch = false;
   searchError: Error | null = null;
   readonly artistContexts: ArtistSearchContext[][] = [];
+  eventResults: MusicBrainzEventInput[] = [];
   #release: (() => void) | null = null;
 
   constructor(readonly results: CatalogResult[]) {}
@@ -404,6 +428,10 @@ class FakeUpstream implements UpstreamTransport {
 
   lookup(_kind: CatalogKind, _musicBrainzId: string): Promise<CatalogResult> {
     return Promise.resolve(this.lookupResult);
+  }
+
+  searchEvents(_query: string): Promise<MusicBrainzEventInput[]> {
+    return Promise.resolve(this.eventResults);
   }
 
   releaseSearch(): void {
@@ -456,6 +484,28 @@ function storedArtist(): CatalogResult {
     ...musicBrainzArtist(0),
     source: "tunedin",
     catalogId: "e1000000-0000-4000-8000-000000000001",
+  };
+}
+
+function musicBrainzEvent(): MusicBrainzEventInput {
+  return {
+    event_mbid: "e1000000-0000-4000-8000-000000000002",
+    title: "Fixture Tour",
+    event_date: "2026-08-01",
+    local_start_time: "20:00:00",
+    venue: {
+      mbid: "e1000000-0000-4000-8000-000000000003",
+      name: "Fixture Venue",
+      area_mbid: null,
+      area_name: null,
+    },
+    artists: [{
+      mbid: "e1000000-0000-4000-8000-000000000004",
+      name: "Fixture Artist",
+      is_headliner: true,
+    }],
+    source_status: "active",
+    source_updated_at: null,
   };
 }
 

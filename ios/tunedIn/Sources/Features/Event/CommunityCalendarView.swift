@@ -363,12 +363,9 @@ private struct AgendaRow: View {
   let entry: CalendarEntry
 
   var body: some View {
-    let time = CommunityEventDateText.time(
-      entry.event.startsAt,
-      timeZoneIdentifier: entry.event.timeZoneIdentifier
-    )
+    let time = CommunityEventDateText.time(for: entry.event)
     HStack(spacing: 12) {
-      AgendaDateTile(date: entry.event.startsAt)
+      AgendaDateTile(date: entry.event.eventDate)
       VStack(alignment: .leading, spacing: 3) {
         Text(entry.event.title)
           .font(.subheadline.weight(.bold))
@@ -482,7 +479,7 @@ private struct CalendarMonths: View {
   }
   private func dayButton(_ day: Int, month: Date) -> some View {
     let date = calendar.date(bySetting: .day, value: day, of: month) ?? month
-    let matches = entries.filter { calendar.isDate($0.event.startsAt, inSameDayAs: date) }
+    let matches = entries.filter { calendar.isDate($0.event.eventDate, inSameDayAs: date) }
     let friendCount = Set(matches.flatMap(\.friends).map(\.profile.id)).count
     let selected = selectedDay.map { calendar.isDate($0, inSameDayAs: date) } ?? false
     return Button { withAnimation(.snappy) { selectedDay = selected ? nil : date } } label: {

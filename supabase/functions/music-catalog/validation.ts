@@ -81,6 +81,11 @@ export function parseCatalogRequest(value: unknown): CatalogRequest {
     };
   }
 
+  if (value.operation === "search_events") {
+    assertExactKeys(value, ["operation", "query"]);
+    return { operation: "search_events", query: normalizeSearchQuery(value.query) };
+  }
+
   throw invalidRequest("The catalog operation is not supported.");
 }
 

@@ -9,6 +9,7 @@ import type {
   CatalogKind,
   CatalogResult,
   JsonValue,
+  MusicBrainzEventInput,
   UpsertMusicBrainzInput,
   UpstreamTransport,
 } from "../types.ts";
@@ -190,6 +191,10 @@ class HandlerBackend implements CatalogBackend {
   upsertMusicBrainz(_input: UpsertMusicBrainzInput): Promise<CatalogResult> {
     return Promise.resolve(fixtureResult());
   }
+
+  upsertMusicBrainzEvent(_input: MusicBrainzEventInput): Promise<string> {
+    return Promise.resolve("e1000000-0000-4000-8000-000000000001");
+  }
 }
 
 class HandlerUpstream implements UpstreamTransport {
@@ -204,6 +209,10 @@ class HandlerUpstream implements UpstreamTransport {
 
   lookup(): Promise<CatalogResult> {
     return Promise.resolve(fixtureResult());
+  }
+
+  searchEvents(_query: string): Promise<MusicBrainzEventInput[]> {
+    return Promise.resolve([]);
   }
 }
 
