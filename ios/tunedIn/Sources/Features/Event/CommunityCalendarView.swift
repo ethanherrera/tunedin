@@ -365,6 +365,12 @@ private struct AgendaRow: View {
           .font(.subheadline.weight(.bold))
           .foregroundStyle(TunedInDesign.primaryText)
           .lineLimit(1)
+        if entry.event.title != entry.event.headlinerName {
+          Text(entry.event.headlinerName)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(TunedInDesign.primaryText)
+            .lineLimit(1)
+        }
         Text("\(entry.event.venueName) · \(time)")
           .font(.caption).foregroundStyle(TunedInDesign.mutedText).lineLimit(1)
         if !entry.friends.isEmpty {

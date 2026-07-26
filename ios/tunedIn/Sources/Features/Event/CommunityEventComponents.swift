@@ -35,6 +35,12 @@ struct CommunityEventRow: View {
           .font(.headline)
           .foregroundStyle(TunedInDesign.primaryText)
           .lineLimit(2)
+        if event.title != event.headlinerName {
+          Text(event.headlinerName)
+            .font(.subheadline.weight(.medium))
+            .foregroundStyle(TunedInDesign.primaryText)
+            .lineLimit(1)
+        }
         Text("\(event.venueName) · \(event.areaName)")
           .font(.subheadline)
           .foregroundStyle(TunedInDesign.mutedText)
@@ -143,6 +149,12 @@ struct CommunityActivityCard: View {
               Text(activity.event.title)
                 .font(.headline)
                 .foregroundStyle(TunedInDesign.primaryText)
+              if activity.event.title != activity.event.headlinerName {
+                Text(activity.event.headlinerName)
+                  .font(.subheadline.weight(.medium))
+                  .foregroundStyle(TunedInDesign.primaryText)
+                  .lineLimit(1)
+              }
               Text("\(activity.event.venueName) · \(activity.event.eventDate, style: .date)")
                 .font(.caption)
                 .foregroundStyle(TunedInDesign.mutedText)
@@ -183,6 +195,12 @@ struct CommunityActivityCard: View {
             Text(activity.event.title)
               .font(.title3.weight(.bold))
               .foregroundStyle(.white)
+            if activity.event.title != activity.event.headlinerName {
+              Text(activity.event.headlinerName)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.9))
+                .lineLimit(1)
+            }
             Text("\(activity.event.venueName) · \(activity.event.areaName)")
               .font(.subheadline)
               .foregroundStyle(.white.opacity(0.86))
@@ -206,6 +224,12 @@ struct CommunityActivityCard: View {
             Text(activity.event.title)
               .font(.headline)
               .foregroundStyle(TunedInDesign.primaryText)
+            if activity.event.title != activity.event.headlinerName {
+              Text(activity.event.headlinerName)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(TunedInDesign.primaryText)
+                .lineLimit(1)
+            }
             Text("\(activity.event.venueName) · \(activity.event.areaName)")
               .font(.subheadline)
               .foregroundStyle(TunedInDesign.mutedText)
