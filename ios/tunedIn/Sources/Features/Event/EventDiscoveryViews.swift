@@ -456,6 +456,7 @@ private struct EventSearchDateFilterSheet: View {
         }
       }
     }
+    .tunedInEdgeSwipeBack { dismiss() }
   }
 
   private var bottomControls: some View {
@@ -684,6 +685,7 @@ struct CommunityEventCreationView: View {
           .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
+    .tunedInEdgeSwipeBack(isEnabled: !isSaving, action: onDismiss)
     .fullScreenCover(item: $pickerKind) { kind in
       CatalogPickerView(
         repository: musicCatalogRepository,

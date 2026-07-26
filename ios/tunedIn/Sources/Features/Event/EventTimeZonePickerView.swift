@@ -61,6 +61,7 @@ struct EventTimeZonePickerView: View {
           .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
+    .tunedInEdgeSwipeBack(action: onDismiss)
   }
 
   private var filteredIdentifiers: [String] {

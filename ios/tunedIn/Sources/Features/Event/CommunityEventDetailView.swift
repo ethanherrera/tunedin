@@ -99,6 +99,7 @@ struct CommunityEventDetailView: View {
           .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
+    .tunedInEdgeSwipeBack(action: onDismiss)
     .task { await load() }
     .fullScreenCover(isPresented: $isPresentingInvites) {
       EventInviteView(
@@ -800,6 +801,7 @@ private struct EventConversationView: View {
           .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
+    .tunedInEdgeSwipeBack(action: onDismiss)
     .task {
       if let remembered = EventAudience(rawValue: UserDefaults.standard.string(
         forKey: "community-event-comment-audience.\(viewerID.uuidString)"
@@ -1258,6 +1260,7 @@ private struct EventPostComposerView: View {
         .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
+    .tunedInEdgeSwipeBack(isEnabled: !isSaving, action: onDismiss)
     .tunedInKeyboardManaged()
   }
 
@@ -1652,6 +1655,7 @@ private struct EventInviteView: View {
         }
       }
     }
+    .tunedInEdgeSwipeBack(action: onDismiss)
     .task { await load() }
   }
 

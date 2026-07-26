@@ -51,6 +51,7 @@ struct EventPostDetailView: View {
           .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
+    .tunedInEdgeSwipeBack(action: onDismiss)
     .task { await load() }
     .onChange(of: photoSelection) { _, items in
       guard !items.isEmpty else { return }

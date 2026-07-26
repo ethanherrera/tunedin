@@ -751,6 +751,12 @@ struct SettingsView: View {
       guard managesFloatingControls else { return }
       floatingControls.resetBackOnly(owner: floatingControlOwner)
     }
+    .tunedInEdgeSwipeBack {
+      if managesFloatingControls {
+        floatingControls.reset()
+      }
+      close()
+    }
     .tint(TunedInDesign.accent)
     .onChange(of: selectedPhoto) { _, item in
       guard let item else { return }

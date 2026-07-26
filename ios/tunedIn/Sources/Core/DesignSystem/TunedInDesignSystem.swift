@@ -579,19 +579,24 @@ private struct TunedInEdgeSwipeBackModifier: ViewModifier {
   let action: () -> Void
 
   func body(content: Content) -> some View {
-    if isEnabled {
-      content.simultaneousGesture(
-        DragGesture(minimumDistance: 18, coordinateSpace: .global)
-          .onEnded { value in
-            guard value.startLocation.x <= 28,
-                  value.translation.width >= 72,
-                  abs(value.translation.height) < abs(value.translation.width) * 0.7
-            else { return }
-            action()
-          }
-      )
-    } else {
-      content
+    content.overlay(alignment: .leading) {
+      if isEnabled {
+        Color.clear
+          .frame(width: 40)
+          .frame(maxHeight: .infinity)
+          .contentShape(Rectangle())
+          .gesture(
+            DragGesture(minimumDistance: 18, coordinateSpace: .global)
+              .onEnded { value in
+                guard value.startLocation.x <= 40,
+                      value.translation.width >= 72,
+                      abs(value.translation.height) < abs(value.translation.width) * 0.7
+                else { return }
+                action()
+              }
+          )
+          .accessibilityHidden(true)
+      }
     }
   }
 }

@@ -133,6 +133,7 @@ struct EmailVerificationView: View {
           .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
+    .tunedInEdgeSwipeBack(action: dismiss.callAsFunction)
   }
 
   private var verificationExplanation: String {
