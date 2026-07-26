@@ -29,8 +29,7 @@ const lookupFixtures: Record<string, Record<string, string>> = {
   },
   series: {
     "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa": "lookup-tour.json",
-    "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb":
-      "lookup-tour-without-relations.json",
+    "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb": "lookup-tour-without-relations.json",
   },
 };
 
@@ -62,8 +61,7 @@ Deno.serve({ hostname: "0.0.0.0", port }, async (request) => {
       return new Response(null, {
         status: 301,
         headers: {
-          location:
-            "/ws/2/artist/a74b1b7f-71a5-4011-9441-d0b5e4122711?fmt=json",
+          location: "/ws/2/artist/a74b1b7f-71a5-4011-9441-d0b5e4122711?fmt=json",
         },
       });
     }

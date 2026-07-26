@@ -463,7 +463,7 @@ public enum PublicSchema {
     public let coverSourcePageUrl: String?
     public let coverVersion: Int64
     public let createdAt: String
-    public let createdBy: UUID
+    public let createdBy: UUID?
     public let eventDate: String
     public let exactDuplicateKey: String
     public let headlinerCatalogArtistId: UUID
@@ -475,8 +475,10 @@ public enum PublicSchema {
     public let listing: CatalogEventListing
     public let memoryUnlockAt: String
     public let mergedIntoEventId: UUID?
+    public let origin: String
     public let rowState: CatalogEventRowState
     public let searchText: String
+    public let sourceLocalStartTime: String?
     public let startsAt: String
     public let timeZoneIdentifier: String
     public let tourNameSnapshot: String?
@@ -510,8 +512,10 @@ public enum PublicSchema {
       case listing = "listing"
       case memoryUnlockAt = "memory_unlock_at"
       case mergedIntoEventId = "merged_into_event_id"
+      case origin = "origin"
       case rowState = "row_state"
       case searchText = "search_text"
+      case sourceLocalStartTime = "source_local_start_time"
       case startsAt = "starts_at"
       case timeZoneIdentifier = "time_zone_identifier"
       case tourNameSnapshot = "tour_name_snapshot"
@@ -535,7 +539,7 @@ public enum PublicSchema {
     public let coverSourcePageUrl: String?
     public let coverVersion: Int64?
     public let createdAt: String?
-    public let createdBy: UUID
+    public let createdBy: UUID?
     public let eventDate: String
     public let exactDuplicateKey: String
     public let headlinerCatalogArtistId: UUID
@@ -547,8 +551,10 @@ public enum PublicSchema {
     public let listing: CatalogEventListing?
     public let memoryUnlockAt: String
     public let mergedIntoEventId: UUID?
+    public let origin: String?
     public let rowState: CatalogEventRowState?
     public let searchText: String
+    public let sourceLocalStartTime: String?
     public let startsAt: String
     public let timeZoneIdentifier: String
     public let tourNameSnapshot: String?
@@ -582,8 +588,10 @@ public enum PublicSchema {
       case listing = "listing"
       case memoryUnlockAt = "memory_unlock_at"
       case mergedIntoEventId = "merged_into_event_id"
+      case origin = "origin"
       case rowState = "row_state"
       case searchText = "search_text"
+      case sourceLocalStartTime = "source_local_start_time"
       case startsAt = "starts_at"
       case timeZoneIdentifier = "time_zone_identifier"
       case tourNameSnapshot = "tour_name_snapshot"
@@ -619,8 +627,10 @@ public enum PublicSchema {
     public let listing: CatalogEventListing?
     public let memoryUnlockAt: String?
     public let mergedIntoEventId: UUID?
+    public let origin: String?
     public let rowState: CatalogEventRowState?
     public let searchText: String?
+    public let sourceLocalStartTime: String?
     public let startsAt: String?
     public let timeZoneIdentifier: String?
     public let tourNameSnapshot: String?
@@ -654,8 +664,10 @@ public enum PublicSchema {
       case listing = "listing"
       case memoryUnlockAt = "memory_unlock_at"
       case mergedIntoEventId = "merged_into_event_id"
+      case origin = "origin"
       case rowState = "row_state"
       case searchText = "search_text"
+      case sourceLocalStartTime = "source_local_start_time"
       case startsAt = "starts_at"
       case timeZoneIdentifier = "time_zone_identifier"
       case tourNameSnapshot = "tour_name_snapshot"
