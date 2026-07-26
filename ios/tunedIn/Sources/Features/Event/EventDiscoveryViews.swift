@@ -295,7 +295,6 @@ struct CommunityEventCreationView: View {
   @State private var place: CatalogPlace?
   @State private var tour: CatalogTour?
   @State private var eventDate = Self.defaultEventDate
-  @State private var includesTime = true
   @State private var timeZoneIdentifier = TimeZone.current.identifier
   @State private var listing = CommunityEventListing.listed
   @State private var pickerKind: CatalogEntityKind?
@@ -349,15 +348,10 @@ struct CommunityEventCreationView: View {
             DatePicker(
               "Concert date",
               selection: $eventDate,
-              displayedComponents: includesTime ? [.date, .hourAndMinute] : [.date]
+              displayedComponents: [.date, .hourAndMinute]
             )
             .foregroundStyle(TunedInDesign.primaryText)
             .environment(\.timeZone, selectedTimeZone)
-
-            Toggle("Start time is known", isOn: $includesTime)
-              .tint(TunedInDesign.accent)
-
-            Divider()
 
             Button { isPresentingTimeZonePicker = true } label: {
               HStack(spacing: 12) {
@@ -514,7 +508,7 @@ struct CommunityEventCreationView: View {
       place: place,
       tour: tour,
       eventDate: eventDate,
-      startsAt: includesTime ? eventDate : nil,
+      startsAt: eventDate,
       timeZoneIdentifier: timeZoneIdentifier,
       listing: listing
     )
@@ -526,7 +520,7 @@ struct CommunityEventCreationView: View {
       input.artists.first?.id.uuidString ?? "",
       input.place.id.uuidString,
       input.eventDate.timeIntervalSince1970.formatted(),
-      input.startsAt == nil ? "no-time" : "time",
+      input.startsAt.timeIntervalSince1970.formatted(),
       input.timeZoneIdentifier,
       input.listing.rawValue
     ].joined(separator: "|")

@@ -269,7 +269,9 @@ struct MainTabView: View {
       if supportsPlans {
         CommunityPlansView(
           viewerID: profile.id,
+          currentUsername: profile.username ?? "",
           repository: eventRepository,
+          socialRepository: socialRepository,
           onOpenEvent: {
             presentedCommunityEvent = CommunityEventRoute(event: $0, postID: nil)
           }

@@ -46,6 +46,7 @@ protocol EventRepository: Sendable {
     limit: Int
   ) async throws -> EventPostPage
   func plans(viewerID: UUID) async throws -> [CommunityEventSummary]
+  func friendCalendar(viewerID: UUID) async throws -> [FriendCalendarEvent]
   func activityFeed(viewerID: UUID) async throws -> [EventActivity]
   func setAttendance(
     eventID: UUID,
@@ -107,6 +108,10 @@ extension EventRepository {
 
   func plans(viewerID _: UUID) async throws -> [CommunityEventSummary] {
     throw CommunityEventError.featureUnavailable("Plans")
+  }
+
+  func friendCalendar(viewerID _: UUID) async throws -> [FriendCalendarEvent] {
+    throw CommunityEventError.featureUnavailable("Friends calendar")
   }
 
   func eventAttendances(

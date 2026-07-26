@@ -99,6 +99,13 @@ struct EventFriendPreview: Codable, Equatable, Identifiable, Sendable {
   }
 }
 
+struct FriendCalendarEvent: Equatable, Identifiable, Sendable {
+  let event: CommunityEventSummary
+  let friends: [EventFriendPreview]
+
+  var id: UUID { event.id }
+}
+
 struct CommunityEventSummary: Codable, Equatable, Identifiable, Sendable {
   let id: UUID
   let artists: [CommunityEventArtist]
@@ -110,7 +117,7 @@ struct CommunityEventSummary: Codable, Equatable, Identifiable, Sendable {
   let venueName: String
   let areaName: String
   let eventDate: Date
-  let startsAt: Date?
+  let startsAt: Date
   let timeZoneIdentifier: String
   let memoryUnlockAt: Date
   let lifecycle: CommunityEventLifecycle
@@ -322,7 +329,7 @@ struct CommunityEventCreationInput: Equatable, Sendable {
   let place: CatalogPlace
   let tour: CatalogTour?
   let eventDate: Date
-  let startsAt: Date?
+  let startsAt: Date
   let timeZoneIdentifier: String
   let listing: CommunityEventListing
 

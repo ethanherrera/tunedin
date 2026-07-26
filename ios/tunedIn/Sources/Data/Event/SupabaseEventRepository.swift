@@ -146,6 +146,21 @@ struct SupabaseEventRepository: EventRepository {
     }
   }
 
+  func friendCalendar(viewerID _: UUID) async throws -> [FriendCalendarEvent] {
+    try await withAppFailure {
+      let response: PostgrestResponse<[CatalogEventFriendCalendarRPCRecord]> = try await client
+        .rpc("list_catalog_friend_calendar", params: CatalogEventPageParameters())
+        .execute()
+      let summariesByID = try await summaryMap(from: response.value.map(\.event))
+      return try response.value.compactMap { record in
+        guard let event = summariesByID[record.event.eventID], !event.friendPreviews.isEmpty else {
+          return nil
+        }
+        return FriendCalendarEvent(event: event, friends: event.friendPreviews)
+      }
+    }
+  }
+
   func activityFeed(viewerID _: UUID) async throws -> [EventActivity] {
     try await withAppFailure {
       let response: PostgrestResponse<[CatalogEventActivityRPCRecord]> = try await client
@@ -666,7 +681,7 @@ struct CreateCatalogEventParameters: Encodable, Equatable, Sendable {
   let catalogPlaceID: UUID
   let eventDate: String
   let catalogTourID: UUID?
-  let startsAt: String?
+  let startsAt: String
   let timeZoneIdentifier: String
   let listing: CommunityEventListing
 
@@ -683,7 +698,7 @@ struct CreateCatalogEventParameters: Encodable, Equatable, Sendable {
       timeZoneIdentifier: input.timeZoneIdentifier
     )
     catalogTourID = input.tourCatalogID
-    startsAt = input.startsAt.map(CommunityEventDateCoding.dateTimeString)
+    startsAt = CommunityEventDateCoding.dateTimeString(input.startsAt)
     timeZoneIdentifier = input.timeZoneIdentifier
     listing = input.listing
   }
@@ -704,7 +719,7 @@ struct FindEventDuplicateCandidatesParameters: Encodable, Equatable, Sendable {
   let catalogPlaceID: UUID
   let eventDate: String
   let catalogTourID: UUID?
-  let startsAt: String?
+  let startsAt: String
   let timeZoneIdentifier: String
   let listing: CommunityEventListing
   let limit = 5
@@ -792,7 +807,7 @@ struct CatalogEventRPCRecord: Decodable, Equatable, Sendable {
   let venueName: String
   let areaName: String
   let eventDate: String
-  let startsAt: String?
+  let startsAt: String
   let timeZoneIdentifier: String
   let memoryUnlockAt: String
   let lifecycle: CommunityEventLifecycle
@@ -817,6 +832,10 @@ struct CatalogEventRPCRecord: Decodable, Equatable, Sendable {
     case rowState = "row_state"
     case sourceLabel = "source_label"
   }
+}
+
+struct CatalogEventFriendCalendarRPCRecord: Decodable, Equatable, Sendable {
+  let event: CatalogEventRPCRecord
 }
 
 struct CatalogEventArtistRPCRecord: Decodable, Equatable, Sendable {
@@ -1039,11 +1058,8 @@ extension CommunityEventSummary {
     else {
       throw AppFailure.unexpected
     }
-    let startsAt = try databaseRecord.startsAt.map { value in
-      guard let date = CommunityEventDateCoding.dateTime(from: value) else {
-        throw AppFailure.unexpected
-      }
-      return date
+    guard let startsAt = CommunityEventDateCoding.dateTime(from: databaseRecord.startsAt) else {
+      throw AppFailure.unexpected
     }
 
     self.init(

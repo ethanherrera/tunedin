@@ -638,12 +638,12 @@ enum CommunityEventDateText {
     formatter(dateStyle: .medium).string(from: date)
   }
 
-  static func time(_ date: Date, timeZoneIdentifier: String) -> String {
-    formatter(
-      dateStyle: .none,
-      timeStyle: .short,
-      timeZone: TimeZone(identifier: timeZoneIdentifier) ?? .current
-    ).string(from: date)
+  static func time(_ date: Date, timeZoneIdentifier _: String) -> String {
+    let formatter = DateFormatter()
+    formatter.locale = .current
+    formatter.timeZone = .current
+    formatter.dateFormat = "h:mm a z"
+    return formatter.string(from: date)
   }
 
   static func month(_ date: Date) -> String {
@@ -661,7 +661,7 @@ enum CommunityEventDateText {
   private static func formatter(
     dateStyle: DateFormatter.Style,
     timeStyle: DateFormatter.Style = .none,
-    timeZone: TimeZone = TimeZone(secondsFromGMT: 0) ?? .current
+    timeZone: TimeZone = .current
   ) -> DateFormatter {
     let formatter = DateFormatter()
     formatter.locale = .current

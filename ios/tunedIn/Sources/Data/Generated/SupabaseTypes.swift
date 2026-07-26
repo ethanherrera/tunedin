@@ -477,7 +477,7 @@ public enum PublicSchema {
     public let mergedIntoEventId: UUID?
     public let rowState: CatalogEventRowState
     public let searchText: String
-    public let startsAt: String?
+    public let startsAt: String
     public let timeZoneIdentifier: String
     public let tourNameSnapshot: String?
     public let updatedAt: String
@@ -549,7 +549,7 @@ public enum PublicSchema {
     public let mergedIntoEventId: UUID?
     public let rowState: CatalogEventRowState?
     public let searchText: String
-    public let startsAt: String?
+    public let startsAt: String
     public let timeZoneIdentifier: String
     public let tourNameSnapshot: String?
     public let updatedAt: String?

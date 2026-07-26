@@ -561,20 +561,18 @@ private struct CommunityEventHero: View {
         }
 
       HStack(alignment: .firstTextBaseline, spacing: 12) {
-        Text(CommunityEventDateText.fullDate(detail.summary.eventDate))
+        Text(CommunityEventDateText.fullDate(detail.summary.startsAt))
           .font(.caption.weight(.bold))
           .textCase(.uppercase)
           .foregroundStyle(TunedInDesign.mutedText)
-        if let startsAt = detail.summary.startsAt {
-          Text(
-            CommunityEventDateText.time(
-              startsAt,
-              timeZoneIdentifier: detail.summary.timeZoneIdentifier
-            )
+        Text(
+          CommunityEventDateText.time(
+            detail.summary.startsAt,
+            timeZoneIdentifier: detail.summary.timeZoneIdentifier
           )
-          .font(.caption.weight(.semibold))
-          .foregroundStyle(TunedInDesign.mutedText)
-        }
+        )
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(TunedInDesign.mutedText)
         Spacer()
         phaseBadge
       }
