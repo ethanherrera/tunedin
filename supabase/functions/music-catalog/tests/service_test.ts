@@ -7,7 +7,10 @@ import type {
   CatalogBackend,
   CatalogKind,
   CatalogResult,
+  EventArtworkScheduler,
   JsonValue,
+  MusicBrainzEventArtworkCandidate,
+  MusicBrainzEventCover,
   MusicBrainzEventInput,
   SearchRequest,
   UpsertMusicBrainzInput,
@@ -76,8 +79,13 @@ Deno.test("write-through MusicBrainz rows are deduplicated without paging skips"
 Deno.test("event discovery is rate-gated and writes only validated provider rows", async () => {
   const backend = new FakeBackend();
   const upstream = new FakeUpstream([]);
+  const artworkScheduler = new FakeArtworkScheduler();
   upstream.eventResults = [musicBrainzEvent()];
-  const service = new MusicCatalogService({ backend, upstream });
+  const service = new MusicCatalogService({
+    backend,
+    upstream,
+    eventArtworkScheduler: artworkScheduler,
+  });
 
   const response = await service.searchEvents({
     operation: "search_events",
@@ -90,6 +98,10 @@ Deno.test("event discovery is rate-gated and writes only validated provider rows
   assert.equal(backend.reserveCalls, 1);
   assert.equal(backend.eventUpsertInputs.length, 1);
   assert.equal(response.eventIds.length, 1);
+  assert.deepEqual(artworkScheduler.candidates, [{
+    eventId: response.eventIds[0],
+    event: musicBrainzEvent(),
+  }]);
 });
 
 Deno.test("local pagination reads beyond 20 rows before filling from MusicBrainz", async () => {
@@ -393,6 +405,30 @@ class FakeBackend implements CatalogBackend {
   upsertMusicBrainzEvent(_input: MusicBrainzEventInput): Promise<string> {
     this.eventUpsertInputs.push(_input);
     return Promise.resolve("e1000000-0000-4000-8000-000000000001");
+  }
+
+  claimMusicBrainzEventArtwork(_eventId: string): Promise<boolean> {
+    return Promise.resolve(false);
+  }
+
+  completeMusicBrainzEventArtwork(
+    _eventId: string,
+    _cover: MusicBrainzEventCover | null,
+    _priority: number | null,
+  ): Promise<void> {
+    return Promise.resolve();
+  }
+
+  failMusicBrainzEventArtwork(_eventId: string): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
+class FakeArtworkScheduler implements EventArtworkScheduler {
+  readonly candidates: MusicBrainzEventArtworkCandidate[] = [];
+
+  schedule(candidates: MusicBrainzEventArtworkCandidate[]): void {
+    this.candidates.push(...candidates);
   }
 }
 

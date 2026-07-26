@@ -1,0 +1,11 @@
+{
+  "images": [
+    {
+      "front": true,
+      "image": "https://fixture-art.tunedin.invalid/event-full.jpg",
+      "thumbnails": {
+        "500": "https://fixture-art.tunedin.invalid/event-500.jpg"
+      }
+    }
+  ]
+}

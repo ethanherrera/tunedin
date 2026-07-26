@@ -53,9 +53,10 @@ The `simulator-onboarding`, `simulator-profile`, and `simulator-profile-error` c
 Development-only deterministic UI fixtures without sending email. They do not create a Supabase
 session or access protected backend data. Use `make simulator-live` for real Supabase integration.
 
-After a reviewed migration reaches `main`, use `make dev-deploy` to manually dispatch the protected
-Development migration workflow. It reruns disposable schema/type/pgTAP verification before applying
-forward-only migrations; see the [Development Database Deployment runbook](runbooks/development-database-deployment.md).
+After Local verification, use `make dev-deploy` from the feature branch to manually dispatch the
+protected Development migration workflow. Development is the shared integration environment before
+Staging and may contain in-progress work. It reruns disposable schema/type/pgTAP verification before
+applying forward-only migrations; see the [Development Database Deployment runbook](runbooks/development-database-deployment.md).
 
 When a reviewed `main` commit is ready for integrated beta testing, dispatch **Promote Staging** from
 the GitHub Actions UI. It archives the separate `tunedIn Staging` app, promotes the isolated Staging

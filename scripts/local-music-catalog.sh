@@ -64,6 +64,7 @@ write_function_environment() {
   {
     printf 'TUNEDIN_ENVIRONMENT=Local\n'
     printf 'MUSICBRAINZ_BASE_URL=http://host.docker.internal:%s/ws/2/\n' "$stub_port"
+    printf 'MUSICBRAINZ_ARTWORK_BASE_URL=http://host.docker.internal:%s/\n' "$stub_port"
     printf 'MUSICBRAINZ_USER_AGENT=tunedIn/local-fixture (mailto:fixture-only@tunedin.invalid)\n'
   } >"$function_env_file"
 }

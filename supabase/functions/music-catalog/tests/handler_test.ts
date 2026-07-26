@@ -9,6 +9,7 @@ import type {
   CatalogKind,
   CatalogResult,
   JsonValue,
+  MusicBrainzEventCover,
   MusicBrainzEventInput,
   UpsertMusicBrainzInput,
   UpstreamTransport,
@@ -194,6 +195,22 @@ class HandlerBackend implements CatalogBackend {
 
   upsertMusicBrainzEvent(_input: MusicBrainzEventInput): Promise<string> {
     return Promise.resolve("e1000000-0000-4000-8000-000000000001");
+  }
+
+  claimMusicBrainzEventArtwork(_eventId: string): Promise<boolean> {
+    return Promise.resolve(false);
+  }
+
+  completeMusicBrainzEventArtwork(
+    _eventId: string,
+    _cover: MusicBrainzEventCover | null,
+    _priority: number | null,
+  ): Promise<void> {
+    return Promise.resolve();
+  }
+
+  failMusicBrainzEventArtwork(_eventId: string): Promise<void> {
+    return Promise.resolve();
   }
 }
 

@@ -8,6 +8,7 @@ import type {
   CatalogBackend,
   CatalogKind,
   CatalogResult,
+  EventArtworkScheduler,
   JsonObject,
   JsonValue,
   ResolveRequest,
@@ -37,6 +38,7 @@ const inFlightRequests = new Map<string, Promise<JsonValue>>();
 interface ServiceOptions {
   backend: CatalogBackend;
   upstream: UpstreamTransport;
+  eventArtworkScheduler?: EventArtworkScheduler;
   now?: () => number;
   sleep?: (milliseconds: number) => Promise<void>;
   randomUuid?: () => string;
@@ -45,6 +47,7 @@ interface ServiceOptions {
 export class MusicCatalogService {
   readonly #backend: CatalogBackend;
   readonly #upstream: UpstreamTransport;
+  readonly #eventArtworkScheduler: EventArtworkScheduler | undefined;
   readonly #now: () => number;
   readonly #sleep: (milliseconds: number) => Promise<void>;
   readonly #randomUuid: () => string;
@@ -52,6 +55,7 @@ export class MusicCatalogService {
   constructor(options: ServiceOptions) {
     this.#backend = options.backend;
     this.#upstream = options.upstream;
+    this.#eventArtworkScheduler = options.eventArtworkScheduler;
     this.#now = options.now ?? Date.now;
     this.#sleep = options.sleep ?? ((milliseconds) =>
       new Promise((resolve) => {
@@ -135,6 +139,9 @@ export class MusicCatalogService {
     );
     const eventIds = await Promise.all(
       page.results.map((candidate) => this.#backend.upsertMusicBrainzEvent(candidate)),
+    );
+    this.#eventArtworkScheduler?.schedule(
+      page.results.map((event, index) => ({ event, eventId: eventIds[index] })),
     );
     return { operation: "search_events", eventIds, offset: request.offset, hasMore: page.hasMore };
   }

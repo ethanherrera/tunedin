@@ -18,9 +18,9 @@ MusicBrainz or a hosted Supabase project.
   installed. Run `make setup` for the complete repository toolchain.
 - For Local integration, the disposable Supabase stack contains the current
   migrations and deterministic development seed. `make local-db-reset` recreates it.
-- Development changes are merged to reviewed `main`, the Backend and iOS checks are
-  green, and the additive database migration has already been applied through
-  `Deploy Development Database`.
+- The requested branch has passed Local backend/function verification, and any additive
+  database migration has already been applied through `Deploy Development Database`.
+  Development is the shared integration step before Staging; it may run unmerged work.
 - The protected GitHub `Development` environment contains
   `SUPABASE_ACCESS_TOKEN` and a variable named `MUSICBRAINZ_USER_AGENT`. The latter
   uses a contactable form such as `tunedIn/<version> (mailto:<contact>)` or
@@ -160,7 +160,7 @@ database workflow remains migrations-only.
   migration instead. Reproduce the path with `make musicbrainz-upgrade-test`.
 - Runtime configuration failure: correct the protected environment variable; never
   add a fallback contact or non-official hosted base URL in source.
-- Function defect after deployment: redeploy the last known-good reviewed `main`
+- Function defect after deployment: redeploy the last known-good reviewed branch
   version of `music-catalog`, or disable the Function while the client presents its
   retryable unavailable state. Keep the additive catalog schema and compatibility RPCs
   in place.
@@ -178,7 +178,7 @@ database workflow remains migrations-only.
   Function version, and runtime reconciliation for Development/Staging.
 - Supabase Function logs and database cache/gate rows are the operational audit source;
   inspect only sanitized fixed fields and retain raw diagnostics for at most 30 days.
-- Run Local verification after Function/RPC/fixture changes. Deploy Development only
-  after the corresponding reviewed migration. Run the opt-in live smoke only when
+- Run Local verification after Function/RPC/fixture changes. Deploy Development from
+  the requested branch after the corresponding migration is verified. Run the opt-in live smoke only when
   checking a suspected MusicBrainz schema change. Staging Function deployment remains
   part of a manually approved full Staging promotion.

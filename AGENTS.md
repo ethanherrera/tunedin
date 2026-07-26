@@ -26,7 +26,8 @@ This repository contains the native tunedIn MVP: a SwiftUI iOS client and its Su
 
 ## Development database deployment
 
-- The shared `tunedin-dev` project advances only through an explicitly dispatched Development workflow from the requested branch commit. The workflow must rerun disposable backend verification before mutation; pull-request checks and merge-triggered workflows remain non-mutating.
+- `tunedin-dev` is the shared integration environment between disposable Local and protected Staging. It may advance from an explicitly requested feature-branch commit, including work that is not yet merged to `main`; it may be unstable while that work is under development.
+- Development advances only through an explicitly dispatched Development workflow from the requested branch commit. The workflow must rerun disposable backend verification before mutation; pull-request checks and merge-triggered workflows remain non-mutating.
 - Treat `make backend-verify` as the required disposable-schema proof before a hosted migration. `make dev-status` and `make dev-plan` are read-only; `make dev-deploy` only queues the protected workflow.
 - The deployment path applies forward-only database migrations only. Never reset hosted Development, include local seed data, or push Supabase configuration/Edge Functions through this path.
 - Treat `supabase/seeds/development.sql` as the deterministic, usable local journey catalog. When a local-testable user journey, relationship state, collaboration state, or concert lifecycle changes, update the seed and `make local-seed-verify` in the same change so a reset still covers the real valid state rather than a frozen UI fixture.
