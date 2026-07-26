@@ -73,6 +73,7 @@ struct FeedbackView: View {
     }
     .interactiveDismissDisabled(isSubmitting)
     .tunedInKeyboardManaged()
+    .tunedInEdgeSwipeBack(isEnabled: !isSubmitting) { dismiss() }
   }
 
   private var feedbackControls: some View {

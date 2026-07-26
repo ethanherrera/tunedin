@@ -255,6 +255,7 @@ private struct ProfileConcertDirectoryView: View {
           .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
+    .tunedInEdgeSwipeBack(action: onDismiss)
   }
 }
 

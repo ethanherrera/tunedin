@@ -52,6 +52,7 @@ struct EventAttendanceDirectoryView: View {
     .safeAreaInset(edge: .bottom, spacing: 0) {
       EventCollectionBottomBar(title: event.title, onDismiss: onDismiss)
     }
+    .tunedInEdgeSwipeBack(action: onDismiss)
     .task {
       guard !didLoad else { return }
       didLoad = true
@@ -220,6 +221,7 @@ struct EventPostGalleryView: View {
     .safeAreaInset(edge: .bottom, spacing: 0) {
       EventCollectionBottomBar(title: "Posts", onDismiss: onDismiss)
     }
+    .tunedInEdgeSwipeBack(action: onDismiss)
     .fullScreenCover(item: $selectedPost) { post in
       EventPostDetailView(
         event: event,

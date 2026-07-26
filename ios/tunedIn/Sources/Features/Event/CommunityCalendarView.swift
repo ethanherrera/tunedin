@@ -210,6 +210,7 @@ struct CommunityCalendarView: View {
           .padding(.bottom, TunedInDesign.bottomControlInset)
         }
       }
+      .tunedInEdgeSwipeBack { isShowingInvitations = false }
     }
   }
 
@@ -290,6 +291,7 @@ private struct CalendarFriendPicker: View {
           .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
+    .tunedInEdgeSwipeBack(action: onDismiss)
   }
 
   private var filteredFriends: [SocialProfile] {
