@@ -41,7 +41,6 @@ struct MainTabView: View {
   @State private var selectionFeedbackTrigger = 0
   @StateObject private var floatingControls = AppFloatingControls()
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
   @Environment(\.musicCatalogRepository) private var musicCatalogRepository
   @Namespace private var bottomGlassNamespace
   @Namespace private var tabSelectionNamespace
@@ -163,29 +162,12 @@ struct MainTabView: View {
         subscreenBottomBar(title: title)
           .transition(TunedInMotion.controlSceneTransition(reduceMotion: reduceMotion))
       case .none:
-        TunedInGlassTraversalLayout(glassNamespace: bottomGlassNamespace) {
-          TunedInGlassIconButton(
-            systemImage: "magnifyingglass",
-            accessibilityLabel: "Search"
-          ) {
-            isPresentingEventDiscovery = true
-          }
-        } center: {
-          TunedInGlassBottomBar {
-            HStack(spacing: 2) {
-              mainTabButtons
-            }
-          }
-          .animation(TunedInMotion.selection(reduceMotion: reduceMotion), value: selectedTab)
-        } trailing: {
-          TunedInGlassIconButton(
-            systemImage: "plus",
-            accessibilityLabel: "Add concert",
-            style: .accent
-          ) {
-            isPresentingCommunityEventCreation = true
+        TunedInGlassBottomBar {
+          HStack(spacing: 0) {
+            homeNavigationButtons
           }
         }
+        .animation(TunedInMotion.selection(reduceMotion: reduceMotion), value: selectedTab)
         .transition(TunedInMotion.controlSceneTransition(reduceMotion: reduceMotion))
       }
     }
@@ -298,9 +280,31 @@ struct MainTabView: View {
 
   @ViewBuilder
   private var mainTabButtons: some View {
-    tabButton(.feed, title: "Feed", icon: "music.note.house")
+    tabButton(.feed, title: "Home", icon: "music.note.house")
     if supportsPlans {
-      tabButton(.plans, title: "Plans", icon: "calendar")
+      tabButton(.plans, title: "Calendar", icon: "calendar")
+    }
+    tabButton(.profile, title: "Profile", icon: "person.crop.circle")
+  }
+
+  @ViewBuilder
+  private var homeNavigationButtons: some View {
+    tabButton(.feed, title: "Home", icon: "music.note.house")
+    navigationActionButton(
+      systemImage: "magnifyingglass",
+      accessibilityLabel: "Search"
+    ) {
+      isPresentingEventDiscovery = true
+    }
+    navigationActionButton(
+      systemImage: "plus",
+      accessibilityLabel: "Add concert",
+      isAccent: true
+    ) {
+      isPresentingCommunityEventCreation = true
+    }
+    if supportsPlans {
+      tabButton(.plans, title: "Calendar", icon: "calendar")
     }
     tabButton(.profile, title: "Profile", icon: "person.crop.circle")
   }
@@ -314,6 +318,29 @@ struct MainTabView: View {
     .buttonStyle(.plain)
     .contentShape(.interaction, Capsule())
     .accessibilityLabel(title)
+  }
+
+  private func navigationActionButton(
+    systemImage: String,
+    accessibilityLabel: String,
+    isAccent: Bool = false,
+    action: @escaping () -> Void
+  ) -> some View {
+    Button(action: action) {
+      Image(systemName: systemImage)
+        .font(.title3.weight(.bold))
+        .foregroundStyle(isAccent ? TunedInDesign.actionForeground : TunedInDesign.primaryText)
+        .frame(width: TunedInDesign.controlSize, height: TunedInDesign.controlSize)
+        .background {
+          if isAccent {
+            Circle().fill(TunedInDesign.accent)
+          }
+        }
+        .contentShape(.interaction, Circle())
+    }
+    .buttonStyle(.plain)
+    .contentShape(.interaction, Circle())
+    .accessibilityLabel(accessibilityLabel)
   }
 
   private func activateTab(_ tab: Tab) {
@@ -355,24 +382,11 @@ struct MainTabView: View {
   }
 
   private func navigationLabel(title: String, icon: String, isSelected: Bool) -> some View {
-    Group {
-      if dynamicTypeSize.isAccessibilitySize {
-        Image(systemName: icon)
-          .font(.title3.weight(.bold))
-          .accessibilityHidden(true)
-      } else {
-        HStack(spacing: 6) {
-          Image(systemName: icon)
-            .font(.caption.weight(.bold))
-          Text(title)
-            .font(.caption.weight(.bold))
-        }
-      }
-    }
+    Image(systemName: icon)
+      .font(.title3.weight(.bold))
+      .accessibilityHidden(true)
     .foregroundStyle(isSelected ? TunedInDesign.selectedControlForeground : TunedInDesign.primaryText)
-    .frame(width: dynamicTypeSize.isAccessibilitySize ? 52 : (supportsPlans ? 68 : 78))
-    .frame(minHeight: 44)
-    .padding(.horizontal, 2)
+    .frame(width: TunedInDesign.controlSize, height: TunedInDesign.controlSize)
     .background {
       if isSelected {
         TunedInSelectionLens()

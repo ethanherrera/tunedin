@@ -317,7 +317,7 @@ struct CommunityActivityFeedView: View {
 
       ScrollView {
         VStack(alignment: .leading, spacing: 0) {
-          Text("Feed")
+          Text("Home")
             .font(.largeTitle.weight(.bold))
             .foregroundStyle(TunedInDesign.primaryText)
             .padding(.horizontal, 18)
@@ -390,7 +390,7 @@ struct CommunityPlansView: View {
 
       ScrollView {
         VStack(alignment: .leading, spacing: 18) {
-          Text("Plans")
+          Text("Calendar")
             .font(.largeTitle.weight(.bold))
             .foregroundStyle(TunedInDesign.primaryText)
 

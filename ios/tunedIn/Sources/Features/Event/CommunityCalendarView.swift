@@ -110,7 +110,7 @@ struct CommunityCalendarView: View {
         Spacer()
         if selectedDay != nil {
           Button { withAnimation { selectedDay = nil } } label: {
-            Label("Show upcoming", systemImage: "xmark")
+            Label("Show calendar", systemImage: "xmark")
               .font(.caption.weight(.semibold))
           }
           .buttonStyle(.bordered)
@@ -122,7 +122,7 @@ struct CommunityCalendarView: View {
       } else {
         ForEach(entries) { entry in
           Button { onOpenEvent(entry.event) } label: {
-            AgendaRow(entry: entry, repository: repository)
+            AgendaRow(entry: entry)
           }
             .buttonStyle(TunedInPosterButtonStyle())
         }
@@ -169,6 +169,7 @@ struct CommunityCalendarView: View {
       CalendarFriendPicker(
         friends: friends,
         selectedFriend: selectedFriend,
+        onDismiss: { isPickingFriend = false },
         onSelectAll: {
           selectedFriend = nil
           selectedFriendEvents = []
@@ -180,8 +181,7 @@ struct CommunityCalendarView: View {
           Task { await loadSelectedFriend(friend) }
         }
       )
-      .navigationTitle("Friends")
-      .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { isPickingFriend = false } } }
+      .toolbar(.hidden, for: .navigationBar)
     }
   }
 
@@ -227,6 +227,7 @@ private struct CalendarEntry: Identifiable {
 private struct CalendarFriendPicker: View {
   let friends: [SocialProfile]
   let selectedFriend: SocialProfile?
+  let onDismiss: () -> Void
   let onSelectAll: () -> Void
   let onSelectFriend: (SocialProfile) -> Void
 
@@ -270,6 +271,14 @@ private struct CalendarFriendPicker: View {
         .padding(.horizontal, 20)
         .padding(.top, 18)
         .padding(.bottom, 32)
+      }
+    }
+    .safeAreaInset(edge: .bottom, spacing: 0) {
+      TunedInPersistentControlRegion {
+        TunedInSubscreenBackBar(title: "Friends", action: onDismiss)
+          .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
+          .padding(.top, 8)
+          .padding(.bottom, TunedInDesign.bottomControlInset)
       }
     }
   }
@@ -343,15 +352,14 @@ private struct CalendarFriendPickerRow: View {
 
 private struct AgendaRow: View {
   let entry: CalendarEntry
-  let repository: any EventRepository
+
   var body: some View {
     let time = CommunityEventDateText.time(
       entry.event.startsAt,
       timeZoneIdentifier: entry.event.timeZoneIdentifier
     )
     HStack(spacing: 12) {
-      CommunityEventCoverImage(event: entry.event, repository: repository)
-        .frame(width: 52, height: 52).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+      AgendaDateTile(date: entry.event.startsAt)
       VStack(alignment: .leading, spacing: 3) {
         Text(entry.event.title)
           .font(.subheadline.weight(.bold))
@@ -373,6 +381,24 @@ private struct AgendaRow: View {
         .foregroundStyle(TunedInDesign.mutedText)
     }
     .padding(10).background(TunedInDesign.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+  }
+}
+
+private struct AgendaDateTile: View {
+  let date: Date
+
+  var body: some View {
+    VStack(spacing: 1) {
+      Text(CommunityEventDateText.month(date))
+        .font(.caption2.weight(.bold))
+        .textCase(.uppercase)
+        .foregroundStyle(TunedInDesign.accent)
+      Text(CommunityEventDateText.day(date))
+        .font(.title3.weight(.bold))
+        .foregroundStyle(TunedInDesign.primaryText)
+    }
+    .frame(width: 52, height: 52)
+    .background(TunedInDesign.raisedSurface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
   }
 }
 
@@ -417,7 +443,7 @@ private struct CalendarMonths: View {
         }
         .padding(.vertical, 2)
       }
-      .frame(height: 310)
+      .frame(height: 290)
       .scrollIndicators(.hidden)
       .onAppear { proxy.scrollTo(currentMonth, anchor: .top) }
     }
