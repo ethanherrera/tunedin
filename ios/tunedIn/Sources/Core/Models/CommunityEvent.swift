@@ -125,6 +125,8 @@ struct CommunityEventSummary: Codable, Equatable, Identifiable, Sendable {
   let integrity: CommunityEventIntegrity
   let rowState: CommunityEventRowState
   let sourceLabel: String
+  let sourceLocalStartTime: String?
+  let sourceURL: URL?
   let currentUserAttendance: EventAttendanceStatus?
   let currentUserAudience: EventAudience?
   let friendPreviews: [EventFriendPreview]
@@ -186,6 +188,8 @@ struct CommunityEventSummary: Codable, Equatable, Identifiable, Sendable {
       integrity: integrity,
       rowState: rowState,
       sourceLabel: sourceLabel,
+      sourceLocalStartTime: sourceLocalStartTime,
+      sourceURL: sourceURL,
       currentUserAttendance: currentUserAttendance,
       currentUserAudience: currentUserAudience,
       friendPreviews: friendPreviews,

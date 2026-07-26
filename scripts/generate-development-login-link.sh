@@ -54,7 +54,7 @@ fi
 login_url="$(jq -nr \
   --arg callback_url "$callback_url" \
   --arg token_hash "$token_hash" \
-  '$callback_url + "?token_hash=" + ($token_hash | @uri) + "&type=magiclink"')"
+  '$callback_url + "?token_hash=" + ($token_hash | @uri) + "&type=email"')"
 
 printf '%s' "$login_url" | pbcopy
 echo "A one-time tunedin-dev login link for $email was copied to the clipboard."

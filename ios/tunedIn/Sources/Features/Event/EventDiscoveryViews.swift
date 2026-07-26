@@ -23,6 +23,7 @@ struct EventDiscoveryView: View {
   @State private var isLoadingEvents = false
   @State private var eventErrorMessage: String?
   @State private var peopleModel: PeopleHubModel
+  @FocusState private var isSearchFieldFocused: Bool
 
   init(
     viewerID: UUID,
@@ -52,7 +53,8 @@ struct EventDiscoveryView: View {
         VStack(alignment: .leading, spacing: 14) {
           TunedInGlassSearchField(
             text: $query,
-            prompt: selectedScope == .concerts ? "Search concerts" : "Search people by username"
+            prompt: selectedScope == .concerts ? "Search concerts" : "Search people by username",
+            isFocused: $isSearchFieldFocused
           )
 
           Picker("Search category", selection: $selectedScope) {
@@ -114,7 +116,10 @@ struct EventDiscoveryView: View {
     } else {
       LazyVStack(spacing: 12) {
         ForEach(results) { event in
-          Button { onOpenEvent(event) } label: {
+          Button {
+            isSearchFieldFocused = false
+            onOpenEvent(event)
+          } label: {
             CommunityEventRow(event: event, showsSource: true, eventRepository: eventRepository)
           }
           .buttonStyle(TunedInPosterButtonStyle())
@@ -152,7 +157,10 @@ struct EventDiscoveryView: View {
     } else {
       LazyVStack(spacing: 0) {
         ForEach(peopleModel.searchResults) { profile in
-          Button { onOpenProfile(profile) } label: {
+          Button {
+            isSearchFieldFocused = false
+            onOpenProfile(profile)
+          } label: {
             PeopleSearchResultRow(profile: profile)
           }
           .buttonStyle(.plain)

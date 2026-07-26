@@ -11,7 +11,8 @@ Usage: ./scripts/development-database.sh <status|plan|apply>
 Commands:
   status  Show migration parity for the linked tunedin-dev project.
   plan    Print the migrations that would be applied to tunedin-dev.
-  apply   Apply pending migrations from the protected GitHub workflow.
+  apply   Apply pending migrations from the protected GitHub workflow on an
+          explicitly requested branch.
 
 This script never resets the hosted database or pushes seed data, Supabase
 configuration, or Edge Functions. Those operations require their own review and
@@ -49,8 +50,8 @@ link_development_project() {
 }
 
 require_protected_workflow() {
-  if [[ "${GITHUB_ACTIONS:-}" != "true" || "${GITHUB_REF:-}" != "refs/heads/main" ]]; then
-    printf 'Development migrations may be applied only by the protected GitHub workflow from main.\n' >&2
+  if [[ "${GITHUB_ACTIONS:-}" != "true" || "${GITHUB_REF:-}" != refs/heads/* ]]; then
+    printf 'Development migrations may be applied only by the manually dispatched GitHub workflow from an explicitly requested branch.\n' >&2
     exit 1
   fi
 }

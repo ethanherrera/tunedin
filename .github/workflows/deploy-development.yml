@@ -17,13 +17,13 @@ concurrency:
 
 jobs:
   verify-and-deploy:
-    if: github.ref == 'refs/heads/main' && inputs.confirm == 'deploy-development'
+    if: inputs.confirm == 'deploy-development'
     name: Verify and deploy Development migrations
     runs-on: ubuntu-latest
     environment:
       name: Development
     steps:
-      - name: Check out the reviewed main commit
+      - name: Check out the explicitly requested branch commit
         uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}

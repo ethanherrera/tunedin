@@ -19,13 +19,17 @@ struct SupabaseEventRepository: EventRepository {
   func searchEvents(query: String, viewerID _: UUID) async throws -> [CommunityEventSummary] {
     try await withAppFailure {
       let normalized = CatalogInput.normalizedText(query)
-      let response: PostgrestResponse<[CatalogEventRPCRecord]> = try await client
-        .rpc(
-          "search_catalog_events",
-          params: SearchCatalogEventsParameters(query: normalized.isEmpty ? nil : normalized)
+      let stored = try await discoverableSearch(query: normalized)
+      do {
+        let _: MusicBrainzEventDiscoveryResponse = try await client.functions.invoke(
+          "music-catalog",
+          options: FunctionInvokeOptions(body: MusicBrainzEventDiscoveryRequest(query: normalized))
         )
-        .execute()
-      return try await summaries(from: response.value)
+        return try await discoverableSearch(query: normalized)
+      } catch {
+        if !stored.isEmpty { return stored }
+        throw error
+      }
     }
   }
 
@@ -47,7 +51,7 @@ struct SupabaseEventRepository: EventRepository {
   func eventDetail(id: UUID, viewerID _: UUID) async throws -> CommunityEventDetail {
     try await withAppFailure {
       let response: PostgrestResponse<CatalogEventRPCRecord> = try await client
-        .rpc("get_catalog_event_detail", params: CatalogEventIDParameters(eventID: id))
+        .rpc("get_discoverable_catalog_event_detail", params: CatalogEventIDParameters(eventID: id))
         .single()
         .execute()
       let summary = try await summaries(from: [response.value]).first
@@ -77,6 +81,13 @@ struct SupabaseEventRepository: EventRepository {
         postPreviews: posts.value.map(EventPostPreview.init(databaseRecord:))
       )
     }
+  }
+
+  private func discoverableSearch(query: String) async throws -> [CommunityEventSummary] {
+    let response: PostgrestResponse<[CatalogEventProjectionRPCRecord]> = try await client
+      .rpc("search_discoverable_catalog_events", params: DiscoverableEventSearchParameters(query: query))
+      .execute()
+    return try await summaries(from: response.value.map(\.event))
   }
 
   func eventAttendances(
@@ -815,6 +826,8 @@ struct CatalogEventRPCRecord: Decodable, Equatable, Sendable {
   let integrity: CommunityEventIntegrity
   let rowState: CommunityEventRowState
   let sourceLabel: String
+  let sourceLocalStartTime: String?
+  let sourceURL: URL?
 
   enum CodingKeys: String, CodingKey {
     case artists, lifecycle, listing, integrity
@@ -831,6 +844,35 @@ struct CatalogEventRPCRecord: Decodable, Equatable, Sendable {
     case memoryUnlockAt = "memory_unlock_at"
     case rowState = "row_state"
     case sourceLabel = "source_label"
+    case sourceLocalStartTime = "source_local_start_time"
+    case sourceURL = "source_url"
+  }
+}
+
+private struct CatalogEventProjectionRPCRecord: Decodable, Sendable {
+  let event: CatalogEventRPCRecord
+}
+
+private struct DiscoverableEventSearchParameters: Encodable, Sendable {
+  let query: String
+
+  enum CodingKeys: String, CodingKey {
+    case query = "p_query"
+  }
+}
+
+private struct MusicBrainzEventDiscoveryRequest: Encodable, Sendable {
+  let operation = "search_events"
+  let query: String
+}
+
+private struct MusicBrainzEventDiscoveryResponse: Decodable, Sendable {
+  let operation: String
+  let eventIDs: [UUID]
+
+  enum CodingKeys: String, CodingKey {
+    case operation
+    case eventIDs = "eventIds"
   }
 }
 
@@ -1088,6 +1130,8 @@ extension CommunityEventSummary {
       integrity: databaseRecord.integrity,
       rowState: databaseRecord.rowState,
       sourceLabel: databaseRecord.sourceLabel,
+      sourceLocalStartTime: databaseRecord.sourceLocalStartTime,
+      sourceURL: databaseRecord.sourceURL,
       currentUserAttendance: socialRecord?.currentUserStatus,
       currentUserAudience: socialRecord?.currentUserAudience,
       friendPreviews: socialRecord?.friendPreviews.map(EventFriendPreview.init(databaseRecord:)) ?? [],

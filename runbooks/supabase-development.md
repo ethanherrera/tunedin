@@ -12,7 +12,7 @@ Operate the shared hosted `tunedin-dev` project used by local iOS Development bu
 
 ## Database migrations
 
-Use the dedicated [Development Database Deployment](./development-database-deployment.md) runbook for hosted schema changes. Do not run `supabase db push` directly against `tunedin-dev`; use the manually dispatched workflow after the reviewed migration reaches `main`.
+Use the dedicated [Development Database Deployment](./development-database-deployment.md) runbook for hosted schema changes. Do not run `supabase db push` directly against `tunedin-dev`; use the manually dispatched workflow from the requested branch.
 
 The following commands are read-only preflight checks:
 
@@ -44,6 +44,14 @@ make dev-login-link EMAIL=owner.device-test@example.com
 The helper is hard-coded to `tunedin-dev`, obtains a temporary admin credential through the authenticated CLI, and copies the generated link directly to the macOS clipboard. It never prints or stores the credential or link. Paste the clipboard into Safari on the test iPhone; Supabase verifies the link, redirects to `com.ethanherrera.tunedin://auth-callback`, and opens the installed Development app with a normal hosted session. The email is an identity label and does not need to receive a message, but use an address under Ethan’s control when testing email delivery itself.
 
 Run this command only from a trusted Mac. A generated link is short-lived authentication material: never paste it into chat, logs, issues, or shell arguments. If generation fails, confirm `supabase projects list` succeeds for Ethan’s `tunedIn` organization, then retry once manually. Authentication activity is recorded in the hosted Supabase Auth logs; the helper has no database migration or hosted reset capability.
+
+When a booted iPhone Simulator has the Development build installed, use the one-command variant instead:
+
+```sh
+make simulator-dev-login EMAIL=owner.device-test@example.com
+```
+
+It generates the same normal, short-lived Development session and opens it directly in the Simulator. It is not a privileged session or an RLS bypass. Because the command-line Simulator build is unsigned, its Development-only session cache is app-scoped UserDefaults; physical devices continue to use Keychain. Choose **Open** if iOS asks to return to tunedIn.
 
 ### Simulator magic-link smoke test
 

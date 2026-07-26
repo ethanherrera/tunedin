@@ -13,7 +13,7 @@ const JSON_HEADERS = {
 
 export interface SafeRequestEvent {
   event: "music_catalog_request";
-  operation: "search" | "resolve" | "unknown";
+  operation: "search" | "resolve" | "search_events" | "unknown";
   outcome: "success" | "failure";
   errorCode: string | null;
   durationMs: number;
@@ -67,7 +67,9 @@ export function createMusicCatalogHandler(
       operation = catalogRequest.operation;
       const response = catalogRequest.operation === "search"
         ? await options.service.search(catalogRequest, authorization)
-        : await options.service.resolve(catalogRequest, authorization);
+        : catalogRequest.operation === "resolve"
+        ? await options.service.resolve(catalogRequest, authorization)
+        : await options.service.searchEvents(catalogRequest, authorization);
       log({
         event: "music_catalog_request",
         operation,

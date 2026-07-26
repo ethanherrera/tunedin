@@ -107,8 +107,8 @@ make dev-functions-status
 make dev-functions-plan
 ```
 
-After the reviewed migration is deployed from `main`, dispatch the separate protected
-Function workflow:
+After the migration is deployed from the branch under test, dispatch the separate
+manually dispatched Function workflow from that same branch:
 
 ```sh
 make dev-functions-deploy

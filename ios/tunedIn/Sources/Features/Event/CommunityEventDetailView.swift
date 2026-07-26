@@ -89,7 +89,7 @@ struct CommunityEventDetailView: View {
     }
     .toolbar(.hidden, for: .navigationBar)
     .safeAreaInset(edge: .bottom, spacing: 0) {
-      TunedInPersistentControlRegion {
+      TunedInPersistentControlRegion(keepsVisibleWithKeyboard: true) {
         eventBottomBar
           .padding(.horizontal, TunedInDesign.bottomControlHorizontalInset)
           .padding(.top, 6)
@@ -260,6 +260,7 @@ struct CommunityEventDetailView: View {
       TunedInGlassIconButton(
         systemImage: "chevron.backward",
         accessibilityLabel: "Back to previous screen",
+        remainsVisibleWithKeyboard: true,
         action: onDismiss
       )
     } center: {
@@ -560,16 +561,11 @@ private struct CommunityEventHero: View {
         }
 
       HStack(alignment: .firstTextBaseline, spacing: 12) {
-        Text(CommunityEventDateText.fullDate(detail.summary.startsAt))
+        Text(CommunityEventDateText.fullDate(detail.summary.eventDate))
           .font(.caption.weight(.bold))
           .textCase(.uppercase)
           .foregroundStyle(TunedInDesign.mutedText)
-        Text(
-          CommunityEventDateText.time(
-            detail.summary.startsAt,
-            timeZoneIdentifier: detail.summary.timeZoneIdentifier
-          )
-        )
+        Text(CommunityEventDateText.time(for: detail.summary))
         .font(.caption.weight(.semibold))
         .foregroundStyle(TunedInDesign.mutedText)
         Spacer()
@@ -624,6 +620,12 @@ private struct CommunityEventHero: View {
       }
       .font(.caption2.weight(.semibold))
       .foregroundStyle(TunedInDesign.mutedText)
+
+      if let sourceURL = detail.summary.sourceURL {
+        Link("View on MusicBrainz", destination: sourceURL)
+          .font(.caption.weight(.semibold))
+          .foregroundStyle(TunedInDesign.accent)
+      }
 
       Divider().overlay(TunedInDesign.cardBorder)
     }

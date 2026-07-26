@@ -25,7 +25,12 @@ export interface ResolveRequest {
   musicBrainzId: string;
 }
 
-export type CatalogRequest = SearchRequest | ResolveRequest;
+export interface SearchEventsRequest {
+  operation: "search_events";
+  query: string;
+}
+
+export type CatalogRequest = SearchRequest | ResolveRequest | SearchEventsRequest;
 
 export interface ArtistCredit {
   artistCatalogId: string | null;
@@ -67,6 +72,31 @@ export interface SearchResponse {
 export interface ResolveResponse {
   operation: "resolve";
   entity: CatalogResult;
+}
+
+export interface SearchEventsResponse {
+  operation: "search_events";
+  eventIds: string[];
+}
+
+export interface MusicBrainzEventInput {
+  event_mbid: string;
+  title: string;
+  event_date: string;
+  local_start_time: string | null;
+  venue: {
+    mbid: string;
+    name: string;
+    area_mbid: string | null;
+    area_name: string | null;
+  };
+  artists: Array<{
+    mbid: string;
+    name: string;
+    is_headliner: boolean;
+  }>;
+  source_status: "active" | "cancelled";
+  source_updated_at: string | null;
 }
 
 export interface SafeErrorBody {
@@ -138,6 +168,7 @@ export interface CatalogBackend {
   releaseRequest(cacheKey: string, leaseId: string): Promise<void>;
   reserveRequestSlot(maxWaitMs: number): Promise<Date>;
   upsertMusicBrainz(input: UpsertMusicBrainzInput): Promise<CatalogResult>;
+  upsertMusicBrainzEvent(input: MusicBrainzEventInput): Promise<string>;
 }
 
 export interface UpstreamTransport {
@@ -151,4 +182,5 @@ export interface UpstreamTransport {
     hasMore: boolean;
   }>;
   lookup(kind: CatalogKind, musicBrainzId: string): Promise<CatalogResult>;
+  searchEvents(query: string): Promise<MusicBrainzEventInput[]>;
 }

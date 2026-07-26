@@ -1,0 +1,34 @@
+{
+  "created": "2026-07-25T00:00:00Z",
+  "count": 1,
+  "offset": 0,
+  "events": [
+    {
+      "id": "f4000000-0000-4000-8000-000000000001",
+      "name": "Fixture Headliner at Fixture Hall",
+      "type": "Concert",
+      "life-span": { "begin": "2026-08-15" },
+      "time": "20:00",
+      "relations": [
+        {
+          "type": "main performer",
+          "artist": {
+            "id": "f4000000-0000-4000-8000-000000000002",
+            "name": "Fixture Headliner"
+          }
+        },
+        {
+          "type": "venue",
+          "place": {
+            "id": "f4000000-0000-4000-8000-000000000003",
+            "name": "Fixture Hall",
+            "area": {
+              "id": "f4000000-0000-4000-8000-000000000004",
+              "name": "Fixture City"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

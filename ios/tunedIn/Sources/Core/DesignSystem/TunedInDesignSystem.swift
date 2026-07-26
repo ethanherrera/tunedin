@@ -191,11 +191,12 @@ struct TunedInGlassIconButton: View {
   let systemImage: String
   let accessibilityLabel: String
   var style: Style = .neutral
+  var remainsVisibleWithKeyboard = false
   let action: () -> Void
   @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
 
   var body: some View {
-    if keyboardPresentation.showsPersistentGlass {
+    if keyboardPresentation.showsPersistentGlass || remainsVisibleWithKeyboard {
       Button(action: action) {
         Image(systemName: systemImage)
           .font(.body.weight(.bold))
@@ -309,14 +310,23 @@ private struct TunedInGlassEffectIdentity: ViewModifier {
 }
 
 struct TunedInPersistentControlRegion<Content: View>: View {
+  let keepsVisibleWithKeyboard: Bool
   @ViewBuilder let content: Content
   @Environment(\.tunedInKeyboardPresentation) private var keyboardPresentation
 
+  init(
+    keepsVisibleWithKeyboard: Bool = false,
+    @ViewBuilder content: () -> Content
+  ) {
+    self.keepsVisibleWithKeyboard = keepsVisibleWithKeyboard
+    self.content = content()
+  }
+
   var body: some View {
     content
-      .opacity(keyboardPresentation.showsPersistentGlass ? 1 : 0)
-      .allowsHitTesting(keyboardPresentation.showsPersistentGlass)
-      .accessibilityHidden(!keyboardPresentation.showsPersistentGlass)
+      .opacity(keepsVisibleWithKeyboard || keyboardPresentation.showsPersistentGlass ? 1 : 0)
+      .allowsHitTesting(keepsVisibleWithKeyboard || keyboardPresentation.showsPersistentGlass)
+      .accessibilityHidden(!keepsVisibleWithKeyboard && !keyboardPresentation.showsPersistentGlass)
   }
 }
 
@@ -425,11 +435,18 @@ struct TunedInGlassSearchField: View {
   @Binding var text: String
   let prompt: String
   let style: Style
+  private let isFocused: FocusState<Bool>.Binding?
 
-  init(text: Binding<String>, prompt: String, style: Style = .standard) {
+  init(
+    text: Binding<String>,
+    prompt: String,
+    style: Style = .standard,
+    isFocused: FocusState<Bool>.Binding? = nil
+  ) {
     _text = text
     self.prompt = prompt
     self.style = style
+    self.isFocused = isFocused
   }
 
   var body: some View {
@@ -438,11 +455,20 @@ struct TunedInGlassSearchField: View {
         Image(systemName: "magnifyingglass")
           .foregroundStyle(TunedInDesign.mutedText)
 
-        TextField(prompt, text: $text)
-          .textInputAutocapitalization(.never)
-          .autocorrectionDisabled()
-          .submitLabel(.search)
-          .foregroundStyle(TunedInDesign.primaryText)
+        if let isFocused {
+          TextField(prompt, text: $text)
+            .focused(isFocused)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .submitLabel(.search)
+            .foregroundStyle(TunedInDesign.primaryText)
+        } else {
+          TextField(prompt, text: $text)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .submitLabel(.search)
+            .foregroundStyle(TunedInDesign.primaryText)
+        }
 
         if !text.isEmpty {
           Button {

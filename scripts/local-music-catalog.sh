@@ -8,7 +8,7 @@ readonly function_pid_file="${state_directory}/function.pid"
 readonly stub_log_file="${state_directory}/stub.log"
 readonly function_log_file="${state_directory}/function.log"
 readonly function_env_file="${state_directory}/function.env"
-readonly stub_port="18081"
+readonly stub_port="${MUSICBRAINZ_STUB_PORT:-18081}"
 
 usage() {
   cat <<'USAGE'

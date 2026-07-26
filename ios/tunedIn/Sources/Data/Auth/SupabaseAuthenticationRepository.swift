@@ -78,8 +78,8 @@ struct SupabaseAuthenticationRepository: AuthenticationRepository {
       let tokenHash = components?.queryItems?.first(where: { $0.name == "token_hash" })?.value
       let type = components?.queryItems?.first(where: { $0.name == "type" })?.value
 
-      if let tokenHash, type == "magiclink" {
-        _ = try await client.auth.verifyOTP(tokenHash: tokenHash, type: .magiclink)
+      if let tokenHash, type == "email" {
+        _ = try await client.auth.verifyOTP(tokenHash: tokenHash, type: .email)
         return
       }
 

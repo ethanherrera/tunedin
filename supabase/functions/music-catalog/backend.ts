@@ -7,10 +7,11 @@ import type {
   CatalogResult,
   JsonObject,
   JsonValue,
+  MusicBrainzEventInput,
   UpsertMusicBrainzInput,
 } from "./types.ts";
 import { decodeCatalogResult } from "./result_validation.ts";
-import { isPlainObject, parseUuid } from "./validation.ts";
+import { asJsonValue, isPlainObject, parseUuid } from "./validation.ts";
 
 const MAX_DATABASE_RESPONSE_BYTES = 2_000_000;
 const MAX_DATABASE_ERROR_BYTES = 16_384;
@@ -286,6 +287,13 @@ export class SupabaseCatalogBackend implements CatalogBackend {
     );
     const row = Array.isArray(payload) && payload.length === 1 ? payload[0] : payload;
     return decodeStoredResult(row, input.kind);
+  }
+
+  async upsertMusicBrainzEvent(input: MusicBrainzEventInput): Promise<string> {
+    const payload = await this.#serviceRpc("upsert_musicbrainz_catalog_event", {
+      p_event: asJsonValue(input),
+    });
+    return requiredDatabaseUuid(payload);
   }
 
   async #serviceRpc(name: string, body: JsonObject): Promise<unknown> {
