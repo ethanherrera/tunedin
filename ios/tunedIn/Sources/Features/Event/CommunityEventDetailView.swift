@@ -626,7 +626,7 @@ private struct CommunityEventHero: View {
       .foregroundStyle(TunedInDesign.mutedText)
 
       if let sourceURL = detail.summary.sourceURL {
-        Link("View on MusicBrainz", destination: sourceURL)
+        Link("View on \(detail.summary.sourceLabel)", destination: sourceURL)
           .font(.caption.weight(.semibold))
           .foregroundStyle(TunedInDesign.accent)
       }

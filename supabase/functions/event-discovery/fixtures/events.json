@@ -1,0 +1,75 @@
+{
+  "_embedded": {
+    "events": [
+      {
+        "id": "G5vYZbfixture",
+        "name": "Neon Orchard Live",
+        "url": "https://www.ticketmaster.com/neon-orchard-live/event/G5vYZbfixture",
+        "images": [
+          {
+            "ratio": "16_9",
+            "url": "https://example.com/neon-orchard.jpg",
+            "width": 1024,
+            "height": 576
+          }
+        ],
+        "dates": {
+          "start": {
+            "localDate": "2026-08-01",
+            "localTime": "20:00:00",
+            "dateTime": "2026-08-02T03:00:00Z"
+          },
+          "timezone": "America/Los_Angeles",
+          "status": {
+            "code": "onsale"
+          }
+        },
+        "classifications": [
+          {
+            "genre": {
+              "name": "Rock"
+            }
+          }
+        ],
+        "_embedded": {
+          "attractions": [
+            {
+              "id": "K8vZfixtureArtist",
+              "name": "Neon Orchard",
+              "url": "https://www.ticketmaster.com/neon-orchard/artist/K8vZfixtureArtist"
+            }
+          ],
+          "venues": [
+            {
+              "id": "KovZfixtureVenue",
+              "name": "The Fillmore",
+              "url": "https://www.ticketmaster.com/the-fillmore-tickets/venue/KovZfixtureVenue",
+              "address": {
+                "line1": "1805 Geary Blvd"
+              },
+              "city": {
+                "name": "San Francisco"
+              },
+              "state": {
+                "stateCode": "CA"
+              },
+              "country": {
+                "countryCode": "US"
+              },
+              "location": {
+                "latitude": "37.7841",
+                "longitude": "-122.4330"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "page": {
+    "size": 20,
+    "totalElements": 1,
+    "totalPages": 1,
+    "number": 0
+  }
+}

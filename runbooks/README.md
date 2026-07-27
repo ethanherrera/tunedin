@@ -3,6 +3,7 @@
 - [Supabase Development](./supabase-development.md) — provision and operate the shared hosted Development project.
 - [Development Database Deployment](./development-database-deployment.md) — verify and explicitly deploy a requested branch's migrations to `tunedin-dev`.
 - [MusicBrainz Catalog Gateway](./musicbrainz-catalog.md) — verify the fixture gateway and deploy the protected `music-catalog` Function separately from migrations.
+- [Ticketmaster Discovery Gateway](./ticketmaster-discovery.md) — provision environment-specific Discovery API keys, verify source-isolated imports, and operate the `event-discovery` Function.
 - [Staging Promotion](./staging-promotion.md) — promote a reviewed `main` commit to the isolated Staging backend and `tunedIn Staging` TestFlight app.
 - [Local Supabase iOS](./local-supabase-ios.md) — run the full disposable local iOS journey without touching `tunedin-dev`.
 - [Worktree Simulators](./worktree-simulators.md) — create, run, inspect, and remove isolated iPhone 13 Simulators for concurrent Git worktrees.

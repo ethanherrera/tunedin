@@ -3,13 +3,17 @@
 ## Responsibility
 
 This directory contains authenticated Supabase Edge Functions and their deterministic
-unit/integration fixtures. `music-catalog/` is the only gateway allowed to contact MusicBrainz.
+unit/integration fixtures. `music-catalog/` is the only gateway allowed to contact MusicBrainz, and
+`event-discovery/` is the only gateway allowed to contact Ticketmaster.
 
 ## Dependencies and boundaries
 
 - Keep function code dependency-free where practical and use the runtime Web APIs.
 - Call MusicBrainz only through the fixed official HTTPS origin in hosted environments. A loopback
   override is allowed only when `TUNEDIN_ENVIRONMENT=Local` for committed fixture tests.
+- Call Ticketmaster only through the fixed Discovery API HTTPS origin in hosted environments.
+  Ticketmaster catalog and event identities must remain independent from MusicBrainz and community
+  identities until a separately reviewed reconciliation workflow exists.
 - Treat Postgres RPCs as the authorization, quota, cache, coalescing, ingestion, and
   application-wide rate-limit boundary. Never replace them with instance-local limits.
 - Never log authorization headers, user IDs, raw search queries, catalog names, addresses, MBIDs,
@@ -23,8 +27,9 @@ unit/integration fixtures. `music-catalog/` is the only gateway allowed to conta
 
 - Runtime configuration is supplied through Supabase Function secrets. Do not commit `.env` files or
   contacts used in the MusicBrainz User-Agent.
-- Hosted deployments require `TUNEDIN_ENVIRONMENT` and a contactable `MUSICBRAINZ_USER_AGENT`; only
-  the protected workflows may reconcile them.
+- Hosted deployments require `TUNEDIN_ENVIRONMENT`, a contactable `MUSICBRAINZ_USER_AGENT`, and the
+  environment-specific `TICKETMASTER_DISCOVERY_API_KEY`; only protected workflows may reconcile
+  them.
 - Local lifecycle tooling writes its fixture-only environment under ignored `supabase/.temp/` and
   must never point a Local function at a hosted project.
 

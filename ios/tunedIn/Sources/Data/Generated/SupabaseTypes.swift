@@ -12,6 +12,7 @@ public enum PublicSchema {
   public enum CatalogEntityOrigin: String, Codable, Hashable, Sendable {
     case musicbrainz = "musicbrainz"
     case tunedinCustom = "tunedin_custom"
+    case ticketmaster = "ticketmaster"
   }
   public enum CatalogEntityStatus: String, Codable, Hashable, Sendable {
     case active = "active"

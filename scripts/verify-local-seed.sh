@@ -22,6 +22,7 @@ metrics_json="$("${local_supabase_helper}" query --local -o json "
     (select count(*) from public.post_media where status = 'ready') as metric_11,
     (select count(*) from private.catalog_event_notification_outbox) as metric_12,
     (select count(*) from public.social_activity_events) as metric_13,
+    (select count(*) from public.catalog_events where origin = 'ticketmaster') as metric_14,
     (select count(*) from storage.objects where bucket_id = 'images' and name like 'event-covers/%/cover.jpg') as event_cover_count;
 ")"
 
@@ -41,14 +42,15 @@ metrics="$(jq -er '
     .metric_11,
     .metric_12,
     .metric_13,
+    .metric_14,
     .event_cover_count
   ] | join("|")
 ' <<<"${metrics_json}")"
 
-expected="24|23|13|0|0|0|10|37|12|10|10|12|5|73|6"
+expected="24|23|13|0|0|0|11|37|12|10|10|12|5|73|1|6"
 if [[ "$metrics" != "$expected" ]]; then
   echo "Local Supabase seed integrity check failed (expected ${expected}; received ${metrics})." >&2
   exit 1
 fi
 
-echo "Local Supabase community events, attendance, Posts, Comments, media, and catalog contracts verified."
+echo "Local Supabase community and Ticketmaster events, attendance, Posts, Comments, media, and catalog contracts verified."

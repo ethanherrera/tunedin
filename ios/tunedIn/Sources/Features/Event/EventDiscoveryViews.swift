@@ -3,7 +3,7 @@ import SwiftUI
 
 struct EventDiscoveryView: View {
   private enum SearchScope: String, CaseIterable, Hashable {
-    case concerts = "Concert"
+    case concerts = "Concerts"
     case people = "People"
   }
 
@@ -60,23 +60,24 @@ struct EventDiscoveryView: View {
         VStack(alignment: .leading, spacing: 14) {
           TunedInGlassSearchField(
             text: $query,
-            prompt: selectedScope == .concerts ? "Search concerts" : "Search people by username",
+            prompt: searchPrompt,
+            verticalPadding: 10,
             isFocused: $isSearchFieldFocused
           )
 
-          Picker("Search category", selection: $selectedScope) {
-            ForEach(SearchScope.allCases, id: \.self) { scope in
-              Text(scope.rawValue).tag(scope)
+          if isSearchActive {
+            Picker("Search concerts or people", selection: $selectedScope) {
+              ForEach(SearchScope.allCases, id: \.self) { scope in
+                Text(scope.rawValue).tag(scope)
+              }
             }
+            .pickerStyle(.segmented)
+            .transition(.move(edge: .top).combined(with: .opacity))
           }
-          .pickerStyle(.segmented)
-          .opacity(isSearchActive ? 1 : 0)
-          .allowsHitTesting(isSearchActive)
-          .accessibilityHidden(!isSearchActive)
-
         }
         .padding(.horizontal, 20)
-        .padding(.top, 18)
+        .padding(.top, 10)
+        .animation(.snappy(duration: 0.2), value: isSearchActive)
 
         ScrollView {
           searchResults
@@ -141,7 +142,13 @@ struct EventDiscoveryView: View {
 
   @ViewBuilder
   private var searchResults: some View {
-    if !normalizedQuery.isEmpty {
+    if normalizedQuery.isEmpty {
+      TicketmasterDiscoveryView(
+        viewerID: viewerID,
+        eventRepository: eventRepository,
+        onOpenEvent: onOpenEvent
+      )
+    } else {
       switch selectedScope {
       case .concerts:
         concertResults
@@ -192,7 +199,6 @@ struct EventDiscoveryView: View {
 
   @ViewBuilder
   private var peopleResults: some View {
-    let normalizedQuery = ProfileInput.normalizedSearchQuery(query)
     if peopleModel.isSearching {
       VStack(spacing: 8) {
         ForEach(0 ..< 5, id: \.self) { _ in
@@ -252,6 +258,11 @@ struct EventDiscoveryView: View {
     case .people:
       ProfileInput.normalizedSearchQuery(query)
     }
+  }
+
+  private var searchPrompt: String {
+    guard isSearchActive else { return "Search concerts or people" }
+    return selectedScope == .concerts ? "Search concerts" : "Search people by username"
   }
 
   private var isSearchActive: Bool {

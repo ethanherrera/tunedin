@@ -350,7 +350,7 @@ struct MainTabView: View {
   @ViewBuilder
   private var mainTabButtons: some View {
     tabButton(.feed, title: "Home", icon: "music.note.house")
-    tabButton(.search, title: "Search", icon: "magnifyingglass")
+    tabButton(.search, title: "Discover", icon: "magnifyingglass")
     if supportsPlans {
       tabButton(.plans, title: "Calendar", icon: "calendar")
     }
@@ -362,7 +362,7 @@ struct MainTabView: View {
     HStack(spacing: 0) {
       tabButton(.feed, title: "Home", icon: "music.note.house")
         .frame(maxWidth: .infinity)
-      tabButton(.search, title: "Search", icon: "magnifyingglass")
+      tabButton(.search, title: "Discover", icon: "magnifyingglass")
         .frame(maxWidth: .infinity)
       navigationActionButton(
         systemImage: "plus",

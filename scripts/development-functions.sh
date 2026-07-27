@@ -2,16 +2,16 @@
 set -euo pipefail
 
 readonly project_ref="dmrlpyxhqhunfndihvai"
-readonly function_name="music-catalog"
+readonly function_names=("music-catalog" "event-discovery")
 
 usage() {
   cat <<'USAGE'
 Usage: ./scripts/development-functions.sh <status|plan|apply>
 
 Commands:
-  status  List the deployed allow-listed function and configured secret names.
-  plan    Show the reviewed commit and exact function that a later apply would deploy.
-  apply   Reconcile runtime configuration and deploy only music-catalog from the
+  status  List the deployed allow-listed functions and configured secret names.
+  plan    Show the reviewed commit and exact functions that a later apply would deploy.
+  apply   Reconcile runtime configuration and deploy only the allow-listed functions from the
           manually dispatched GitHub Development workflow on an explicitly requested
           branch.
 
@@ -56,18 +56,20 @@ show_status() {
 }
 
 verify_deployed_function() {
+  local function_name="$1"
+  local output_name="$2"
   local deployed_version
   if ! deployed_version="$(
     supabase functions list --project-ref "$project_ref" --output json |
       deno run scripts/verify-deployed-function.ts "$function_name"
   )"; then
-    printf 'Development music-catalog deployment verification failed.\n' >&2
+    printf 'Development %s deployment verification failed.\n' "$function_name" >&2
     exit 1
   fi
   printf 'Verified Development %s is active at deployed version %s.\n' \
     "$function_name" "$deployed_version"
   if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    printf 'version=%s\n' "$deployed_version" >>"$GITHUB_OUTPUT"
+    printf '%s=%s\n' "$output_name" "$deployed_version" >>"$GITHUB_OUTPUT"
   fi
 }
 
@@ -79,6 +81,7 @@ configure_runtime() {
   {
     printf 'TUNEDIN_ENVIRONMENT=Development\n'
     printf 'MUSICBRAINZ_USER_AGENT=%s\n' "$MUSICBRAINZ_USER_AGENT"
+    printf 'TICKETMASTER_DISCOVERY_API_KEY=%s\n' "$TICKETMASTER_DISCOVERY_API_KEY"
   } >"$temporary_file"
   supabase secrets set --project-ref "$project_ref" --env-file "$temporary_file" >/dev/null
   rm -f "$temporary_file"
@@ -102,17 +105,23 @@ plan)
   printf 'Development Function deployment plan:\n'
   printf '  Commit: %s\n' "$(git rev-parse --verify HEAD)"
   printf '  Project: tunedin-dev (%s)\n' "$project_ref"
-  printf '  Function allow-list: %s\n' "$function_name"
+  printf '  Function allow-list: %s\n' "${function_names[*]}"
   printf '  Hosted database, seed data, and Supabase configuration: unchanged\n'
   show_status
   ;;
 apply)
   require_command deno
   require_protected_workflow
+  if [[ -z "${TICKETMASTER_DISCOVERY_API_KEY:-}" ]]; then
+    printf 'TICKETMASTER_DISCOVERY_API_KEY is required in the protected Development environment.\n' >&2
+    exit 1
+  fi
   validate_runtime
   configure_runtime
-  supabase functions deploy "$function_name" --project-ref "$project_ref" --use-api
-  verify_deployed_function
-  printf 'Development music-catalog deployed from commit %s.\n' "$(git rev-parse --verify HEAD)"
+  supabase functions deploy "music-catalog" --project-ref "$project_ref" --use-api
+  verify_deployed_function "music-catalog" "music_catalog_version"
+  supabase functions deploy "event-discovery" --project-ref "$project_ref" --use-api
+  verify_deployed_function "event-discovery" "event_discovery_version"
+  printf 'Development Edge Functions deployed from commit %s.\n' "$(git rev-parse --verify HEAD)"
   ;;
 esac

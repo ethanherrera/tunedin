@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm:
-        description: Type deploy-development-functions to deploy music-catalog to tunedin-dev.
+        description: Type deploy-development-functions to deploy the allow-listed Functions to tunedin-dev.
         required: true
         type: string
 
@@ -18,13 +18,14 @@ concurrency:
 jobs:
   verify-and-deploy:
     if: inputs.confirm == 'deploy-development-functions'
-    name: Verify and deploy Development music-catalog
+    name: Verify and deploy Development Functions
     runs-on: ubuntu-latest
     environment:
       name: Development
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       MUSICBRAINZ_USER_AGENT: ${{ vars.MUSICBRAINZ_USER_AGENT }}
+      TICKETMASTER_DISCOVERY_API_KEY: ${{ secrets.TICKETMASTER_DISCOVERY_API_KEY }}
       TUNEDIN_DEPLOYMENT_ENVIRONMENT: Development
     steps:
       - name: Check out the explicitly requested branch commit
@@ -70,7 +71,9 @@ jobs:
             echo
             printf -- '- Commit: %c%s%c\n' 96 "$GITHUB_SHA" 96
             printf -- '- Function: %cmusic-catalog%c version %c%s%c (active deployment verified)\n' \
-              96 96 96 '${{ steps.deploy.outputs.version }}' 96
-            echo '- Runtime: protected Development MusicBrainz configuration reconciled'
+              96 96 96 '${{ steps.deploy.outputs.music_catalog_version }}' 96
+            printf -- '- Function: %cevent-discovery%c version %c%s%c (active deployment verified)\n' \
+              96 96 96 '${{ steps.deploy.outputs.event_discovery_version }}' 96
+            echo '- Runtime: protected Development MusicBrainz and Ticketmaster configuration reconciled'
             echo '- Hosted database, seed data, Supabase configuration, and unrelated Functions were not changed.'
           } >> "$GITHUB_STEP_SUMMARY"
