@@ -435,17 +435,20 @@ struct TunedInGlassSearchField: View {
   @Binding var text: String
   let prompt: String
   let style: Style
+  let verticalPadding: CGFloat
   private let isFocused: FocusState<Bool>.Binding?
 
   init(
     text: Binding<String>,
     prompt: String,
     style: Style = .standard,
+    verticalPadding: CGFloat = 13,
     isFocused: FocusState<Bool>.Binding? = nil
   ) {
     _text = text
     self.prompt = prompt
     self.style = style
+    self.verticalPadding = verticalPadding
     self.isFocused = isFocused
   }
 
@@ -482,7 +485,7 @@ struct TunedInGlassSearchField: View {
         }
       }
       .padding(.horizontal, 14)
-      .padding(.vertical, 13)
+      .padding(.vertical, verticalPadding)
       .modifier(
         TunedInLiquidGlassSearchSurface(
           style: style,

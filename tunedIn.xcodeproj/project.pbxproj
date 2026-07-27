@@ -18,7 +18,9 @@
 		113D27B6136FBB89C6B8D9A0 /* AvatarImageProcessorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57FDDFA7886E6E8E872E5AF9 /* AvatarImageProcessorTests.swift */; };
 		13057AA08C1D4011AD7A6A01 /* CommunityEventViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4862F91C718B24B7E036D5FD /* CommunityEventViews.swift */; };
 		13D3D473960D3F6CC9B73CC6 /* SupabasePostRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44477811F1413F5C61364FF3 /* SupabasePostRepository.swift */; };
+		193169C71BC6FF771AAE677E /* TicketmasterDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 632F8F03C101889A190A3228 /* TicketmasterDiscovery.swift */; };
 		1B3DDAF057B8F6E131BDC885 /* LocalSeededAccountTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC42DD81FFABFB4F55ECBD0E /* LocalSeededAccountTests.swift */; };
+		1D6D869907E66898A3EB2F86 /* DevelopmentTicketmasterDiscoveryRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EA36EFC5805DBC773184DB6 /* DevelopmentTicketmasterDiscoveryRepository.swift */; };
 		1F2FB2032D33D2A7A5C26C62 /* AppDataCache+Construction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66ACE6CCD64E65364C095CE8 /* AppDataCache+Construction.swift */; };
 		1F370D3E3BCB807C700E18B0 /* ProfileTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0FBCDF44CFFCD6B78B8DD54 /* ProfileTabView.swift */; };
 		216391B52A478DAA34F5ECAC /* CachedRemoteImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C8D7EE83773ECBDDB7AD93E /* CachedRemoteImage.swift */; };
@@ -37,14 +39,17 @@
 		416E16CEB733DF73D5D7DD64 /* FeedbackRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F2144AD14AFB8762C4E55F1 /* FeedbackRepository.swift */; };
 		439D26423A0BE361FF528EFB /* SupabaseMusicCatalogRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0C565BFA62211C3BF34AD55 /* SupabaseMusicCatalogRepository.swift */; };
 		43B968ADB12C203E08226AB9 /* neon-orchard-stage.png in Resources */ = {isa = PBXBuildFile; fileRef = 39802014035E0AA51F117288 /* neon-orchard-stage.png */; };
+		46443329400136432C4544A5 /* TicketmasterDiscoveryRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = C847835FD7B98EE11218ABB4 /* TicketmasterDiscoveryRepository.swift */; };
 		4814AD469EC82831B2302678 /* PostRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6616B44DF0B0A7A81622768C /* PostRepository.swift */; };
 		4951866A6A54D34538DA8BEF /* blue-hour-club-stage.png in Resources */ = {isa = PBXBuildFile; fileRef = 8AD6CE1BE76D1B2311F2A4EF /* blue-hour-club-stage.png */; };
+		4A21A345ADD18DEF423773A4 /* TicketmasterDiscoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D152D1ED71B8EEBCDF11304E /* TicketmasterDiscoveryView.swift */; };
 		4A58FD142ED9EDD99A299E8C /* AppDataCache+Mutation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00AA7CDE85C3B0F94346A4CA /* AppDataCache+Mutation.swift */; };
 		4A7F7564BB0EE2561B60B00F /* AppSessionPhase+Authentication.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA2D068894590F87FC06DF4D /* AppSessionPhase+Authentication.swift */; };
 		4C50EE5B4D5E5B704D7D1991 /* CommunityEventCollectionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1133A4D6583C447BE9EC5207 /* CommunityEventCollectionViews.swift */; };
 		4D5EE7414954BFC0D4FAB931 /* TelemetryClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 531CDC9DE20342FF17125961 /* TelemetryClient.swift */; };
 		4DEE2B4C25A87C1C688EBCB1 /* GoogleAuthenticationClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAB98AA3DDEE979A1C52AA7E /* GoogleAuthenticationClient.swift */; };
 		502ED9B66C75E572400D0553 /* CachingSocialRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE2F9F51BD9E636B4A4F0F2 /* CachingSocialRepositoryTests.swift */; };
+		50A363EECB9D5D93E3F28947 /* TicketmasterDiscoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5739C443A6832CD819E822A4 /* TicketmasterDiscoveryTests.swift */; };
 		50A81F38CF306B62FD2C87D7 /* AppSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 887C95DD1BE38E3C830C4D80 /* AppSession.swift */; };
 		54681288DB3FCA58A1E8E9B2 /* MusicCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FDCCD256D3857937D157AEB /* MusicCatalogTests.swift */; };
 		578D26050C3AABF525F572E7 /* SocialRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DC82061C2F01AA6CEB2F6BC /* SocialRepository.swift */; };
@@ -57,6 +62,7 @@
 		6563BD0226642A274D98FEF0 /* DevelopmentMusicCatalogRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20D2B78AD7D4882CBBD874F /* DevelopmentMusicCatalogRepository.swift */; };
 		65B10C1D7A2DE2006D794A5C /* EmailSignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FED4A315859A86F043EA6A2 /* EmailSignInView.swift */; };
 		65E312E9579A907A685FB0BA /* CatalogRecentSearchStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8316E522B3EFC395C838FDA7 /* CatalogRecentSearchStoreTests.swift */; };
+		666F2AD81C62F46B8B4D72BF /* TicketmasterDiscoveryComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BCE100D5C8050BBD476C174 /* TicketmasterDiscoveryComponents.swift */; };
 		66A649DA73F6A444CBA73DC8 /* CachingProfileRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8363D03499B325C56A35037 /* CachingProfileRepository.swift */; };
 		67345CBEAC36CF672F4158E0 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985739D4F2A12A277B1F5632 /* Profile.swift */; };
 		688D1000AEFBC476BB11BD63 /* SocialProfileSearchCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12BF5F5977FF497486952221 /* SocialProfileSearchCache.swift */; };
@@ -69,6 +75,7 @@
 		722B683A23266AE95A60654F /* TelemetryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E103725C09E72C1E7A74466D /* TelemetryModels.swift */; };
 		727253E2D1A906BA97CFDAE5 /* NativeSocialAuthenticationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE537AE3FB6165A62FE039E0 /* NativeSocialAuthenticationTests.swift */; };
 		730F9C3AB310567FFB881E7E /* CatalogSearchSupportingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51C9239ADDF5ED1FD84086B4 /* CatalogSearchSupportingViews.swift */; };
+		7976E431126064CDE184D113 /* SupabaseTicketmasterDiscoveryRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 611923331185E18307373050 /* SupabaseTicketmasterDiscoveryRepository.swift */; };
 		7C5E39EEC50F78A16D6351E4 /* CatalogSearchModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E9515DFEDEC6E1303CB06D2 /* CatalogSearchModel.swift */; };
 		7E03A226F0EED2E524823CCB /* CommunityEventScoreBandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00DA77E3859E50CB230AF182 /* CommunityEventScoreBandTests.swift */; };
 		7E742A26BF83C4207418A3BB /* SocialProfileNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 515418BE8BFEA8F6CABA8B36 /* SocialProfileNavigation.swift */; };
@@ -167,6 +174,7 @@
 		273E2C7F3756C14CC427238F /* CommunityEventComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommunityEventComponents.swift; sourceTree = "<group>"; };
 		274FD05599F220A8E064E195 /* juniper-static-stage.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "juniper-static-stage.png"; sourceTree = "<group>"; };
 		2AAF92EFCF48872007F2A304 /* AppCacheHardeningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCacheHardeningTests.swift; sourceTree = "<group>"; };
+		2BCE100D5C8050BBD476C174 /* TicketmasterDiscoveryComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TicketmasterDiscoveryComponents.swift; sourceTree = "<group>"; };
 		2C20299C6B49B3E0B778F0A3 /* PostImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostImageProcessor.swift; sourceTree = "<group>"; };
 		2D653AA51C36082C30B6B3EB /* DevelopmentMusicCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentMusicCatalogTests.swift; sourceTree = "<group>"; };
 		2D743EA872FA444B10D7F505 /* PostHogTelemetryTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostHogTelemetryTransport.swift; sourceTree = "<group>"; };
@@ -181,6 +189,7 @@
 		39802014035E0AA51F117288 /* neon-orchard-stage.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "neon-orchard-stage.png"; sourceTree = "<group>"; };
 		3C8D7EE83773ECBDDB7AD93E /* CachedRemoteImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedRemoteImage.swift; sourceTree = "<group>"; };
 		3DE47B97A300C1CC89CD02B0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		3EA36EFC5805DBC773184DB6 /* DevelopmentTicketmasterDiscoveryRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentTicketmasterDiscoveryRepository.swift; sourceTree = "<group>"; };
 		3FDCCD256D3857937D157AEB /* MusicCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicCatalogTests.swift; sourceTree = "<group>"; };
 		42908CD9443FC9D83C8AD006 /* DevelopmentEventRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentEventRepositoryTests.swift; sourceTree = "<group>"; };
 		44477811F1413F5C61364FF3 /* SupabasePostRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabasePostRepository.swift; sourceTree = "<group>"; };
@@ -198,6 +207,7 @@
 		532F8D6E5EB000F34B910F42 /* TunedInDesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunedInDesignSystem.swift; sourceTree = "<group>"; };
 		5459A1928EB0514BA0734156 /* DevelopmentSocialRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentSocialRepositoryTests.swift; sourceTree = "<group>"; };
 		55A9490B05F3968CDA10B425 /* AppCacheTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppCacheTypes.swift; sourceTree = "<group>"; };
+		5739C443A6832CD819E822A4 /* TicketmasterDiscoveryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TicketmasterDiscoveryTests.swift; sourceTree = "<group>"; };
 		57FDDFA7886E6E8E872E5AF9 /* AvatarImageProcessorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarImageProcessorTests.swift; sourceTree = "<group>"; };
 		59D9E25666338F3EB1CA706E /* Staging.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Staging.xcconfig; sourceTree = "<group>"; };
 		5A3363078B5CC30291CF3D0E /* EventRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventRepository.swift; sourceTree = "<group>"; };
@@ -206,7 +216,9 @@
 		5EB6C524BEA58A2B8496E011 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		5F2144AD14AFB8762C4E55F1 /* FeedbackRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackRepository.swift; sourceTree = "<group>"; };
 		5F3F344541F09D8B524850C2 /* EventTimeZonePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventTimeZonePickerView.swift; sourceTree = "<group>"; };
+		611923331185E18307373050 /* SupabaseTicketmasterDiscoveryRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseTicketmasterDiscoveryRepository.swift; sourceTree = "<group>"; };
 		61362727C8D1B48B83EF8228 /* Post.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Post.swift; sourceTree = "<group>"; };
+		632F8F03C101889A190A3228 /* TicketmasterDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TicketmasterDiscovery.swift; sourceTree = "<group>"; };
 		633725CD557D467B89AF6D8A /* tunedIn-Staging.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "tunedIn-Staging.entitlements"; sourceTree = "<group>"; };
 		6616B44DF0B0A7A81622768C /* PostRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostRepository.swift; sourceTree = "<group>"; };
 		66ACE6CCD64E65364C095CE8 /* AppDataCache+Construction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppDataCache+Construction.swift"; sourceTree = "<group>"; };
@@ -257,9 +269,11 @@
 		BA35447B2A5A7761DC6F9A1C /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
 		C162FF260B31AE1B0940D6CC /* PeopleHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeopleHubView.swift; sourceTree = "<group>"; };
 		C659A65B20724EDB509145AB /* SupabaseProfileRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseProfileRepository.swift; sourceTree = "<group>"; };
+		C847835FD7B98EE11218ABB4 /* TicketmasterDiscoveryRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TicketmasterDiscoveryRepository.swift; sourceTree = "<group>"; };
 		CC1E38A8A523C54E3092618A /* CachingSocialRepositoryTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachingSocialRepositoryTestSupport.swift; sourceTree = "<group>"; };
 		CC42DD81FFABFB4F55ECBD0E /* LocalSeededAccountTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSeededAccountTests.swift; sourceTree = "<group>"; };
 		CD9A69947EB0D7D466B95A6D /* AppSessionSignOutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSessionSignOutTests.swift; sourceTree = "<group>"; };
+		D152D1ED71B8EEBCDF11304E /* TicketmasterDiscoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TicketmasterDiscoveryView.swift; sourceTree = "<group>"; };
 		D67B053FD48480724DE8A13B /* Development.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Development.xcconfig; sourceTree = "<group>"; };
 		D8363D03499B325C56A35037 /* CachingProfileRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachingProfileRepository.swift; sourceTree = "<group>"; };
 		D967C5B386F95DD48B19CAE9 /* SupabaseAuthenticationRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseAuthenticationRepository.swift; sourceTree = "<group>"; };
@@ -392,8 +406,19 @@
 				F3F90592227251CD56A4751F /* MusicCatalog.swift */,
 				61362727C8D1B48B83EF8228 /* Post.swift */,
 				985739D4F2A12A277B1F5632 /* Profile.swift */,
+				632F8F03C101889A190A3228 /* TicketmasterDiscovery.swift */,
 			);
 			path = Models;
+			sourceTree = "<group>";
+		};
+		898859DEB277440589ED4BF0 /* Discovery */ = {
+			isa = PBXGroup;
+			children = (
+				3EA36EFC5805DBC773184DB6 /* DevelopmentTicketmasterDiscoveryRepository.swift */,
+				611923331185E18307373050 /* SupabaseTicketmasterDiscoveryRepository.swift */,
+				C847835FD7B98EE11218ABB4 /* TicketmasterDiscoveryRepository.swift */,
+			);
+			path = Discovery;
 			sourceTree = "<group>";
 		};
 		976091E67F8D9586344637F8 = {
@@ -525,6 +550,7 @@
 				B901A7C40A224ABA1721269A /* Auth */,
 				99D91DBB6A186173946351BD /* Cache */,
 				B15768FFE24C880F0A040151 /* Catalog */,
+				898859DEB277440589ED4BF0 /* Discovery */,
 				9F10FBDA91B0EABF10802CE2 /* Event */,
 				5D1F6E5665D12F80CD77F452 /* Feedback */,
 				5CAACBD70E59A0640C01205A /* Generated */,
@@ -547,6 +573,8 @@
 				31E94630E24AB8EF31087BAE /* EventDiscoveryViews.swift */,
 				7E63E46466CB5C2928103534 /* EventPostDetailView.swift */,
 				5F3F344541F09D8B524850C2 /* EventTimeZonePickerView.swift */,
+				2BCE100D5C8050BBD476C174 /* TicketmasterDiscoveryComponents.swift */,
+				D152D1ED71B8EEBCDF11304E /* TicketmasterDiscoveryView.swift */,
 			);
 			path = Event;
 			sourceTree = "<group>";
@@ -582,6 +610,7 @@
 				DAF57DA912000A7F0C20D5B4 /* SupabaseEventPostContractTests.swift */,
 				959C398255028D16B13D4864 /* SupabaseEventRepositoryTests.swift */,
 				DD654ACD06E9E04AD7DA86BF /* TelemetryTests.swift */,
+				5739C443A6832CD819E822A4 /* TicketmasterDiscoveryTests.swift */,
 				93B17BB128F3EE14857B0AEB /* TunedInAppearanceTests.swift */,
 				1F681222916D48C5DFDF2BF0 /* TunedInGlassSearchFieldFocusTests.swift */,
 				4F9B1A4D54544CD7AA15C942 /* TunedInKeyboardPresentationTests.swift */,
@@ -784,6 +813,7 @@
 				F65D718B16A14EDEF2F1E39D /* DevelopmentScenario.swift in Sources */,
 				5EC8EDD9BB755830155DC655 /* DevelopmentSimulatorAuthStorage.swift in Sources */,
 				1074AE742D18F1043F2EC934 /* DevelopmentSocialRepository.swift in Sources */,
+				1D6D869907E66898A3EB2F86 /* DevelopmentTicketmasterDiscoveryRepository.swift in Sources */,
 				65B10C1D7A2DE2006D794A5C /* EmailSignInView.swift in Sources */,
 				A8A2DDCEBC958A4C3C29E0A0 /* EmailVerificationView.swift in Sources */,
 				CCFCCF485CA0E2F88BCEE843 /* EventDiscoveryViews.swift in Sources */,
@@ -823,12 +853,17 @@
 				13D3D473960D3F6CC9B73CC6 /* SupabasePostRepository.swift in Sources */,
 				A555A5875A5637540E1BC35E /* SupabaseProfileRepository.swift in Sources */,
 				859F522D8C2735A0948A2B71 /* SupabaseSocialRepository.swift in Sources */,
+				7976E431126064CDE184D113 /* SupabaseTicketmasterDiscoveryRepository.swift in Sources */,
 				EC79DB067047705BFA83DD0E /* SupabaseTypes.swift in Sources */,
 				9453A4623DBE50BCDF3AEC5F /* SwiftDataSnapshotStore.swift in Sources */,
 				4D5EE7414954BFC0D4FAB931 /* TelemetryClient.swift in Sources */,
 				722B683A23266AE95A60654F /* TelemetryModels.swift in Sources */,
 				083DFB2EDCC427DB5E1FC3B2 /* TelemetrySanitizer.swift in Sources */,
 				6C0EDB26F090351F12437B36 /* TelemetrySettingsView.swift in Sources */,
+				193169C71BC6FF771AAE677E /* TicketmasterDiscovery.swift in Sources */,
+				666F2AD81C62F46B8B4D72BF /* TicketmasterDiscoveryComponents.swift in Sources */,
+				46443329400136432C4544A5 /* TicketmasterDiscoveryRepository.swift in Sources */,
+				4A21A345ADD18DEF423773A4 /* TicketmasterDiscoveryView.swift in Sources */,
 				02A3DF2E2A93DF3BF391C823 /* TunedInAppearance.swift in Sources */,
 				063A304A122AB3F34C63D114 /* TunedInDesignSystem.swift in Sources */,
 				CB98F595C0734EAD5FA186D6 /* TunedInGlassTextButton.swift in Sources */,
@@ -869,6 +904,7 @@
 				97FEBCAC0BA901424F29C20F /* SupabaseEventPostContractTests.swift in Sources */,
 				E1573781CAEBFC08A7559B41 /* SupabaseEventRepositoryTests.swift in Sources */,
 				0686BF43E368DFAE66D3ED69 /* TelemetryTests.swift in Sources */,
+				50A363EECB9D5D93E3F28947 /* TicketmasterDiscoveryTests.swift in Sources */,
 				83A9DCB96622FE84342F37C4 /* TunedInAppearanceTests.swift in Sources */,
 				E32DC85B878DFC16114463AD /* TunedInGlassSearchFieldFocusTests.swift in Sources */,
 				92D3C73DFE5BD6BA1C81A095 /* TunedInKeyboardPresentationTests.swift in Sources */,

@@ -773,6 +773,40 @@ values
     timestamptz '2026-05-09 10:11:00+00'
   );
 
+-- The Local journey includes one provider-owned concert so source labeling,
+-- attendance, and detail behavior remain testable without a live provider key.
+select public.upsert_ticketmaster_catalog_event(
+  '{
+    "event_id":"local-ticketmaster-fixture",
+    "title":"Local Ticketmaster Fixture",
+    "event_date":"2026-08-30",
+    "local_start_time":"20:00:00",
+    "starts_at":"2026-08-31T03:00:00Z",
+    "time_zone":"America/Los_Angeles",
+    "status":"active",
+    "source_url":"https://www.ticketmaster.com/event/local-ticketmaster-fixture",
+    "image_url":null,
+    "source_updated_at":null,
+    "venue":{
+      "id":"local-ticketmaster-venue",
+      "name":"Local Provider Hall",
+      "url":"https://www.ticketmaster.com/venue/local-ticketmaster-venue",
+      "address":"1 Fixture Way",
+      "latitude":"37.7841",
+      "longitude":"-122.4330",
+      "area":{"city":"San Francisco","state_code":"CA","country_code":"US"}
+    },
+    "artists":[
+      {
+        "id":"local-ticketmaster-artist",
+        "name":"Local Provider Artist",
+        "url":"https://www.ticketmaster.com/artist/local-ticketmaster-artist",
+        "is_headliner":true
+      }
+    ]
+  }'::jsonb
+);
+
 insert into public.post_comments (
   id, post_id, author_id, body, created_at, updated_at
 )

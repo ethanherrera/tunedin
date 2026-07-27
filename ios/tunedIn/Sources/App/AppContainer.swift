@@ -7,6 +7,7 @@ final class AppContainer {
   let postRepository: any PostRepository
   let eventRepository: any EventRepository
   let musicCatalogRepository: any MusicCatalogRepository
+  let ticketmasterDiscoveryRepository: any TicketmasterDiscoveryRepository
   let socialRepository: any SocialRepository
   let profileRepository: any ProfileRepository
   let telemetry: AppTelemetryClient
@@ -17,12 +18,14 @@ final class AppContainer {
     postRepository: any PostRepository,
     eventRepository: any EventRepository,
     musicCatalogRepository: any MusicCatalogRepository,
+    ticketmasterDiscoveryRepository: any TicketmasterDiscoveryRepository,
     socialRepository: any SocialRepository
   ) {
     self.appSession = appSession
     self.postRepository = postRepository
     self.eventRepository = eventRepository
     self.musicCatalogRepository = musicCatalogRepository
+    self.ticketmasterDiscoveryRepository = ticketmasterDiscoveryRepository
     self.socialRepository = socialRepository
     telemetry = appSession.telemetry
     profileRepository = appSession.profileRepositoryForViews
@@ -66,6 +69,7 @@ final class AppContainer {
     )
     eventRepository = SupabaseEventRepository(client: client, signedURLs: mediaCache.signedURLs)
     musicCatalogRepository = SupabaseMusicCatalogRepository(client: client)
+    ticketmasterDiscoveryRepository = SupabaseTicketmasterDiscoveryRepository(client: client)
     socialRepository = CachingSocialRepository(
       remote: SupabaseSocialRepository(client: client),
       cache: dataCache
@@ -139,6 +143,7 @@ final class AppContainer {
               postRepository: DevelopmentPostRepository(),
               eventRepository: DevelopmentEventRepository(),
               musicCatalogRepository: catalogRepository,
+              ticketmasterDiscoveryRepository: DevelopmentTicketmasterDiscoveryRepository(),
               socialRepository: DevelopmentSocialRepository()
             )
           }

@@ -109,6 +109,7 @@ jobs:
       GOOGLE_SERVER_CLIENT_SECRET: ${{ secrets.GOOGLE_SERVER_CLIENT_SECRET }}
       TUNEDIN_PROMOTION_ENVIRONMENT: Staging
       MUSICBRAINZ_USER_AGENT: ${{ vars.MUSICBRAINZ_USER_AGENT }}
+      TICKETMASTER_DISCOVERY_API_KEY: ${{ secrets.TICKETMASTER_DISCOVERY_API_KEY }}
     steps:
       - name: Check out the verified main commit
         uses: actions/checkout@v7
@@ -150,6 +151,7 @@ jobs:
             GOOGLE_REVERSED_CLIENT_ID
             GOOGLE_SERVER_CLIENT_SECRET
             MUSICBRAINZ_USER_AGENT
+            TICKETMASTER_DISCOVERY_API_KEY
           )
           for name in "${required_values[@]}"; do
             if [[ -z "${!name:-}" ]]; then
@@ -336,7 +338,9 @@ jobs:
             printf -- '- Commit: %c%s%c\n' 96 "$GITHUB_SHA" 96
             printf -- '- Backend: %ctunedin-staging%c migrations\n' 96 96
             printf -- '- Edge Function: %cmusic-catalog%c version %c%s%c (active deployment verified)\n' \
-              96 96 96 '${{ steps.promote_backend.outputs.version }}' 96
+              96 96 96 '${{ steps.promote_backend.outputs.music_catalog_version }}' 96
+            printf -- '- Edge Function: %cevent-discovery%c version %c%s%c (active deployment verified)\n' \
+              96 96 96 '${{ steps.promote_backend.outputs.event_discovery_version }}' 96
             printf -- '- Observability: PostHog Staging project %c507318%c and uploaded dSYMs\n' 96 96
             printf -- '- Authentication: native Apple and Google; email and phone sign-up disabled\n'
             printf -- '- Apple Sign In: primary App ID and signed distribution profile verified\n'

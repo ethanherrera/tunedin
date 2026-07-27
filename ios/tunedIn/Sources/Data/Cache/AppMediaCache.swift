@@ -7,6 +7,7 @@ struct AppMediaResource: Hashable, Sendable {
     case avatar
     case postMedia = "post-media"
     case eventCover = "event-cover"
+    case discoveryArtwork = "discovery-artwork"
   }
 
   let kind: Kind
@@ -23,6 +24,20 @@ struct AppMediaResource: Hashable, Sendable {
 
   static func eventCover(eventID: UUID, version: Int64) -> Self {
     Self(kind: .eventCover, id: eventID, version: version)
+  }
+
+  static func discoveryArtwork(externalID: String) -> Self {
+    let digest = SHA256.hash(data: Data(externalID.utf8))
+    var bytes = Array(digest.prefix(16))
+    bytes[6] = (bytes[6] & 0x0F) | 0x40
+    bytes[8] = (bytes[8] & 0x3F) | 0x80
+    let id = UUID(uuid: (
+      bytes[0], bytes[1], bytes[2], bytes[3],
+      bytes[4], bytes[5], bytes[6], bytes[7],
+      bytes[8], bytes[9], bytes[10], bytes[11],
+      bytes[12], bytes[13], bytes[14], bytes[15]
+    ))
+    return Self(kind: .discoveryArtwork, id: id, version: 1)
   }
 
   var cacheRequest: URLRequest {

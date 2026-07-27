@@ -383,6 +383,9 @@ deno_version = 2
 [functions.music-catalog]
 verify_jwt = true
 
+[functions.event-discovery]
+verify_jwt = true
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

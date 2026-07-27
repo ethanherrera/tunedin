@@ -21,6 +21,10 @@ struct TunedInApp: App {
       )
       .environment(\.profileRepository, container.profileRepository)
       .environment(\.musicCatalogRepository, container.musicCatalogRepository)
+      .environment(
+        \.ticketmasterDiscoveryRepository,
+        container.ticketmasterDiscoveryRepository
+      )
       .environment(\.imageLoader, container.imageLoader)
       .environment(\.telemetry, container.telemetry)
       .tint(TunedInDesign.accent)

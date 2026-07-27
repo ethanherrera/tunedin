@@ -12,6 +12,9 @@
     static let duplicateMitskiID = UUID(uuidString: "E0000000-0000-0000-0000-000000000005")!
     static let emptyUpcomingID = UUID(uuidString: "E0000000-0000-0000-0000-000000000006")!
     static let emptyMemoryID = UUID(uuidString: "E0000000-0000-0000-0000-000000000007")!
+    static let ticketmasterMitskiID = UUID(uuidString: "E5000000-0000-0000-0000-000000000001")!
+    static let ticketmasterBigThiefID = UUID(uuidString: "E5000000-0000-0000-0000-000000000002")!
+    static let ticketmasterVampireWeekendID = UUID(uuidString: "E5000000-0000-0000-0000-000000000003")!
   }
 
   actor DevelopmentEventRepository: EventRepository {
@@ -49,6 +52,7 @@
     func searchEvents(query: String, viewerID: UUID) async throws -> [CommunityEventSummary] {
       let normalized = CatalogInput.normalizedText(query).lowercased()
       return visibleEvents(viewerID: viewerID)
+        .filter { $0.summary.sourceLabel != "Ticketmaster" }
         .filter { stored in
           normalized.isEmpty
             || stored.summary.title.lowercased().contains(normalized)
@@ -705,6 +709,49 @@
         lifecycle: .completed,
         listing: .listed
       )
+      let ticketmasterMitski = baseSummary(
+        id: DevelopmentEventFixture.ticketmasterMitskiID,
+        artistID: UUID(uuidString: "A5000000-0000-0000-0000-000000000001")!,
+        artist: "Mitski",
+        placeID: UUID(uuidString: "B5000000-0000-0000-0000-000000000001")!,
+        areaID: UUID(uuidString: "C5000000-0000-0000-0000-000000000001")!,
+        venue: "The Greek Theatre",
+        area: "San Francisco",
+        eventDate: fixtureDate(daysFromNow: 2, hour: 20),
+        lifecycle: .scheduled,
+        listing: .listed,
+        tourName: "Mitski: The Land Is Inhospitable and So Are We",
+        sourceLabel: "Ticketmaster",
+        sourceURL: URL(string: "https://www.ticketmaster.com/event/tm-mitski")
+      )
+      let ticketmasterBigThief = baseSummary(
+        id: DevelopmentEventFixture.ticketmasterBigThiefID,
+        artistID: UUID(uuidString: "A5000000-0000-0000-0000-000000000002")!,
+        artist: "Big Thief",
+        placeID: UUID(uuidString: "B5000000-0000-0000-0000-000000000002")!,
+        areaID: UUID(uuidString: "C5000000-0000-0000-0000-000000000001")!,
+        venue: "The Masonic",
+        area: "San Francisco",
+        eventDate: fixtureDate(daysFromNow: 5, hour: 20),
+        lifecycle: .scheduled,
+        listing: .listed,
+        sourceLabel: "Ticketmaster",
+        sourceURL: URL(string: "https://www.ticketmaster.com/event/tm-big-thief")
+      )
+      let ticketmasterVampireWeekend = baseSummary(
+        id: DevelopmentEventFixture.ticketmasterVampireWeekendID,
+        artistID: UUID(uuidString: "A5000000-0000-0000-0000-000000000003")!,
+        artist: "Vampire Weekend",
+        placeID: UUID(uuidString: "B5000000-0000-0000-0000-000000000003")!,
+        areaID: UUID(uuidString: "C5000000-0000-0000-0000-000000000001")!,
+        venue: "Bill Graham Civic Auditorium",
+        area: "San Francisco",
+        eventDate: fixtureDate(daysFromNow: 11, hour: 20),
+        lifecycle: .scheduled,
+        listing: .listed,
+        sourceLabel: "Ticketmaster",
+        sourceURL: URL(string: "https://www.ticketmaster.com/event/tm-vampire-weekend")
+      )
       let duplicate = CommunityEventSummary(
         id: DevelopmentEventFixture.duplicateMitskiID,
         artists: upcoming.artists,
@@ -912,6 +959,27 @@
           comments: [],
           postPreviews: [],
           invitedProfileIDs: []
+        ),
+        ticketmasterMitski.id: StoredEvent(
+          summary: ticketmasterMitski,
+          attendances: [],
+          comments: [],
+          postPreviews: [],
+          invitedProfileIDs: []
+        ),
+        ticketmasterBigThief.id: StoredEvent(
+          summary: ticketmasterBigThief,
+          attendances: [],
+          comments: [],
+          postPreviews: [],
+          invitedProfileIDs: []
+        ),
+        ticketmasterVampireWeekend.id: StoredEvent(
+          summary: ticketmasterVampireWeekend,
+          attendances: [],
+          comments: [],
+          postPreviews: [],
+          invitedProfileIDs: []
         )
       ]
     }
@@ -928,7 +996,10 @@
       eventDate: Date,
       lifecycle: CommunityEventLifecycle,
       listing: CommunityEventListing,
-      duplicateCandidateEventID: UUID? = nil
+      duplicateCandidateEventID: UUID? = nil,
+      tourName: String? = nil,
+      sourceLabel: String = "Community made",
+      sourceURL: URL? = nil
     ) -> CommunityEventSummary {
       CommunityEventSummary(
         id: id,
@@ -943,8 +1014,10 @@
         cover: nil,
         catalogPlaceID: placeID,
         catalogAreaID: areaID,
-        catalogTourID: artist == "Mitski" ? DevelopmentMusicCatalogFixture.landTourID : nil,
-        tourName: artist == "Mitski" ? "The Land Is Inhospitable Tour" : nil,
+        catalogTourID: sourceLabel == "Community made" && artist == "Mitski"
+          ? DevelopmentMusicCatalogFixture.landTourID
+          : nil,
+        tourName: tourName ?? (artist == "Mitski" ? "The Land Is Inhospitable Tour" : nil),
         venueName: venue,
         areaName: area,
         eventDate: eventDate,
@@ -955,9 +1028,9 @@
         listing: listing,
         integrity: .communityAdded,
         rowState: .active,
-        sourceLabel: "Community made",
+        sourceLabel: sourceLabel,
         sourceLocalStartTime: nil,
-        sourceURL: nil,
+        sourceURL: sourceURL,
         currentUserAttendance: nil,
         currentUserAudience: nil,
         friendPreviews: [],

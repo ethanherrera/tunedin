@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly development_project_ref="dmrlpyxhqhunfndihvai"
-readonly function_name="music-catalog"
+readonly function_names=("music-catalog" "event-discovery")
 readonly keychain_service="tunedin/supabase/staging/database"
 
 usage() {
@@ -92,26 +92,32 @@ deploy_functions() {
   {
     printf 'TUNEDIN_ENVIRONMENT=Staging\n'
     printf 'MUSICBRAINZ_USER_AGENT=%s\n' "$MUSICBRAINZ_USER_AGENT"
+    printf 'TICKETMASTER_DISCOVERY_API_KEY=%s\n' "$TICKETMASTER_DISCOVERY_API_KEY"
   } >"$temporary_file"
   supabase secrets set --project-ref "$project_ref" --env-file "$temporary_file" >/dev/null
   rm -f "$temporary_file"
   trap - EXIT
 
-  printf 'Deploying the allow-listed Staging %s Edge Function.\n' "$function_name"
-  supabase functions deploy "$function_name" --project-ref "$project_ref" --use-api
+  local function_name
+  local output_name
   local deployed_version
-  if ! deployed_version="$(
-    supabase functions list --project-ref "$project_ref" --output json |
-      deno run scripts/verify-deployed-function.ts "$function_name"
-  )"; then
-    printf 'Staging music-catalog deployment verification failed.\n' >&2
-    exit 1
-  fi
-  printf 'Verified Staging %s is active at deployed version %s.\n' \
-    "$function_name" "$deployed_version"
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    printf 'version=%s\n' "$deployed_version" >>"$GITHUB_OUTPUT"
-  fi
+  for function_name in "${function_names[@]}"; do
+    printf 'Deploying the allow-listed Staging %s Edge Function.\n' "$function_name"
+    supabase functions deploy "$function_name" --project-ref "$project_ref" --use-api
+    if ! deployed_version="$(
+      supabase functions list --project-ref "$project_ref" --output json |
+        deno run scripts/verify-deployed-function.ts "$function_name"
+    )"; then
+      printf 'Staging %s deployment verification failed.\n' "$function_name" >&2
+      exit 1
+    fi
+    printf 'Verified Staging %s is active at deployed version %s.\n' \
+      "$function_name" "$deployed_version"
+    if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+      output_name="${function_name//-/_}_version"
+      printf '%s=%s\n' "$output_name" "$deployed_version" >>"$GITHUB_OUTPUT"
+    fi
+  done
 }
 
 validate_musicbrainz_runtime() {
@@ -142,6 +148,10 @@ plan)
 apply)
   require_protected_workflow
   require_command deno
+  if [[ -z "${TICKETMASTER_DISCOVERY_API_KEY:-}" ]]; then
+    printf 'TICKETMASTER_DISCOVERY_API_KEY is required in the protected Staging environment.\n' >&2
+    exit 1
+  fi
   validate_musicbrainz_runtime
   link_project "$project_ref" "$password"
   printf 'Checking the Staging migration plan before applying it.\n'
