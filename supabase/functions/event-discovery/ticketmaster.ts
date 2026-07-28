@@ -11,6 +11,17 @@ import { isObject } from "./validation.ts";
 const PAGE_SIZE = 20;
 const MAX_RESPONSE_BYTES = 2_000_000;
 
+export interface TicketmasterDiscoveryPage {
+  events: DiscoveryCandidate[];
+  pageNumber: number;
+  pageSize: number;
+  totalElements: number;
+  totalPages: number;
+  rawEventCount: number;
+  rejectedEventCount: number;
+  hasMore: boolean;
+}
+
 export class TicketmasterClient {
   readonly #baseURL: URL;
   readonly #apiKey: string;
@@ -24,7 +35,7 @@ export class TicketmasterClient {
 
   async discover(
     request: DiscoverRequest,
-  ): Promise<{ events: DiscoveryCandidate[]; hasMore: boolean }> {
+  ): Promise<TicketmasterDiscoveryPage> {
     const url = new URL("events.json", this.#baseURL);
     url.searchParams.set("apikey", this.#apiKey);
     url.searchParams.set("source", "ticketmaster");
@@ -47,17 +58,35 @@ export class TicketmasterClient {
     const embedded = optionalObject(root._embedded);
     const rawEvents = embedded === null ? [] : array(embedded.events, PAGE_SIZE);
     const page = optionalObject(root.page);
+    const pageNumber = page === null ? request.page : integer(page.number);
+    const pageSize = page === null ? PAGE_SIZE : integer(page.size);
+    const totalElements = page === null ? rawEvents.length : integer(page.totalElements);
     const totalPages = page === null
       ? request.page + (rawEvents.length === PAGE_SIZE ? 2 : 1)
       : integer(page.totalPages);
+    if (
+      pageNumber !== request.page ||
+      pageSize !== PAGE_SIZE ||
+      totalPages > 50 ||
+      totalElements > 1_000
+    ) {
+      throw upstreamInvalid();
+    }
+    const events = rawEvents.flatMap((event) => {
+      try {
+        return [decodeEvent(event)];
+      } catch {
+        return [];
+      }
+    });
     return {
-      events: rawEvents.flatMap((event) => {
-        try {
-          return [decodeEvent(event)];
-        } catch {
-          return [];
-        }
-      }),
+      events,
+      pageNumber,
+      pageSize,
+      totalElements,
+      totalPages,
+      rawEventCount: rawEvents.length,
+      rejectedEventCount: rawEvents.length - events.length,
       hasMore: request.page + 1 < totalPages,
     };
   }

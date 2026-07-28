@@ -74,6 +74,8 @@ jobs:
               96 96 96 '${{ steps.deploy.outputs.music_catalog_version }}' 96
             printf -- '- Function: %cevent-discovery%c version %c%s%c (active deployment verified)\n' \
               96 96 96 '${{ steps.deploy.outputs.event_discovery_version }}' 96
+            printf -- '- Function: %cticketmaster-ingestion%c version %c%s%c (active deployment verified)\n' \
+              96 96 96 '${{ steps.deploy.outputs.ticketmaster_ingestion_version }}' 96
             echo '- Runtime: protected Development MusicBrainz and Ticketmaster configuration reconciled'
             echo '- Hosted database, seed data, Supabase configuration, and unrelated Functions were not changed.'
           } >> "$GITHUB_STEP_SUMMARY"

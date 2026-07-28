@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly project_ref="dmrlpyxhqhunfndihvai"
-readonly function_names=("music-catalog" "event-discovery")
+readonly function_names=("music-catalog" "event-discovery" "ticketmaster-ingestion")
 
 usage() {
   cat <<'USAGE'
@@ -122,6 +122,8 @@ apply)
   verify_deployed_function "music-catalog" "music_catalog_version"
   supabase functions deploy "event-discovery" --project-ref "$project_ref" --use-api
   verify_deployed_function "event-discovery" "event_discovery_version"
+  supabase functions deploy "ticketmaster-ingestion" --project-ref "$project_ref" --use-api
+  verify_deployed_function "ticketmaster-ingestion" "ticketmaster_ingestion_version"
   printf 'Development Edge Functions deployed from commit %s.\n' "$(git rev-parse --verify HEAD)"
   ;;
 esac

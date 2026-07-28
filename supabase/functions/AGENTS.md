@@ -3,8 +3,9 @@
 ## Responsibility
 
 This directory contains authenticated Supabase Edge Functions and their deterministic
-unit/integration fixtures. `music-catalog/` is the only gateway allowed to contact MusicBrainz, and
-`event-discovery/` is the only gateway allowed to contact Ticketmaster.
+unit/integration fixtures. `music-catalog/` is the only gateway allowed to contact MusicBrainz.
+`event-discovery/` owns interactive Ticketmaster access, while `ticketmaster-ingestion/` owns the
+service-only catalog ingestion worker and reuses the same strict Ticketmaster decoder.
 
 ## Dependencies and boundaries
 
@@ -14,6 +15,8 @@ unit/integration fixtures. `music-catalog/` is the only gateway allowed to conta
 - Call Ticketmaster only through the fixed Discovery API HTTPS origin in hosted environments.
   Ticketmaster catalog and event identities must remain independent from MusicBrainz and community
   identities until a separately reviewed reconciliation workflow exists.
+- Keep Ticketmaster ingestion service-only, queue-backed, idempotent, and bounded to the configured
+  San Francisco 14-day window. Do not expose ingestion controls to the iOS client.
 - Treat Postgres RPCs as the authorization, quota, cache, coalescing, ingestion, and
   application-wide rate-limit boundary. Never replace them with instance-local limits.
 - Never log authorization headers, user IDs, raw search queries, catalog names, addresses, MBIDs,

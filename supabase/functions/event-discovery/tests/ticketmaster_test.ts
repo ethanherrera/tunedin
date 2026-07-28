@@ -35,6 +35,12 @@ Deno.test("Ticketmaster discovery sends source-safe filters and decodes music ev
   assertEquals(query.get("apikey"), "fixture-secret");
   assertEquals(query.get("sort"), "date,asc");
   assertEquals(response.hasMore, false);
+  assertEquals(response.pageNumber, 0);
+  assertEquals(response.pageSize, 20);
+  assertEquals(response.totalElements, 1);
+  assertEquals(response.totalPages, 1);
+  assertEquals(response.rawEventCount, 1);
+  assertEquals(response.rejectedEventCount, 0);
   assertEquals(response.events[0]?.id, "G5vYZbfixture");
   assertEquals(response.events[0]?.venue.city, "San Francisco");
   assertEquals(response.events[0]?.artists[0]?.name, "Neon Orchard");
