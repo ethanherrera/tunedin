@@ -387,7 +387,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.ticketmaster-ingestion]
-verify_jwt = true
+verify_jwt = false
 
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"

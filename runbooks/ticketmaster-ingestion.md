@@ -24,11 +24,11 @@ The MVP is intentionally narrow:
   `TICKETMASTER_DISCOVERY_API_KEY`.
 - The operator can manually dispatch workflows for `ethanherrera/tunedin`.
 - Ordinary clients cannot execute ingestion RPCs. The protected workflow resolves the project's
-  existing service-role credential in memory, masks it immediately, and never prints or stores it.
+  default secret API key in memory, masks it immediately, and never prints or stores it.
 
-Do not add a service-role key to the repository, iOS configuration, ordinary GitHub variables, or
-workflow inputs. Do not enable either Cron schedule in Development or Staging during MVP
-verification.
+Do not add a secret or service-role key to the repository, iOS configuration, ordinary GitHub
+variables, or workflow inputs. Do not enable either Cron schedule in Development or Staging during
+MVP verification.
 
 ## Deploy to Development
 
@@ -140,8 +140,9 @@ During Development and Staging, run on demand only. The migration installs:
 
 Both are inactive. Activating them requires a separately reviewed forward-only migration after
 Development and Staging data quality, quota, dead-letter behavior, and operational ownership are
-accepted. That future change must provision environment-specific Vault secrets for the project URL
-and service-role credential and must not be performed as an untracked dashboard edit.
+accepted. That future change must provision environment-specific Vault secrets named
+`ticketmaster_ingestion_project_url` and `ticketmaster_ingestion_operator_key` for the project URL
+and default `sb_secret` API key. It must not be performed as an untracked dashboard edit.
 
 ## Audit and cost signals
 

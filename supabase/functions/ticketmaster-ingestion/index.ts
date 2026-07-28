@@ -12,6 +12,11 @@ export function buildRuntimeHandler(
   const tunedInEnvironment = requiredEnvironment(environment.TUNEDIN_ENVIRONMENT);
   const supabaseURL = requiredURL(environment.SUPABASE_URL);
   const serviceRoleKey = required(environment.SUPABASE_SERVICE_ROLE_KEY);
+  const operatorKey = requiredOperatorKey(
+    environment.SUPABASE_SECRET_KEYS,
+    environment.SUPABASE_SECRET_KEY,
+    tunedInEnvironment,
+  );
   const apiKey = required(environment.TICKETMASTER_DISCOVERY_API_KEY);
   const baseURL = requiredURL(
     environment.TICKETMASTER_DISCOVERY_BASE_URL ??
@@ -31,7 +36,7 @@ export function buildRuntimeHandler(
   const backend = new IngestionBackend({ supabaseURL, serviceRoleKey });
   const ticketmaster = new TicketmasterClient({ baseURL, apiKey });
   const service = new TicketmasterIngestionService(backend, ticketmaster);
-  return createTicketmasterIngestionHandler(service, serviceRoleKey);
+  return createTicketmasterIngestionHandler(service, operatorKey);
 }
 
 if (import.meta.main) {
@@ -81,6 +86,35 @@ function requiredEnvironment(value: string | undefined): TunedInEnvironment {
     return value;
   }
   throw configurationFailure();
+}
+
+function requiredOperatorKey(
+  encodedKeys: string | undefined,
+  localKey: string | undefined,
+  environment: TunedInEnvironment,
+): string {
+  let candidate: unknown;
+  try {
+    const parsed = JSON.parse(required(encodedKeys));
+    if (
+      parsed !== null &&
+      typeof parsed === "object" &&
+      !Array.isArray(parsed)
+    ) {
+      candidate = (parsed as Record<string, unknown>).default;
+    }
+  } catch {
+    if (environment === "Local") candidate = localKey;
+  }
+  if (candidate === undefined && environment === "Local") candidate = localKey;
+  if (
+    typeof candidate !== "string" ||
+    candidate.length > 512 ||
+    !/^sb_secret_[A-Za-z0-9_-]+$/.test(candidate)
+  ) {
+    throw configurationFailure();
+  }
+  return candidate;
 }
 
 function isLocalURL(url: URL): boolean {

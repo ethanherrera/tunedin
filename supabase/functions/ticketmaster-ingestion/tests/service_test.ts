@@ -150,13 +150,13 @@ Deno.test("upstream failures are safely classified for queue retry", async () =>
   }]);
 });
 
-Deno.test("handler requires the service role bearer credential", async () => {
+Deno.test("handler requires the exact operator API key", async () => {
   const service = new TicketmasterIngestionService(
     new FakeBackend(),
     new FakeTicketmaster(),
     () => 1_000,
   );
-  const handler = createTicketmasterIngestionHandler(service, "service-secret");
+  const handler = createTicketmasterIngestionHandler(service, "operator-secret");
 
   const unauthorized = await handler(
     new Request("https://example.test/ticketmaster-ingestion", {
@@ -171,7 +171,7 @@ Deno.test("handler requires the service role bearer credential", async () => {
     new Request("https://example.test/ticketmaster-ingestion", {
       method: "POST",
       headers: {
-        Authorization: "Bearer service-secret",
+        apikey: "operator-secret",
         "Content-Type": "application/json",
       },
       body: '{"operation":"status"}',

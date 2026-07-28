@@ -36,14 +36,19 @@ require_protected_workflow() {
   fi
 }
 
-service_role_key() {
-  supabase projects api-keys --project-ref "$project_ref" --output json |
+operator_key() {
+  supabase projects api-keys --project-ref "$project_ref" --reveal --output json |
     jq -er '
       first(
         .[]
-        | select(.name == "service_role" and .type == "legacy")
+        | select(.name == "default" and .type == "secret")
         | .api_key
-        | select(type == "string" and length > 20)
+        | select(
+            type == "string"
+            and startswith("sb_secret_")
+            and length > 20
+            and length <= 512
+          )
       )
     '
 }
@@ -52,12 +57,11 @@ invoke() {
   local operation="$1"
   local key
   local response
-  key="$(service_role_key)"
+  key="$(operator_key)"
   printf '::add-mask::%s\n' "$key"
   response="$(
     curl --fail-with-body --silent --show-error \
       --request POST \
-      --header "Authorization: Bearer ${key}" \
       --header "apikey: ${key}" \
       --header 'Content-Type: application/json' \
       --data "{\"operation\":\"${operation}\"}" \

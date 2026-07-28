@@ -10,14 +10,14 @@ const HEADERS = {
 
 export function createTicketmasterIngestionHandler(
   service: TicketmasterIngestionService,
-  serviceRoleKey: string,
+  operatorKey: string,
 ): (request: Request) => Promise<Response> {
   return async (request: Request): Promise<Response> => {
     try {
       if (request.method !== "POST") {
         throw new IngestionError("method_not_allowed", 405, "Use POST for ingestion requests.");
       }
-      if (request.headers.get("authorization") !== `Bearer ${serviceRoleKey}`) {
+      if (!matchesSecret(request.headers.get("apikey"), operatorKey)) {
         throw new IngestionError("authentication_required", 401, "Server authorization required.");
       }
       const contentType = request.headers.get("content-type")?.toLowerCase() ?? "";
@@ -37,6 +37,15 @@ export function createTicketmasterIngestionHandler(
       });
     }
   };
+}
+
+function matchesSecret(supplied: string | null, expected: string): boolean {
+  if (supplied === null || supplied.length !== expected.length) return false;
+  let difference = 0;
+  for (let index = 0; index < expected.length; index += 1) {
+    difference |= supplied.charCodeAt(index) ^ expected.charCodeAt(index);
+  }
+  return difference === 0;
 }
 
 async function readBoundedRequestJson(request: Request): Promise<unknown> {
