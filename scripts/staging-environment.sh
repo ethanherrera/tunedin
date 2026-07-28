@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly development_project_ref="dmrlpyxhqhunfndihvai"
-readonly function_names=("music-catalog" "event-discovery")
+readonly function_names=("music-catalog" "event-discovery" "ticketmaster-ingestion")
 readonly keychain_service="tunedin/supabase/staging/database"
 
 usage() {

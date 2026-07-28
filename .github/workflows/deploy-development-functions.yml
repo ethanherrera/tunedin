@@ -7,6 +7,16 @@ on:
         description: Type deploy-development-functions to deploy the allow-listed Functions to tunedin-dev.
         required: true
         type: string
+      ingestion_operation:
+        description: Optionally bootstrap the unmerged ingestion workflow after deployment.
+        required: true
+        default: none
+        type: choice
+        options:
+          - none
+          - status
+          - run
+          - resume
 
 permissions:
   contents: read
@@ -63,7 +73,14 @@ jobs:
         id: deploy
         run: ./scripts/development-functions.sh apply
 
+      - name: Optionally bootstrap Ticketmaster ingestion
+        if: inputs.ingestion_operation != 'none'
+        id: ingestion
+        run: ./scripts/development-ticketmaster-ingestion.sh '${{ inputs.ingestion_operation }}'
+
       - name: Record deployed revision
+        env:
+          INGESTION_RESULT: ${{ steps.ingestion.outputs.result }}
         shell: bash
         run: |
           {
@@ -74,6 +91,16 @@ jobs:
               96 96 96 '${{ steps.deploy.outputs.music_catalog_version }}' 96
             printf -- '- Function: %cevent-discovery%c version %c%s%c (active deployment verified)\n' \
               96 96 96 '${{ steps.deploy.outputs.event_discovery_version }}' 96
+            printf -- '- Function: %cticketmaster-ingestion%c version %c%s%c (active deployment verified)\n' \
+              96 96 96 '${{ steps.deploy.outputs.ticketmaster_ingestion_version }}' 96
             echo '- Runtime: protected Development MusicBrainz and Ticketmaster configuration reconciled'
             echo '- Hosted database, seed data, Supabase configuration, and unrelated Functions were not changed.'
+            if [[ '${{ inputs.ingestion_operation }}' != 'none' ]]; then
+              printf -- '- Ticketmaster ingestion bootstrap: %c%s%c\n' \
+                96 '${{ inputs.ingestion_operation }}' 96
+              echo
+              echo '```json'
+              printf '%s\n' "$INGESTION_RESULT" | jq .
+              echo '```'
+            fi
           } >> "$GITHUB_STEP_SUMMARY"

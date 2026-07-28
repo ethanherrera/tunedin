@@ -8,7 +8,7 @@ DERIVED_DATA_PATH ?= $(CURDIR)/DerivedData
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup configure local-db-start configure-local-supabase local-status local-next-steps generate format lint workflow-lint distribution-metadata-verify staging-configuration-test staging-auth-test staging-auth-plan staging-auth-verify staging-apple-sign-in-test staging-apple-sign-in-plan staging-apple-sign-in-verify staging-ipa-signing-test posthog-test posthog-plan posthog-verify posthog-apply simulator-script-test build build-local build-staging archive-staging test test-local check cache-reset simulator-create simulator-status simulator-delete simulator-auth-link simulator-local simulator-catalog simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error simulator-community-events local-db-reset local-seed-verify supabase-types check-supabase-types backend-test functions-test local-catalog-start local-catalog-stop local-catalog-status local-catalog-verify musicbrainz-smoke community-events-integration-test storage-integration-test backend-verify dev-status dev-plan dev-deploy dev-functions-status dev-functions-plan dev-functions-deploy dev-login-link simulator-dev-login staging-status staging-plan staging-promote
+.PHONY: help setup configure local-db-start configure-local-supabase local-status local-next-steps generate format lint workflow-lint distribution-metadata-verify staging-configuration-test staging-auth-test staging-auth-plan staging-auth-verify staging-apple-sign-in-test staging-apple-sign-in-plan staging-apple-sign-in-verify staging-ipa-signing-test posthog-test posthog-plan posthog-verify posthog-apply simulator-script-test build build-local build-staging archive-staging test test-local check cache-reset simulator-create simulator-status simulator-delete simulator-auth-link simulator-local simulator-catalog simulator-live simulator-signed-out simulator-onboarding simulator-profile simulator-profile-error simulator-community-events local-db-reset local-seed-verify supabase-types check-supabase-types backend-test functions-test local-catalog-start local-catalog-stop local-catalog-status local-catalog-verify musicbrainz-smoke community-events-integration-test storage-integration-test backend-verify dev-status dev-plan dev-deploy dev-functions-status dev-functions-plan dev-functions-deploy dev-ticketmaster-ingestion-status dev-ticketmaster-ingestion-run dev-ticketmaster-ingestion-resume dev-login-link simulator-dev-login staging-status staging-plan staging-promote
 
 help: ## List available development commands.
 	@awk 'BEGIN {FS = ":.*##"}; /^[a-zA-Z_-]+:.*##/ { printf "%-18s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -225,12 +225,24 @@ dev-deploy: ## Trigger the manually approved Development migration workflow from
 dev-functions-status: ## List deployed Development Functions and configured runtime secret names.
 	@./scripts/development-functions.sh status
 
-dev-functions-plan: ## Show the read-only Development music-catalog deployment plan.
+dev-functions-plan: ## Show the read-only Development Edge Function deployment plan.
 	@./scripts/development-functions.sh plan
 
 dev-functions-deploy: ## Trigger the protected Development function workflow from the current branch.
-	@branch="$$(git branch --show-current)"; gh workflow run deploy-development-functions.yml --ref "$$branch" -f confirm=deploy-development-functions
+	@branch="$$(git branch --show-current)"; gh workflow run deploy-development-functions.yml --ref "$$branch" -f confirm=deploy-development-functions -f ingestion_operation=none
 	@printf 'Queued the Development function workflow from the current branch. Review its summary for the deployed commit and function version.\n'
+
+dev-ticketmaster-ingestion-status: ## Queue a read-only Development ingestion status check.
+	@branch="$$(git branch --show-current)"; gh workflow run run-development-ticketmaster-ingestion.yml --ref "$$branch" -f confirm=run-ticketmaster-ingestion -f operation=status
+	@printf 'Queued a read-only Development Ticketmaster ingestion status check.\n'
+
+dev-ticketmaster-ingestion-run: ## Manually start today's Development Ticketmaster ingestion run.
+	@branch="$$(git branch --show-current)"; gh workflow run run-development-ticketmaster-ingestion.yml --ref "$$branch" -f confirm=run-ticketmaster-ingestion -f operation=run
+	@printf 'Queued a manual Development Ticketmaster ingestion run. Review its summary before resuming an incomplete run.\n'
+
+dev-ticketmaster-ingestion-resume: ## Manually resume queued Development Ticketmaster ingestion pages.
+	@branch="$$(git branch --show-current)"; gh workflow run run-development-ticketmaster-ingestion.yml --ref "$$branch" -f confirm=run-ticketmaster-ingestion -f operation=resume
+	@printf 'Queued a manual Development Ticketmaster ingestion resume operation.\n'
 
 dev-login-link: ## Copy a no-email tunedin-dev login link (EMAIL=user@example.com).
 	@./scripts/generate-development-login-link.sh

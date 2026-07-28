@@ -1,0 +1,67 @@
+name: Run Development Ticketmaster Ingestion
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type run-ticketmaster-ingestion to invoke the Development worker.
+        required: true
+        type: string
+      operation:
+        description: Start a new run, resume queued pages, or read status.
+        required: true
+        default: status
+        type: choice
+        options:
+          - status
+          - run
+          - resume
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tunedin-development-ticketmaster-ingestion
+  cancel-in-progress: false
+
+jobs:
+  invoke:
+    if: inputs.confirm == 'run-ticketmaster-ingestion'
+    name: Invoke Development ingestion worker
+    runs-on: ubuntu-latest
+    environment:
+      name: Development
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      TUNEDIN_DEPLOYMENT_ENVIRONMENT: Development
+    steps:
+      - name: Check out the explicitly requested branch commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: 2.109.1
+
+      - name: Invoke the service-only ingestion operation
+        id: ingestion
+        run: ./scripts/development-ticketmaster-ingestion.sh '${{ inputs.operation }}'
+
+      - name: Record operation result
+        env:
+          INGESTION_RESULT: ${{ steps.ingestion.outputs.result }}
+        run: |
+          {
+            echo '## Development Ticketmaster ingestion'
+            echo
+            printf -- '- Commit: %c%s%c\n' 96 "$GITHUB_SHA" 96
+            printf -- '- Operation: %c%s%c\n' 96 '${{ inputs.operation }}' 96
+            echo '- Scope: San Francisco, CA music events for the next 14 local calendar days'
+            echo '- Cron schedules: unchanged and inactive'
+            echo
+            echo '```json'
+            printf '%s\n' "$INGESTION_RESULT" | jq .
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

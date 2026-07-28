@@ -96,7 +96,7 @@ Data API logs if the feed or write-through fails.
 After the migrations and Function are reviewed and merged to `main`, add the Development
 environment secret, run the normal Development database deployment, and then manually dispatch
 `Deploy Development Functions` with its confirmation value. The allow-list deploys and verifies
-only `music-catalog` and `event-discovery`.
+`music-catalog`, `event-discovery`, and the service-only `ticketmaster-ingestion` worker.
 
 Read-only checks:
 
@@ -111,7 +111,7 @@ make dev-functions-plan
 
 Add a different `TICKETMASTER_DISCOVERY_API_KEY` to the protected Staging environment before
 promotion. `Promote Staging` fails before backend mutation if it is missing, applies forward-only
-migrations, deploys both allow-listed Functions, verifies both active versions, and then continues
+migrations, deploys all allow-listed Functions, verifies every active version, and then continues
 the existing TestFlight promotion.
 
 ## Recovery
