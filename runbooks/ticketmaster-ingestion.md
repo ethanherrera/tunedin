@@ -48,6 +48,11 @@ make dev-functions-deploy
 Wait for the database workflow to succeed before the Function workflow. Both workflows repeat
 disposable verification before touching Development and record the exact commit in GitHub Actions.
 
+For the first feature-branch deployment only, GitHub cannot register the new dedicated ingestion
+workflow until it reaches the default branch. Bootstrap that first audited run through the existing
+Function deployment workflow by selecting ingestion operation `run`. After merge, use only the
+dedicated commands below for routine operations.
+
 ## Manual operation
 
 Start one idempotent run for today's San Francisco 14-day window:

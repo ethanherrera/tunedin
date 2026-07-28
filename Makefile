@@ -229,7 +229,7 @@ dev-functions-plan: ## Show the read-only Development Edge Function deployment p
 	@./scripts/development-functions.sh plan
 
 dev-functions-deploy: ## Trigger the protected Development function workflow from the current branch.
-	@branch="$$(git branch --show-current)"; gh workflow run deploy-development-functions.yml --ref "$$branch" -f confirm=deploy-development-functions
+	@branch="$$(git branch --show-current)"; gh workflow run deploy-development-functions.yml --ref "$$branch" -f confirm=deploy-development-functions -f ingestion_operation=none
 	@printf 'Queued the Development function workflow from the current branch. Review its summary for the deployed commit and function version.\n'
 
 dev-ticketmaster-ingestion-status: ## Queue a read-only Development ingestion status check.
