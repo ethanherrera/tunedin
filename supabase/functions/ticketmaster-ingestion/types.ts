@@ -1,4 +1,5 @@
 import type { DiscoveryCandidate } from "../event-discovery/types.ts";
+import type { TicketmasterRejectionReason } from "../event-discovery/ticketmaster.ts";
 
 export type IngestionOperation = "run" | "resume" | "status";
 
@@ -23,6 +24,7 @@ export interface IngestionRunResponse {
   operation: IngestionOperation;
   runId: string | null;
   processedPages: number;
+  rejectionReasons: Record<TicketmasterRejectionReason, number>;
   status: unknown;
 }
 

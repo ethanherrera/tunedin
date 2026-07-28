@@ -41,8 +41,52 @@ Deno.test("Ticketmaster discovery sends source-safe filters and decodes music ev
   assertEquals(response.totalPages, 1);
   assertEquals(response.rawEventCount, 1);
   assertEquals(response.rejectedEventCount, 0);
+  assertEquals(response.rejectionReasons, {
+    event_shape: 0,
+    event_dates: 0,
+    venue: 0,
+    lineup: 0,
+    source_url: 0,
+  });
   assertEquals(response.events[0]?.id, "G5vYZbfixture");
   assertEquals(response.events[0]?.venue.city, "San Francisco");
   assertEquals(response.events[0]?.artists[0]?.name, "Neon Orchard");
   assertEquals(response.events[0]?.genre, "Rock");
+});
+
+Deno.test("Ticketmaster discovery reports bounded rejection reasons without payload data", async () => {
+  const fixture = JSON.parse(
+    await Deno.readTextFile(new URL("../fixtures/events.json", import.meta.url)),
+  );
+  delete fixture._embedded.events[0]._embedded.attractions;
+  const client = new TicketmasterClient({
+    baseURL: new URL("https://app.ticketmaster.com/discovery/v2/"),
+    apiKey: "fixture-secret",
+    fetch: () =>
+      Promise.resolve(
+        new Response(JSON.stringify(fixture), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+  });
+
+  const response = await client.discover({
+    operation: "discover",
+    location: { city: "San Francisco", stateCode: "CA", countryCode: "US" },
+    startDateTime: "2026-08-01T00:00:00Z",
+    endDateTime: "2026-08-08T00:00:00Z",
+    genre: null,
+    page: 0,
+  });
+
+  assertEquals(response.events, []);
+  assertEquals(response.rejectedEventCount, 1);
+  assertEquals(response.rejectionReasons, {
+    event_shape: 0,
+    event_dates: 0,
+    venue: 0,
+    lineup: 1,
+    source_url: 0,
+  });
 });

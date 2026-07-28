@@ -1,4 +1,5 @@
 import type { DiscoverRequest } from "../event-discovery/types.ts";
+import type { TicketmasterRejectionReason } from "../event-discovery/ticketmaster.ts";
 import { IngestionError, safeError } from "./errors.ts";
 import type {
   CompletionInput,
@@ -28,6 +29,7 @@ export interface TicketmasterPort {
     totalElements: number;
     totalPages: number;
     hasMore: boolean;
+    rejectionReasons: Record<TicketmasterRejectionReason, number>;
   }>;
 }
 
@@ -44,6 +46,7 @@ export class TicketmasterIngestionService {
         operation,
         runId: requestedRunId,
         processedPages: 0,
+        rejectionReasons: emptyRejectionReasons(),
         status: await this.backend.status(requestedRunId),
       } satisfies IngestionRunResponse;
     }
@@ -51,6 +54,7 @@ export class TicketmasterIngestionService {
     const runId = operation === "run" ? await this.backend.startRun() : null;
     const startedAt = this.now();
     let processedPages = 0;
+    const rejectionReasons = emptyRejectionReasons();
 
     while (
       processedPages < MAX_PAGES_PER_INVOCATION &&
@@ -61,6 +65,7 @@ export class TicketmasterIngestionService {
       try {
         await this.backend.reserveUpstreamSlot();
         const page = await this.ticketmaster.discover(requestForTask(task));
+        mergeRejectionReasons(rejectionReasons, page.rejectionReasons);
         await this.backend.completePage({
           task,
           events: page.events,
@@ -82,8 +87,28 @@ export class TicketmasterIngestionService {
       operation,
       runId,
       processedPages,
+      rejectionReasons,
       status: await this.backend.status(runId),
     } satisfies IngestionRunResponse;
+  }
+}
+
+function emptyRejectionReasons(): Record<TicketmasterRejectionReason, number> {
+  return {
+    event_shape: 0,
+    event_dates: 0,
+    venue: 0,
+    lineup: 0,
+    source_url: 0,
+  };
+}
+
+function mergeRejectionReasons(
+  target: Record<TicketmasterRejectionReason, number>,
+  source: Record<TicketmasterRejectionReason, number>,
+): void {
+  for (const reason of Object.keys(target) as TicketmasterRejectionReason[]) {
+    target[reason] += source[reason];
   }
 }
 

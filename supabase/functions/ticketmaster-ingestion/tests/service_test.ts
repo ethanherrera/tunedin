@@ -96,6 +96,13 @@ class FakeTicketmaster implements TicketmasterPort {
       totalElements: 1,
       totalPages: 1,
       hasMore: false,
+      rejectionReasons: {
+        event_shape: 0,
+        event_dates: 0,
+        venue: 0,
+        lineup: 0,
+        source_url: 0,
+      },
     });
   }
 }
@@ -111,6 +118,13 @@ Deno.test("run starts, claims, paces, and completes a bounded ingestion page", a
     operation: "run",
     runId: RUN_ID,
     processedPages: 1,
+    rejectionReasons: {
+      event_shape: 0,
+      event_dates: 0,
+      venue: 0,
+      lineup: 0,
+      source_url: 0,
+    },
     status: { run_id: RUN_ID },
   });
   assertEquals(backend.reservations, 1);
@@ -143,6 +157,13 @@ Deno.test("upstream failures are safely classified for queue retry", async () =>
   const response = await service.execute("resume", null);
 
   assertEquals(response.processedPages, 0);
+  assertEquals(response.rejectionReasons, {
+    event_shape: 0,
+    event_dates: 0,
+    venue: 0,
+    lineup: 0,
+    source_url: 0,
+  });
   assertEquals(backend.failures, [{
     messageId: 42,
     code: "upstream_rate_limited",

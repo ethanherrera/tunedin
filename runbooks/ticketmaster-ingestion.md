@@ -94,6 +94,11 @@ response cannot prove that an unseen event disappeared. A clean completed run sa
 unseen, active, listed Ticketmaster events inside the exact San Francisco/date window. It never
 deletes catalog rows or user history.
 
+The manual workflow also reports only fixed rejection-reason counters (`event_shape`,
+`event_dates`, `venue`, `lineup`, and `source_url`). These counters contain no provider payload,
+event identity, artist, venue, address, or URL data and are the approved way to diagnose decoder
+coverage.
+
 For direct database diagnosis, use Supabase SQL Editor with an authorized operator session:
 
 ```sql

@@ -11,6 +11,13 @@ import { isObject } from "./validation.ts";
 const PAGE_SIZE = 20;
 const MAX_RESPONSE_BYTES = 2_000_000;
 
+export type TicketmasterRejectionReason =
+  | "event_shape"
+  | "event_dates"
+  | "venue"
+  | "lineup"
+  | "source_url";
+
 export interface TicketmasterDiscoveryPage {
   events: DiscoveryCandidate[];
   pageNumber: number;
@@ -19,6 +26,7 @@ export interface TicketmasterDiscoveryPage {
   totalPages: number;
   rawEventCount: number;
   rejectedEventCount: number;
+  rejectionReasons: Record<TicketmasterRejectionReason, number>;
   hasMore: boolean;
 }
 
@@ -72,10 +80,13 @@ export class TicketmasterClient {
     ) {
       throw upstreamInvalid();
     }
+    const rejectionReasons = emptyRejectionReasons();
     const events = rawEvents.flatMap((event) => {
       try {
         return [decodeEvent(event)];
-      } catch {
+      } catch (error) {
+        const reason = error instanceof TicketmasterDecodeError ? error.reason : "event_shape";
+        rejectionReasons[reason] += 1;
         return [];
       }
     });
@@ -87,6 +98,7 @@ export class TicketmasterClient {
       totalPages,
       rawEventCount: rawEvents.length,
       rejectedEventCount: rawEvents.length - events.length,
+      rejectionReasons,
       hasMore: request.page + 1 < totalPages,
     };
   }
@@ -157,35 +169,81 @@ export class TicketmasterClient {
 }
 
 export function decodeEvent(value: unknown): DiscoveryCandidate {
-  const event = object(value);
-  const dates = object(event.dates);
-  const start = object(dates.start);
-  const embedded = object(event._embedded);
-  const venues = array(embedded.venues, 5);
-  const venue = decodeVenue(venues[0]);
-  const attractions = array(embedded.attractions, 20)
-    .map(decodeArtist)
-    .filter((artist): artist is DiscoveryArtist => artist !== null)
-    .slice(0, 10);
-  if (attractions.length === 0) throw upstreamInvalid();
+  const event = decodeStage("event_shape", () => object(value));
+  const identity = decodeStage("event_shape", () => ({
+    id: string(event.id, 200),
+    name: string(event.name, 160),
+  }));
+  const temporal = decodeStage("event_dates", () => {
+    const dates = object(event.dates);
+    const start = object(dates.start);
+    const status = optionalObject(dates.status);
+    return {
+      localDate: dateString(start.localDate),
+      localTime: optionalTime(start.localTime),
+      dateTime: optionalDateTime(start.dateTime),
+      timeZone: optionalString(dates.timezone, 100),
+      status: mapStatus(status === null ? null : optionalString(status.code, 40)),
+    };
+  });
+  const embedded = decodeStage("venue", () => object(event._embedded));
+  const venue = decodeStage("venue", () => {
+    const venues = array(embedded.venues, 5);
+    return decodeVenue(venues[0]);
+  });
+  const attractions = decodeStage("lineup", () => {
+    const decoded = array(embedded.attractions, 20)
+      .map(decodeArtist)
+      .filter((artist): artist is DiscoveryArtist => artist !== null)
+      .slice(0, 10);
+    if (decoded.length === 0) throw upstreamInvalid();
+    return decoded;
+  });
   const classifications = Array.isArray(event.classifications) ? event.classifications : [];
   const classification = classifications.length > 0 ? optionalObject(classifications[0]) : null;
   const genre = classification === null ? null : optionalObject(classification.genre);
-  const status = optionalObject(dates.status);
   const imageURL = preferredImage(Array.isArray(event.images) ? event.images : []);
+  const ticketURL = decodeStage("source_url", () => httpsURL(event.url));
   return {
-    id: string(event.id, 200),
-    name: string(event.name, 160),
-    localDate: dateString(start.localDate),
-    localTime: optionalTime(start.localTime),
-    dateTime: optionalDateTime(start.dateTime),
-    timeZone: optionalString(dates.timezone, 100),
-    status: mapStatus(status === null ? null : optionalString(status.code, 40)),
+    id: identity.id,
+    name: identity.name,
+    localDate: temporal.localDate,
+    localTime: temporal.localTime,
+    dateTime: temporal.dateTime,
+    timeZone: temporal.timeZone,
+    status: temporal.status,
     venue,
     artists: attractions,
     genre: genre === null ? null : optionalString(genre.name, 80),
     imageURL,
-    ticketURL: httpsURL(event.url),
+    ticketURL,
+  };
+}
+
+class TicketmasterDecodeError extends Error {
+  constructor(readonly reason: TicketmasterRejectionReason) {
+    super(reason);
+  }
+}
+
+function decodeStage<T>(
+  reason: TicketmasterRejectionReason,
+  operation: () => T,
+): T {
+  try {
+    return operation();
+  } catch {
+    throw new TicketmasterDecodeError(reason);
+  }
+}
+
+function emptyRejectionReasons(): Record<TicketmasterRejectionReason, number> {
+  return {
+    event_shape: 0,
+    event_dates: 0,
+    venue: 0,
+    lineup: 0,
+    source_url: 0,
   };
 }
 
