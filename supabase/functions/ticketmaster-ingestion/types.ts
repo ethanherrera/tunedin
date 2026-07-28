@@ -1,5 +1,8 @@
 import type { DiscoveryCandidate } from "../event-discovery/types.ts";
-import type { TicketmasterRejectionReason } from "../event-discovery/ticketmaster.ts";
+import type {
+  TicketmasterRejectedEvent,
+  TicketmasterRejectionReason,
+} from "../event-discovery/ticketmaster.ts";
 
 export type IngestionOperation = "run" | "resume" | "status";
 
@@ -31,6 +34,7 @@ export interface IngestionRunResponse {
 export interface CompletionInput {
   task: IngestionTask;
   events: DiscoveryCandidate[];
+  rejections: TicketmasterRejectedEvent[];
   rawEventCount: number;
   rejectedEventCount: number;
   totalElements: number;

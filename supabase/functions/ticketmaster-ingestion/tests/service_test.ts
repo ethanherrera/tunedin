@@ -91,16 +91,32 @@ class FakeTicketmaster implements TicketmasterPort {
     this.requests.push(request);
     return Promise.resolve({
       events: [EVENT],
-      rawEventCount: 1,
-      rejectedEventCount: 0,
-      totalElements: 1,
+      rejections: [{
+        rawPosition: 1,
+        externalEventId: "G5vYZbrejected",
+        eventName: "Fixture Add-on",
+        localDate: "2026-08-01",
+        venueName: "Fixture Hall",
+        reason: "lineup" as const,
+        code: "attractions_missing" as const,
+        attractionCount: null,
+        invalidAttractions: {
+          attractionShape: 0,
+          artistId: 0,
+          artistName: 0,
+          artistURL: 0,
+        },
+      }],
+      rawEventCount: 2,
+      rejectedEventCount: 1,
+      totalElements: 2,
       totalPages: 1,
       hasMore: false,
       rejectionReasons: {
         event_shape: 0,
         event_dates: 0,
         venue: 0,
-        lineup: 0,
+        lineup: 1,
         source_url: 0,
       },
     });
@@ -122,13 +138,14 @@ Deno.test("run starts, claims, paces, and completes a bounded ingestion page", a
       event_shape: 0,
       event_dates: 0,
       venue: 0,
-      lineup: 0,
+      lineup: 1,
       source_url: 0,
     },
     status: { run_id: RUN_ID },
   });
   assertEquals(backend.reservations, 1);
   assertEquals(backend.completions.length, 1);
+  assertEquals(backend.completions[0]?.rejections[0]?.code, "attractions_missing");
   assertEquals(ticketmaster.requests[0], {
     operation: "discover",
     location: { city: "San Francisco", stateCode: "CA", countryCode: "US" },

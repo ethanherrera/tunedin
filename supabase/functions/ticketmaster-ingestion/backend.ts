@@ -40,6 +40,7 @@ export class IngestionBackend {
       p_run_id: input.task.runId,
       p_page_number: input.task.page,
       p_events: input.events.map(eventPayload),
+      p_rejections: input.rejections.map(rejectionPayload),
       p_raw_event_count: input.rawEventCount,
       p_rejected_event_count: input.rejectedEventCount,
       p_total_elements: input.totalElements,
@@ -101,6 +102,25 @@ export class IngestionBackend {
       throw databaseFailure();
     }
   }
+}
+
+function rejectionPayload(
+  rejection: CompletionInput["rejections"][number],
+): Record<string, unknown> {
+  return {
+    raw_position: rejection.rawPosition,
+    external_event_id: rejection.externalEventId,
+    event_name: rejection.eventName,
+    event_date: rejection.localDate,
+    venue_name: rejection.venueName,
+    rejection_stage: rejection.reason,
+    rejection_code: rejection.code,
+    attraction_count: rejection.attractionCount,
+    invalid_attraction_shape_count: rejection.invalidAttractions.attractionShape,
+    invalid_artist_id_count: rejection.invalidAttractions.artistId,
+    invalid_artist_name_count: rejection.invalidAttractions.artistName,
+    invalid_artist_url_count: rejection.invalidAttractions.artistURL,
+  };
 }
 
 function eventPayload(event: CompletionInput["events"][number]): Record<string, unknown> {

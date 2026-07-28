@@ -1,6 +1,6 @@
 begin;
 
-select plan(25);
+select plan(30);
 
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
@@ -19,9 +19,21 @@ select throws_ok(
 );
 
 select throws_ok(
+  $$select public.get_ticketmaster_ingestion_rejection_audit(null)$$,
+  '42501', null,
+  'ordinary clients cannot read rejected provider records'
+);
+
+select throws_ok(
   $$select count(*) from private.ticketmaster_ingestion_runs$$,
   '42501', null,
   'ordinary clients cannot read private ingestion state'
+);
+
+select throws_ok(
+  $$select count(*) from private.ticketmaster_ingestion_rejections$$,
+  '42501', null,
+  'ordinary clients cannot read private rejection audit rows'
 );
 
 reset role;
@@ -153,6 +165,7 @@ select public.complete_ticketmaster_ingestion_page(
   current_setting('test.ingestion_run')::uuid,
   0,
   jsonb_build_array(current_setting('test.ingestion_payload')::jsonb),
+  '[]'::jsonb,
   1,
   0,
   1,
@@ -247,6 +260,7 @@ select public.complete_ticketmaster_ingestion_page(
   current_setting('test.ingestion_run')::uuid,
   0,
   jsonb_build_array(current_setting('test.ingestion_payload')::jsonb),
+  '[]'::jsonb,
   1,
   0,
   1,
@@ -315,6 +329,20 @@ select public.complete_ticketmaster_ingestion_page(
   current_setting('test.ingestion_run')::uuid,
   0,
   jsonb_build_array(current_setting('test.ingestion_payload')::jsonb),
+  jsonb_build_array(jsonb_build_object(
+    'raw_position', 1,
+    'external_event_id', 'G5vYZbrejected',
+    'event_name', 'Fixture Rejected Add-on',
+    'event_date', '2026-03-05',
+    'venue_name', 'Fixture Ingestion Hall',
+    'rejection_stage', 'lineup',
+    'rejection_code', 'attractions_missing',
+    'attraction_count', null,
+    'invalid_attraction_shape_count', 0,
+    'invalid_artist_id_count', 0,
+    'invalid_artist_name_count', 0,
+    'invalid_artist_url_count', 0
+  )),
   2,
   1,
   2,
@@ -352,6 +380,36 @@ select is(
   ),
   '[2, 1, 1]'::jsonb,
   'partial-run counters reconcile raw, valid, and rejected records'
+);
+
+select is(
+  (
+    select jsonb_build_object(
+      'event_id', external_event_id,
+      'event_name', event_name,
+      'stage', rejection_stage,
+      'code', rejection_code
+    )
+    from private.ticketmaster_ingestion_rejections
+    where run_id = current_setting('test.ingestion_run')::uuid
+      and page_number = 0
+      and raw_position = 1
+  ),
+  '{
+    "event_id":"G5vYZbrejected",
+    "event_name":"Fixture Rejected Add-on",
+    "stage":"lineup",
+    "code":"attractions_missing"
+  }'::jsonb,
+  'the run retains a sanitized event identity and precise rejection code'
+);
+
+select is(
+  public.get_ticketmaster_ingestion_rejection_audit(
+    current_setting('test.ingestion_run')::uuid
+  ) -> 'rejections' -> 0 ->> 'event_name',
+  'Fixture Rejected Add-on',
+  'the service-only audit RPC exposes rejected records to operators'
 );
 
 select set_config(
@@ -403,6 +461,15 @@ select ok(
     'EXECUTE'
   ),
   'only the service role receives the ingestion execution grant'
+);
+
+select ok(
+  not has_function_privilege(
+    'service_role',
+    'public.complete_ticketmaster_ingestion_page(bigint,uuid,integer,jsonb,integer,integer,integer,integer,boolean)',
+    'EXECUTE'
+  ),
+  'the service role cannot bypass mandatory rejection auditing'
 );
 
 select * from finish();

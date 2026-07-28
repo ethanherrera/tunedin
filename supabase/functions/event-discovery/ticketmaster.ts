@@ -18,8 +18,39 @@ export type TicketmasterRejectionReason =
   | "lineup"
   | "source_url";
 
+export type TicketmasterRejectionCode =
+  | "event_shape_invalid"
+  | "event_dates_invalid"
+  | "venue_invalid"
+  | "attractions_missing"
+  | "attractions_not_array"
+  | "attractions_too_many"
+  | "attractions_empty"
+  | "attractions_all_invalid"
+  | "source_url_invalid";
+
+export interface TicketmasterAttractionRejectionCounts {
+  attractionShape: number;
+  artistId: number;
+  artistName: number;
+  artistURL: number;
+}
+
+export interface TicketmasterRejectedEvent {
+  rawPosition: number;
+  externalEventId: string | null;
+  eventName: string | null;
+  localDate: string | null;
+  venueName: string | null;
+  reason: TicketmasterRejectionReason;
+  code: TicketmasterRejectionCode;
+  attractionCount: number | null;
+  invalidAttractions: TicketmasterAttractionRejectionCounts;
+}
+
 export interface TicketmasterDiscoveryPage {
   events: DiscoveryCandidate[];
+  rejections: TicketmasterRejectedEvent[];
   pageNumber: number;
   pageSize: number;
   totalElements: number;
@@ -81,17 +112,20 @@ export class TicketmasterClient {
       throw upstreamInvalid();
     }
     const rejectionReasons = emptyRejectionReasons();
-    const events = rawEvents.flatMap((event) => {
+    const rejections: TicketmasterRejectedEvent[] = [];
+    const events = rawEvents.flatMap((event, rawPosition) => {
       try {
         return [decodeEvent(event)];
       } catch (error) {
         const reason = error instanceof TicketmasterDecodeError ? error.reason : "event_shape";
         rejectionReasons[reason] += 1;
+        rejections.push(rejectedEvent(event, rawPosition, error));
         return [];
       }
     });
     return {
       events,
+      rejections,
       pageNumber,
       pageSize,
       totalElements,
@@ -169,12 +203,12 @@ export class TicketmasterClient {
 }
 
 export function decodeEvent(value: unknown): DiscoveryCandidate {
-  const event = decodeStage("event_shape", () => object(value));
-  const identity = decodeStage("event_shape", () => ({
+  const event = decodeStage("event_shape", "event_shape_invalid", () => object(value));
+  const identity = decodeStage("event_shape", "event_shape_invalid", () => ({
     id: string(event.id, 200),
     name: string(event.name, 160),
   }));
-  const temporal = decodeStage("event_dates", () => {
+  const temporal = decodeStage("event_dates", "event_dates_invalid", () => {
     const dates = object(event.dates);
     const start = object(dates.start);
     const status = optionalObject(dates.status);
@@ -186,24 +220,17 @@ export function decodeEvent(value: unknown): DiscoveryCandidate {
       status: mapStatus(status === null ? null : optionalString(status.code, 40)),
     };
   });
-  const embedded = decodeStage("venue", () => object(event._embedded));
-  const venue = decodeStage("venue", () => {
+  const embedded = decodeStage("venue", "venue_invalid", () => object(event._embedded));
+  const venue = decodeStage("venue", "venue_invalid", () => {
     const venues = array(embedded.venues, 5);
     return decodeVenue(venues[0]);
   });
-  const attractions = decodeStage("lineup", () => {
-    const decoded = array(embedded.attractions, 20)
-      .map(decodeArtist)
-      .filter((artist): artist is DiscoveryArtist => artist !== null)
-      .slice(0, 10);
-    if (decoded.length === 0) throw upstreamInvalid();
-    return decoded;
-  });
+  const attractions = decodeAttractions(embedded.attractions);
   const classifications = Array.isArray(event.classifications) ? event.classifications : [];
   const classification = classifications.length > 0 ? optionalObject(classifications[0]) : null;
   const genre = classification === null ? null : optionalObject(classification.genre);
   const imageURL = preferredImage(Array.isArray(event.images) ? event.images : []);
-  const ticketURL = decodeStage("source_url", () => httpsURL(event.url));
+  const ticketURL = decodeStage("source_url", "source_url_invalid", () => httpsURL(event.url));
   return {
     id: identity.id,
     name: identity.name,
@@ -221,19 +248,25 @@ export function decodeEvent(value: unknown): DiscoveryCandidate {
 }
 
 class TicketmasterDecodeError extends Error {
-  constructor(readonly reason: TicketmasterRejectionReason) {
-    super(reason);
+  constructor(
+    readonly reason: TicketmasterRejectionReason,
+    readonly code: TicketmasterRejectionCode,
+    readonly attractionCount: number | null = null,
+    readonly invalidAttractions: TicketmasterAttractionRejectionCounts = emptyAttractionCounts(),
+  ) {
+    super(code);
   }
 }
 
 function decodeStage<T>(
   reason: TicketmasterRejectionReason,
+  code: TicketmasterRejectionCode,
   operation: () => T,
 ): T {
   try {
     return operation();
   } catch {
-    throw new TicketmasterDecodeError(reason);
+    throw new TicketmasterDecodeError(reason, code);
   }
 }
 
@@ -267,18 +300,125 @@ function decodeVenue(value: unknown): DiscoveryVenue {
   };
 }
 
-function decodeArtist(value: unknown): DiscoveryArtist | null {
+function decodeAttractions(value: unknown): DiscoveryArtist[] {
+  if (value === undefined) {
+    throw new TicketmasterDecodeError("lineup", "attractions_missing");
+  }
+  if (!Array.isArray(value)) {
+    throw new TicketmasterDecodeError("lineup", "attractions_not_array");
+  }
+  if (value.length > 20) {
+    throw new TicketmasterDecodeError(
+      "lineup",
+      "attractions_too_many",
+      boundedAuditCount(value.length),
+    );
+  }
+  if (value.length === 0) {
+    throw new TicketmasterDecodeError("lineup", "attractions_empty", 0);
+  }
+  const invalidAttractions = emptyAttractionCounts();
+  const decoded = value.flatMap((artist) => {
+    const result = decodeArtist(artist);
+    if (result.artist !== null) return [result.artist];
+    invalidAttractions[result.reason] += 1;
+    return [];
+  }).slice(0, 10);
+  if (decoded.length === 0) {
+    throw new TicketmasterDecodeError(
+      "lineup",
+      "attractions_all_invalid",
+      value.length,
+      invalidAttractions,
+    );
+  }
+  return decoded;
+}
+
+function decodeArtist(
+  value: unknown,
+): { artist: DiscoveryArtist | null; reason: keyof TicketmasterAttractionRejectionCounts } {
   const artist = optionalObject(value);
-  if (artist === null) return null;
+  if (artist === null) return { artist: null, reason: "attractionShape" };
+  let id: string;
+  let name: string;
+  let url: string | null;
   try {
-    return {
-      id: string(artist.id, 200),
-      name: string(artist.name, 160),
-      url: artist.url === undefined ? null : httpsURL(artist.url),
-    };
+    id = string(artist.id, 200);
   } catch {
+    return { artist: null, reason: "artistId" };
+  }
+  try {
+    name = string(artist.name, 160);
+  } catch {
+    return { artist: null, reason: "artistName" };
+  }
+  try {
+    url = artist.url === undefined ? null : httpsURL(artist.url);
+  } catch {
+    return { artist: null, reason: "artistURL" };
+  }
+  return { artist: { id, name, url }, reason: "attractionShape" };
+}
+
+function rejectedEvent(
+  value: unknown,
+  rawPosition: number,
+  error: unknown,
+): TicketmasterRejectedEvent {
+  const decodedError = error instanceof TicketmasterDecodeError
+    ? error
+    : new TicketmasterDecodeError("event_shape", "event_shape_invalid");
+  const event = optionalObject(value);
+  const dates = event === null ? null : optionalObject(event.dates);
+  const start = dates === null ? null : optionalObject(dates.start);
+  const embedded = event === null ? null : optionalObject(event._embedded);
+  const venues = embedded !== null && Array.isArray(embedded.venues) ? embedded.venues : [];
+  const venue = optionalObject(venues[0]);
+  return {
+    rawPosition,
+    externalEventId: event === null ? null : safeAuditString(event.id, 200),
+    eventName: event === null ? null : safeAuditString(event.name, 160),
+    localDate: start === null ? null : safeAuditDate(start.localDate),
+    venueName: venue === null ? null : safeAuditString(venue.name, 160),
+    reason: decodedError.reason,
+    code: decodedError.code,
+    attractionCount: decodedError.attractionCount,
+    invalidAttractions: decodedError.invalidAttractions,
+  };
+}
+
+function emptyAttractionCounts(): TicketmasterAttractionRejectionCounts {
+  return {
+    attractionShape: 0,
+    artistId: 0,
+    artistName: 0,
+    artistURL: 0,
+  };
+}
+
+function safeAuditString(value: unknown, maximum: number): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().replace(/\s+/g, " ");
+  if (
+    normalized.length < 1 ||
+    normalized.length > maximum ||
+    Array.from(normalized).some((character) => {
+      const codePoint = character.codePointAt(0) ?? 0;
+      return codePoint <= 31 || codePoint === 127;
+    })
+  ) {
     return null;
   }
+  return normalized;
+}
+
+function safeAuditDate(value: unknown): string | null {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+}
+
+function boundedAuditCount(value: number): number | null {
+  return value <= 1_000 ? value : null;
 }
 
 function preferredImage(values: unknown[]): string | null {

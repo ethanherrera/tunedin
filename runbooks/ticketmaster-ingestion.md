@@ -10,7 +10,8 @@ The MVP is intentionally narrow:
 
 - one city (`San Francisco`), state (`CA`), and country (`US`);
 - music events only, 20 events per Ticketmaster page, at most 50 pages/1,000 events per run;
-- normalized event, venue, artist, provider identity, source link, and ingestion metrics only;
+- normalized event, venue, artist, provider identity, source link, ingestion metrics, and
+  sanitized rejection audit fields only;
 - no raw Ticketmaster response archive and no Ticketmaster image ingestion;
 - no cross-source artist or event matching;
 - manual Development operation, followed by Staging only after Development verification;
@@ -94,15 +95,27 @@ response cannot prove that an unseen event disappeared. A clean completed run sa
 unseen, active, listed Ticketmaster events inside the exact San Francisco/date window. It never
 deletes catalog rows or user history.
 
-The manual workflow also reports only fixed rejection-reason counters (`event_shape`,
-`event_dates`, `venue`, `lineup`, and `source_url`). These counters contain no provider payload,
-event identity, artist, venue, address, or URL data and are the approved way to diagnose decoder
-coverage.
+The manual workflow reports fixed rejection-stage counters (`event_shape`, `event_dates`, `venue`,
+`lineup`, and `source_url`) without catalog names. Every rejected record is also retained privately
+for 30 days with only its page/position, public Ticketmaster event ID and name when safely
+decodable, event date, venue name, precise rejection code, and bounded attraction-validation
+counts. Raw provider JSON, artist payloads, addresses, source URLs, images, and credentials are
+never retained in the audit table.
+
+Codex can inspect this audit directly through the connected Supabase database tool. This is the
+preferred debugging path because the data is durable, structured, private, and does not depend on
+Function-log retention.
 
 For direct database diagnosis, use Supabase SQL Editor with an authorized operator session:
 
 ```sql
 select public.get_ticketmaster_ingestion_status(null);
+
+select public.get_ticketmaster_ingestion_rejection_audit(null);
+
+select public.get_ticketmaster_ingestion_rejection_audit(
+  '00000000-0000-0000-0000-000000000000'::uuid
+);
 
 select jobname, schedule, active
 from cron.job
@@ -124,8 +137,10 @@ Both Cron rows must report `active = false` throughout Development and Staging M
   `make dev-ticketmaster-ingestion-resume`.
 - Terminal page failure: stop. Preserve the workflow URL, run ID, safe error code, and Function log
   timestamps. Fix forward-only and start a new run; do not edit queue tables or reset Development.
-- Unexpected rejection count: inspect the decoder against a redacted provider shape, deploy a fix,
-  and start a new run. Existing listings were intentionally preserved.
+- Unexpected rejection count: query
+  `public.get_ticketmaster_ingestion_rejection_audit(<run-id>)`, inspect the precise rejection
+  codes and safe event identities, deploy a forward-only fix, and start a new run. Existing
+  listings were intentionally preserved.
 - Incorrect normalized data: correct normalization and rerun. Stable Ticketmaster IDs update the same
   tunedIn records.
 - Exposed key: revoke only the affected Ticketmaster or Supabase credential, replace it in the
@@ -167,11 +182,14 @@ needs product/legal review before Production.
 
 ## Audit and cost signals
 
-GitHub Actions retains the actor, commit, operation, and safe JSON result. Supabase Function logs,
-Postgres run/page counters, `pgmq.metrics`, and Ticketmaster request-gate records provide diagnosis.
-Never log provider payloads, API keys, bearer headers, or request URLs with query strings.
+GitHub Actions retains the actor, commit, operation, and safe aggregate JSON result. Supabase
+Function logs, Postgres run/page counters, the private 30-day rejection audit, `pgmq.metrics`, and
+Ticketmaster request-gate records provide diagnosis. Rejection identities remain in the private
+database and are not copied into ordinary workflow or Function logs. Never log provider payloads,
+API keys, bearer headers, or request URLs with query strings.
 
 At the MVP scope, each run uses one Ticketmaster request per page and stores only normalized rows
-plus small observation/run records. The existing 4,500-call rolling safety budget remains the hard
-provider boundary. Observation rows are the main recurring storage growth and can receive a
+plus small observation/run records and at most 1,000 bounded rejection rows. Rejection rows are
+opportunistically deleted after 30 days. The existing 4,500-call rolling safety budget remains the
+hard provider boundary. Observation rows are the main recurring storage growth and can receive a
 separately reviewed retention policy after real Development measurements exist.

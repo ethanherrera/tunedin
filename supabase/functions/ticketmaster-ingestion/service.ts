@@ -24,6 +24,7 @@ export interface IngestionBackendPort {
 export interface TicketmasterPort {
   discover(request: DiscoverRequest): Promise<{
     events: CompletionInput["events"];
+    rejections: CompletionInput["rejections"];
     rawEventCount: number;
     rejectedEventCount: number;
     totalElements: number;
@@ -69,6 +70,7 @@ export class TicketmasterIngestionService {
         await this.backend.completePage({
           task,
           events: page.events,
+          rejections: page.rejections,
           rawEventCount: page.rawEventCount,
           rejectedEventCount: page.rejectedEventCount,
           totalElements: page.totalElements,

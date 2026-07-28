@@ -41,6 +41,7 @@ Deno.test("Ticketmaster discovery sends source-safe filters and decodes music ev
   assertEquals(response.totalPages, 1);
   assertEquals(response.rawEventCount, 1);
   assertEquals(response.rejectedEventCount, 0);
+  assertEquals(response.rejections, []);
   assertEquals(response.rejectionReasons, {
     event_shape: 0,
     event_dates: 0,
@@ -82,6 +83,22 @@ Deno.test("Ticketmaster discovery reports bounded rejection reasons without payl
 
   assertEquals(response.events, []);
   assertEquals(response.rejectedEventCount, 1);
+  assertEquals(response.rejections, [{
+    rawPosition: 0,
+    externalEventId: "G5vYZbfixture",
+    eventName: "Neon Orchard Live",
+    localDate: "2026-08-01",
+    venueName: "The Fillmore",
+    reason: "lineup",
+    code: "attractions_missing",
+    attractionCount: null,
+    invalidAttractions: {
+      attractionShape: 0,
+      artistId: 0,
+      artistName: 0,
+      artistURL: 0,
+    },
+  }]);
   assertEquals(response.rejectionReasons, {
     event_shape: 0,
     event_dates: 0,
