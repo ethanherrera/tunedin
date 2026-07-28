@@ -149,6 +149,22 @@ accepted. That future change must provision environment-specific Vault secrets n
 `ticketmaster_ingestion_project_url` and `ticketmaster_ingestion_operator_key` for the project URL
 and default `sb_secret` API key. It must not be performed as an untracked dashboard edit.
 
+## Production data-license gate
+
+Do not enable these schedules in Production based only on technical verification. Before activation:
+
+- confirm with Ticketmaster that tunedIn's rolling normalized catalog, diary retention, and ticket
+  linking fit the terms applicable to the project's actual Discovery API account;
+- document the approved retention period for unreferenced provider events and implement its
+  automatic ejection;
+- document and test the removal path for Ticketmaster or event-owner requests;
+- confirm the required Ticketmaster attribution, branding, privacy disclosure, and affiliate terms.
+
+Ticketmaster's public terms can change and describe storage only for a reasonable service period.
+Treat the account-specific written answer as authoritative. Durable user diary relationships may
+require retaining tunedIn-owned facts while ejecting provider-controlled content; that separation
+needs product/legal review before Production.
+
 ## Audit and cost signals
 
 GitHub Actions retains the actor, commit, operation, and safe JSON result. Supabase Function logs,
